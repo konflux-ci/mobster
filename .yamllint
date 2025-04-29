@@ -1,0 +1,23 @@
+---
+extends: default
+
+rules:
+  line-length:
+    level: warning
+    max: 180
+  document-start:
+    level: error
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  braces:
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
+
+ignore:
+  - .tox/
+  - ansible/vaults/
+  - .venv
+  - node_modules/

@@ -1,0 +1,54 @@
+[project]
+name = "mobster"
+version = "0.1.0"
+
+description = "A tool for generating and managing Software Bill of Materials (SBOM)."
+
+authors = [{ name = "Ales Raszka", email = "araszka@redhat.com" }]
+
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+
+license = { text = "Apache-2.0" }
+
+
+keywords = ["sbom", "spdx", "cyclonedx", "security"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Security",
+]
+
+dependencies = ["spdx-tools (>=0.8.3,<0.9.0)"]
+
+[project.urls]
+repository = "https://github.com/konflux-ci/mobster"
+
+[project.scripts]
+mobster = "mobster.main:main"
+
+[tool.poetry]
+packages = [{ include = "mobster", from = "src" }]
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+ruff = "^0.11.7"
+pytest-cov = "^6.1.1"
+bandit = "^1.8.3"
+mypy = "^1.15.0"
+yamllint = "^1.37.0"
+tox = "^4.25.0"
+pip-audit = "^2.9.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
