@@ -42,7 +42,9 @@ file to set up your development environment.
 We welcome contributions to the Mobster project! If you would like to contribute, please follow these steps:
 1. Fork the repository
 2. Create a new branch for your feature or bug fix
-3. Make your changes and commit them with a clear message
+3. Make your changes and commit them with a clear message (following the
+   [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) format)
+   (e.g. `feat: add new feature` or `fix: fix a bug`)
 4. Open a pull request to the main repository
 5. Make sure the CI checks pass and the code is properly formatted
 6. Wait for the review and address any comments or suggestions
