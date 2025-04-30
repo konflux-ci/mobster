@@ -34,3 +34,12 @@ jobs:
       - name: Run Tests
         run: |
             poetry run tox
+
+  commitlint:
+    name: Conventional Commit Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+
+      - uses: webiny/action-conventional-commits@v1.3.0
