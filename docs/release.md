@@ -6,21 +6,21 @@ for the Python package and the Konflux takes care of the release process for the
 container image.
 
 ## Release to PyPI
-The package is released to PyPI using the Github Actions. This repository uses
-[release-please](https://github.com/googleapis/release-please-action) that automatically
-creates a release PR and updates with every
-incoming change. When the release is ready to be released, owner of the repository
-should merge the PR. The release-please will automatically create a new release
-and update the version in the `pyproject.toml` file. The release-please will also
-create a new tag for the release.
+A github action is used to release the Python package to PyPI. The action is
+triggered on every version tag (`vX.Y.Z`) being pushed to the repository.
 
-In order for the release-please to work properly a conventional commit
-messages are required. The commit messages should follow the
-[conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) format and
-is enforced by the CI.
+### Release steps:
+1. Pull the latest version from the repository. `git pull upstream main`
+2. Increment the version in `pyproject.toml` file. The version should be in the format
+   `X.Y.Z` where `X` is the major version, `Y` is the minor version and `Z` is
+   the patch version.
+3. Commit the changes to the repository. `git commit -m "Bump version to X.Y.Z"`
+4. Push the changes to the repository. `git push upstream main`
+5. Create a new tag for the release. `git tag vX.Y.Z`
+6. Push the tag to the repository. `git push upstream vX.Y.Z`
 
-When a release-please successfully generate a new Github release, another Github
-Action will build the package and upload it to PyPI.
+After the tag is pushed, the Github action will be triggered and it will
+automatically build the package and upload it to PyPI.
 
 ## Release to registry
 The Konflux is used to release the container image to the registry. The Konflux
