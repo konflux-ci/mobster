@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-import json
 import argparse
-from typing import Dict, Any
+import json
+from typing import Any
 
-from rich.table import Table
 from rich.console import Console
+from rich.table import Table
 
 
-def parse_vulnerabilities_json(data: Dict[str, Any]) -> bool:
+def parse_vulnerabilities_json(data: dict[str, Any]) -> bool:
     """
     Parses pip-audit json output, extracts fixable vulnerabilities
     and pretty prints them.
@@ -63,7 +63,7 @@ def main() -> None:
     parser.add_argument("filename", help="The JSON file to process")
 
     args = parser.parse_args()
-    with open(args.filename, "r") as file:
+    with open(args.filename) as file:
         data = json.load(file)
 
     if not parse_vulnerabilities_json(data):
