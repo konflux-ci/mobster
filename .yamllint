@@ -21,3 +21,4 @@ ignore:
   - ansible/vaults/
   - .venv
   - node_modules/
+  - .tekton/ # Directory managed by Konflux
