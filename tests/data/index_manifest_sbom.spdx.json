@@ -1,0 +1,154 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "creationInfo": {
+    "created": "2025-05-06T13:14:21Z",
+    "creators": [
+      "Organization: Red Hat",
+      "Tool: Konflux CI",
+      "Tool: Mobster"
+    ]
+  },
+  "dataLicense": "CC0-1.0",
+  "name": "registry.redhat.io/ubi10-beta/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac",
+  "spdxVersion": "SPDX-2.3",
+  "documentNamespace": "https://konflux-ci.dev/spdxdocs/ubi-latest-aa76aa8c-13ce-4c13-bdf1-f16dd9a9ff54",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-image-index",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "ubi",
+      "supplier": "Organization: Red Hat",
+      "versionInfo": "latest"
+    },
+    {
+      "SPDXID": "SPDXRef-image-ubi-eed2511e5b2f6c7891d79466ef64ed13e9e29e8fe536709666084922e3ff2ff6",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?arch=amd64&repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "ubi_amd64",
+      "supplier": "Organization: Red Hat",
+      "versionInfo": "latest"
+    },
+    {
+      "SPDXID": "SPDXRef-image-ubi-2ded713f6a4f846c080a42f73f1e1af6f5b4a7653825480f0e0f1d86dec89375",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?arch=arm64&repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "ubi_arm64",
+      "supplier": "Organization: Red Hat",
+      "versionInfo": "latest"
+    },
+    {
+      "SPDXID": "SPDXRef-image-ubi-e568fd454597f2450f75978641c020c50874cf4760e986a1cd9f4a1b3fbc2c4c",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?arch=s390x&repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "ubi_s390x",
+      "supplier": "Organization: Red Hat",
+      "versionInfo": "latest"
+    },
+    {
+      "SPDXID": "SPDXRef-image-ubi-b7c40d971296f5b6197d0a0833e91f4172720d37db4089ebb1159a9bbe68b52e",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?arch=ppc64le&repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "ubi_ppc64le",
+      "supplier": "Organization: Red Hat",
+      "versionInfo": "latest"
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relatedSpdxElement": "SPDXRef-image-index",
+      "relationshipType": "DESCRIBES"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-ubi-eed2511e5b2f6c7891d79466ef64ed13e9e29e8fe536709666084922e3ff2ff6",
+      "relatedSpdxElement": "SPDXRef-image-index",
+      "relationshipType": "VARIANT_OF"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-ubi-2ded713f6a4f846c080a42f73f1e1af6f5b4a7653825480f0e0f1d86dec89375",
+      "relatedSpdxElement": "SPDXRef-image-index",
+      "relationshipType": "VARIANT_OF"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-ubi-e568fd454597f2450f75978641c020c50874cf4760e986a1cd9f4a1b3fbc2c4c",
+      "relatedSpdxElement": "SPDXRef-image-index",
+      "relationshipType": "VARIANT_OF"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-ubi-b7c40d971296f5b6197d0a0833e91f4172720d37db4089ebb1159a9bbe68b52e",
+      "relatedSpdxElement": "SPDXRef-image-index",
+      "relationshipType": "VARIANT_OF"
+    }
+  ]
+}
