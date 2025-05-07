@@ -1,6 +1,35 @@
-from mobster.main import main
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from mobster.main import main, run
 
 
-def test_main() -> None:
+@patch("mobster.main.run")
+@patch("mobster.main.cli.setup_arg_parser")
+def test_main(mock_setup_args: MagicMock, mock_run: AsyncMock) -> None:
+    mock_args = mock_setup_args.return_value.parse_args.return_value
+    mock_args.verbose = True
     # Test the main function
     assert main() is None
+
+    mock_setup_args.assert_called_once()
+    mock_setup_args.return_value.parse_args.assert_called_once()
+
+    mock_run.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_run() -> None:
+    # Test the run function
+    mock_args = MagicMock()
+    mock_args.func = MagicMock()
+    mock_args.func.return_value.execute = AsyncMock()
+    mock_args.func.return_value.save = AsyncMock()
+
+    # Call the run function
+    await run(mock_args)
+
+    # Assert that the execute and save methods were called
+    mock_args.func.return_value.execute.assert_called_once()
+    mock_args.func.return_value.save.assert_called_once()
