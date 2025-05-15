@@ -1,7 +1,6 @@
 """A command execution module for generating SBOM documents."""
 
 import json
-import logging
 from abc import ABC
 from datetime import datetime, timezone
 from typing import Any
@@ -21,8 +20,9 @@ from spdx_tools.spdx.writer.write_anything import write_file
 
 from mobster.cmd.base import Command
 from mobster.image import Image
+from mobster.logging import get_mobster_logger
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = get_mobster_logger()
 
 
 class GenerateCommand(Command, ABC):

@@ -1,11 +1,11 @@
 """A module for augmenting SBOM documents."""
 
-import logging
 from typing import Any
 
 from mobster.cmd.base import Command
+from mobster.logging import get_mobster_logger
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = get_mobster_logger()
 
 
 class AugmentComponentCommand(Command):
