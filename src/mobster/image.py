@@ -54,7 +54,7 @@ class Image:
         a registry call for index images, to parse all their child digests.
         """
         image = Image(repository=repository, digest=digest)
-        manifest = await get_image_manifest(image)
+        manifest = await get_image_manifest(image.reference)
         media_type = manifest["mediaType"]
 
         if media_type in {
@@ -147,6 +147,9 @@ class Image:
         """
         purl_hex_digest = hashlib.sha256(self.purl().encode()).hexdigest()
         return f"SPDXRef-image-{self.name}-{purl_hex_digest}"
+
+    def __str__(self) -> str:
+        return self.reference
 
 
 @dataclass

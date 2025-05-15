@@ -4,8 +4,8 @@ The protocol is used mainly for testing. The tests inject a testing cosign
 client implementing the Cosign protocol.
 """
 
-from pathlib import Path
 import typing
+from pathlib import Path
 
 from mobster.error import SBOMError
 from mobster.image import Image

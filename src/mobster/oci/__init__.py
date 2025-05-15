@@ -1,10 +1,11 @@
-from typing import Any, Generator
-import os
-import json
-from pathlib import Path
-import tempfile
-from contextlib import contextmanager
 import asyncio
+import json
+import os
+import tempfile
+from collections.abc import Generator
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Any
 
 from mobster.error import SBOMError
 from mobster.logging import get_mobster_logger
@@ -108,7 +109,7 @@ def make_oci_auth_file(
     # Registry is up to the first slash
     registry = repository.split("/", 1)[0]
 
-    with open(auth, mode="r", encoding="utf-8") as f:
+    with open(auth, encoding="utf-8") as f:
         config = json.load(f)
     auths = config.get("auths", {})
 

@@ -2,18 +2,18 @@
 Module containing classes for OCI artifact parsing.
 """
 
-import hashlib
-import json
-from typing import Optional, Any
 import base64
 import datetime
+import hashlib
+import json
+from enum import Enum
+from typing import Any
 
 import dateutil.parser
 
 from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.logging import get_mobster_logger
-
 
 logger = get_mobster_logger()
 
@@ -49,7 +49,7 @@ class Provenance02:
         if self.predicate is None:
             raise ValueError("Cannot get build time from uninitialized provenance.")
 
-        finished_on: Optional[str] = self.predicate.get("metadata", {}).get(
+        finished_on: str | None = self.predicate.get("metadata", {}).get(
             "buildFinishedOn"
         )
         if finished_on:
@@ -81,6 +81,18 @@ class Provenance02:
         return blob_url.split("@", 1)[1]
 
 
+class SBOMFormat(Enum):
+    SPDX_2_0 = "SPDX-2.0"
+    SPDX_2_1 = "SPDX-2.1"
+    SPDX_2_2 = "SPDX-2.2"
+    SPDX_2_2_1 = "SPDX-2.2.1"
+    SPDX_2_2_2 = "SPDX-2.2.2"
+    SPDX_2_3 = "SPDX-2.3"
+    CDX_v1_4 = "1.4"
+    CDX_v1_5 = "1.5"
+    CDX_v1_6 = "1.6"
+
+
 class SBOM:
     def __init__(self, doc: dict[Any, Any], digest: str) -> None:
         """
@@ -92,6 +104,31 @@ class SBOM:
         """
         self.doc = doc
         self.digest = digest
+
+    @property
+    def format(self) -> SBOMFormat:
+        if "bomFormat" in self.doc:
+            raw = self.doc.get("specVersion")
+            if raw is None:
+                raise SBOMError("SBOM is missing specVersion field.")
+
+            try:
+                spec = SBOMFormat(raw)
+            except ValueError:
+                raise SBOMError(f"CDX spec {raw} not recognized.") from None
+
+            return spec
+
+        raw = self.doc.get("spdxVersion")
+        if raw is None:
+            raise SBOMError("SBOM is missing spdxVersion field.")
+
+        try:
+            spec = SBOMFormat(raw)
+        except ValueError:
+            raise SBOMError(f"CDX spec {raw} not recognized.") from None
+
+        return spec
 
     @staticmethod
     async def from_cosign_output(raw: bytes) -> "SBOM":

@@ -3,9 +3,9 @@ Module containing classes and functions used in the release phase of SBOM
 enrichment.
 """
 
-from dataclasses import dataclass
-import re
 import asyncio
+import re
+from dataclasses import dataclass
 from pathlib import Path
 
 import pydantic as pdc
@@ -33,20 +33,31 @@ class Snapshot:
     components: list[Component]
 
 
-async def make_snapshot(snapshot_spec: Path) -> Snapshot:
+async def make_snapshot(snapshot_spec: Path, digest: str | None = None) -> Snapshot:
     """
     Parse a snapshot spec from a JSON file and create an object representation
     of it. Multiarch images are handled by fetching their index image manifests
     and parsing their children as well.
 
+    If a digest is provided, only parse the parts of the snapshot relevant to
+    that image. This is used to speed up the parsing process if only a single
+    image is being augmented.
+
     Args:
         snapshot_spec (Path): Path to a snapshot spec JSON file
+        digest (str | None): Digest of the image to parse the snapshot for
     """
-    with open(snapshot_spec, mode="r", encoding="utf-8") as snapshot_file:
+    with open(snapshot_spec, encoding="utf-8") as snapshot_file:
         snapshot_model = SnapshotModel.model_validate_json(snapshot_file.read())
 
+    def is_relevant(comp: ComponentModel) -> bool:
+        if digest is not None:
+            return comp.image_digest == digest
+
+        return True
+
     component_tasks = []
-    for component_model in snapshot_model.components:
+    for component_model in filter(is_relevant, snapshot_model.components):
         name = component_model.name
         repository = component_model.rh_registry_repo
         image_digest = component_model.image_digest
@@ -54,8 +65,12 @@ async def make_snapshot(snapshot_spec: Path) -> Snapshot:
 
         component_tasks.append(_make_component(name, repository, image_digest, tags))
 
-    components = await asyncio.gather(*component_tasks)
+    if len(component_tasks) == 0:
+        raise ValueError(
+            "The snapshot is empty or the provided image was not found in the snapshot."
+        )
 
+    components = await asyncio.gather(*component_tasks)
     return Snapshot(components=components)
 
 
