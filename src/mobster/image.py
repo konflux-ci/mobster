@@ -1,9 +1,12 @@
 """An image module for representing OCI images."""
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from packageurl import PackageURL
+
+from mobster.error import SBOMError
+from mobster.oci import get_image_manifest
 
 
 @dataclass
@@ -13,10 +16,9 @@ class Image:
     """
 
     repository: str
-    name: str
     digest: str
-    tag: str
-    arch: str | None
+    tag: str | None = None
+    arch: str | None = None
 
     @staticmethod
     def from_image_index_url_and_digest(
@@ -37,15 +39,42 @@ class Image:
             Image: A representation of the OCI image.
         """
         repository, tag = image_tag_pullspec.rsplit(":", 1)
-        _, name = repository.rsplit("/", 1)
-
         return Image(
             repository=repository,
-            name=name,
             digest=image_digest,
             tag=tag,
             arch=arch,
         )
+
+    @staticmethod
+    async def from_repository_digest(repository: str, digest: str) -> "Image":
+        """
+        # TODO: make this description more accurate
+        Creates an Image or IndexImage object based on an image reference. Performs
+        a registry call for index images, to parse all their child digests.
+        """
+        image = Image(repository=repository, digest=digest)
+        manifest = await get_image_manifest(image)
+        media_type = manifest["mediaType"]
+
+        if media_type in {
+            "application/vnd.oci.image.manifest.v1+json",
+            "application/vnd.docker.distribution.manifest.v2+json",
+        }:
+            return image
+
+        if media_type in {
+            "application/vnd.oci.image.index.v1+json",
+            "application/vnd.docker.distribution.manifest.list.v2+json",
+        }:
+            children = []
+            for submanifest in manifest["manifests"]:
+                child_digest = submanifest["digest"]
+                children.append(Image(repository=repository, digest=child_digest))
+
+            return IndexImage(repository=repository, digest=digest, children=children)
+
+        raise SBOMError(f"Unsupported mediaType: {media_type}")
 
     @property
     def digest_algo(self) -> str:
@@ -59,6 +88,20 @@ class Image:
         return algo.upper()
 
     @property
+    def reference(self) -> str:
+        """
+        Full reference to the image using its digest.
+
+        Returns:
+            str: String containing the reference.
+
+        Example:
+            >>> img.reference
+            quay.io/repo/name@sha256:7a833e39b0a1eee003839841cd125b7e14eff8473a6518d83c38dbe644cfe62a
+        """
+        return f"{self.repository}@{self.digest}"
+
+    @property
     def digest_hex_val(self) -> str:
         """
         A digest value in hex format.
@@ -68,6 +111,11 @@ class Image:
         """
         _, val = self.digest.split(":")
         return val
+
+    @property
+    def name(self) -> str:
+        _, name = self.repository.rsplit("/", 1)
+        return name
 
     def purl(self) -> str:
         """
@@ -99,3 +147,13 @@ class Image:
         """
         purl_hex_digest = hashlib.sha256(self.purl().encode()).hexdigest()
         return f"SPDXRef-image-{self.name}-{purl_hex_digest}"
+
+
+@dataclass
+class IndexImage(Image):
+    """
+    Object representing an index image in a repository. It also contains child
+    images.
+    """
+
+    children: list[Image] = field(default_factory=list)

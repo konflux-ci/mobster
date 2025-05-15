@@ -189,7 +189,6 @@ class GenerateOciIndexCommand(GenerateCommand):
 
             arch_image = Image(
                 arch=arch,
-                name=index_image.name,
                 digest=self.cli_args.index_image_digest,
                 tag=index_image.tag,
                 repository=index_image.repository,
