@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/python-312@sha256:aa2a3c086013ce259af562ddc64c5aa55471c42a2a8a731f185767e86a94283b AS builder
+FROM registry.access.redhat.com/ubi9/python-312@sha256:e80ff3673c95b91f0dafdbe97afb261eab8244d7fd8b47e20ffcbcfee27fb168 AS builder
 
 # Set the working directory in the container
 WORKDIR /app
@@ -29,7 +29,7 @@ COPY src/mobster /app/src/mobster
 RUN poetry install
 
 # Use Red Hat UBI 9 Python base image for the runtime
-FROM registry.access.redhat.com/ubi9/python-312@sha256:aa2a3c086013ce259af562ddc64c5aa55471c42a2a8a731f185767e86a94283b
+FROM registry.access.redhat.com/ubi9/python-312@sha256:e80ff3673c95b91f0dafdbe97afb261eab8244d7fd8b47e20ffcbcfee27fb168
 
 LABEL name="mobster" \
       description="A tool for generating and managing Software Bill of Materials (SBOM)" \
