@@ -80,7 +80,7 @@ async def _make_component(
     """
     Creates a component object from input data.
     """
-    image: Image = await Image.from_repository_digest(repository, image_digest)
+    image: Image = await Image.from_repository_digest_manifest(repository, image_digest)
     return Component(name=name, image=image, tags=tags)
 
 

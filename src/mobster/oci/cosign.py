@@ -16,7 +16,7 @@ from mobster.oci.artifact import SBOM, Provenance02
 logger = get_mobster_logger()
 
 
-class Cosign(typing.Protocol):
+class Cosign(typing.Protocol):  # pragma: nocover
     async def fetch_latest_provenance(self, image: Image) -> Provenance02:
         return NotImplemented
 
@@ -86,4 +86,4 @@ class CosignClient(Cosign):
         if code != 0:
             raise SBOMError(f"Failed to fetch SBOM {image}: {stderr.decode()}")
 
-        return await SBOM.from_cosign_output(stdout)
+        return SBOM.from_cosign_output(stdout)

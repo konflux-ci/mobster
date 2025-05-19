@@ -131,7 +131,7 @@ class SBOM:
         return spec
 
     @staticmethod
-    async def from_cosign_output(raw: bytes) -> "SBOM":
+    def from_cosign_output(raw: bytes) -> "SBOM":
         """
         Create an SBOM object from a line of raw "cosign download sbom" output.
         """

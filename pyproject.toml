@@ -56,6 +56,11 @@ select = [
     "UP", # pyupgrade
 ]
 
+[tool.coverage.run]
+omit = [
+    "src/mobster/error.py",
+]
+
 [tool.mypy]
 strict = true
 

@@ -47,11 +47,18 @@ class Image:
         )
 
     @staticmethod
-    async def from_repository_digest(repository: str, digest: str) -> "Image":
+    async def from_repository_digest_manifest(repository: str, digest: str) -> "Image":
         """
-        # TODO: make this description more accurate
-        Creates an Image or IndexImage object based on an image reference. Performs
-        a registry call for index images, to parse all their child digests.
+        Creates an Image or IndexImage object based on an image repository and
+        digest. Performs a registry call for index images, to parse all their
+        child digests.
+
+        Args:
+            repository (str): Image repository
+            digest (str): Image digest
+
+        Returns:
+            Image | IndexImage: The image object parsed from a manifest
         """
         image = Image(repository=repository, digest=digest)
         manifest = await get_image_manifest(image.reference)

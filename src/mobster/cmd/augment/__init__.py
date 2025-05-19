@@ -131,6 +131,7 @@ def update_sbom_in_situ(component: Component, image: Image, sbom: SBOM) -> bool:
         image, IndexImage
     ):
         CycloneDXVersion1().update_sbom(component, image, sbom.doc)
+        return True
 
     return False
 
