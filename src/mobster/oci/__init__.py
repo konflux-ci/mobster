@@ -115,6 +115,7 @@ def make_oci_auth_file(
 
     current_ref = repository
 
+    tmpfile = None
     try:
         tmpfile = tempfile.NamedTemporaryFile(mode="w", delete=False)
         while True:
@@ -133,5 +134,6 @@ def make_oci_auth_file(
         tmpfile.close()
         yield tmpfile.name
     finally:
-        # this also deletes the file
-        tmpfile.close()
+        if tmpfile is not None:
+            # this also deletes the file
+            tmpfile.close()

@@ -25,7 +25,7 @@ class Provenance02:
 
     predicate_type = "https://slsa.dev/provenance/v0.2"
 
-    def __init__(self, predicate: Any) -> None:
+    def __init__(self, predicate: dict[str, Any]) -> None:
         self.predicate = predicate
 
     @staticmethod
@@ -46,9 +46,6 @@ class Provenance02:
         Return datetime of the build being finished.
         If it's not available, fallback to datetime.min.
         """
-        if self.predicate is None:
-            raise ValueError("Cannot get build time from uninitialized provenance.")
-
         finished_on: str | None = self.predicate.get("metadata", {}).get(
             "buildFinishedOn"
         )

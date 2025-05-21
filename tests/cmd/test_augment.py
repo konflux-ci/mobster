@@ -1,3 +1,5 @@
+from base64 import b64encode
+from hashlib import sha256
 import json
 from pathlib import Path
 from typing import Any
@@ -9,6 +11,7 @@ import pytest
 from unittest.mock import MagicMock
 from packageurl import PackageURL
 
+from mobster.error import SBOMVerificationError
 from mobster.image import Image, IndexImage
 from mobster.oci.cosign import Cosign
 from mobster.oci.artifact import Provenance02, SBOM, SBOMFormat
@@ -29,6 +32,52 @@ from mobster.cmd.augment.handlers import get_purl_digest
 #     assert await command.save() is None
 
 TESTDATA_PATH = Path(__file__).parent.parent.joinpath("data/component")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ["success"],
+    [
+        pytest.param(True),
+        pytest.param(False),
+    ],
+)
+async def test_update_sbom_verification(success: bool) -> None:
+    digest = "sha256:aaaaaaaa"
+    snapshot = Snapshot(
+        components=[
+            Component(
+                name="spdx-singlearch",
+                image=Image(
+                    "registry.redhat.io/repo",
+                    digest,
+                ),
+                tags=["1.0", "latest"],
+            ),
+        ],
+    )
+
+    cosign = FakeCosign.from_snapshot(snapshot)
+
+    if success:
+        sbom_blob_url = f"registry.redhat.io/repo@{cosign.sboms[digest].digest}"
+    else:
+        sbom_blob_url = f"registry.redhat.io/repo@sha256:deadbeef"
+
+    # set the sbom_blob_url in the provenance
+    cosign.provenances[digest].predicate["buildConfig"]["tasks"][0]["results"] = [
+        {"name": "IMAGE_DIGEST", "value": digest},
+        {"name": "SBOM_BLOB_URL", "value": sbom_blob_url},
+    ]
+
+    tmpdir = tempfile.TemporaryDirectory(delete=False)
+    dirpath = Path(tmpdir.name)
+
+    if success:
+        await update_sboms(snapshot, dirpath, cosign, verify=True)
+    else:
+        with pytest.raises(SBOMVerificationError):
+            await update_sboms(snapshot, dirpath, cosign, verify=True)
 
 
 @pytest.mark.asyncio
@@ -121,16 +170,37 @@ class FakeCosign(Cosign):
     def from_snapshot(snapshot: Snapshot) -> "FakeCosign":
         provenances = {}
         sboms = {}
+
+        sbom_path = TESTDATA_PATH.joinpath("sboms")
+        prov_path = TESTDATA_PATH.joinpath("provenances")
         for component in snapshot.components:
-            with open(TESTDATA_PATH.joinpath(component.image.digest), "rb") as fp:
+            with open(sbom_path.joinpath(component.image.digest), "rb") as fp:
                 sboms[component.image.digest] = SBOM.from_cosign_output(fp.read())
+
+            prov = load_provenance(prov_path, component.image.digest)
+            if prov is not None:
+                provenances[component.image.digest] = prov
 
             if isinstance(component.image, IndexImage):
                 for child_img in component.image.children:
-                    with open(TESTDATA_PATH.joinpath(child_img.digest), "rb") as fp:
+                    with open(sbom_path.joinpath(child_img.digest), "rb") as fp:
                         sboms[child_img.digest] = SBOM.from_cosign_output(fp.read())
 
+                    prov = load_provenance(prov_path, child_img.digest)
+                    if prov is not None:
+                        provenances[child_img.digest] = prov
+
         return FakeCosign(provenances, sboms)
+
+
+def load_provenance(prov_dir: Path, digest: str) -> Provenance02 | None:
+    ppath = prov_dir.joinpath(digest)
+    if ppath.exists():
+        with open(ppath, "rb") as fp:
+            payload = b64encode(fp.read()).decode()
+            return Provenance02.from_cosign_output(
+                json.dumps({"payload": payload}).encode()
+            )
 
 
 def get_all_digests(snapshot: Snapshot) -> list[str]:
@@ -161,7 +231,7 @@ async def assert_sboms(snapshot: Snapshot, directory: Path) -> None:
             SBOMFormat.SPDX_2_2_2,
             SBOMFormat.SPDX_2_3,
         ]:
-            expected_path = TESTDATA_PATH.joinpath(f"{digest}.expected")
+            expected_path = TESTDATA_PATH.joinpath(f"sboms/{digest}.expected")
             with open(expected_path, "rb") as fp:
                 expected = SBOM.from_cosign_output(fp.read())
             assert sbom.doc == expected.doc
