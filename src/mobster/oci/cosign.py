@@ -18,10 +18,10 @@ logger = get_mobster_logger()
 
 class Cosign(typing.Protocol):  # pragma: nocover
     async def fetch_latest_provenance(self, image: Image) -> Provenance02:
-        return NotImplemented
+        raise NotImplementedError()
 
     async def fetch_sbom(self, image: Image) -> SBOM:
-        return NotImplemented
+        raise NotImplementedError()
 
 
 class CosignClient(Cosign):

@@ -20,7 +20,7 @@ class SPDXPackage:
         self.package = package
 
     @property
-    def external_refs(self) -> list[dict[str, Any]]:
+    def external_refs(self) -> Any:
         """
         Get the externalRefs field of the package.
         """
@@ -31,18 +31,18 @@ class SPDXPackage:
         self.package["externalRefs"] = value
 
     @property
-    def spdxid(self) -> str:
+    def spdxid(self) -> Any:
         return self.package.get("SPDXID", "UNKNOWN")
 
     @property
-    def checksums(self) -> list[dict[str, Any]]:
+    def checksums(self) -> Any:
         """
         Get the checksums field of the package.
         """
         return self.package.get("checksums", [])
 
     @property
-    def sha256_checksum(self) -> str | None:
+    def sha256_checksum(self) -> Any | None:
         """
         Extracts a sha256 checksum from an SPDX package. Returns None if no such
         checksum is found.
@@ -84,7 +84,7 @@ class SPDXPackage:
         Remove all OCI purl externalRefs from a package.
         """
 
-        def is_oci_purl_ref(ref: dict) -> bool:
+        def is_oci_purl_ref(ref: Any) -> bool:
             ptype = ref.get("referenceType")
             if ptype != "purl":
                 return False
@@ -103,7 +103,7 @@ class SPDXPackage:
     @staticmethod
     def _get_updated_oci_purl_external_refs(
         image: Image, repository: str, tags: list[str], arch: str | None = None
-    ) -> list[dict]:
+    ) -> list[Any]:
         """
         Gets new oci purl externalRefs value based on input information.
         """
@@ -137,7 +137,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
     ]
 
     @classmethod
-    def _find_purl_in_refs(cls, package: SPDXPackage, digest: str) -> str | None:
+    def _find_purl_in_refs(cls, package: SPDXPackage, digest: str) -> Any | None:
         """
         Tries to find a purl in the externalRefs of a package the version of
         which matches the passed digest.
@@ -152,7 +152,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
         return None
 
     @classmethod
-    def _find_image_package(cls, sbom: dict, image: Image) -> SPDXPackage | None:
+    def _find_image_package(cls, sbom: Any, image: Image) -> SPDXPackage | None:
         """
         Find the SPDX package for an image, based on the package checksum.
         """
@@ -164,7 +164,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
 
     @classmethod
     def _update_index_image_sbom(
-        cls, component: Component, index: IndexImage, sbom: dict
+        cls, component: Component, index: IndexImage, sbom: Any
     ) -> None:
         """
         Update the SBOM of an index image in a repository.
@@ -206,7 +206,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
             )
 
     @classmethod
-    def _update_image_sbom(cls, component: Component, image: Image, sbom: dict) -> None:
+    def _update_image_sbom(cls, component: Component, image: Image, sbom: Any) -> None:
         """
         Update the SBOM of single-arch image in a repository.
         """
@@ -224,7 +224,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
             component.tags,
         )
 
-    def update_sbom(self, component: Component, image: Image, sbom: dict) -> None:
+    def update_sbom(self, component: Component, image: Image, sbom: Any) -> None:
         if isinstance(image, IndexImage):
             SPDXVersion2._update_index_image_sbom(component, image, sbom)
         elif isinstance(image, Image):
@@ -238,7 +238,7 @@ class CycloneDXVersion1:
         SBOMFormat.CDX_v1_6,
     ]
 
-    def update_sbom(self, component: Component, image: Image, sbom: dict) -> None:
+    def update_sbom(self, component: Component, image: Image, sbom: Any) -> None:
         if isinstance(component.image, IndexImage):
             raise ValueError("CDX update SBOM does not support index images.")
 
@@ -257,7 +257,7 @@ class CycloneDXVersion1:
                 component, image, cdx_component, update_tags=True
             )
 
-    def _bump_version(self, sbom: dict) -> None:
+    def _bump_version(self, sbom: Any) -> None:
         """
         Bump the CDX version to 1.6, so we can populate the fields relevant to
         tags. This is legal, because CycloneDX v1.X is forward-compatible (all
@@ -276,7 +276,7 @@ class CycloneDXVersion1:
         kflx_component: Component,
         image: Image,
         arch: str | None,
-        cdx_component: dict,
+        cdx_component: Any,
     ) -> None:
         if len(kflx_component.tags) <= 1:
             return
@@ -304,15 +304,9 @@ class CycloneDXVersion1:
         self,
         kflx_component: Component,
         image: Image,
-        cdx_component: dict,
+        cdx_component: Any,
         update_tags: bool,
     ) -> None:
-        if cdx_component.get("type") != "container":
-            logger.warning(
-                'Called update method on CDX package with type %s instead of "container".'
-            )
-            return
-
         purl = cdx_component.get("purl")
         if not purl:
             return
@@ -328,7 +322,7 @@ class CycloneDXVersion1:
             )
 
     def _update_metadata_component(
-        self, kflx_component: Component, image: Image, sbom: dict
+        self, kflx_component: Component, image: Image, sbom: Any
     ) -> None:
         component = sbom.get("metadata", {}).get("component", {})
         self._update_container_component(

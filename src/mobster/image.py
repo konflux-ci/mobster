@@ -104,7 +104,7 @@ class Image:
 
         Example:
             >>> img.reference
-            quay.io/repo/name@sha256:7a833e39b0a1eee003839841cd125b7e14eff8473a6518d83c38dbe644cfe62a
+            quay.io/repo/name@sha256:7a833e39b0a1eee003839841cd125b7e14....
         """
         return f"{self.repository}@{self.digest}"
 

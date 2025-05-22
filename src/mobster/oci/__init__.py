@@ -22,10 +22,15 @@ async def run_async_subprocess(
     Args:
         cmd (list[str]): command to run in subprocess.
         env (dict[str, str] | None): environ dict
-        retry_times (int): number of retries if the process ends with non-zero return code
+        retry_times (int): number of retries if the process ends with
+            non-zero return code
     """
     if retry_times < 0:
         raise ValueError("Retry count cannot be negative.")
+
+    # do this to avoid unbound warnings,
+    # the loop always runs at least once, so they're always set
+    code, stdout, stderr = 0, b"", b""
 
     for _ in range(1 + retry_times):
         proc = await asyncio.create_subprocess_exec(
@@ -43,7 +48,6 @@ async def run_async_subprocess(
         if code == 0:
             return code, stdout, stderr
 
-    # guaranteed to be bound, the loop runs at least once
     return code, stdout, stderr
 
 

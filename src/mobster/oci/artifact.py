@@ -34,7 +34,8 @@ class Provenance02:
         att = json.loads(base64.b64decode(encoded["payload"]))
         if (pt := att.get("predicateType")) != Provenance02.predicate_type:
             raise ValueError(
-                f"Cannot parse predicateType {pt}. Expected {Provenance02.predicate_type}"
+                f"Cannot parse predicateType {pt}. "
+                f"Expected {Provenance02.predicate_type}"
             )
 
         predicate = att.get("predicate", {})
@@ -134,8 +135,8 @@ class SBOM:
         """
         try:
             doc = json.loads(raw)
-        except json.JSONDecodeError:
-            raise SBOMError("Could not decode SBOM.")
+        except json.JSONDecodeError as err:
+            raise SBOMError("Could not decode SBOM.") from err
 
         hexdigest = f"sha256:{hashlib.sha256(raw).hexdigest()}"
         return SBOM(doc, hexdigest)

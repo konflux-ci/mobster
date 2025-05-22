@@ -227,8 +227,8 @@ def augment_command_parser(subparsers: Any) -> None:
     """
     augment_parser = subparsers.add_parser(
         "augment",
-        help="Augment SBOM documents with additional information from a mapped snapshot "
-        "spec and save them to a directory.",
+        help="Augment SBOM documents with additional information from a mapped"
+        "snapshot spec and save them to a directory.",
     )
 
     augment_subparser = augment_parser.add_subparsers(dest="type", required=True)

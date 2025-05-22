@@ -88,6 +88,7 @@ pip-audit = "^2.9.0"
 pylint = "^3.3.7"
 pytest-asyncio = "^0.26.0"
 types-python-dateutil = "^2.9.0.20241206"
+types-aiofiles = "^24.1.0.20250516"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

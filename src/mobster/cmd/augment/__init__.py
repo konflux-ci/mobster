@@ -96,7 +96,7 @@ async def load_sbom(image: Image, cosign: Cosign, verify: bool) -> SBOM:
     return sbom
 
 
-async def write_sbom(sbom: dict, path: Path) -> None:
+async def write_sbom(sbom: Any, path: Path) -> None:
     """
     Write an SBOM doc to a file.
     """
