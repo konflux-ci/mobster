@@ -1,9 +1,9 @@
 import json
 from pathlib import Path
 from typing import Any
+from unittest.mock import mock_open, patch
 
 import pytest
-from unittest.mock import patch, mock_open
 
 from mobster.image import Image, IndexImage
 from mobster.release import Component, ComponentModel, Snapshot, make_snapshot

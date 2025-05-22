@@ -11,7 +11,7 @@ def test_main(mock_setup_args: MagicMock, mock_run: AsyncMock) -> None:
     mock_args = mock_setup_args.return_value.parse_args.return_value
     mock_args.verbose = True
     # Test the main function
-    assert main() is None
+    main()
 
     mock_setup_args.assert_called_once()
     mock_setup_args.return_value.parse_args.assert_called_once()

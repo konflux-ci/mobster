@@ -13,6 +13,12 @@ from mobster.oci import get_image_manifest
 class Image:
     """
     Dataclass representing an oci image.
+
+    Attributes:
+        repository (str): OCI repository.
+        digest (str): sha256 digest of the image.
+        tag (str | None): Image tag.
+        arch (str | None): Image architecture
     """
 
     repository: str

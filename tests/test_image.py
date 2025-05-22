@@ -1,6 +1,6 @@
 from typing import Any
+from unittest.mock import patch
 
-from unittest.mock import AsyncMock, patch
 import pytest
 
 from mobster.error import SBOMError
@@ -68,7 +68,7 @@ def test_image() -> None:
 )
 @pytest.mark.asyncio
 async def test_image_from_repo_digest(manifest: dict[Any, Any], image: Image) -> None:
-    async def fake_get_image_manifest(_):
+    async def fake_get_image_manifest(_: Any) -> dict[Any, Any]:
         return manifest
 
     with patch(
@@ -84,7 +84,7 @@ async def test_image_from_repo_digest(manifest: dict[Any, Any], image: Image) ->
 async def test_image_from_repo_digest_unsupported_manifest() -> None:
     manifest = {"mediaType": "unsupported/manifest"}
 
-    async def fake_get_image_manifest(_):
+    async def fake_get_image_manifest(_: Any) -> dict[Any, Any]:
         return manifest
 
     with patch("mobster.image.get_image_manifest", side_effect=fake_get_image_manifest):

@@ -27,6 +27,9 @@ class Cosign(typing.Protocol):  # pragma: nocover
 class CosignClient(Cosign):
     """
     Client used to get OCI artifacts using Cosign.
+
+    Attributes:
+        verification_key: Path to public key used to verify attestations.
     """
 
     def __init__(self, verification_key: Path) -> None:
@@ -40,6 +43,9 @@ class CosignClient(Cosign):
         """
         Fetch the latest provenance based on the supplied image based on the
         time the image build finished.
+
+        Args:
+            image (Image): Image to fetch the provenances of.
         """
         with make_oci_auth_file(image.reference) as authfile:
             cmd = [
@@ -74,7 +80,10 @@ class CosignClient(Cosign):
 
     async def fetch_sbom(self, image: Image) -> SBOM:
         """
-        Fetch and save the SBOM for the supplied image to a directory.
+        Fetch and parse the SBOM for the supplied image.
+
+        Args:
+            image (Image): Image to fetch the SBOM of.
         """
         with make_oci_auth_file(image.reference) as authfile:
             code, stdout, stderr = await run_async_subprocess(

@@ -1,22 +1,18 @@
 import base64
-import json
-from pathlib import Path
-import tempfile
-from _pytest import monkeypatch
-import pytest
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
-import unittest
-from typing import Any
 import datetime
-from dateutil.tz import tzutc
+import json
+import tempfile
+from pathlib import Path
+from typing import Any, Callable
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+
+import pytest
 from dateutil.parser import isoparse
 
 from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import get_image_manifest, make_oci_auth_file, run_async_subprocess
 from mobster.oci.artifact import SBOM, Provenance02
-import mobster.oci
-
 from mobster.oci.cosign import CosignClient
 from tests.cmd.test_augment import load_provenance
 
@@ -73,7 +69,12 @@ def sboms_path(testdata_path: Path) -> Path:
         ),
     ],
 )
-async def test_run_async_subprocess(retry_times, env, exec_results, expected):
+async def test_run_async_subprocess(
+    retry_times: int,
+    env: dict[str, Any],
+    exec_results: list[tuple[int, bytes, bytes]],
+    expected: tuple[int, bytes, bytes],
+) -> None:
     with patch("asyncio.create_subprocess_exec") as mock_exec:
         mock_processes = []
         for return_code, stdout, stderr in exec_results:
@@ -96,7 +97,7 @@ async def test_run_async_subprocess(retry_times, env, exec_results, expected):
 
 
 @pytest.mark.asyncio
-async def test_run_async_subprocess_negative_retry():
+async def test_run_async_subprocess_negative_retry() -> None:
     with pytest.raises(ValueError) as excinfo:
         await run_async_subprocess(["cmd"], retry_times=-1)
 
@@ -104,7 +105,7 @@ async def test_run_async_subprocess_negative_retry():
 
 
 @pytest.fixture
-def mock_auth_file():
+def mock_auth_file() -> MagicMock:
     auth_file = "/tmp/mock_auth_file"
     mock_context = MagicMock()
     mock_context.__enter__.return_value = auth_file
@@ -136,8 +137,11 @@ def mock_auth_file():
     ],
 )
 async def test_get_image_manifest_successful(
-    mock_auth_file, reference: str, manifest_data: str, expected_result: dict[str, Any]
-):
+    mock_auth_file: MagicMock,
+    reference: str,
+    manifest_data: str,
+    expected_result: dict[str, Any],
+) -> None:
     with patch(
         "mobster.oci.make_oci_auth_file", return_value=mock_auth_file
     ) as mock_make_auth:
@@ -170,7 +174,9 @@ async def test_get_image_manifest_successful(
         ("example.com/repo@sha256:1234"),
     ],
 )
-async def test_get_image_manifest_failure(mock_auth_file, reference: str) -> None:
+async def test_get_image_manifest_failure(
+    mock_auth_file: MagicMock, reference: str
+) -> None:
     with patch("mobster.oci.make_oci_auth_file", return_value=mock_auth_file):
         with patch(
             "mobster.oci.run_async_subprocess", new_callable=AsyncMock
@@ -221,7 +227,7 @@ async def test_make_oci_auth_file(
         tmpf.flush()
 
         with make_oci_auth_file(reference, auth=Path(tmpf.name)) as new_auth_path:
-            with open(new_auth_path, "r") as fp:
+            with open(new_auth_path) as fp:
                 new_auth = json.load(fp)
 
     assert new_auth == expected
@@ -234,7 +240,7 @@ async def test_make_oci_auth_file_default() -> None:
 
     with patch("builtins.open", mock_open(read_data=json.dumps(expected))):
         with make_oci_auth_file(reference) as new_auth_path:
-            with open(new_auth_path, "r") as fp:
+            with open(new_auth_path) as fp:
                 new_auth = json.load(fp)
 
     assert new_auth == expected
@@ -298,7 +304,7 @@ def test_provenance_no_sbom_blob_url(provenances_path: Path) -> None:
 def test_sbom_bad_format(doc: dict[str, Any]) -> None:
     sbom = SBOM(doc, "")
     with pytest.raises(SBOMError):
-        sbom.format
+        _ = sbom.format
 
 
 class TestCosignClient:
@@ -309,7 +315,13 @@ class TestCosignClient:
         return provenances_path.joinpath("sha256:aaaaaaaa")
 
     @pytest.fixture
-    def make_provenance_raw(self, make_provenance_predicate):
+    def make_provenance_raw(
+        self,
+        make_provenance_predicate: Callable[
+            [datetime.datetime | None],
+            Callable[[datetime.datetime | None], dict[str, Any]],
+        ],
+    ) -> Callable[[datetime.datetime | None], bytes]:
         def _make_provenance_raw(build_finished_on: datetime.datetime | None) -> bytes:
             payload = base64.b64encode(
                 json.dumps(
@@ -325,11 +337,13 @@ class TestCosignClient:
         return _make_provenance_raw
 
     @pytest.fixture
-    def make_provenance_predicate(self, provenance_path: Path):
+    def make_provenance_predicate(
+        self, provenance_path: Path
+    ) -> Callable[[datetime.datetime | None], dict[str, Any]]:
         def _make_provenance_predicate(
             build_finished_on: datetime.datetime | None,
         ) -> dict[str, Any]:
-            with open(provenance_path, "r") as fp:
+            with open(provenance_path) as fp:
                 loaded = json.load(fp)
                 predicate = loaded["predicate"]
                 if build_finished_on is not None:
@@ -338,7 +352,7 @@ class TestCosignClient:
                     ] = build_finished_on.isoformat()
                 else:
                     del predicate["metadata"]["buildFinishedOn"]
-            return predicate
+            return predicate  # type: ignore
 
         return _make_provenance_predicate
 
@@ -356,14 +370,14 @@ class TestCosignClient:
         image: Image,
         client: CosignClient,
         monkeypatch: pytest.MonkeyPatch,
-        make_provenance_raw,
-        make_provenance_predicate,
+        make_provenance_raw: Callable[[datetime.datetime | None], bytes],
+        make_provenance_predicate: Callable[[datetime.datetime | None], dict[str, Any]],
     ) -> None:
         old_date = isoparse("2023-01-01T12:05:30Z")
         new_date = isoparse("2025-01-01T12:05:30Z")
 
         async def mock_run_async_subprocess(
-            cmd, env, retry_times
+            cmd: Any, env: Any, retry_times: Any
         ) -> tuple[int, bytes, bytes]:
             no_date = make_provenance_raw(None)
             old = make_provenance_raw(old_date)
@@ -393,7 +407,7 @@ class TestCosignClient:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         async def mock_run_async_subprocess(
-            cmd, env, retry_times
+            cmd: Any, env: Any, retry_times: Any
         ) -> tuple[int, bytes, bytes]:
             return code, b"", b""
 
@@ -411,7 +425,7 @@ class TestCosignClient:
 
     @pytest.fixture
     def sbom_doc(self, sbom_raw: bytes) -> dict[str, Any]:
-        return json.loads(sbom_raw)
+        return json.loads(sbom_raw)  # type: ignore
 
     @pytest.mark.asyncio
     async def test_fetch_sbom(
@@ -423,7 +437,7 @@ class TestCosignClient:
         sbom_doc: dict[str, Any],
     ) -> None:
         async def mock_run_async_subprocess(
-            cmd, env, retry_times
+            cmd: Any, env: Any, retry_times: Any
         ) -> tuple[int, bytes, bytes]:
             return 0, sbom_raw, b""
 
@@ -451,7 +465,7 @@ class TestCosignClient:
         code: int,
     ) -> None:
         async def mock_run_async_subprocess(
-            cmd, env, retry_times
+            cmd: Any, env: Any, retry_times: Any
         ) -> tuple[int, bytes, bytes]:
             return code, b"", b""
 

@@ -16,20 +16,28 @@ from mobster.image import Image
 @dataclass
 class Component:
     """
-    Internal representation of a Component for SBOM generation purposes.
+    Representation of a Konflux Component that is being released.
+
+    Attributes:
+        name (str): Name of the component.
+        image (str): The component image being released.
+        tags (list[str]): List of tags under which the image is being released.
+        repository (str): The OCI repository the image is being released to.
     """
 
     name: str
     image: Image
     tags: list[str]
-    # The repository the component is being released to (e.g. registry.redhat.io)
     repository: str
 
 
 @dataclass
 class Snapshot:
     """
-    Internal representation of a Snapshot for SBOM generation purposes.
+    Representation of a Konflux Snapshot that is being released.
+
+    Attributes:
+        components (list[Component]): List of components being released.
     """
 
     components: list[Component]
@@ -97,7 +105,7 @@ async def _make_component(
 
 class ComponentModel(pdc.BaseModel):
     """
-    Model representing a component from the Snapshot.
+    Pydantic model representing a component from the Snapshot.
     """
 
     name: str

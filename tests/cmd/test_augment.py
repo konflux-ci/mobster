@@ -1,24 +1,19 @@
-from base64 import b64encode
-from hashlib import sha256
 import json
+import tempfile
+from base64 import b64encode
 from pathlib import Path
 from typing import Any
-import tempfile
-import os
-from functools import partial
 
 import pytest
-from unittest.mock import MagicMock
 from packageurl import PackageURL
 
+from mobster.cmd.augment import update_sboms
+from mobster.cmd.augment.handlers import get_purl_digest
 from mobster.error import SBOMVerificationError
 from mobster.image import Image, IndexImage
+from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
 from mobster.oci.cosign import Cosign
-from mobster.oci.artifact import Provenance02, SBOM, SBOMFormat
-from mobster.release import Snapshot, Component
-
-from mobster.cmd.augment import AugmentComponentCommand, update_sboms
-from mobster.cmd.augment.handlers import get_purl_digest
+from mobster.release import Component, Snapshot
 
 # @pytest.mark.asyncio
 # async def test_AugmentComponentCommand_execute() -> None:
@@ -63,7 +58,7 @@ async def test_update_sbom_verification(success: bool) -> None:
     if success:
         sbom_blob_url = f"registry.redhat.io/repo@{cosign.sboms[digest].digest}"
     else:
-        sbom_blob_url = f"registry.redhat.io/repo@sha256:deadbeef"
+        sbom_blob_url = "registry.redhat.io/repo@sha256:deadbeef"
 
     # set the sbom_blob_url in the provenance
     cosign.provenances[digest].predicate["buildConfig"]["tasks"][0]["results"] = [
@@ -206,6 +201,8 @@ def load_provenance(prov_dir: Path, digest: str) -> Provenance02 | None:
                 json.dumps({"payload": payload}).encode()
             )
 
+    return None
+
 
 def get_all_digests(snapshot: Snapshot) -> list[str]:
     digests = []
@@ -251,7 +248,7 @@ class VerifyCycloneDX:
         assert purl.name == repository.split("/")[-1]
 
     @staticmethod
-    def verify_tags(kflx_component: Component, cdx_component: dict) -> None:
+    def verify_tags(kflx_component: Component, cdx_component: Any) -> None:
         """
         Verify that all tags are present in PURLs in the evidence.identity field
         if there are more than one.
@@ -268,8 +265,10 @@ class VerifyCycloneDX:
 
         try:
             identity = cdx_component["evidence"]["identity"]
-        except KeyError:
-            raise AssertionError("CDX component is missing evidence.identity field.")
+        except KeyError as err:
+            raise AssertionError(
+                "CDX component is missing evidence.identity field."
+            ) from err
 
         for id_item in identity:
             if id_item.get("field") != "purl":
@@ -298,7 +297,7 @@ class VerifyCycloneDX:
     @staticmethod
     def verify_component_updated(
         snapshot: Snapshot,
-        cdx_component: dict,
+        cdx_component: Any,
         verify_tags: bool,
     ) -> None:
         if (purl_str := cdx_component.get("purl")) is None:
@@ -319,7 +318,7 @@ class VerifyCycloneDX:
             VerifyCycloneDX.verify_tags(kflx_component, cdx_component)
 
     @staticmethod
-    def verify_components_updated(snapshot: Snapshot, sbom: dict) -> None:
+    def verify_components_updated(snapshot: Snapshot, sbom: Any) -> None:
         """
         This method verifies that all CycloneDX container components that have a
         matching Konflux component in the release are updated.

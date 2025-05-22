@@ -20,7 +20,10 @@ logger = get_mobster_logger()
 
 class Provenance02:
     """
-    Object containing the data of an provenance attestation.
+    Object containing the data of a provenance attestation.
+
+    Attributes:
+        predicate (dict): The attestation predicate.
     """
 
     predicate_type = "https://slsa.dev/provenance/v0.2"
@@ -105,6 +108,9 @@ class SBOM:
 
     @property
     def format(self) -> SBOMFormat:
+        """
+        Return the format of the SBOM document.
+        """
         if "bomFormat" in self.doc:
             raw = self.doc.get("specVersion")
             if raw is None:
