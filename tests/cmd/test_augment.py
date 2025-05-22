@@ -49,10 +49,11 @@ async def test_update_sbom_verification(success: bool) -> None:
             Component(
                 name="spdx-singlearch",
                 image=Image(
-                    "registry.redhat.io/repo",
+                    "quay.io/repo",
                     digest,
                 ),
                 tags=["1.0", "latest"],
+                repository="registry.redhat.io/repo",
             ),
         ],
     )
@@ -90,10 +91,11 @@ async def test_update_sbom_verification(success: bool) -> None:
                     Component(
                         name="spdx-singlearch",
                         image=Image(
-                            "registry.redhat.io/org/tenant/test",
+                            "quay.io/org/tenant/test",
                             "sha256:aaaaaaaa",
                         ),
                         tags=["1.0", "latest"],
+                        repository="registry.redhat.io/org/tenant/test",
                     ),
                 ],
             ),
@@ -105,16 +107,17 @@ async def test_update_sbom_verification(success: bool) -> None:
                     Component(
                         name="spdx-multiarch",
                         image=IndexImage(
-                            "registry.redhat.io/org/tenant/test",
+                            "quay.io/org/tenant/test",
                             "sha256:bbbbbbbb",
                             children=[
                                 Image(
-                                    "registry.redhat.io/org/tenant/test",
+                                    "quay.io/org/tenant/test",
                                     "sha256:cccccccc",
                                 )
                             ],
                         ),
                         tags=["1.0", "latest"],
+                        repository="registry.redhat.io/org/tenant/test",
                     ),
                 ],
             ),
@@ -126,10 +129,11 @@ async def test_update_sbom_verification(success: bool) -> None:
                     Component(
                         name="cdx-singlearch",
                         image=Image(
-                            "registry.redhat.io/org/tenant/cdx-singlearch",
+                            "quay.io/org/tenant/cdx-singlearch",
                             "sha256:dddddddd",
                         ),
                         tags=["1.0", "latest"],
+                        repository="registry.redhat.io/org/tenant/cdx-singlearch",
                     ),
                 ],
             ),
@@ -241,10 +245,10 @@ async def assert_sboms(snapshot: Snapshot, directory: Path) -> None:
 
 class VerifyCycloneDX:
     @staticmethod
-    def verify_purl(purl: PackageURL, image: Image) -> None:
+    def verify_purl(purl: PackageURL, repository: str) -> None:
         assert purl.qualifiers is not None
-        assert purl.qualifiers.get("repository_url") == image.repository  # type: ignore
-        assert purl.name == image.repository.split("/")[-1]
+        assert purl.qualifiers.get("repository_url") == repository  # type: ignore
+        assert purl.name == repository.split("/")[-1]
 
     @staticmethod
     def verify_tags(kflx_component: Component, cdx_component: dict) -> None:
@@ -271,7 +275,7 @@ class VerifyCycloneDX:
             if id_item.get("field") != "purl":
                 continue
             purl = PackageURL.from_string(id_item["concludedValue"])
-            VerifyCycloneDX.verify_purl(purl, kflx_component.image)
+            VerifyCycloneDX.verify_purl(purl, kflx_component.repository)
 
             purl_tag = purl.qualifiers.get("tag")  # type: ignore
             assert isinstance(purl_tag, str), f"Missing tag in identity purl {purl}."
@@ -308,7 +312,7 @@ class VerifyCycloneDX:
             return
 
         VerifyCycloneDX.verify_purl(
-            PackageURL.from_string(purl_str), kflx_component.image
+            PackageURL.from_string(purl_str), kflx_component.repository
         )
 
         if verify_tags:

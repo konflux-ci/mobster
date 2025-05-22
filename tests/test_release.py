@@ -30,12 +30,14 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                     "name": "comp-1",
                     "containerImage": "quay.io/repo1@sha256:deadbeef",
                     "rh-registry-repo": "registry.redhat.io/repo1",
+                    "repository": "quay.io/repo1",
                     "tags": ["1.0"],
                 },
                 {
                     "name": "comp-2",
                     "containerImage": "quay.io/repo2@sha256:ffffffff",
                     "rh-registry-repo": "registry.redhat.io/repo2",
+                    "repository": "quay.io/repo2",
                     "tags": ["2.0", "latest"],
                 },
             ]
@@ -47,26 +49,28 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
             Component(
                 name="comp-1",
                 image=IndexImage(
-                    "registry.redhat.io/repo1",
+                    "quay.io/repo1",
                     "sha256:deadbeef",
-                    children=[Image("registry.redhat.io/repo1", "sha256:aaaaffff")],
+                    children=[Image("quay.io/repo1", "sha256:aaaaffff")],
                 ),
                 tags=["1.0"],
+                repository="registry.redhat.io/repo1",
             ),
             Component(
                 name="comp-2",
                 image=IndexImage(
-                    "registry.redhat.io/repo2",
+                    "quay.io/repo2",
                     "sha256:ffffffff",
-                    children=[Image("registry.redhat.io/repo2", "sha256:bbbbffff")],
+                    children=[Image("quay.io/repo2", "sha256:bbbbffff")],
                 ),
                 tags=["2.0", "latest"],
+                repository="registry.redhat.io/repo2",
             ),
         ],
     )
 
     def fake_get_image_manifest(reference: str) -> dict[str, Any]:
-        if "registry.redhat.io/repo1" in reference:
+        if "quay.io/repo1" in reference:
             child_digest = "sha256:aaaaffff"
 
             return {
@@ -116,12 +120,14 @@ async def test_make_snapshot_specific(
                     "name": "comp-1",
                     "containerImage": "quay.io/repo1@sha256:deadbeef",
                     "rh-registry-repo": "registry.redhat.io/repo1",
+                    "repository": "quay.io/repo1",
                     "tags": ["1.0"],
                 },
                 {
                     "name": "comp-2",
                     "containerImage": "quay.io/repo2@sha256:ffffffff",
                     "rh-registry-repo": "registry.redhat.io/repo2",
+                    "repository": "quay.io/repo2",
                     "tags": ["2.0", "latest"],
                 },
             ]
@@ -133,11 +139,12 @@ async def test_make_snapshot_specific(
             Component(
                 name="comp-1",
                 image=IndexImage(
-                    "registry.redhat.io/repo1",
+                    "quay.io/repo1",
                     "sha256:deadbeef",
-                    children=[Image("registry.redhat.io/repo1", "sha256:aaaaffff")],
+                    children=[Image("quay.io/repo1", "sha256:aaaaffff")],
                 ),
                 tags=["1.0"],
+                repository="registry.redhat.io/repo1",
             ),
         ],
     )
@@ -147,16 +154,17 @@ async def test_make_snapshot_specific(
             Component(
                 name="comp-2",
                 image=IndexImage(
-                    "registry.redhat.io/repo2",
+                    "quay.io/repo2",
                     "sha256:ffffffff",
-                    children=[Image("registry.redhat.io/repo2", "sha256:bbbbffff")],
+                    children=[Image("quay.io/repo2", "sha256:bbbbffff")],
                 ),
                 tags=["2.0", "latest"],
+                repository="registry.redhat.io/repo2",
             )
         )
 
     def fake_get_image_manifest(reference: str) -> dict[str, Any]:
-        if "registry.redhat.io/repo1" in reference:
+        if "quay.io/repo1" in reference:
             child_digest = "sha256:aaaaffff"
 
             return {

@@ -22,6 +22,8 @@ class Component:
     name: str
     image: Image
     tags: list[str]
+    # The repository the component is being released to (e.g. registry.redhat.io)
+    repository: str
 
 
 @dataclass
@@ -59,24 +61,38 @@ async def make_snapshot(snapshot_spec: Path, digest: str | None = None) -> Snaps
     component_tasks = []
     for component_model in filter(is_relevant, snapshot_model.components):
         name = component_model.name
-        repository = component_model.rh_registry_repo
+        release_repository = component_model.rh_registry_repo
+        repository = component_model.repository
         image_digest = component_model.image_digest
         tags = component_model.tags
 
-        component_tasks.append(_make_component(name, repository, image_digest, tags))
+        component_tasks.append(
+            _make_component(name, repository, image_digest, tags, release_repository)
+        )
 
     components = await asyncio.gather(*component_tasks)
     return Snapshot(components=components)
 
 
 async def _make_component(
-    name: str, repository: str, image_digest: str, tags: list[str]
+    name: str,
+    repository: str,
+    image_digest: str,
+    tags: list[str],
+    release_repository: str,
 ) -> Component:
     """
     Creates a component object from input data.
+
+    Args:
+        name (str): name of the component
+        repository (str): repository of the component's image
+        image_digest (str): digest of the component image
+        release_repository (str): repository the component is being
+            released to (such as registry.redhat.io)
     """
     image: Image = await Image.from_repository_digest_manifest(repository, image_digest)
-    return Component(name=name, image=image, tags=tags)
+    return Component(name=name, image=image, repository=release_repository, tags=tags)
 
 
 class ComponentModel(pdc.BaseModel):
@@ -88,6 +104,7 @@ class ComponentModel(pdc.BaseModel):
     image_digest: str = pdc.Field(alias="containerImage")
     rh_registry_repo: str = pdc.Field(alias="rh-registry-repo")
     tags: list[str]
+    repository: str
 
     @pdc.field_validator("image_digest", mode="after")
     @classmethod

@@ -60,6 +60,7 @@ class SPDXPackage:
     def update_external_refs(
         self,
         image: Image,
+        repository: str,
         tags: list[str],
         arch: str | None = None,
     ) -> None:
@@ -70,6 +71,7 @@ class SPDXPackage:
         """
         new_oci_refs = SPDXPackage._get_updated_oci_purl_external_refs(
             image,
+            repository,
             tags,
             arch=arch,
         )
@@ -100,12 +102,12 @@ class SPDXPackage:
 
     @staticmethod
     def _get_updated_oci_purl_external_refs(
-        image: Image, tags: list[str], arch: str | None = None
+        image: Image, repository: str, tags: list[str], arch: str | None = None
     ) -> list[dict]:
         """
         Gets new oci purl externalRefs value based on input information.
         """
-        purls = (construct_purl(image, tag=tag, arch=arch) for tag in tags)
+        purls = (construct_purl(image, repository, tag=tag, arch=arch) for tag in tags)
         return [SPDXPackage._make_purl_ref(purl) for purl in purls]
 
     @staticmethod
@@ -167,7 +169,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
         """
         Update the SBOM of an index image in a repository.
         """
-        sbom["name"] = index.reference
+        sbom["name"] = f"{component.repository}@{index.digest}"
 
         index_package = cls._find_image_package(sbom, index)
         if not index_package:
@@ -175,6 +177,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
 
         index_package.update_external_refs(
             index,
+            component.repository,
             component.tags,
         )
 
@@ -197,6 +200,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
             arch = get_purl_arch(original_purl)
             package.update_external_refs(
                 image,
+                component.repository,
                 component.tags,
                 arch=arch,
             )
@@ -206,7 +210,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
         """
         Update the SBOM of single-arch image in a repository.
         """
-        sbom["name"] = image.reference
+        sbom["name"] = f"{component.repository}@{image.digest}"
 
         image_package = cls._find_image_package(sbom, image)
         if not image_package:
@@ -216,6 +220,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
 
         image_package.update_external_refs(
             image,
+            component.repository,
             component.tags,
         )
 
@@ -234,11 +239,11 @@ class CycloneDXVersion1:
     ]
 
     def update_sbom(self, component: Component, image: Image, sbom: dict) -> None:
-        if isinstance(image, IndexImage):
+        if isinstance(component.image, IndexImage):
             raise ValueError("CDX update SBOM does not support index images.")
 
         self._bump_version(sbom)
-        self._update_metadata_component(component, sbom)
+        self._update_metadata_component(component, image, sbom)
 
         for cdx_component in sbom.get("components", []):
             if cdx_component.get("type") != "container":
@@ -248,7 +253,9 @@ class CycloneDXVersion1:
             if purl is None or get_purl_digest(purl) != image.digest:
                 continue
 
-            self._update_container_component(component, cdx_component, update_tags=True)
+            self._update_container_component(
+                component, image, cdx_component, update_tags=True
+            )
 
     def _bump_version(self, sbom: dict) -> None:
         """
@@ -267,6 +274,7 @@ class CycloneDXVersion1:
     def _update_component_purl_identity(
         self,
         kflx_component: Component,
+        image: Image,
         arch: str | None,
         cdx_component: dict,
     ) -> None:
@@ -275,7 +283,7 @@ class CycloneDXVersion1:
 
         new_identity = []
         for tag in kflx_component.tags:
-            purl = construct_purl(kflx_component.image, arch=arch, tag=tag)
+            purl = construct_purl(image, kflx_component.repository, arch=arch, tag=tag)
             new_identity.append({"field": "purl", "concludedValue": purl})
 
         if cdx_component.get("evidence") is None:
@@ -293,7 +301,11 @@ class CycloneDXVersion1:
             evidence["identity"] = [identity, *new_identity]
 
     def _update_container_component(
-        self, kflx_component: Component, cdx_component: dict, update_tags: bool
+        self,
+        kflx_component: Component,
+        image: Image,
+        cdx_component: dict,
+        update_tags: bool,
     ) -> None:
         if cdx_component.get("type") != "container":
             logger.warning(
@@ -307,15 +319,21 @@ class CycloneDXVersion1:
 
         arch = get_purl_arch(purl)
         tag = kflx_component.tags[0] if kflx_component.tags else None
-        new_purl = construct_purl(kflx_component.image, arch=arch, tag=tag)
+        new_purl = construct_purl(image, kflx_component.repository, arch=arch, tag=tag)
         cdx_component["purl"] = new_purl
 
         if update_tags:
-            self._update_component_purl_identity(kflx_component, arch, cdx_component)
+            self._update_component_purl_identity(
+                kflx_component, image, arch, cdx_component
+            )
 
-    def _update_metadata_component(self, kflx_component: Component, sbom: dict) -> None:
+    def _update_metadata_component(
+        self, kflx_component: Component, image: Image, sbom: dict
+    ) -> None:
         component = sbom.get("metadata", {}).get("component", {})
-        self._update_container_component(kflx_component, component, update_tags=False)
+        self._update_container_component(
+            kflx_component, image, component, update_tags=False
+        )
 
         if "metadata" in sbom:
             sbom["metadata"]["component"] = component
@@ -325,12 +343,21 @@ class CycloneDXVersion1:
 
 
 def construct_purl(
-    image: Image, arch: str | None = None, tag: str | None = None
+    image: Image,
+    release_repository: str,
+    arch: str | None = None,
+    tag: str | None = None,
 ) -> str:
     """
     Construct an OCI PackageURL string from image data.
+
+    Args:
+        image (Image): The image being released
+        release_repository (str): The repository the image is being released to
+        arch (str | None): Architecture of the image if specified
+        tag (str | None): Tag of the image if specified
     """
-    repo_name = image.repository.split("/")[-1]
+    repo_name = release_repository.split("/")[-1]
 
     optional_qualifiers = {}
     if arch is not None:
@@ -343,7 +370,7 @@ def construct_purl(
         type="oci",
         name=repo_name,
         version=image.digest,
-        qualifiers={"repository_url": image.repository, **optional_qualifiers},
+        qualifiers={"repository_url": release_repository, **optional_qualifiers},
     ).to_string()
 
 

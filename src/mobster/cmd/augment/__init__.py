@@ -43,7 +43,7 @@ class AugmentComponentCommand(Command):
 
 class AugmentSnapshotCommand(Command):
     """
-    Command to augment all component in a snapshot.
+    Command to augment all components in a snapshot.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -53,11 +53,6 @@ class AugmentSnapshotCommand(Command):
         """
         Execute the command to augment a component.
         """
-        output: Path = self.cli_args.output
-        if not output.is_dir():
-            # TODO: error
-            pass
-
         snapshot = await make_snapshot(self.cli_args.snapshot)
 
         verify = self.cli_args.verification_key is not None
@@ -69,7 +64,7 @@ class AugmentSnapshotCommand(Command):
         """
         Save the command state.
         """
-        # Placeholder for the actual implementation
+        pass
 
 
 async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:
