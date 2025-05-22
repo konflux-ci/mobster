@@ -1,0 +1,100 @@
+{
+    "SPDXID": "SPDXRef-DOCUMENT",
+    "creationInfo": {
+        "created": "2025-05-22T11:16:52Z",
+        "creators": [
+            "Organization: Red Hat",
+            "Tool: Konflux CI",
+            "Tool: Mobster"
+        ]
+    },
+    "dataLicense": "CC0-1.0",
+    "name": "quay.io/example/modelcar@sha256:cc6016b62f25d56507033c48b04517ba40b3490b1e9b01f1c485371311ed42c4",
+    "spdxVersion": "SPDX-2.3",
+    "documentNamespace": "https://konflux-ci.dev/spdxdocs/quay.io/example/modelcar@sha256:cc6016b62f25d56507033c48b04517ba40b3490b1e9b01f1c485371311ed42c4-f1458940-3d90-4cc3-884c-7ec6b7ab5074",
+    "packages": [
+        {
+            "SPDXID": "SPDXRef-image-modelcar-665ffa505e404dbd7df8918346c1c47bf75f67b8a530f9aa19a89dfc93068c06",
+            "checksums": [
+                {
+                    "algorithm": "SHA256",
+                    "checksumValue": "cc6016b62f25d56507033c48b04517ba40b3490b1e9b01f1c485371311ed42c4"
+                }
+            ],
+            "downloadLocation": "NOASSERTION",
+            "externalRefs": [
+                {
+                    "referenceCategory": "PACKAGE_MANAGER",
+                    "referenceLocator": "pkg:oci/modelcar@sha256:cc6016b62f25d56507033c48b04517ba40b3490b1e9b01f1c485371311ed42c4?repository_url=quay.io/example/modelcar",
+                    "referenceType": "purl"
+                }
+            ],
+            "filesAnalyzed": false,
+            "licenseDeclared": "NOASSERTION",
+            "name": "modelcar",
+            "supplier": "Organization: Red Hat",
+            "versionInfo": "v22"
+        },
+        {
+            "SPDXID": "SPDXRef-image-base-94ca2083f75d4e8d47afb9c3e61d2674e57bac4b09d9c4b9fa1df75bb0c8ecef",
+            "checksums": [
+                {
+                    "algorithm": "SHA256",
+                    "checksumValue": "96fbb4c227d543011dfff0679a89ce664d1a009654858f2df28be504bc1863c1"
+                }
+            ],
+            "downloadLocation": "NOASSERTION",
+            "externalRefs": [
+                {
+                    "referenceCategory": "PACKAGE_MANAGER",
+                    "referenceLocator": "pkg:oci/base@sha256:96fbb4c227d543011dfff0679a89ce664d1a009654858f2df28be504bc1863c1?repository_url=quay.io/example/base",
+                    "referenceType": "purl"
+                }
+            ],
+            "filesAnalyzed": false,
+            "licenseDeclared": "NOASSERTION",
+            "name": "base",
+            "supplier": "Organization: Red Hat",
+            "versionInfo": "9.0"
+        },
+        {
+            "SPDXID": "SPDXRef-image-model-3e79b57ff35ffd21a1719652e2f40e6092223d77d30b2182120aeddb36aedefc",
+            "checksums": [
+                {
+                    "algorithm": "SHA256",
+                    "checksumValue": "087dc7896b97911a582702b45ff1d41ffa3e142d0b000b0fbb11058188293cfc"
+                }
+            ],
+            "downloadLocation": "NOASSERTION",
+            "externalRefs": [
+                {
+                    "referenceCategory": "PACKAGE_MANAGER",
+                    "referenceLocator": "pkg:oci/model@sha256:087dc7896b97911a582702b45ff1d41ffa3e142d0b000b0fbb11058188293cfc?repository_url=quay.io/example/model",
+                    "referenceType": "purl"
+                }
+            ],
+            "filesAnalyzed": false,
+            "licenseDeclared": "NOASSERTION",
+            "name": "model",
+            "supplier": "Organization: Red Hat",
+            "versionInfo": "v1"
+        }
+    ],
+    "relationships": [
+        {
+            "spdxElementId": "SPDXRef-DOCUMENT",
+            "relatedSpdxElement": "SPDXRef-image-modelcar-665ffa505e404dbd7df8918346c1c47bf75f67b8a530f9aa19a89dfc93068c06",
+            "relationshipType": "DESCRIBES"
+        },
+        {
+            "spdxElementId": "SPDXRef-image-modelcar-665ffa505e404dbd7df8918346c1c47bf75f67b8a530f9aa19a89dfc93068c06",
+            "relatedSpdxElement": "SPDXRef-image-base-94ca2083f75d4e8d47afb9c3e61d2674e57bac4b09d9c4b9fa1df75bb0c8ecef",
+            "relationshipType": "DESCENDANT_OF"
+        },
+        {
+            "spdxElementId": "SPDXRef-image-modelcar-665ffa505e404dbd7df8918346c1c47bf75f67b8a530f9aa19a89dfc93068c06",
+            "relatedSpdxElement": "SPDXRef-image-model-3e79b57ff35ffd21a1719652e2f40e6092223d77d30b2182120aeddb36aedefc",
+            "relationshipType": "DESCENDANT_OF"
+        }
+    ]
+}

@@ -4,8 +4,6 @@ import tempfile
 from unittest.mock import MagicMock, patch
 
 import pytest
-from spdx_tools.spdx.model.document import CreationInfo
-from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
 from mobster.cmd.generate.oci_index import GenerateOciIndexCommand
@@ -52,20 +50,6 @@ async def test_generate_oci_index_sbom() -> None:
             assert result == expected_output
 
 
-def test_GenerateOciIndexCommand_get_package() -> None:
-    args = MagicMock()
-    command = GenerateOciIndexCommand(args)
-    mock_image = Image.from_image_index_url_and_digest(
-        "registry/repo:tag", "sha256:1234567890abcdef"
-    )
-    result = command.get_package(mock_image, "fake_spdx_id")
-
-    assert isinstance(result, Package)
-    assert result.spdx_id == "fake_spdx_id"
-    assert result.name == mock_image.name
-    assert result.checksums[0].value == mock_image.digest_hex_val
-
-
 def test_GenerateOciIndexCommand_get_index_image_relationship() -> None:
     args = MagicMock()
     command = GenerateOciIndexCommand(args)
@@ -93,7 +77,7 @@ def test_GenerateOciIndexCommand_get_child_image_relationship() -> None:
 @patch(
     "mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_child_image_relationship"
 )
-@patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_package")
+@patch("mobster.cmd.generate.oci_index.spdx.get_package")
 @patch("mobster.cmd.generate.oci_index.json.load")
 def test_GenerateOciIndexCommand_get_child_packages(
     mock_json_load: MagicMock,
@@ -145,7 +129,7 @@ def test_GenerateOciIndexCommand_get_child_packages(
 @patch(
     "mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_child_image_relationship"
 )
-@patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_package")
+@patch("mobster.cmd.generate.oci_index.spdx.get_package")
 @patch("mobster.cmd.generate.oci_index.json.load")
 def test_GenerateOciIndexCommand_get_child_packages_unknown(
     mock_json_load: MagicMock,
@@ -171,39 +155,14 @@ def test_GenerateOciIndexCommand_get_child_packages_unknown(
         command.get_child_packages(mock_image)
 
 
-@patch(
-    "mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_child_image_relationship"
-)
-@patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_package")
-@patch("mobster.cmd.generate.oci_index.json.load")
-def test_GenerateOciIndexCommand_get_creation_info(
-    mock_json_load: MagicMock,
-    mock_get_package: MagicMock,
-    mock_get_child_image_relationship: MagicMock,
-) -> None:
-    args = MagicMock()
-    args.index_image_pullspec = "registry/repo:tag"
-    args.index_image_digest = "sha256:1234567890abcdef"
-    command = GenerateOciIndexCommand(args)
-
-    mock_image = Image.from_image_index_url_and_digest(
-        "registry/repo:tag", "sha256:1234567890abcdef"
-    )
-
-    result = command.get_creation_info(mock_image)
-
-    assert isinstance(result, CreationInfo)
-    assert result.spdx_id == command.DOC_ELEMENT_ID
-
-
 @pytest.mark.asyncio
 @patch("mobster.cmd.generate.oci_index.Document")
-@patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_creation_info")
+@patch("mobster.cmd.generate.oci_index.spdx.get_creation_info")
 @patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_child_packages")
 @patch(
     "mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_index_image_relationship"
 )
-@patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_package")
+@patch("mobster.cmd.generate.oci_index.spdx.get_package")
 @patch("mobster.cmd.generate.oci_index.Image.from_image_index_url_and_digest")
 async def test_GenerateOciIndexCommand_execute(
     mock_image: MagicMock,

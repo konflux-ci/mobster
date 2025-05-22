@@ -2,24 +2,18 @@
 
 import json
 import logging
-from datetime import datetime, timezone
 from typing import Any
-from uuid import uuid4
 
-from spdx_tools.spdx.model.actor import Actor, ActorType
-from spdx_tools.spdx.model.checksum import Checksum, ChecksumAlgorithm
-from spdx_tools.spdx.model.document import CreationInfo, Document
+from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import (
-    ExternalPackageRef,
-    ExternalPackageRefCategory,
     Package,
 )
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
-from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.writer.write_anything import write_file
 
 from mobster.cmd.generate.base import GenerateCommand
 from mobster.image import Image
+from mobster.sbom import spdx
 
 LOGGER = logging.getLogger(__name__)
 
@@ -41,44 +35,6 @@ class GenerateOciIndexCommand(GenerateCommand):
 
     DOC_ELEMENT_ID = "SPDXRef-DOCUMENT"
     INDEX_ELEMENT_ID = "SPDXRef-image-index"
-
-    def get_package(self, image: Image, spdx_id: str) -> Package:
-        """
-        Transform the parsed image object into SPDX package object.
-
-
-        Args:
-            image (Image): A parsed image object.
-            spdx_id (str): An SPDX ID for the image.
-
-        Returns:
-            Package: A package object representing the OCI image.
-        """
-
-        package = Package(
-            spdx_id=spdx_id,
-            name=image.name if not image.arch else f"{image.name}_{image.arch}",
-            version=image.tag,
-            download_location=SpdxNoAssertion(),
-            supplier=Actor(ActorType.ORGANIZATION, "Red Hat"),
-            license_declared=SpdxNoAssertion(),
-            files_analyzed=False,
-            external_references=[
-                ExternalPackageRef(
-                    category=ExternalPackageRefCategory.PACKAGE_MANAGER,
-                    reference_type="purl",
-                    locator=image.purl(),
-                )
-            ],
-            checksums=[
-                Checksum(
-                    algorithm=ChecksumAlgorithm.SHA256,
-                    value=image.digest_hex_val,
-                )
-            ],
-        )
-
-        return package
 
     def get_index_image_relationship(self, spdx_id: str) -> Relationship:
         """
@@ -149,12 +105,13 @@ class GenerateOciIndexCommand(GenerateCommand):
             arch_image = Image(
                 arch=arch,
                 name=index_image.name,
+                full_name=index_image.full_name,
                 digest=self.cli_args.index_image_digest,
                 tag=index_image.tag,
                 repository=index_image.repository,
             )
             spdx_id = arch_image.propose_spdx_id()
-            package = self.get_package(
+            package = spdx.get_package(
                 arch_image,
                 spdx_id,
             )
@@ -164,32 +121,6 @@ class GenerateOciIndexCommand(GenerateCommand):
             relationships.append(relationship)
 
         return packages, relationships
-
-    def get_creation_info(self, index_image: Image) -> CreationInfo:
-        """
-        Create the creation information for the SPDX document.
-
-        Args:
-            index_image (Image): An OCI index image object.
-
-        Returns:
-            CreationInfo: A creation information object for the SPDX document.
-        """
-        sbom_name = f"{index_image.repository}@{index_image.digest}"
-        return CreationInfo(
-            spdx_version="SPDX-2.3",
-            spdx_id=self.DOC_ELEMENT_ID,
-            name=sbom_name,
-            data_license="CC0-1.0",
-            document_namespace="https://konflux-ci.dev/spdxdocs/"
-            f"{index_image.name}-{index_image.tag}-{uuid4()}",
-            creators=[
-                Actor(ActorType.ORGANIZATION, "Red Hat"),
-                Actor(ActorType.TOOL, "Konflux CI"),
-                Actor(ActorType.TOOL, "Mobster"),
-            ],
-            created=datetime.now(timezone.utc),
-        )
 
     async def execute(self) -> Any:
         """
@@ -201,15 +132,16 @@ class GenerateOciIndexCommand(GenerateCommand):
             self.cli_args.index_image_pullspec, self.cli_args.index_image_digest
         )
 
-        main_package = self.get_package(index_image, self.INDEX_ELEMENT_ID)
+        main_package = spdx.get_package(index_image, self.INDEX_ELEMENT_ID)
         main_relationship = self.get_index_image_relationship(self.INDEX_ELEMENT_ID)
         component_packages, component_relationships = self.get_child_packages(
             index_image
         )
 
         # Assemble a complete SPDX document
+        sbom_name = f"{index_image.repository}@{index_image.digest}"
         document = Document(
-            creation_info=self.get_creation_info(index_image),
+            creation_info=spdx.get_creation_info(sbom_name),
             packages=[main_package] + component_packages,
             relationships=[main_relationship] + component_relationships,
         )
