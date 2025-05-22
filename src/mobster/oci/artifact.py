@@ -52,7 +52,7 @@ class Provenance02:
         if finished_on:
             return dateutil.parser.isoparse(finished_on)
 
-        return datetime.datetime.min
+        return datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
 
     def get_sbom_digest(self, image: Image) -> str:
         """
@@ -123,7 +123,7 @@ class SBOM:
         try:
             spec = SBOMFormat(raw)
         except ValueError:
-            raise SBOMError(f"CDX spec {raw} not recognized.") from None
+            raise SBOMError(f"SPDX spec {raw} not recognized.") from None
 
         return spec
 
@@ -132,6 +132,10 @@ class SBOM:
         """
         Create an SBOM object from a line of raw "cosign download sbom" output.
         """
-        doc = json.loads(raw)
+        try:
+            doc = json.loads(raw)
+        except json.JSONDecodeError:
+            raise SBOMError("Could not decode SBOM.")
+
         hexdigest = f"sha256:{hashlib.sha256(raw).hexdigest()}"
         return SBOM(doc, hexdigest)

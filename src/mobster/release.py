@@ -65,11 +65,6 @@ async def make_snapshot(snapshot_spec: Path, digest: str | None = None) -> Snaps
 
         component_tasks.append(_make_component(name, repository, image_digest, tags))
 
-    if len(component_tasks) == 0:
-        raise ValueError(
-            "The snapshot is empty or the provided image was not found in the snapshot."
-        )
-
     components = await asyncio.gather(*component_tasks)
     return Snapshot(components=components)
 

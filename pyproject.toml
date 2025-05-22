@@ -73,6 +73,8 @@ disable_error_code = ["import-untyped"]
 [tool.poetry]
 packages = [{ include = "mobster", from = "src" }]
 
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"

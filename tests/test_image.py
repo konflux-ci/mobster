@@ -3,6 +3,7 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 import pytest
 
+from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 
 
@@ -77,3 +78,17 @@ async def test_image_from_repo_digest(manifest: dict[Any, Any], image: Image) ->
             "quay.io/repo", "sha256:deadbeef"
         )
         mock_get_image_manifest.assert_awaited_once_with(image.reference)
+
+
+@pytest.mark.asyncio
+async def test_image_from_repo_digest_unsupported_manifest() -> None:
+    manifest = {"mediaType": "unsupported/manifest"}
+
+    async def fake_get_image_manifest(_):
+        return manifest
+
+    with patch("mobster.image.get_image_manifest", side_effect=fake_get_image_manifest):
+        with pytest.raises(SBOMError):
+            await Image.from_repository_digest_manifest(
+                "quay.io/repo", "sha256:deadbeef"
+            )

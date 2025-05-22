@@ -1,0 +1,32 @@
+{
+    "predicateType": "https://slsa.dev/provenance/v0.2",
+    "predicate": {
+        "metadata": {
+            "buildFinishedOn": "2023-01-01T12:05:30Z"
+        },
+        "buildConfig": {
+            "tasks": [
+                {
+                    "results": [
+                        {
+                            "name": "IMAGE_DIGEST",
+                            "value": "sha256:aaaaaaaa"
+                        },
+                        {
+                            "name": "SBOM_BLOB_URL",
+                            "value": "registry.redhat.io/repo@sha256:1db350959b436fdc9a611ab37e1e247a542f01e290e5b40a7c9cdec8a246d694"
+                        }
+                    ]
+                },
+                {
+                    "results": [
+                        {
+                            "name": "RESULT",
+                            "value": "foo"
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

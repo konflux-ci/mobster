@@ -101,8 +101,8 @@ def make_oci_auth_file(
         raise ValueError(f"No docker config file at {auth}")
 
     if reference.count(":") > 1:
-        logger.warning(
-            "Multiple ':' symbols in %s. Registry ports are not supported.", reference
+        raise ValueError(
+            f"Multiple ':' symbols in {reference}. Registry ports are not supported."
         )
 
     repository, _ = reference.split("@", 1)
