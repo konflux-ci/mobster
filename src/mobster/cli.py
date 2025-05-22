@@ -4,7 +4,8 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from mobster.cmd import augment, generate, upload
+from mobster.cmd import augment, upload
+from mobster.cmd.generate import modelcar, oci_artifact, oci_image, oci_index, product
 
 
 def setup_arg_parser() -> argparse.ArgumentParser:
@@ -89,7 +90,7 @@ def generate_oci_image_parser(subparsers: Any) -> None:
     oci_image_parser.add_argument(
         "--contextualize", action="store_true", help="Contextualize the SBOM"
     )
-    oci_image_parser.set_defaults(func=generate.GenerateOciImageCommand)
+    oci_image_parser.set_defaults(func=oci_image.GenerateOciImageCommand)
 
 
 def generate_oci_index_parser(subparsers: Any) -> None:
@@ -119,7 +120,7 @@ def generate_oci_index_parser(subparsers: Any) -> None:
         required=True,
         help="Path to the OCI index manifest file",
     )
-    oci_index_parser.set_defaults(func=generate.GenerateOciIndexCommand)
+    oci_index_parser.set_defaults(func=oci_index.GenerateOciIndexCommand)
 
 
 def generate_product_parser(subparsers: Any) -> None:
@@ -144,7 +145,7 @@ def generate_product_parser(subparsers: Any) -> None:
         help="Path to the input data in JSON format.",
     )
 
-    product_parser.set_defaults(func=generate.GenerateProductCommand)
+    product_parser.set_defaults(func=product.GenerateProductCommand)
 
 
 def generate_modelcar_parser(subparsers: Any) -> None:
@@ -181,7 +182,7 @@ def generate_modelcar_parser(subparsers: Any) -> None:
         default="cyclonedx",
         help="Type of SBOM to generate (default: cyclonedx)",
     )
-    modelcar_parser.set_defaults(func=generate.GenerateModelcarCommand)
+    modelcar_parser.set_defaults(func=modelcar.GenerateModelcarCommand)
 
 
 def generate_oci_artifact_parser(subparsers: Any) -> None:
@@ -217,7 +218,7 @@ def generate_oci_artifact_parser(subparsers: Any) -> None:
         help="Type of SBOM to generate (default: cyclonedx)",
     )
 
-    oci_artifact_parser.set_defaults(func=generate.GenerateOciArtifactCommand)
+    oci_artifact_parser.set_defaults(func=oci_artifact.GenerateOciArtifactCommand)
 
 
 def augment_command_parser(subparsers: Any) -> None:

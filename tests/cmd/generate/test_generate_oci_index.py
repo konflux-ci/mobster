@@ -1,92 +1,55 @@
-from unittest.mock import MagicMock, mock_open, patch
+import json
+import pathlib
+import tempfile
+from unittest.mock import MagicMock, patch
 
 import pytest
 from spdx_tools.spdx.model.document import CreationInfo
 from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
-from mobster.cmd.generate import (
-    GenerateModelcarCommand,
-    GenerateOciArtifactCommand,
-    GenerateOciImageCommand,
-    GenerateOciIndexCommand,
-    GenerateProductCommand,
-)
+from mobster.cmd.generate.oci_index import GenerateOciIndexCommand
 from mobster.image import Image
 
 
 @pytest.mark.asyncio
-async def test_GenerateOciImageCommand_execute() -> None:
-    command = GenerateOciImageCommand(MagicMock())
+async def test_generate_oci_index_sbom() -> None:
+    """
+    This test verifies the generation of an OCI index SBOM end-to-end.
+    """
 
-    assert await command.execute() == {}
-
-
-@pytest.mark.asyncio
-@patch("json.dump")
-async def test_GenerateOciImageCommand_save(mock_dump: MagicMock) -> None:
     args = MagicMock()
-    args.output = "/tmp/test.json"
-    command = GenerateOciImageCommand(args)
-    with patch("builtins.open", mock_open()):
-        assert await command.save() is None
-
-    mock_dump.assert_called_once()
-
-
-@pytest.mark.asyncio
-@patch("mobster.cmd.generate.Document")
-@patch("mobster.cmd.generate.GenerateOciIndexCommand.get_creation_info")
-@patch("mobster.cmd.generate.GenerateOciIndexCommand.get_child_packages")
-@patch("mobster.cmd.generate.GenerateOciIndexCommand.get_index_image_relationship")
-@patch("mobster.cmd.generate.GenerateOciIndexCommand.get_package")
-@patch("mobster.cmd.generate.Image.from_image_index_url_and_digest")
-async def test_GenerateOciIndexCommand_execute(
-    mock_image: MagicMock,
-    mock_get_package: MagicMock,
-    mock_index_relationship: MagicMock,
-    mock_child_packages: MagicMock,
-    mock_get_creation_info: MagicMock,
-    mock_doc: MagicMock,
-) -> None:
-    command = GenerateOciIndexCommand(MagicMock())
-
-    mock_child_packages.return_value = ([], [])
-
-    result = await command.execute()
-    assert result == mock_doc.return_value
-
-    mock_get_package.assert_called_once()
-    mock_index_relationship.assert_called_once()
-    mock_child_packages.assert_called_once()
-    mock_doc.assert_called_once_with(
-        creation_info=mock_get_creation_info.return_value,
-        packages=[mock_get_package.return_value] + mock_child_packages.return_value[0],
-        relationships=[
-            mock_index_relationship.return_value,
-        ]
-        + mock_child_packages.return_value[1],
+    current_dir = pathlib.Path(__file__).parent.resolve()
+    args.index_manifest_path = current_dir.parent.parent / "data/index_manifest.json"
+    args.index_image_pullspec = "registry.redhat.io/ubi10-beta/ubi:latest"
+    args.index_image_digest = (
+        "sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
     )
 
+    expected_output_path = (
+        current_dir.parent.parent / "data/index_manifest_sbom.spdx.json"
+    )
+    with open(expected_output_path, encoding="utf8") as expected_file:
+        expected_output = json.load(expected_file)
 
-@pytest.mark.asyncio
-@patch("mobster.cmd.generate.write_file")
-async def test_GenerateOciIndexCommand_save(
-    mock_write_file: MagicMock,
-) -> None:
-    args = MagicMock()
-    args.output = "/tmp/test.json"
     command = GenerateOciIndexCommand(args)
 
-    command._content = MagicMock()
+    with tempfile.TemporaryDirectory() as temp_dir:
+        args.output = pathlib.Path(temp_dir) / "index_manifest_sbom.spdx.json"
+        await command.execute()
+        await command.save()
 
-    await command.save()
+        assert command._content is not None
+        with open(args.output, encoding="utf8") as result_file:
+            result = json.load(result_file)
 
-    mock_write_file.assert_called_once_with(
-        command._content,
-        args.output,
-        validate=True,
-    )
+            # Copy dynamic values from expected output
+            result["creationInfo"]["created"] = expected_output["creationInfo"][
+                "created"
+            ]
+            result["documentNamespace"] = expected_output["documentNamespace"]
+
+            assert result == expected_output
 
 
 def test_GenerateOciIndexCommand_get_package() -> None:
@@ -127,9 +90,11 @@ def test_GenerateOciIndexCommand_get_child_image_relationship() -> None:
     assert result.related_spdx_element_id == command.INDEX_ELEMENT_ID
 
 
-@patch("mobster.cmd.generate.GenerateOciIndexCommand.get_child_image_relationship")
-@patch("mobster.cmd.generate.GenerateOciIndexCommand.get_package")
-@patch("mobster.cmd.generate.json.load")
+@patch(
+    "mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_child_image_relationship"
+)
+@patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_package")
+@patch("mobster.cmd.generate.oci_index.json.load")
 def test_GenerateOciIndexCommand_get_child_packages(
     mock_json_load: MagicMock,
     mock_get_package: MagicMock,
@@ -177,9 +142,11 @@ def test_GenerateOciIndexCommand_get_child_packages(
     assert len(relationships) == 2
 
 
-@patch("mobster.cmd.generate.GenerateOciIndexCommand.get_child_image_relationship")
-@patch("mobster.cmd.generate.GenerateOciIndexCommand.get_package")
-@patch("mobster.cmd.generate.json.load")
+@patch(
+    "mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_child_image_relationship"
+)
+@patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_package")
+@patch("mobster.cmd.generate.oci_index.json.load")
 def test_GenerateOciIndexCommand_get_child_packages_unknown(
     mock_json_load: MagicMock,
     mock_get_package: MagicMock,
@@ -204,9 +171,11 @@ def test_GenerateOciIndexCommand_get_child_packages_unknown(
         command.get_child_packages(mock_image)
 
 
-@patch("mobster.cmd.generate.GenerateOciIndexCommand.get_child_image_relationship")
-@patch("mobster.cmd.generate.GenerateOciIndexCommand.get_package")
-@patch("mobster.cmd.generate.json.load")
+@patch(
+    "mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_child_image_relationship"
+)
+@patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_package")
+@patch("mobster.cmd.generate.oci_index.json.load")
 def test_GenerateOciIndexCommand_get_creation_info(
     mock_json_load: MagicMock,
     mock_get_package: MagicMock,
@@ -228,21 +197,57 @@ def test_GenerateOciIndexCommand_get_creation_info(
 
 
 @pytest.mark.asyncio
-async def test_GenerateProductCommand_execute() -> None:
-    command = GenerateProductCommand(MagicMock())
+@patch("mobster.cmd.generate.oci_index.Document")
+@patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_creation_info")
+@patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_child_packages")
+@patch(
+    "mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_index_image_relationship"
+)
+@patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_package")
+@patch("mobster.cmd.generate.oci_index.Image.from_image_index_url_and_digest")
+async def test_GenerateOciIndexCommand_execute(
+    mock_image: MagicMock,
+    mock_get_package: MagicMock,
+    mock_index_relationship: MagicMock,
+    mock_child_packages: MagicMock,
+    mock_get_creation_info: MagicMock,
+    mock_doc: MagicMock,
+) -> None:
+    command = GenerateOciIndexCommand(MagicMock())
 
-    assert await command.execute() == {}
+    mock_child_packages.return_value = ([], [])
+
+    result = await command.execute()
+    assert result == mock_doc.return_value
+
+    mock_get_package.assert_called_once()
+    mock_index_relationship.assert_called_once()
+    mock_child_packages.assert_called_once()
+    mock_doc.assert_called_once_with(
+        creation_info=mock_get_creation_info.return_value,
+        packages=[mock_get_package.return_value] + mock_child_packages.return_value[0],
+        relationships=[
+            mock_index_relationship.return_value,
+        ]
+        + mock_child_packages.return_value[1],
+    )
 
 
 @pytest.mark.asyncio
-async def test_GenerateModelcarCommand_execute() -> None:
-    command = GenerateModelcarCommand(MagicMock())
+@patch("mobster.cmd.generate.oci_index.write_file")
+async def test_GenerateOciIndexCommand_save(
+    mock_write_file: MagicMock,
+) -> None:
+    args = MagicMock()
+    args.output = "/tmp/test.json"
+    command = GenerateOciIndexCommand(args)
 
-    assert await command.execute() == {}
+    command._content = MagicMock()
 
+    await command.save()
 
-@pytest.mark.asyncio
-async def test_GenerateOciArtifactCommand_execute() -> None:
-    command = GenerateOciArtifactCommand(MagicMock())
-
-    assert await command.execute() == {}
+    mock_write_file.assert_called_once_with(
+        command._content,
+        args.output,
+        validate=True,
+    )
