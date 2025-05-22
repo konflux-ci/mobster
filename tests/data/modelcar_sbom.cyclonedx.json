@@ -1,0 +1,66 @@
+{
+  "components": [
+    {
+      "bom-ref": "BomRef.base-94ca2083f75d4e8d47afb9c3e61d2674e57bac4b09d9c4b9fa1df75bb0c8ecef",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "96fbb4c227d543011dfff0679a89ce664d1a009654858f2df28be504bc1863c1"
+        }
+      ],
+      "name": "base",
+      "purl": "pkg:oci/base@sha256:96fbb4c227d543011dfff0679a89ce664d1a009654858f2df28be504bc1863c1?repository_url=quay.io/example/base",
+      "type": "container",
+      "version": "9.0"
+    },
+    {
+      "bom-ref": "BomRef.model-3e79b57ff35ffd21a1719652e2f40e6092223d77d30b2182120aeddb36aedefc",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "087dc7896b97911a582702b45ff1d41ffa3e142d0b000b0fbb11058188293cfc"
+        }
+      ],
+      "name": "model",
+      "purl": "pkg:oci/model@sha256:087dc7896b97911a582702b45ff1d41ffa3e142d0b000b0fbb11058188293cfc?repository_url=quay.io/example/model",
+      "type": "container",
+      "version": "v1"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "BomRef.base-94ca2083f75d4e8d47afb9c3e61d2674e57bac4b09d9c4b9fa1df75bb0c8ecef"
+    },
+    {
+      "ref": "BomRef.model-3e79b57ff35ffd21a1719652e2f40e6092223d77d30b2182120aeddb36aedefc"
+    },
+    {
+      "dependsOn": [
+        "BomRef.base-94ca2083f75d4e8d47afb9c3e61d2674e57bac4b09d9c4b9fa1df75bb0c8ecef",
+        "BomRef.model-3e79b57ff35ffd21a1719652e2f40e6092223d77d30b2182120aeddb36aedefc"
+      ],
+      "ref": "BomRef.modelcar-665ffa505e404dbd7df8918346c1c47bf75f67b8a530f9aa19a89dfc93068c06"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "BomRef.modelcar-665ffa505e404dbd7df8918346c1c47bf75f67b8a530f9aa19a89dfc93068c06",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "cc6016b62f25d56507033c48b04517ba40b3490b1e9b01f1c485371311ed42c4"
+        }
+      ],
+      "name": "modelcar",
+      "purl": "pkg:oci/modelcar@sha256:cc6016b62f25d56507033c48b04517ba40b3490b1e9b01f1c485371311ed42c4?repository_url=quay.io/example/modelcar",
+      "type": "container",
+      "version": "v22"
+    },
+    "timestamp": "2025-05-22T11:21:59.521488+00:00"
+  },
+  "serialNumber": "urn:uuid:9ee108b9-6035-46a6-bc4a-c14438cb8f03",
+  "version": 1,
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5"
+}
