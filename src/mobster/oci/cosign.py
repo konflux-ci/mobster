@@ -95,4 +95,4 @@ class CosignClient(Cosign):
         if code != 0:
             raise SBOMError(f"Failed to fetch SBOM {image}: {stderr.decode()}")
 
-        return SBOM.from_cosign_output(stdout)
+        return SBOM.from_cosign_output(stdout, image.reference)

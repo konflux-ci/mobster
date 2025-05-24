@@ -20,7 +20,7 @@ def test_main(mock_setup_args: MagicMock, mock_run: AsyncMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_run() -> None:
+async def test_run(monkeypatch: pytest.MonkeyPatch) -> None:
     # Test the run function
     mock_args = MagicMock()
     mock_args.func = MagicMock()
@@ -28,6 +28,9 @@ async def test_run() -> None:
     mock_args.func.return_value.save = AsyncMock()
 
     # Call the run function
+
+    # TODO: check that the exit functionality works
+    monkeypatch.setattr("builtins.exit", lambda _: None)
     await run(mock_args)
 
     # Assert that the execute and save methods were called

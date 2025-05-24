@@ -303,7 +303,7 @@ def test_provenance_no_sbom_blob_url(provenances_path: Path) -> None:
     ],
 )
 def test_sbom_bad_format(doc: dict[str, Any]) -> None:
-    sbom = SBOM(doc, "")
+    sbom = SBOM(doc, "", "")
     with pytest.raises(SBOMError):
         _ = sbom.format
 

@@ -254,6 +254,11 @@ def augment_oci_image_parser(subparsers: Any) -> None:
         help="OCI image reference in the format <repository>@<digest>.",
     )
     oci_image_parser.add_argument(
+        "output",
+        type=Path,
+        help="path to the output directory",
+    )
+    oci_image_parser.add_argument(
         "--verification-key",
         type=Path,
         help="path to public key used to verify the image provenance",

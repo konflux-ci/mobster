@@ -1,155 +1,328 @@
 import json
-import tempfile
+import os
 from base64 import b64encode
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 from packageurl import PackageURL
 
-from mobster.cmd.augment import update_sboms
+from mobster.cmd.augment import (
+    AugmentCommand,
+    AugmentComponentCommand,
+    AugmentSnapshotCommand,
+    update_sbom,
+    verify_sbom,
+)
 from mobster.cmd.augment.handlers import get_purl_digest
-from mobster.error import SBOMVerificationError
+from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
-from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
+from mobster.oci.artifact import SBOM, Provenance02
 from mobster.oci.cosign import Cosign
 from mobster.release import Component, Snapshot
-
-# @pytest.mark.asyncio
-# async def test_AugmentComponentCommand_execute() -> None:
-#     command = AugmentComponentCommand(MagicMock())
-#
-#     assert await command.execute() is None
-#
-# @pytest.mark.asyncio
-# async def test_AugmentComponentCommand_save() -> None:
-#     command = AugmentComponentCommand(MagicMock())
-#     assert await command.save() is None
 
 TESTDATA_PATH = Path(__file__).parent.parent.joinpath("data/component")
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ["success"],
-    [
-        pytest.param(True),
-        pytest.param(False),
-    ],
-)
-async def test_update_sbom_verification(success: bool) -> None:
-    digest = "sha256:aaaaaaaa"
-    snapshot = Snapshot(
-        components=[
-            Component(
-                name="spdx-singlearch",
-                image=Image(
-                    "quay.io/repo",
-                    digest,
+class AugmentArgs:
+    def __init__(
+        self, snapshot: Path, output: Path, verification_key: Path | None
+    ) -> None:
+        self.snapshot = snapshot
+        self.output = output
+        self.verification_key = verification_key
+
+
+async def awaitable(obj: Any) -> Any:
+    return obj
+
+
+class TestAugmentComponentCommand:
+    @patch("mobster.cmd.augment.make_snapshot")
+    @patch("mobster.cmd.augment.AugmentCommand.augment")
+    @pytest.mark.asyncio
+    async def test_execute(
+        self, mock_augment: AsyncMock, mock_make_snapshot: AsyncMock
+    ) -> None:
+        snapshot_path = Path("snapshot.json")
+        output_path = Path("output/")
+
+        args = MagicMock()
+        args.snapshot = snapshot_path
+        args.output = output_path
+        args.reference = "quay.io/repo@sha256:deadbeef"
+        _, digest = args.reference.split("@", 1)
+
+        mock_snapshot = MagicMock()
+        mock_make_snapshot.return_value = mock_snapshot
+
+        cmd = AugmentComponentCommand(cli_args=args)
+
+        await cmd.execute()
+
+        mock_make_snapshot.assert_awaited_once_with(snapshot_path, digest)
+        mock_augment.assert_awaited_once_with(mock_snapshot)
+
+
+class TestAugmentSnapshotCommand:
+    @patch("mobster.cmd.augment.make_snapshot")
+    @patch("mobster.cmd.augment.AugmentCommand.augment")
+    @pytest.mark.asyncio
+    async def test_execute(
+        self, mock_augment: AsyncMock, mock_make_snapshot: AsyncMock
+    ) -> None:
+        snapshot_path = Path("snapshot.json")
+        output_path = Path("output/")
+
+        args = MagicMock()
+        args.snapshot = snapshot_path
+        args.output = output_path
+
+        mock_snapshot = MagicMock()
+        mock_make_snapshot.return_value = mock_snapshot
+
+        cmd = AugmentSnapshotCommand(cli_args=args)
+
+        await cmd.execute()
+
+        mock_make_snapshot.assert_awaited_once_with(snapshot_path)
+        mock_augment.assert_awaited_once_with(mock_snapshot)
+
+
+class TestAugmentCommand:
+    @pytest.fixture()
+    def make_augment_command(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> Callable[[AugmentArgs], AugmentCommand]:
+        def _make_augment_command(args: AugmentArgs) -> AugmentCommand:
+            cmd = AugmentCommand(cli_args=args)
+            return cmd
+
+        return _make_augment_command
+
+    @pytest.fixture()
+    def fake_cosign(self) -> "FakeCosign":
+        return FakeCosign.load()
+
+    @pytest.fixture()
+    def patch_fake_cosign(
+        self, monkeypatch: pytest.MonkeyPatch, fake_cosign: "FakeCosign"
+    ) -> None:
+        monkeypatch.setattr(
+            "mobster.cmd.augment.CosignClient",
+            lambda _: fake_cosign,
+        )
+
+    @pytest.fixture()
+    def prepare_sbom(self) -> Callable[[str], SBOM]:
+        def _load_sbom(reference: str) -> SBOM:
+            _, digest = reference.split("@", 1)
+            expected_path = TESTDATA_PATH.joinpath(f"sboms/{digest}.expected")
+            with open(expected_path, "rb") as fp:
+                return SBOM.from_cosign_output(fp.read(), reference)
+
+        return _load_sbom
+
+    @pytest.fixture()
+    def augment_command_save(
+        self,
+        make_augment_command: Callable[[Any], AugmentCommand],
+    ) -> tuple[AugmentCommand, list[Any]]:
+        args = MagicMock()
+        args.snapshot = Path("snapshot.json")
+        args.output = Path("output")
+        args.verification_key = Path("key.pub")
+
+        cmd = make_augment_command(args)
+        cmd.ok = True
+        cmd.sboms = [
+            SBOM({}, "", "quay.io/repo@sha256:aaaaaaaa"),
+            SBOM({}, "", "quay.io/repo@sha256:bbbbbbbb"),
+        ]
+
+        expected = [
+            call(sbom.doc, args.output.joinpath(sbom.reference)) for sbom in cmd.sboms
+        ]
+
+        return cmd, expected
+
+    @pytest.mark.asyncio
+    async def test_augment_command_save(
+        self,
+        augment_command_save: tuple[AugmentCommand, list[Any]],
+    ) -> None:
+        cmd, expected = augment_command_save
+
+        with patch("mobster.cmd.augment.write_sbom") as mock_write_sbom:
+            assert await cmd.save()
+            mock_write_sbom.assert_has_awaits(expected)
+
+    @pytest.mark.asyncio
+    async def test_augment_command_save_failure(
+        self,
+        augment_command_save: tuple[AugmentCommand, list[Any]],
+    ) -> None:
+        cmd, expected = augment_command_save
+
+        with patch("mobster.cmd.augment.write_sbom") as mock_write_sbom:
+            mock_write_sbom.side_effect = ValueError
+            assert not await cmd.save()
+            mock_write_sbom.assert_has_awaits(expected)
+
+    @pytest.mark.asyncio
+    async def test_augment_execute_singlearch(
+        self,
+        make_augment_command: Callable[[AugmentArgs], AugmentCommand],
+        prepare_sbom: Callable[[str], SBOM],
+        patch_fake_cosign: None,
+    ) -> None:
+        reference = "quay.io/org/tenant/test@sha256:aaaaaaaa"
+        repo, digest = reference.split("@", 1)
+
+        args = AugmentArgs(
+            snapshot=Path(""),
+            output=Path("output"),
+            verification_key=Path("key"),
+        )
+
+        snapshot = Snapshot(
+            components=[
+                Component(
+                    name="spdx-singlearch",
+                    image=Image(
+                        repo,
+                        digest,
+                    ),
+                    tags=["1.0", "latest"],
+                    repository="registry.redhat.io/org/tenant/test",
                 ),
-                tags=["1.0", "latest"],
-                repository="registry.redhat.io/repo",
+            ],
+        )
+
+        cmd = make_augment_command(args)
+
+        await cmd.augment(snapshot)
+
+        expected = prepare_sbom(reference).doc
+
+        assert len(cmd.sboms) == 1
+        assert cmd.sboms[0].doc == expected
+
+    @pytest.mark.asyncio
+    async def test_augment_execute_multiarch(
+        self,
+        make_augment_command: Callable[[AugmentArgs], AugmentCommand],
+        prepare_sbom: Callable[[str], SBOM],
+        patch_fake_cosign: None,
+    ) -> None:
+        index_reference = "quay.io/org/tenant/test@sha256:bbbbbbbb"
+        index_repo, index_digest = index_reference.split("@", 1)
+
+        image_reference = "quay.io/org/tenant/test@sha256:cccccccc"
+        image_repo, image_digest = image_reference.split("@", 1)
+
+        args = AugmentArgs(
+            snapshot=Path(""),
+            output=Path("output"),
+            verification_key=None,
+        )
+
+        snapshot = Snapshot(
+            components=[
+                Component(
+                    name="spdx-multiarch",
+                    image=IndexImage(
+                        index_repo,
+                        index_digest,
+                        children=[Image(image_repo, image_digest)],
+                    ),
+                    tags=["1.0", "latest"],
+                    repository="registry.redhat.io/org/tenant/test",
+                ),
+            ],
+        )
+
+        cmd = make_augment_command(args)
+
+        await cmd.augment(snapshot)
+
+        expected_sboms = [
+            prepare_sbom(
+                index_reference,
             ),
-        ],
-    )
+            prepare_sbom(image_reference),
+        ]
 
-    cosign = FakeCosign.from_snapshot(snapshot)
+        assert len(expected_sboms) == len(cmd.sboms)
+        for expected, actual in zip(cmd.sboms, expected_sboms, strict=False):
+            assert expected.doc == actual.doc
 
-    if success:
-        sbom_blob_url = f"registry.redhat.io/repo@{cosign.sboms[digest].digest}"
-    else:
-        sbom_blob_url = "registry.redhat.io/repo@sha256:deadbeef"
+    @pytest.mark.asyncio
+    async def test_augment_execute_cdx_singlearch(
+        self,
+        make_augment_command: Callable[[AugmentArgs], AugmentCommand],
+        patch_fake_cosign: None,
+    ) -> None:
+        reference = "quay.io/org/tenant/test@sha256:dddddddd"
+        repo, digest = reference.split("@", 1)
 
-    # set the sbom_blob_url in the provenance
-    cosign.provenances[digest].predicate["buildConfig"]["tasks"][0]["results"] = [
-        {"name": "IMAGE_DIGEST", "value": digest},
-        {"name": "SBOM_BLOB_URL", "value": sbom_blob_url},
-    ]
+        args = AugmentArgs(
+            snapshot=Path(""),
+            output=Path("output"),
+            verification_key=None,
+        )
 
-    tmpdir = tempfile.TemporaryDirectory(delete=False)
-    dirpath = Path(tmpdir.name)
+        snapshot = Snapshot(
+            components=[
+                Component(
+                    name="cdx-singlearch",
+                    image=Image(
+                        repo,
+                        digest,
+                    ),
+                    tags=["1.0", "latest"],
+                    repository="registry.redhat.io/org/tenant/cdx-singlearch",
+                ),
+            ],
+        )
 
-    if success:
-        await update_sboms(snapshot, dirpath, cosign, verify=True)
-    else:
+        cmd = make_augment_command(args)
+
+        await cmd.augment(snapshot)
+
+        assert len(cmd.sboms) == 1
+        sbom = cmd.sboms[0]
+        VerifyCycloneDX.verify_components_updated(snapshot, sbom.doc)
+
+    @pytest.mark.asyncio
+    async def test_verify_sbom_failure(
+        self,
+        fake_cosign: "FakeCosign",
+    ) -> None:
+        image = Image("quay.io/repo", "sha256:aaaaaaaa")
+        sbom = SBOM({}, "bad_digest", "ref")
+
         with pytest.raises(SBOMVerificationError):
-            await update_sboms(snapshot, dirpath, cosign, verify=True)
+            await verify_sbom(sbom, image, fake_cosign)
 
+    @pytest.mark.asyncio
+    async def test_update_sbom_error_handling(
+        self,
+        fake_cosign: "FakeCosign",
+    ) -> None:
+        img = Image("quay.io/repo", "sha256:aaaaaaaa")
+        component = Component(
+            "comp",
+            image=img,
+            tags=[],
+            repository="quay.io/repo",
+        )
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ["snapshot"],
-    [
-        pytest.param(
-            Snapshot(
-                components=[
-                    Component(
-                        name="spdx-singlearch",
-                        image=Image(
-                            "quay.io/org/tenant/test",
-                            "sha256:aaaaaaaa",
-                        ),
-                        tags=["1.0", "latest"],
-                        repository="registry.redhat.io/org/tenant/test",
-                    ),
-                ],
-            ),
-            id="spdx-singlearch",
-        ),
-        pytest.param(
-            Snapshot(
-                components=[
-                    Component(
-                        name="spdx-multiarch",
-                        image=IndexImage(
-                            "quay.io/org/tenant/test",
-                            "sha256:bbbbbbbb",
-                            children=[
-                                Image(
-                                    "quay.io/org/tenant/test",
-                                    "sha256:cccccccc",
-                                )
-                            ],
-                        ),
-                        tags=["1.0", "latest"],
-                        repository="registry.redhat.io/org/tenant/test",
-                    ),
-                ],
-            ),
-            id="spdx-multiarch",
-        ),
-        pytest.param(
-            Snapshot(
-                components=[
-                    Component(
-                        name="cdx-singlearch",
-                        image=Image(
-                            "quay.io/org/tenant/cdx-singlearch",
-                            "sha256:dddddddd",
-                        ),
-                        tags=["1.0", "latest"],
-                        repository="registry.redhat.io/org/tenant/cdx-singlearch",
-                    ),
-                ],
-            ),
-            id="cdx-singlearch",
-        ),
-    ],
-)
-async def test_sbom_update(snapshot: Snapshot) -> None:
-    cosign = FakeCosign.from_snapshot(snapshot)
-
-    tmpdir = tempfile.TemporaryDirectory(delete=False)
-    dirpath = Path(tmpdir.name)
-
-    await update_sboms(snapshot, dirpath, cosign, False)
-    try:
-        await assert_sboms(snapshot, dirpath)
-        tmpdir.cleanup()
-    except Exception as err:
-        raise AssertionError(
-            f"Failed to verify generated SBOMs. Output directory: {dirpath}"
-        ) from err
+        with patch("mobster.cmd.augment.update_sbom_in_situ") as mock_update:
+            mock_update.side_effect = SBOMError
+            assert await update_sbom(component, img, fake_cosign, verify=False) is None
 
 
 class FakeCosign(Cosign):
@@ -166,28 +339,28 @@ class FakeCosign(Cosign):
         return self.sboms[image.digest]
 
     @staticmethod
-    def from_snapshot(snapshot: Snapshot) -> "FakeCosign":
+    def load() -> "FakeCosign":
         provenances = {}
         sboms = {}
 
         sbom_path = TESTDATA_PATH.joinpath("sboms")
         prov_path = TESTDATA_PATH.joinpath("provenances")
-        for component in snapshot.components:
-            with open(sbom_path.joinpath(component.image.digest), "rb") as fp:
-                sboms[component.image.digest] = SBOM.from_cosign_output(fp.read())
 
-            prov = load_provenance(prov_path, component.image.digest)
-            if prov is not None:
-                provenances[component.image.digest] = prov
+        for sbom_file in os.listdir(sbom_path):
+            full = sbom_path.joinpath(sbom_file)
+            with open(full, "rb") as fp:
+                sboms[sbom_file] = SBOM.from_cosign_output(
+                    fp.read(), f"quay.io/repo@{sbom_file}"
+                )
 
-            if isinstance(component.image, IndexImage):
-                for child_img in component.image.children:
-                    with open(sbom_path.joinpath(child_img.digest), "rb") as fp:
-                        sboms[child_img.digest] = SBOM.from_cosign_output(fp.read())
-
-                    prov = load_provenance(prov_path, child_img.digest)
-                    if prov is not None:
-                        provenances[child_img.digest] = prov
+        for prov_file in os.listdir(prov_path):
+            full = prov_path.joinpath(prov_file)
+            with open(full, "rb") as fp:
+                payload = b64encode(fp.read()).decode()
+                prov = Provenance02.from_cosign_output(
+                    json.dumps({"payload": payload}).encode()
+                )
+                provenances[prov_file] = prov
 
         return FakeCosign(provenances, sboms)
 
@@ -202,42 +375,6 @@ def load_provenance(prov_dir: Path, digest: str) -> Provenance02 | None:
             )
 
     return None
-
-
-def get_all_digests(snapshot: Snapshot) -> list[str]:
-    digests = []
-    for component in snapshot.components:
-        digests.append(component.image.digest)
-        if isinstance(component.image, IndexImage):
-            for child_img in component.image.children:
-                digests.append(child_img.digest)
-    return digests
-
-
-async def assert_sboms(snapshot: Snapshot, directory: Path) -> None:
-    digests = get_all_digests(snapshot)
-    for digest in digests:
-        sbom_file = directory.joinpath(digest)
-        assert sbom_file.exists(), f"SBOM file for {digest} not found."
-
-        with open(sbom_file, "rb") as fp:
-            sbom = SBOM.from_cosign_output(fp.read())
-
-        # TODO: this is not ideal
-        if sbom.format in [
-            SBOMFormat.SPDX_2_0,
-            SBOMFormat.SPDX_2_1,
-            SBOMFormat.SPDX_2_2,
-            SBOMFormat.SPDX_2_2_1,
-            SBOMFormat.SPDX_2_2_2,
-            SBOMFormat.SPDX_2_3,
-        ]:
-            expected_path = TESTDATA_PATH.joinpath(f"sboms/{digest}.expected")
-            with open(expected_path, "rb") as fp:
-                expected = SBOM.from_cosign_output(fp.read())
-            assert sbom.doc == expected.doc
-        else:
-            VerifyCycloneDX.verify_components_updated(snapshot, sbom.doc)
 
 
 class VerifyCycloneDX:

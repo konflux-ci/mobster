@@ -19,7 +19,9 @@ async def run(args: Any) -> None:
     """
     command = args.func(args)
     await command.execute()
-    await command.save()
+    ok = await command.save()
+    code = 0 if ok else 1
+    exit(code)
 
 
 def main() -> None:

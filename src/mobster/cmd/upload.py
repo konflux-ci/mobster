@@ -24,8 +24,9 @@ class TPAUploadCommand(Command):
         LOGGER.debug("Uploading SBOM(s) to TPA")
         return None
 
-    async def save(self) -> None:
+    async def save(self) -> bool:
         """
         Save the command state.
         """
         # Placeholder for the actual implementation
+        return False

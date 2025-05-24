@@ -95,16 +95,18 @@ class SBOMFormat(Enum):
 
 
 class SBOM:
-    def __init__(self, doc: dict[Any, Any], digest: str) -> None:
+    def __init__(self, doc: dict[Any, Any], digest: str, reference: str) -> None:
         """
         An SBOM downloaded using cosign.
 
         Attributes:
             doc (dict): The parsed SBOM dictionary
             digest (str): SHA256 digest of the raw SBOM data
+            reference (str): Reference of the image the SBOM was attached to
         """
         self.doc = doc
         self.digest = digest
+        self.reference = reference
 
     @property
     def format(self) -> SBOMFormat:
@@ -135,7 +137,7 @@ class SBOM:
         return spec
 
     @staticmethod
-    def from_cosign_output(raw: bytes) -> "SBOM":
+    def from_cosign_output(raw: bytes, reference: str) -> "SBOM":
         """
         Create an SBOM object from a line of raw "cosign download sbom" output.
         """
@@ -145,4 +147,4 @@ class SBOM:
             raise SBOMError("Could not decode SBOM.") from err
 
         hexdigest = f"sha256:{hashlib.sha256(raw).hexdigest()}"
-        return SBOM(doc, hexdigest)
+        return SBOM(doc, hexdigest, reference)

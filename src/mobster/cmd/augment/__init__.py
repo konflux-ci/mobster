@@ -19,7 +19,49 @@ from mobster.release import Component, Snapshot, make_snapshot
 LOGGER = get_mobster_logger()
 
 
-class AugmentComponentCommand(Command):
+class AugmentCommand(Command):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.ok = True
+        self.sboms: list[SBOM] = []
+
+    async def execute(self) -> Any:
+        raise NotImplementedError()  # pragma: nocover
+
+    async def augment(self, snapshot: Snapshot) -> None:
+        """
+        Augment component SBOMs for a snapshot.
+
+        Args:
+            snapshot (Snapshot): The parsed snapshot
+        """
+        verify = self.cli_args.verification_key is not None
+        cosign = CosignClient(self.cli_args.verification_key)
+
+        self.ok, self.sboms = await update_sboms(snapshot, cosign, verify)
+
+    async def save(self) -> bool:
+        """
+        Save the command state.
+        """
+        destination = Path(self.cli_args.output)
+
+        tasks = [
+            write_sbom(sbom.doc, destination.joinpath(sbom.reference))
+            for sbom in self.sboms
+        ]
+
+        ok = True
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for sbom, res in zip(self.sboms, results, strict=False):
+            if isinstance(res, BaseException):
+                ok = False
+                LOGGER.error("Error while writing SBOM %s: %s", sbom.reference, res)
+
+        return ok and self.ok
+
+
+class AugmentComponentCommand(AugmentCommand):
     """
     Command to augment a component.
     """
@@ -31,40 +73,26 @@ class AugmentComponentCommand(Command):
         """
         Execute the command to augment a component.
         """
-        # Placeholder for the actual implementation
-        LOGGER.debug("Augmenting component image SBOM")
-
-    async def save(self) -> None:
-        """
-        Save the command state.
-        """
-        # Placeholder for the actual implementation
+        _, digest = self.cli_args.reference.split("@", 1)
+        snapshot = await make_snapshot(self.cli_args.snapshot, digest)
+        await self.augment(snapshot)
 
 
-class AugmentSnapshotCommand(Command):
+class AugmentSnapshotCommand(AugmentCommand):
     """
     Command to augment all components in a snapshot.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        self.sboms: list[SBOM] = []
 
     async def execute(self) -> Any:
         """
-        Execute the command to augment a component.
+        Execute the command to augment al components.
         """
         snapshot = await make_snapshot(self.cli_args.snapshot)
-
-        verify = self.cli_args.verification_key is not None
-        cosign = CosignClient(self.cli_args.verification_key)
-
-        await update_sboms(snapshot, self.cli_args.output, cosign, verify)
-
-    async def save(self) -> None:
-        """
-        Save the command state.
-        """
-        pass
+        await self.augment(snapshot)
 
 
 async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:
@@ -132,8 +160,8 @@ def update_sbom_in_situ(component: Component, image: Image, sbom: SBOM) -> bool:
 
 
 async def update_sbom(
-    component: Component, image: Image, destination: Path, cosign: Cosign, verify: bool
-) -> None:
+    component: Component, image: Image, cosign: Cosign, verify: bool
+) -> SBOM | None:
     """
     Update an SBOM of an image in a repository and save it to a directory.
     Determines format of the SBOM and calls the correct handler or throws
@@ -143,24 +171,25 @@ async def update_sbom(
         component (Component): The component the image belongs to.
         image (IndexImage | Image): Object representing an image or an index
                                     image being released.
-        destination (Path): Path to the directory to save the SBOMs to.
     """
 
     try:
         sbom = await load_sbom(image, cosign, verify)
         if not update_sbom_in_situ(component, image, sbom):
             raise SBOMError(f"Unsupported SBOM format for image {image}.")
-
-        await write_sbom(sbom.doc, destination.joinpath(image.digest))
         LOGGER.info("Successfully enriched SBOM for image %s", image)
-    except (SBOMError, ValueError):
+        return sbom
+    except Exception:  # pylint: disable=broad-except
+        # We catch all exceptions, because we're processing many SBOMs
+        # concurrently and an uncaught exception would halt all concurrently
+        # running updates.
         LOGGER.exception("Failed to enrich SBOM for image %s.", image)
-        raise
+        return None
 
 
 async def update_component_sboms(
-    component: Component, destination: Path, cosign: Cosign, verify: bool
-) -> None:
+    component: Component, cosign: Cosign, verify: bool
+) -> tuple[bool, list[SBOM]]:
     """
     Update SBOMs for a component and save them to a directory.
 
@@ -168,53 +197,48 @@ async def update_component_sboms(
 
     Args:
         component (Component): Object representing a component being released.
-        destination (Path): Path to the directory to save the SBOMs to.
     """
     if isinstance(component.image, IndexImage):
         # If the image of a component is a multiarch image, we update the SBOMs
         # for both the index image and the child single arch images.
         index = component.image
         update_tasks = [
-            update_sbom(component, index, destination, cosign, verify),
+            update_sbom(component, index, cosign, verify),
         ]
         for child in index.children:
-            update_tasks.append(
-                update_sbom(component, child, destination, cosign, verify)
-            )
+            update_tasks.append(update_sbom(component, child, cosign, verify))
 
-        results = await asyncio.gather(*update_tasks, return_exceptions=True)
-        for res in results:
-            if isinstance(res, BaseException):
-                raise res
-        return
+        results = await asyncio.gather(*update_tasks)
+    else:
+        # Single arch image
+        results = [await update_sbom(component, component.image, cosign, verify)]
 
-    # Single arch image
-    await update_sbom(component, component.image, destination, cosign, verify)
+    ok = not all(results)
+    return ok, list(filter(None, results))
 
 
 async def update_sboms(
-    snapshot: Snapshot, destination: Path, cosign: Cosign, verify: bool
-) -> None:
+    snapshot: Snapshot, cosign: Cosign, verify: bool
+) -> tuple[bool, list[SBOM]]:
     """
     Update component SBOMs with release-time information based on a Snapshot and
     save them to a directory.
 
     Args:
         Snapshot: A object representing a snapshot being released.
-        destination (Path): Path to the directory to save the SBOMs to.
     """
-    # use return_exceptions=True to avoid crashing non-finished tasks if one
-    # task raises an exception.
     results = await asyncio.gather(
         *[
-            update_component_sboms(component, destination, cosign, verify)
+            update_component_sboms(component, cosign, verify)
             for component in snapshot.components
         ],
-        return_exceptions=True,
     )
-    # Python 3.11 ExceptionGroup would be nice here, so we can re-raise all the
-    # exceptions that were raised and not just one. Consider when migrating to
-    # mobster.
-    for res in results:
-        if isinstance(res, BaseException):
-            raise res
+
+    all_ok = True
+    all_sboms = []
+    for ok, sboms in results:
+        if not ok:
+            all_ok = False
+        all_sboms.extend(sboms)
+
+    return all_ok, all_sboms
