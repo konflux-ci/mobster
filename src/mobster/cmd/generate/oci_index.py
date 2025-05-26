@@ -104,8 +104,6 @@ class GenerateOciIndexCommand(GenerateCommand):
 
             arch_image = Image(
                 arch=arch,
-                name=index_image.name,
-                full_name=index_image.full_name,
                 digest=self.cli_args.index_image_digest,
                 tag=index_image.tag,
                 repository=index_image.repository,
@@ -149,14 +147,19 @@ class GenerateOciIndexCommand(GenerateCommand):
         self._content = document
         return self.content
 
-    async def save(self) -> None:
+    async def save(self) -> bool:
         """
         Convert SPDX document to JSON and save it to a file.
         """
-        if self.cli_args.output and self._content:
-            LOGGER.info("Saving SBOM document to '%s'", self.cli_args.output)
-            write_file(
-                self._content,
-                str(self.cli_args.output),
-                validate=True,
-            )
+        try:
+            if self.cli_args.output and self._content:
+                LOGGER.info("Saving SBOM document to '%s'", self.cli_args.output)
+                write_file(
+                    self._content,
+                    str(self.cli_args.output),
+                    validate=True,
+                )
+            return True
+        except Exception:
+            LOGGER.exception("An error while saving the SBOM document.")
+            return False

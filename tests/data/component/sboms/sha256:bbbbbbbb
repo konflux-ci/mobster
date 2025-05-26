@@ -1,0 +1,70 @@
+{
+    "spdxVersion": "SPDX-2.3",
+    "dataLicense": "CC0-1.0",
+    "documentNamespace": "https://konflux-ci.dev/spdxdocs/demo-on-pr-c91a8608fdf4eff697652f37ee0cf21bc490858e-68afdb3a-d057-4acd-bcdb-f32225ddaa9a",
+    "SPDXID": "SPDXRef-DOCUMENT",
+    "creationInfo": {
+        "created": "2025-03-19T10:19:32+00:00",
+        "creators": [
+            "Tool: Konflux"
+        ],
+        "licenseListVersion": "3.25"
+    },
+    "name": "quay.io/redhat-user-workloads/mjediny-tenant/demo@sha256:bbbbbbbb",
+    "packages": [
+        {
+            "SPDXID": "SPDXRef-image-index",
+            "name": "demo",
+            "versionInfo": "on-pr-c91a8608fdf4eff697652f37ee0cf21bc490858e",
+            "supplier": "NOASSERTION",
+            "downloadLocation": "NOASSERTION",
+            "licenseDeclared": "NOASSERTION",
+            "externalRefs": [
+                {
+                    "referenceCategory": "PACKAGE-MANAGER",
+                    "referenceType": "purl",
+                    "referenceLocator": "pkg:oci/demo@sha256:bbbbbbbb?repository_url=quay.io/redhat-user-workloads/mjediny-tenant/demo"
+                }
+            ],
+            "checksums": [
+                {
+                    "algorithm": "SHA256",
+                    "checksumValue": "bbbbbbbb"
+                }
+            ]
+        },
+        {
+            "SPDXID": "SPDXRef-image-demo-99eb583f9f6956aa94a708a9506747a92ab1bb94b2811adabcf48e7353857eeb",
+            "name": "demo_amd64",
+            "versionInfo": "on-pr-c91a8608fdf4eff697652f37ee0cf21bc490858e",
+            "supplier": "NOASSERTION",
+            "downloadLocation": "NOASSERTION",
+            "licenseDeclared": "NOASSERTION",
+            "externalRefs": [
+                {
+                    "referenceCategory": "PACKAGE-MANAGER",
+                    "referenceType": "purl",
+                    "referenceLocator": "pkg:oci/demo@sha256:cccccccc?arch=amd64&repository_url=quay.io/redhat-user-workloads/mjediny-tenant/demo"
+                }
+            ],
+            "checksums": [
+                {
+                    "algorithm": "SHA256",
+                    "checksumValue": "cccccccc"
+                }
+            ]
+        }
+    ],
+    "relationships": [
+        {
+            "spdxElementId": "SPDXRef-DOCUMENT",
+            "relationshipType": "DESCRIBES",
+            "relatedSpdxElement": "SPDXRef-image-index"
+        },
+        {
+            "spdxElementId": "SPDXRef-image-demo-99eb583f9f6956aa94a708a9506747a92ab1bb94b2811adabcf48e7353857eeb",
+            "relationshipType": "VARIANT_OF",
+            "relatedSpdxElement": "SPDXRef-image-index"
+        }
+    ]
+}

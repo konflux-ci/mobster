@@ -18,7 +18,10 @@ class Command(ABC):
         """
 
     @abstractmethod
-    async def save(self) -> None:
+    async def save(self) -> bool:
         """
         Save the SBOM document.
+
+        Returns:
+            (bool): True if successful, False otherwise
         """

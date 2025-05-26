@@ -1,11 +1,11 @@
 """Upload command for the the Mobster application."""
 
-import logging
 from typing import Any
 
 from mobster.cmd.base import Command
+from mobster.log import get_mobster_logger
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = get_mobster_logger()
 
 
 class TPAUploadCommand(Command):
@@ -24,8 +24,9 @@ class TPAUploadCommand(Command):
         LOGGER.debug("Uploading SBOM(s) to TPA")
         return None
 
-    async def save(self) -> None:
+    async def save(self) -> bool:
         """
         Save the command state.
         """
         # Placeholder for the actual implementation
+        return False

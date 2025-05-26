@@ -1,12 +1,12 @@
 """The main module of the Mobster application."""
 
 import asyncio
-import logging
 from typing import Any
 
 from mobster import cli
+from mobster.log import get_mobster_logger, setup_logging
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = get_mobster_logger()
 
 
 async def run(args: Any) -> None:
@@ -19,25 +19,9 @@ async def run(args: Any) -> None:
     """
     command = args.func(args)
     await command.execute()
-    await command.save()
-
-
-def setup_logging(args: Any) -> None:
-    """
-    Set up logging for the application.
-
-    Args:
-        args: The command line arguments.
-
-    """
-    log_level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    )
-    logging.getLogger("asyncio").setLevel(logging.WARNING)
-
-    LOGGER.debug("Logging level set to %s", log_level)
+    ok = await command.save()
+    code = 0 if ok else 1
+    exit(code)
 
 
 def main() -> None:
@@ -47,7 +31,7 @@ def main() -> None:
 
     arg_parser = cli.setup_arg_parser()
     args = arg_parser.parse_args()
-    setup_logging(args)
+    setup_logging(args.verbose)
     LOGGER.debug("Arguments: %s", args)
 
     asyncio.run(run(args))

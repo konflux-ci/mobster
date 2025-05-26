@@ -227,10 +227,14 @@ def augment_command_parser(subparsers: Any) -> None:
 
     """
     augment_parser = subparsers.add_parser(
-        "augment", help="Augment an SBOM document with additional information"
+        "augment",
+        help="Augment SBOM documents with additional information from a mapped"
+        "snapshot spec and save them to a directory.",
     )
+
     augment_subparser = augment_parser.add_subparsers(dest="type", required=True)
     augment_oci_image_parser(augment_subparser)
+    augment_snapshot_parser(augment_subparser)
 
 
 def augment_oci_image_parser(subparsers: Any) -> None:
@@ -238,16 +242,56 @@ def augment_oci_image_parser(subparsers: Any) -> None:
     A parser for augmenting SBOMs documents for OCI image.
     """
     oci_image_parser = subparsers.add_parser(
-        "oci-image", help="Augment an SBOM document for OCI image"
+        "oci-image", help="augment an SBOM document for an OCI image."
     )
     oci_image_parser.add_argument(
-        "--snapshot-path",
-        required=True,
+        "snapshot",
         type=Path,
-        help="Path to the snapshot spec file in JSON format.",
+        help="path to the mapped snapshot spec file in JSON format",
+    )
+    oci_image_parser.add_argument(
+        "reference",
+        type=str,
+        help="OCI image reference in the format <repository>@<digest>.",
+    )
+    oci_image_parser.add_argument(
+        "output",
+        type=Path,
+        help="path to the output directory",
+    )
+    oci_image_parser.add_argument(
+        "--verification-key",
+        type=Path,
+        help="path to public key used to verify the image provenance",
     )
 
     oci_image_parser.set_defaults(func=augment.AugmentComponentCommand)
+
+
+def augment_snapshot_parser(subparsers: Any) -> None:
+    """
+    A parser for augmenting SBOM documents for an entire snapshot.
+    """
+    snapshot_parser = subparsers.add_parser(
+        "snapshot", help="augment all SBOM documents for a Snapshot."
+    )
+    snapshot_parser.add_argument(
+        "snapshot",
+        type=Path,
+        help="path to the mapped snapshot spec file in JSON format",
+    )
+    snapshot_parser.add_argument(
+        "output",
+        type=Path,
+        help="path to the output directory",
+    )
+    snapshot_parser.add_argument(
+        "--verification-key",
+        type=Path,
+        help="path to public key used to verify the image provenance",
+    )
+
+    snapshot_parser.set_defaults(func=augment.AugmentSnapshotCommand)
 
 
 def upload_command_parser(subparsers: Any) -> None:

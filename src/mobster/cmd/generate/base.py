@@ -1,13 +1,13 @@
 """A command execution module for generating SBOM documents."""
 
 import json
-import logging
 from abc import ABC
 from typing import Any
 
 from mobster.cmd.base import Command
+from mobster.log import get_mobster_logger
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = get_mobster_logger()
 
 
 class GenerateCommand(Command, ABC):
@@ -25,11 +25,16 @@ class GenerateCommand(Command, ABC):
         """
         return self._content
 
-    async def save(self) -> None:
+    async def save(self) -> bool:
         """
         Save the SBOM document to a file if the output argument is provided.
         """
-        if self.cli_args.output:
-            LOGGER.debug("Saving SBOM document to '%s'", self.cli_args.output)
-            with open(self.cli_args.output, "w", encoding="utf8") as output_file:
-                json.dump(self.content, output_file, indent=2)
+        try:
+            if self.cli_args.output:
+                LOGGER.debug("Saving SBOM document to '%s'", self.cli_args.output)
+                with open(self.cli_args.output, "w", encoding="utf8") as output_file:
+                    json.dump(self.content, output_file, indent=2)
+            return True
+        except Exception:
+            LOGGER.exception("An error while saving the SBOM document.")
+            return False
