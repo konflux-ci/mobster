@@ -176,6 +176,13 @@ class Image:  # pylint: disable=too-many-instance-attributes
 
     @property
     def name(self) -> str:
+        """
+        Name of the image.
+
+        Example:
+            >>> image("quay.io/org/apache", "sha256:deadbeef").name
+            "apache"
+        """
         _, name = self.repository.rsplit("/", 1)
         return name
 

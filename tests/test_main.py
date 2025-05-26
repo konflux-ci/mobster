@@ -25,7 +25,7 @@ async def test_run(monkeypatch: pytest.MonkeyPatch) -> None:
     mock_args.func.return_value.execute = AsyncMock()
     mock_args.func.return_value.save = AsyncMock()
 
-    monkeypatch.setattr("builtins.exit", lambda _: None)
+    monkeypatch.setattr("sys.exit", lambda _: None)
     await run(mock_args)
 
     mock_args.func.return_value.execute.assert_called_once()

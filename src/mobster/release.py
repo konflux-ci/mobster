@@ -60,7 +60,7 @@ async def make_snapshot(snapshot_spec: Path, digest: str | None = None) -> Snaps
     with open(snapshot_spec, encoding="utf-8") as snapshot_file:
         snapshot_model = SnapshotModel.model_validate_json(snapshot_file.read())
 
-    def is_relevant(comp: ComponentModel) -> bool:
+    def is_relevant(comp: "ComponentModel") -> bool:
         if digest is not None:
             return comp.image_digest == digest
 

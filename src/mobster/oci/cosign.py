@@ -17,10 +17,19 @@ logger = get_mobster_logger()
 
 
 class Cosign(typing.Protocol):  # pragma: nocover
+    """
+    Definition of a Cosign protocl.
+    """
     async def fetch_latest_provenance(self, image: Image) -> Provenance02:
+        """
+        Fetch the latest provenance for an image.
+        """
         raise NotImplementedError()
 
     async def fetch_sbom(self, image: Image) -> SBOM:
+        """
+        Fetch the attached SBOM for an image.
+        """
         raise NotImplementedError()
 
 

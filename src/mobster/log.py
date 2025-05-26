@@ -1,8 +1,15 @@
+"""
+Logging configuration and utility functions.
+"""
+
 import logging
 import logging.config
 
 
 def get_mobster_logger() -> logging.Logger:
+    """
+    Get the logger object with the name "mobster".
+    """
     return logging.getLogger("mobster")
 
 
@@ -38,4 +45,4 @@ def setup_logging(verbose: bool) -> None:
     }
 
     logging.config.dictConfig(config=logconfig)
-    logger.debug("Logging level set to %s", log_level)
+    logger.info("Logging level set to %s", log_level)

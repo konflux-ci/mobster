@@ -77,9 +77,6 @@ class AugmentComponentCommand(AugmentCommand):
     Command to augment a component.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-
     async def execute(self) -> Any:
         """
         Execute the command to augment a component.
@@ -93,10 +90,6 @@ class AugmentSnapshotCommand(AugmentCommand):
     """
     Command to augment all components in a snapshot.
     """
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.sboms: list[SBOM] = []
 
     async def execute(self) -> Any:
         """

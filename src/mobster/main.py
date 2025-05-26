@@ -1,6 +1,7 @@
 """The main module of the Mobster application."""
 
 import asyncio
+import sys
 from typing import Any
 
 from mobster import cli
@@ -21,7 +22,7 @@ async def run(args: Any) -> None:
     await command.execute()
     ok = await command.save()
     code = 0 if ok else 1
-    exit(code)
+    sys.exit(code)
 
 
 def main() -> None:

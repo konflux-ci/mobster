@@ -33,6 +33,9 @@ class Provenance02:
 
     @staticmethod
     def from_cosign_output(raw: bytes) -> "Provenance02":
+        """
+        Create a Provenance02 object from a line of raw "cosign verify-attestation" output.
+        """
         encoded = json.loads(raw)
         att = json.loads(base64.b64decode(encoded["payload"]))
         if (pt := att.get("predicateType")) != Provenance02.predicate_type:
@@ -83,18 +86,24 @@ class Provenance02:
 
 
 class SBOMFormat(Enum):
+    """
+    Enumeration of all SBOM formats supported for updates.
+    """
     SPDX_2_0 = "SPDX-2.0"
     SPDX_2_1 = "SPDX-2.1"
     SPDX_2_2 = "SPDX-2.2"
     SPDX_2_2_1 = "SPDX-2.2.1"
     SPDX_2_2_2 = "SPDX-2.2.2"
     SPDX_2_3 = "SPDX-2.3"
-    CDX_v1_4 = "1.4"
-    CDX_v1_5 = "1.5"
-    CDX_v1_6 = "1.6"
+    CDX_V1_4 = "1.4"
+    CDX_V1_5 = "1.5"
+    CDX_V1_6 = "1.6"
 
 
 class SBOM:
+    """
+    Object representing an SBOM for an image.
+    """
     def __init__(self, doc: dict[Any, Any], digest: str, reference: str) -> None:
         """
         An SBOM downloaded using cosign.

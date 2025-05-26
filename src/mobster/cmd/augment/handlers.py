@@ -1,3 +1,7 @@
+"""
+This module is used to augment release-time SBOMs.
+"""
+
 from typing import Any
 
 from packageurl import PackageURL
@@ -28,10 +32,16 @@ class SPDXPackage:
 
     @external_refs.setter
     def external_refs(self, value: list[Any]) -> None:
+        """
+        Set the externalRefs field.
+        """
         self.package["externalRefs"] = value
 
     @property
     def spdxid(self) -> Any:
+        """
+        Return the SPDXID field value of the package.
+        """
         return self.package.get("SPDXID", "UNKNOWN")
 
     @property
@@ -225,20 +235,29 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
         )
 
     def update_sbom(self, component: Component, image: Image, sbom: Any) -> None:
+        """
+        Update a build-time SBOM with release-time data.
+        """
         if isinstance(image, IndexImage):
             SPDXVersion2._update_index_image_sbom(component, image, sbom)
         elif isinstance(image, Image):
             SPDXVersion2._update_image_sbom(component, image, sbom)
 
 
-class CycloneDXVersion1:
+class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
+    """
+    This class contains methods to update CycloneDX build-time SBOMs.
+    """
     supported_versions = [
-        SBOMFormat.CDX_v1_4,
-        SBOMFormat.CDX_v1_5,
-        SBOMFormat.CDX_v1_6,
+        SBOMFormat.CDX_V1_4,
+        SBOMFormat.CDX_V1_5,
+        SBOMFormat.CDX_V1_6,
     ]
 
     def update_sbom(self, component: Component, image: Image, sbom: Any) -> None:
+        """
+        Update an SBOM for an image based on a component.
+        """
         if isinstance(component.image, IndexImage):
             raise ValueError("CDX update SBOM does not support index images.")
 

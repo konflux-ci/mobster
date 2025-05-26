@@ -151,15 +151,11 @@ class GenerateOciIndexCommand(GenerateCommand):
         """
         Convert SPDX document to JSON and save it to a file.
         """
-        try:
-            if self.cli_args.output and self._content:
-                LOGGER.info("Saving SBOM document to '%s'", self.cli_args.output)
-                write_file(
-                    self._content,
-                    str(self.cli_args.output),
-                    validate=True,
-                )
-            return True
-        except Exception:
-            LOGGER.exception("An error while saving the SBOM document.")
-            return False
+        if self.cli_args.output and self._content:
+            LOGGER.info("Saving SBOM document to '%s'", self.cli_args.output)
+            write_file(
+                self._content,
+                str(self.cli_args.output),
+                validate=True,
+            )
+        return True

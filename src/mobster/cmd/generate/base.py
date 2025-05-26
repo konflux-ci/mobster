@@ -29,12 +29,8 @@ class GenerateCommand(Command, ABC):
         """
         Save the SBOM document to a file if the output argument is provided.
         """
-        try:
-            if self.cli_args.output:
-                LOGGER.debug("Saving SBOM document to '%s'", self.cli_args.output)
-                with open(self.cli_args.output, "w", encoding="utf8") as output_file:
-                    json.dump(self.content, output_file, indent=2)
-            return True
-        except Exception:
-            LOGGER.exception("An error while saving the SBOM document.")
-            return False
+        if self.cli_args.output:
+            LOGGER.debug("Saving SBOM document to '%s'", self.cli_args.output)
+            with open(self.cli_args.output, "w", encoding="utf8") as output_file:
+                json.dump(self.content, output_file, indent=2)
+        return True
