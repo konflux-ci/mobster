@@ -15,12 +15,14 @@ from mobster.cmd.augment import (
     update_sbom,
     verify_sbom,
 )
-from mobster.cmd.augment.handlers import get_purl_digest
+from mobster.cmd.augment.handlers import CycloneDXVersion1, get_purl_digest
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM, Provenance02
 from mobster.oci.cosign import Cosign
 from mobster.release import Component, Snapshot
+from mobster.sbom import cyclonedx
+from tests.conftest import assert_spdx_sbom
 
 TESTDATA_PATH = Path(__file__).parent.parent.joinpath("data/component")
 
@@ -158,7 +160,7 @@ class TestAugmentCommand:
         expected = prepare_sbom(reference).doc
 
         assert len(cmd.sboms) == 1
-        assert cmd.sboms[0].doc == expected
+        assert_spdx_sbom(cmd.sboms[0].doc, expected)
 
     @pytest.mark.asyncio
     async def test_augment_execute_multiarch(
@@ -206,8 +208,9 @@ class TestAugmentCommand:
         ]
 
         assert len(expected_sboms) == len(cmd.sboms)
-        for expected, actual in zip(cmd.sboms, expected_sboms, strict=False):
-            assert expected.doc == actual.doc
+
+        for actual, expected in zip(cmd.sboms, expected_sboms, strict=False):
+            assert_spdx_sbom(actual.doc, expected.doc)
 
     @pytest.mark.asyncio
     async def test_augment_execute_cdx_singlearch(
@@ -405,6 +408,14 @@ class VerifyCycloneDX:
             VerifyCycloneDX.verify_tags(kflx_component, cdx_component)
 
     @staticmethod
+    def verify_mobster_version_info(sbom: Any) -> None:
+        """
+        Verify that the mobster version info is added to the SBOM metadata.
+        """
+        components = sbom["metadata"]["tools"]["components"]
+        assert cyclonedx.get_tools_component_dict() in components
+
+    @staticmethod
     def verify_components_updated(snapshot: Snapshot, sbom: Any) -> None:
         """
         This method verifies that all CycloneDX container components that have a
@@ -413,6 +424,7 @@ class VerifyCycloneDX:
         VerifyCycloneDX.verify_component_updated(
             snapshot, sbom["metadata"]["component"], verify_tags=False
         )
+        VerifyCycloneDX.verify_mobster_version_info(sbom)
 
         for component in sbom.get("components", []):
             VerifyCycloneDX.verify_component_updated(
@@ -435,3 +447,12 @@ def test_get_purl_digest(purl_str: str, expected: str | BaseException) -> None:
     else:
         with pytest.raises(expected):  # type: ignore
             get_purl_digest(purl_str)
+
+
+def test_cdx_augment_metadata_tools_components_empty_metadata() -> None:
+    metadata: dict[str, Any] = {}
+    CycloneDXVersion1()._augment_metadata_tools_components(metadata)
+
+    assert "tools" in metadata
+    assert "components" in metadata["tools"]
+    assert len(metadata["tools"]["components"]) == 1

@@ -1,5 +1,7 @@
 """A module for CycloneDX SBOM format"""
 
+from typing import Any
+
 from cyclonedx.model import HashType
 from cyclonedx.model.bom_ref import BomRef
 from cyclonedx.model.component import (
@@ -7,6 +9,7 @@ from cyclonedx.model.component import (
     ComponentType,
 )
 
+from mobster import get_mobster_version
 from mobster.image import Image
 
 
@@ -32,3 +35,32 @@ def get_component(image: Image) -> Component:
     )
 
     return package
+
+
+def get_tools_component() -> Component:
+    """
+    Create a metadata.tools CycloneDX component. Inserts current version of
+    mobster.
+
+    Returns:
+        Component: A metadata.component object.
+    """
+    return Component(
+        name="Mobster", type=ComponentType.APPLICATION, version=get_mobster_version()
+    )
+
+
+def get_tools_component_dict() -> dict[str, Any]:
+    """
+    Create a metadata.tools CycloneDX component. Inserts current version of
+    mobster.
+
+    Returns:
+        Component: A metadata.component object.
+    """
+    component = get_tools_component()
+    return {
+        "name": component.name,
+        "type": component.type.value,
+        "version": component.version,
+    }

@@ -4,8 +4,7 @@
     "created": "2025-05-06T13:14:21Z",
     "creators": [
       "Organization: Red Hat",
-      "Tool: Konflux CI",
-      "Tool: Mobster"
+      "Tool: Konflux CI"
     ]
   },
   "dataLicense": "CC0-1.0",
