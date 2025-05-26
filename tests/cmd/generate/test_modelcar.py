@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from mobster.cmd.generate.modelcar import GenerateModelcarCommand
+from tests.conftest import assert_cdx_sbom, assert_spdx_sbom
 
 
 @pytest.mark.asyncio
@@ -64,16 +65,8 @@ async def test_generate_modelcar_sbom(
             result = json.load(result_file)
 
             if sbom_type == "spdx":
-                # Copy dynamic values from expected output
-                result["creationInfo"]["created"] = expected_output["creationInfo"][
-                    "created"
-                ]
-                result["documentNamespace"] = expected_output["documentNamespace"]
+                assert_spdx_sbom(result, expected_output)
             if sbom_type == "cyclonedx":
-                result["serialNumber"] = expected_output["serialNumber"]
-                result["metadata"]["timestamp"] = expected_output["metadata"][
-                    "timestamp"
-                ]
                 root_bom_ref = result["metadata"]["component"]["bom-ref"]
                 patch_bom_ref(
                     result,
@@ -81,7 +74,7 @@ async def test_generate_modelcar_sbom(
                     expected_output["metadata"]["component"]["bom-ref"],
                 )
 
-            assert result == expected_output
+                assert_cdx_sbom(result, expected_output)
 
 
 def patch_bom_ref(document: Any, old: str, new: str) -> Any:

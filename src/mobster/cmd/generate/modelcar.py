@@ -89,6 +89,7 @@ class GenerateModelcarCommand(GenerateCommand):
 
         # Create CycloneDX BOM and assign it the root component
         document = Bom()
+        document.metadata.tools.components.add(cyclonedx.get_tools_component())
         document.metadata.component = root_component
 
         # Add the base and model components to the BOM

@@ -13,6 +13,7 @@ from spdx_tools.spdx.model.package import (
 )
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
+from mobster import get_mobster_version
 from mobster.image import Image
 
 
@@ -35,7 +36,7 @@ def get_creation_info(sbom_name: str) -> CreationInfo:
         creators=[
             Actor(ActorType.ORGANIZATION, "Red Hat"),
             Actor(ActorType.TOOL, "Konflux CI"),
-            Actor(ActorType.TOOL, "Mobster"),
+            Actor(ActorType.TOOL, f"Mobster-{get_mobster_version()}"),
         ],
         created=datetime.now(timezone.utc),
     )
