@@ -20,6 +20,8 @@ async def run(args: Any) -> None:
     """
     command = args.func(args)
     await command.execute()
+
+    # TODO: is this bool approach ok or should we raise a special exception in the subcommands?
     ok = await command.save()
     code = 0 if ok else 1
     sys.exit(code)

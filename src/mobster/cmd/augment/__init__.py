@@ -74,12 +74,14 @@ class AugmentCommand(Command):
 
 class AugmentComponentCommand(AugmentCommand):
     """
-    Command to augment a component.
+    Command to augment a single component based on the supplied image
+    reference.
     """
 
     async def execute(self) -> Any:
         """
-        Execute the command to augment a component.
+        Execute the command to augment a component specified by the supplied
+        OCI image reference.
         """
         _, digest = self.cli_args.reference.split("@", 1)
         snapshot = await make_snapshot(self.cli_args.snapshot, digest)
@@ -93,7 +95,8 @@ class AugmentSnapshotCommand(AugmentCommand):
 
     async def execute(self) -> Any:
         """
-        Execute the command to augment al components.
+        Execute the command to augment all components in the supplied mapped
+        snapshot file.
         """
         snapshot = await make_snapshot(self.cli_args.snapshot)
         await self.augment(snapshot)
@@ -102,9 +105,14 @@ class AugmentSnapshotCommand(AugmentCommand):
 async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:
     """
     Verify that the sha256 digest of the specified SBOM matches the value of
-    SBOM_BLOB_URL in the provenance for the supplied image. Cosign is
-    used to fetch the provenance. If it doesn't match, an SBOMVerificationError
-    is raised.
+    SBOM_BLOB_URL in the provenance for the supplied image. Cosign is used to
+    fetch the provenance. If it doesn't match, an SBOMVerificationError is
+    raised.
+
+    Args:
+        sbom (SBOM): the sbom to verify
+        image (Image): image to verify the sbom for
+        cosign (Cosign): implementation of the Cosign protocol
     """
 
     prov = await cosign.fetch_latest_provenance(image)
@@ -121,6 +129,12 @@ async def load_sbom(image: Image, cosign: Cosign, verify: bool) -> SBOM:
     """
     Download and parse the sbom for the image reference and verify that its digest
     matches that in the image provenance.
+
+    Args:
+        image (Image): image to load the sbom for
+        cosign (Cosign): implementation of the Cosign protocol
+        verify (bool): True if the SBOM's digest should be verified via the
+            provenance of the image
     """
     sbom = await cosign.fetch_sbom(image)
     if verify:
@@ -130,7 +144,7 @@ async def load_sbom(image: Image, cosign: Cosign, verify: bool) -> SBOM:
 
 async def write_sbom(sbom: Any, path: Path) -> None:
     """
-    Write an SBOM doc to a file.
+    Write an SBOM doc dictionary to a file.
     """
     async with aiofiles.open(path, "w") as fp:
         await fp.write(json.dumps(sbom))
@@ -200,6 +214,9 @@ async def update_component_sboms(
 
     Args:
         component (Component): Object representing a component being released.
+        cosign (Cosign): implementation of the Cosign protocol
+        verify (bool): True if the SBOM's digest should be verified via the
+            provenance of the image
     """
     if isinstance(component.image, IndexImage):
         # If the image of a component is a multiarch image, we update the SBOMs
@@ -228,7 +245,10 @@ async def update_sboms(
     save them to a directory.
 
     Args:
-        Snapshot: A object representing a snapshot being released.
+        snapshot (Snapshot): an object representing a snapshot being released.
+        cosign (Cosign): implementation of the Cosign protocol
+        verify (bool): True if the SBOM's digest should be verified via the
+            provenance of the image
     """
     results = await asyncio.gather(
         *[
