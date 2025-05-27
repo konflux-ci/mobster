@@ -1,0 +1,766 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "creationInfo": {
+    "created": "2024-12-18T11:28:00Z",
+    "creators": [
+      "Organization: Anchore, Inc",
+      "Tool: syft-1.4.1"
+    ],
+    "licenseListVersion": "3.23"
+  },
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://anchore.com/syft/dir/syft-sboms-b66779b6-6e20-4128-9fad-da28250a1b82",
+  "files": [
+    {
+      "SPDXID": "SPDXRef-File-requirements-build.txt-458596483a88d4e1",
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "0000000000000000000000000000000000000000"
+        }
+      ],
+      "copyrightText": "",
+      "fileName": "/requirements-build.txt",
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-File-requirements.txt-26ca2b7dc025d550",
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "0000000000000000000000000000000000000000"
+        }
+      ],
+      "copyrightText": "",
+      "fileName": "/requirements.txt",
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ]
+    }
+  ],
+  "name": ".",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-Package-python-certifi-605ce44010623730",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:kennethreitz:certifi:2022.12.7:*:*:*:*:python:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/certifi@2022.12.7",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "certifi",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "2022.12.7"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-charset-normalizer-af8ef9b528d1324d",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset-normalizer:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset-normalizer:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset_normalizer:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset_normalizer:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset-normalizer:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset-normalizer:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset_normalizer:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset_normalizer:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset-normalizer:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset-normalizer:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset_normalizer:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset_normalizer:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset-normalizer:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset-normalizer:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset_normalizer:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset_normalizer:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/charset-normalizer@3.0.1",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "charset-normalizer",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "3.0.1"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-flit-core-24f242ce07794d00",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit-core:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit-core:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit_core:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit_core:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit-core:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit-core:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit_core:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit_core:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit-core:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit-core:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit_core:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit_core:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit-core:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit-core:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit_core:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit_core:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/flit-core@3.8.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "flit-core",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements-build.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "3.8.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-idna-ff5d4caf61299680",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-idna:python-idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-idna:python_idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_idna:python-idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_idna:python_idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python-idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python_idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:idna:python-idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:idna:python_idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-idna:idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_idna:idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:idna:idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/idna@3.4",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "idna",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "3.4"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-requests-03176f57fdf54d1e",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:requests:2.28.2:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/requests@2.28.2",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "requests",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "2.28.2"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-setuptools-7ae302e7223ecbbd",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:setuptools:67.1.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/setuptools@67.1.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "setuptools",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements-build.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "67.1.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-urllib3-531a10a07587b59c",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:urllib3:1.26.14:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/urllib3@1.26.14",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "urllib3",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "1.26.14"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-wheel-3a9d5577afa1b279",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-wheel:python-wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-wheel:python_wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_wheel:python-wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_wheel:python_wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python-wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python_wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-wheel:wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_wheel:wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:wheel:python-wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:wheel:python_wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:wheel:wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/wheel@0.38.4",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "wheel",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements-build.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "0.38.4"
+    },
+    {
+      "SPDXID": "SPDXRef-DocumentRoot-Directory-.",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": ".",
+      "primaryPackagePurpose": "FILE",
+      "supplier": "NOASSERTION"
+    }
+  ],
+  "relationships": [
+    {
+      "comment": "evident-by: indicates the package's existence is evident by the given file",
+      "relatedSpdxElement": "SPDXRef-File-requirements.txt-26ca2b7dc025d550",
+      "relationshipType": "OTHER",
+      "spdxElementId": "SPDXRef-Package-python-requests-03176f57fdf54d1e"
+    },
+    {
+      "comment": "evident-by: indicates the package's existence is evident by the given file",
+      "relatedSpdxElement": "SPDXRef-File-requirements-build.txt-458596483a88d4e1",
+      "relationshipType": "OTHER",
+      "spdxElementId": "SPDXRef-Package-python-flit-core-24f242ce07794d00"
+    },
+    {
+      "comment": "evident-by: indicates the package's existence is evident by the given file",
+      "relatedSpdxElement": "SPDXRef-File-requirements-build.txt-458596483a88d4e1",
+      "relationshipType": "OTHER",
+      "spdxElementId": "SPDXRef-Package-python-wheel-3a9d5577afa1b279"
+    },
+    {
+      "comment": "evident-by: indicates the package's existence is evident by the given file",
+      "relatedSpdxElement": "SPDXRef-File-requirements.txt-26ca2b7dc025d550",
+      "relationshipType": "OTHER",
+      "spdxElementId": "SPDXRef-Package-python-urllib3-531a10a07587b59c"
+    },
+    {
+      "comment": "evident-by: indicates the package's existence is evident by the given file",
+      "relatedSpdxElement": "SPDXRef-File-requirements.txt-26ca2b7dc025d550",
+      "relationshipType": "OTHER",
+      "spdxElementId": "SPDXRef-Package-python-certifi-605ce44010623730"
+    },
+    {
+      "comment": "evident-by: indicates the package's existence is evident by the given file",
+      "relatedSpdxElement": "SPDXRef-File-requirements-build.txt-458596483a88d4e1",
+      "relationshipType": "OTHER",
+      "spdxElementId": "SPDXRef-Package-python-setuptools-7ae302e7223ecbbd"
+    },
+    {
+      "comment": "evident-by: indicates the package's existence is evident by the given file",
+      "relatedSpdxElement": "SPDXRef-File-requirements.txt-26ca2b7dc025d550",
+      "relationshipType": "OTHER",
+      "spdxElementId": "SPDXRef-Package-python-charset-normalizer-af8ef9b528d1324d"
+    },
+    {
+      "comment": "evident-by: indicates the package's existence is evident by the given file",
+      "relatedSpdxElement": "SPDXRef-File-requirements.txt-26ca2b7dc025d550",
+      "relationshipType": "OTHER",
+      "spdxElementId": "SPDXRef-Package-python-idna-ff5d4caf61299680"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-python-certifi-605ce44010623730",
+      "relationshipType": "CONTAINS",
+      "spdxElementId": "SPDXRef-DocumentRoot-Directory-."
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-python-charset-normalizer-af8ef9b528d1324d",
+      "relationshipType": "CONTAINS",
+      "spdxElementId": "SPDXRef-DocumentRoot-Directory-."
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-python-flit-core-24f242ce07794d00",
+      "relationshipType": "CONTAINS",
+      "spdxElementId": "SPDXRef-DocumentRoot-Directory-."
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-python-idna-ff5d4caf61299680",
+      "relationshipType": "CONTAINS",
+      "spdxElementId": "SPDXRef-DocumentRoot-Directory-."
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-python-requests-03176f57fdf54d1e",
+      "relationshipType": "CONTAINS",
+      "spdxElementId": "SPDXRef-DocumentRoot-Directory-."
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-python-setuptools-7ae302e7223ecbbd",
+      "relationshipType": "CONTAINS",
+      "spdxElementId": "SPDXRef-DocumentRoot-Directory-."
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-python-urllib3-531a10a07587b59c",
+      "relationshipType": "CONTAINS",
+      "spdxElementId": "SPDXRef-DocumentRoot-Directory-."
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-python-wheel-3a9d5577afa1b279",
+      "relationshipType": "CONTAINS",
+      "spdxElementId": "SPDXRef-DocumentRoot-Directory-."
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-DocumentRoot-Directory-.",
+      "relationshipType": "DESCRIBES",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    }
+  ],
+  "spdxVersion": "SPDX-2.3"
+}
