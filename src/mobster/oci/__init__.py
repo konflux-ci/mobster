@@ -1,8 +1,10 @@
 """
 This module contains OCI data types and code to manipulate them.
 """
+
 import asyncio
 import json
+import logging
 import os
 import tempfile
 from collections.abc import Generator
@@ -11,9 +13,8 @@ from pathlib import Path
 from typing import Any
 
 from mobster.error import SBOMError
-from mobster.log import get_mobster_logger
 
-logger = get_mobster_logger()
+logger = logging.getLogger(__name__)
 
 
 async def run_async_subprocess(

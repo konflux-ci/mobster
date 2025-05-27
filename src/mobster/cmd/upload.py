@@ -1,11 +1,11 @@
 """Upload command for the the Mobster application."""
 
+import logging
 from typing import Any
 
 from mobster.cmd.base import Command
-from mobster.log import get_mobster_logger
 
-LOGGER = get_mobster_logger()
+LOGGER = logging.getLogger(__name__)
 
 
 class TPAUploadCommand(Command):

@@ -1,13 +1,13 @@
 """A command execution module for generating SBOM documents."""
 
 import json
+import logging
 from abc import ABC
 from typing import Any
 
 from mobster.cmd.base import Command
-from mobster.log import get_mobster_logger
 
-LOGGER = get_mobster_logger()
+LOGGER = logging.getLogger(__name__)
 
 
 class GenerateCommand(Command, ABC):

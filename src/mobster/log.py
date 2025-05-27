@@ -5,15 +5,7 @@ Logging configuration and utility functions.
 import logging
 import logging.config
 
-
-def get_mobster_logger() -> logging.Logger:
-    """
-    Get the logger object with the name "mobster".
-    """
-    return logging.getLogger("mobster")
-
-
-logger = get_mobster_logger()
+logger = logging.getLogger(__name__)
 
 
 def setup_logging(verbose: bool) -> None:

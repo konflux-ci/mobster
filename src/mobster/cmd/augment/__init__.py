@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -11,12 +12,11 @@ from mobster.cmd.augment.handlers import CycloneDXVersion1, SPDXVersion2
 from mobster.cmd.base import Command
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
-from mobster.log import get_mobster_logger
 from mobster.oci.artifact import SBOM
 from mobster.oci.cosign import Cosign, CosignClient
 from mobster.release import Component, Snapshot, make_snapshot
 
-LOGGER = get_mobster_logger()
+LOGGER = logging.getLogger(__name__)
 
 
 class AugmentCommand(Command):

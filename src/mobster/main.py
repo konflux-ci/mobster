@@ -1,13 +1,14 @@
 """The main module of the Mobster application."""
 
 import asyncio
+import logging
 import sys
 from typing import Any
 
 from mobster import cli
-from mobster.log import get_mobster_logger, setup_logging
+from mobster.log import setup_logging
 
-LOGGER = get_mobster_logger()
+LOGGER = logging.getLogger(__name__)
 
 
 async def run(args: Any) -> None:
@@ -21,7 +22,6 @@ async def run(args: Any) -> None:
     command = args.func(args)
     await command.execute()
 
-    # TODO: is this bool approach ok or should we raise a special exception in the subcommands?
     ok = await command.save()
     code = 0 if ok else 1
     sys.exit(code)

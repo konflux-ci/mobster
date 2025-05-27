@@ -1,6 +1,8 @@
 """
 This module contains errors raised in SBOM generation.
 """
+
+
 class SBOMError(Exception):
     """
     Exception that can be raised during SBOM generation and enrichment.

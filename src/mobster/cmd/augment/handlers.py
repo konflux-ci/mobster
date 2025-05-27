@@ -2,17 +2,17 @@
 This module is used to augment release-time SBOMs.
 """
 
+import logging
 from typing import Any
 
 from packageurl import PackageURL
 
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
-from mobster.log import get_mobster_logger
 from mobster.oci.artifact import SBOMFormat
 from mobster.release import Component
 
-logger = get_mobster_logger()
+logger = logging.getLogger(__name__)
 
 
 class SPDXPackage:
@@ -248,6 +248,7 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
     """
     This class contains methods to update CycloneDX build-time SBOMs.
     """
+
     supported_versions = [
         SBOMFormat.CDX_V1_4,
         SBOMFormat.CDX_V1_5,

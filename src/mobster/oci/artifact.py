@@ -6,6 +6,7 @@ import base64
 import datetime
 import hashlib
 import json
+import logging
 from enum import Enum
 from typing import Any
 
@@ -13,9 +14,8 @@ import dateutil.parser
 
 from mobster.error import SBOMError
 from mobster.image import Image
-from mobster.log import get_mobster_logger
 
-logger = get_mobster_logger()
+logger = logging.getLogger(__name__)
 
 
 class Provenance02:
@@ -34,7 +34,8 @@ class Provenance02:
     @staticmethod
     def from_cosign_output(raw: bytes) -> "Provenance02":
         """
-        Create a Provenance02 object from a line of raw "cosign verify-attestation" output.
+        Create a Provenance02 object from a line of raw "cosign
+        verify-attestation" output.
         """
         encoded = json.loads(raw)
         att = json.loads(base64.b64decode(encoded["payload"]))
@@ -89,6 +90,7 @@ class SBOMFormat(Enum):
     """
     Enumeration of all SBOM formats supported for updates.
     """
+
     SPDX_2_0 = "SPDX-2.0"
     SPDX_2_1 = "SPDX-2.1"
     SPDX_2_2 = "SPDX-2.2"
@@ -104,6 +106,7 @@ class SBOM:
     """
     Object representing an SBOM for an image.
     """
+
     def __init__(self, doc: dict[Any, Any], digest: str, reference: str) -> None:
         """
         An SBOM downloaded using cosign.

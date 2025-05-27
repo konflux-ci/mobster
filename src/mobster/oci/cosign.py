@@ -4,22 +4,23 @@ The protocol is used mainly for testing. The tests inject a testing cosign
 client implementing the Cosign protocol.
 """
 
+import logging
 import typing
 from pathlib import Path
 
 from mobster.error import SBOMError
 from mobster.image import Image
-from mobster.log import get_mobster_logger
 from mobster.oci import make_oci_auth_file, run_async_subprocess
 from mobster.oci.artifact import SBOM, Provenance02
 
-logger = get_mobster_logger()
+logger = logging.getLogger(__name__)
 
 
 class Cosign(typing.Protocol):  # pragma: nocover
     """
     Definition of a Cosign protocl.
     """
+
     async def fetch_latest_provenance(self, image: Image) -> Provenance02:
         """
         Fetch the latest provenance for an image.
