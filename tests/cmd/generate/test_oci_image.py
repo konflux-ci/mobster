@@ -19,6 +19,6 @@ async def test_GenerateOciImageCommand_save(mock_dump: MagicMock) -> None:
     args.output = "/tmp/test.json"
     command = GenerateOciImageCommand(args)
     with patch("builtins.open", mock_open()):
-        await command.save()
+        assert await command.save()
 
     mock_dump.assert_called_once()
