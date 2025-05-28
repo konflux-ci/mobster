@@ -228,7 +228,6 @@ class TestMakeOciAuth:
     async def test_make_oci_auth_file_specified(
         self, reference: str, auth: str, expected: dict[str, Any]
     ) -> None:
-
         with tempfile.NamedTemporaryFile("+w") as tmpf:
             tmpf.write(auth)
             tmpf.flush()
@@ -479,9 +478,9 @@ class TestCosignClient:
                 loaded = json.load(fp)
                 predicate = loaded["predicate"]
                 if build_finished_on is not None:
-                    predicate["metadata"][
-                        "buildFinishedOn"
-                    ] = build_finished_on.isoformat()
+                    predicate["metadata"]["buildFinishedOn"] = (
+                        build_finished_on.isoformat()
+                    )
                 else:
                     del predicate["metadata"]["buildFinishedOn"]
             return predicate  # type: ignore

@@ -367,9 +367,9 @@ class VerifyCycloneDX:
             assert isinstance(purl_tag, str), f"Missing tag in identity purl {purl}."
             tags.remove(purl_tag)
 
-        assert (
-            len(tags) == 0
-        ), f"Not all tags present in identity purls, missing {tags}."
+        assert len(tags) == 0, (
+            f"Not all tags present in identity purls, missing {tags}."
+        )
 
     @staticmethod
     def find_matching_konflux_component(

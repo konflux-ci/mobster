@@ -168,7 +168,7 @@ def find_auth_file() -> Path | None:
     possible_auths: list[Path] = []
     if platform.system() == "Linux" and "XDG_RUNTIME_DIR" in os.environ:
         possible_auths.append(
-            Path(f"{os.environ.get("XDG_RUNTIME_DIR")}/containers/auth.json")
+            Path(f"{os.environ.get('XDG_RUNTIME_DIR')}/containers/auth.json")
         )
     else:
         possible_auths.append(
