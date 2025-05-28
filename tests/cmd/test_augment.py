@@ -2,17 +2,16 @@ import json
 import os
 from base64 import b64encode
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from packageurl import PackageURL
 
 from mobster.cmd.augment import (
-    AugmentCommand,
-    AugmentComponentCommand,
-    AugmentSnapshotCommand,
+    AugmentImageCommand,
     update_sbom,
     verify_sbom,
 )
@@ -26,78 +25,38 @@ from mobster.release import Component, Snapshot
 TESTDATA_PATH = Path(__file__).parent.parent.joinpath("data/component")
 
 
+@dataclass
 class AugmentArgs:
-    def __init__(
-        self, snapshot: Path, output: Path, verification_key: Path | None
-    ) -> None:
-        self.snapshot = snapshot
-        self.output = output
-        self.verification_key = verification_key
+    snapshot: Path
+    output: Path
+    verification_key: Path | None
+    reference: str | None
 
 
 async def awaitable(obj: Any) -> Any:
     return obj
 
 
-class TestAugmentComponentCommand:
-    @patch("mobster.cmd.augment.make_snapshot")
-    @patch("mobster.cmd.augment.AugmentCommand.augment")
-    @pytest.mark.asyncio
-    async def test_execute(
-        self, mock_augment: AsyncMock, mock_make_snapshot: AsyncMock
-    ) -> None:
-        snapshot_path = Path("snapshot.json")
-        output_path = Path("output/")
-
-        args = MagicMock()
-        args.snapshot = snapshot_path
-        args.output = output_path
-        args.reference = "quay.io/repo@sha256:deadbeef"
-        _, digest = args.reference.split("@", 1)
-
-        mock_snapshot = MagicMock()
-        mock_make_snapshot.return_value = mock_snapshot
-
-        cmd = AugmentComponentCommand(cli_args=args)
-
-        await cmd.execute()
-
-        mock_make_snapshot.assert_awaited_once_with(snapshot_path, digest)
-        mock_augment.assert_awaited_once_with(mock_snapshot)
-
-
-class TestAugmentSnapshotCommand:
-    @patch("mobster.cmd.augment.make_snapshot")
-    @patch("mobster.cmd.augment.AugmentCommand.augment")
-    @pytest.mark.asyncio
-    async def test_execute(
-        self, mock_augment: AsyncMock, mock_make_snapshot: AsyncMock
-    ) -> None:
-        snapshot_path = Path("snapshot.json")
-        output_path = Path("output/")
-
-        args = MagicMock()
-        args.snapshot = snapshot_path
-        args.output = output_path
-
-        mock_snapshot = MagicMock()
-        mock_make_snapshot.return_value = mock_snapshot
-
-        cmd = AugmentSnapshotCommand(cli_args=args)
-
-        await cmd.execute()
-
-        mock_make_snapshot.assert_awaited_once_with(snapshot_path)
-        mock_augment.assert_awaited_once_with(mock_snapshot)
+MakeAugmentCommand = Callable[[AugmentArgs, Snapshot | None], AugmentImageCommand]
 
 
 class TestAugmentCommand:
-    @pytest.fixture()
+    @pytest.fixture(params=[True, False], ids=["specific-image", "entire-snapshot"])
     def make_augment_command(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> Callable[[AugmentArgs], AugmentCommand]:
-        def _make_augment_command(args: AugmentArgs) -> AugmentCommand:
-            cmd = AugmentCommand(cli_args=args)
+        self, monkeypatch: pytest.MonkeyPatch, request: Any
+    ) -> MakeAugmentCommand:
+        pass_reference = request.param
+
+        def _make_augment_command(
+            args: AugmentArgs, snapshot: Snapshot | None
+        ) -> AugmentImageCommand:
+            if not pass_reference:
+                args.reference = None
+
+            cmd = AugmentImageCommand(cli_args=args)
+            monkeypatch.setattr(
+                "mobster.cmd.augment.make_snapshot", lambda *_: awaitable(snapshot)
+            )
             return cmd
 
         return _make_augment_command
@@ -106,7 +65,7 @@ class TestAugmentCommand:
     def fake_cosign(self) -> "FakeCosign":
         return FakeCosign.load()
 
-    @pytest.fixture()
+    @pytest.fixture(autouse=True)
     def patch_fake_cosign(
         self, monkeypatch: pytest.MonkeyPatch, fake_cosign: "FakeCosign"
     ) -> None:
@@ -128,14 +87,14 @@ class TestAugmentCommand:
     @pytest.fixture()
     def augment_command_save(
         self,
-        make_augment_command: Callable[[Any], AugmentCommand],
-    ) -> AugmentCommand:
+        make_augment_command: MakeAugmentCommand,
+    ) -> AugmentImageCommand:
         args = MagicMock()
         args.snapshot = Path("snapshot.json")
         args.output = Path("output")
         args.verification_key = Path("key.pub")
 
-        cmd = make_augment_command(args)
+        cmd = make_augment_command(args, None)
         cmd.sbom_update_ok = True
         cmd.sboms = [
             SBOM({}, "", "quay.io/repo@sha256:aaaaaaaa"),
@@ -147,7 +106,7 @@ class TestAugmentCommand:
     @pytest.mark.asyncio
     async def test_augment_command_save(
         self,
-        augment_command_save: AugmentCommand,
+        augment_command_save: AugmentImageCommand,
     ) -> None:
         with patch("mobster.cmd.augment.write_sbom") as mock_write_sbom:
             assert await augment_command_save.save()
@@ -155,7 +114,7 @@ class TestAugmentCommand:
 
     @pytest.mark.asyncio
     async def test_augment_command_save_failure(
-        self, augment_command_save: AugmentCommand
+        self, augment_command_save: AugmentImageCommand
     ) -> None:
         with patch("mobster.cmd.augment.write_sbom") as mock_write_sbom:
             mock_write_sbom.side_effect = ValueError
@@ -165,9 +124,8 @@ class TestAugmentCommand:
     @pytest.mark.asyncio
     async def test_augment_execute_singlearch(
         self,
-        make_augment_command: Callable[[AugmentArgs], AugmentCommand],
+        make_augment_command: MakeAugmentCommand,
         prepare_sbom: Callable[[str], SBOM],
-        patch_fake_cosign: None,
     ) -> None:
         reference = "quay.io/org/tenant/test@sha256:aaaaaaaa"
         repo, digest = reference.split("@", 1)
@@ -176,6 +134,7 @@ class TestAugmentCommand:
             snapshot=Path(""),
             output=Path("output"),
             verification_key=Path("key"),
+            reference=reference,
         )
 
         snapshot = Snapshot(
@@ -192,9 +151,9 @@ class TestAugmentCommand:
             ],
         )
 
-        cmd = make_augment_command(args)
+        cmd = make_augment_command(args, snapshot)
 
-        await cmd.augment(snapshot)
+        await cmd.execute()
 
         expected = prepare_sbom(reference).doc
 
@@ -204,9 +163,8 @@ class TestAugmentCommand:
     @pytest.mark.asyncio
     async def test_augment_execute_multiarch(
         self,
-        make_augment_command: Callable[[AugmentArgs], AugmentCommand],
+        make_augment_command: MakeAugmentCommand,
         prepare_sbom: Callable[[str], SBOM],
-        patch_fake_cosign: None,
     ) -> None:
         index_reference = "quay.io/org/tenant/test@sha256:bbbbbbbb"
         index_repo, index_digest = index_reference.split("@", 1)
@@ -218,6 +176,7 @@ class TestAugmentCommand:
             snapshot=Path(""),
             output=Path("output"),
             verification_key=None,
+            reference=index_reference,
         )
 
         snapshot = Snapshot(
@@ -235,9 +194,9 @@ class TestAugmentCommand:
             ],
         )
 
-        cmd = make_augment_command(args)
+        cmd = make_augment_command(args, snapshot)
 
-        await cmd.augment(snapshot)
+        await cmd.execute()
 
         expected_sboms = [
             prepare_sbom(
@@ -253,8 +212,7 @@ class TestAugmentCommand:
     @pytest.mark.asyncio
     async def test_augment_execute_cdx_singlearch(
         self,
-        make_augment_command: Callable[[AugmentArgs], AugmentCommand],
-        patch_fake_cosign: None,
+        make_augment_command: MakeAugmentCommand,
     ) -> None:
         reference = "quay.io/org/tenant/test@sha256:dddddddd"
         repo, digest = reference.split("@", 1)
@@ -263,6 +221,7 @@ class TestAugmentCommand:
             snapshot=Path(""),
             output=Path("output"),
             verification_key=None,
+            reference=reference,
         )
 
         snapshot = Snapshot(
@@ -279,9 +238,9 @@ class TestAugmentCommand:
             ],
         )
 
-        cmd = make_augment_command(args)
+        cmd = make_augment_command(args, snapshot)
 
-        await cmd.augment(snapshot)
+        await cmd.execute()
 
         assert len(cmd.sboms) == 1
         sbom = cmd.sboms[0]

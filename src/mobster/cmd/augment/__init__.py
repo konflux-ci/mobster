@@ -19,9 +19,9 @@ from mobster.release import Component, Snapshot, make_snapshot
 LOGGER = logging.getLogger(__name__)
 
 
-class AugmentCommand(Command):
+class AugmentImageCommand(Command):
     """
-    Superclass for Augment* commands.
+    Command for augmenting OCI image SBOMs.
 
     Attributes:
         sbom_update_ok (bool): True if all SBOMs updated successfully
@@ -34,15 +34,14 @@ class AugmentCommand(Command):
         self.sboms: list[SBOM] = []
 
     async def execute(self) -> Any:
-        raise NotImplementedError()  # pragma: nocover
-
-    async def augment(self, snapshot: Snapshot) -> None:
         """
-        Augment component SBOMs for a snapshot.
-
-        Args:
-            snapshot (Snapshot): The parsed snapshot
+        Update OCI image SBOMs based on the supplied args.
         """
+        digest = None
+        if self.cli_args.reference:
+            _, digest = self.cli_args.reference.split("@", 1)
+
+        snapshot = await make_snapshot(self.cli_args.snapshot, digest)
         verify = self.cli_args.verification_key is not None
         cosign = CosignClient(self.cli_args.verification_key)
 
@@ -70,36 +69,6 @@ class AugmentCommand(Command):
                 LOGGER.error("Error while writing SBOM %s: %s", sbom.reference, res)
 
         return ok and self.sbom_update_ok
-
-
-class AugmentComponentCommand(AugmentCommand):
-    """
-    Command to augment a single component based on the supplied image
-    reference.
-    """
-
-    async def execute(self) -> Any:
-        """
-        Execute the command to augment a component specified by the supplied
-        OCI image reference.
-        """
-        _, digest = self.cli_args.reference.split("@", 1)
-        snapshot = await make_snapshot(self.cli_args.snapshot, digest)
-        await self.augment(snapshot)
-
-
-class AugmentSnapshotCommand(AugmentCommand):
-    """
-    Command to augment all components in a snapshot.
-    """
-
-    async def execute(self) -> Any:
-        """
-        Execute the command to augment all components in the supplied mapped
-        snapshot file.
-        """
-        snapshot = await make_snapshot(self.cli_args.snapshot)
-        await self.augment(snapshot)
 
 
 async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:
