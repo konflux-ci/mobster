@@ -23,6 +23,9 @@ class Component:
         image (str): The component image being released.
         tags (list[str]): List of tags under which the image is being released.
         repository (str): The OCI repository the image is being released to.
+            Note that this may be different from image.repository, because that
+            points to the "hidden" repository (e.g. quay.io/redhat-prod/ubi9)
+            and this is the "public" repository (e.g. registry.redhat.io/ubi9).
     """
 
     name: str

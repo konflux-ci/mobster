@@ -58,6 +58,8 @@ class CosignClient(Cosign):
             image (Image): Image to fetch the provenances of.
         """
         with make_oci_auth_file(image.reference) as authfile:
+            # We ignore the transparency log, because as of now, Konflux builds
+            # don't publish to Rekor.
             cmd = [
                 "cosign",
                 "verify-attestation",
