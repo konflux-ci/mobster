@@ -5,14 +5,19 @@ import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from dateutil.parser import isoparse
 
 from mobster.error import SBOMError
 from mobster.image import Image
-from mobster.oci import get_image_manifest, make_oci_auth_file, run_async_subprocess
+from mobster.oci import (
+    find_auth_file,
+    get_image_manifest,
+    make_oci_auth_file,
+    run_async_subprocess,
+)
 from mobster.oci.artifact import SBOM, Provenance02
 from mobster.oci.cosign import CosignClient
 from tests.cmd.test_augment import load_provenance
@@ -188,78 +193,204 @@ async def test_get_image_manifest_failure(
                 await get_image_manifest(reference)
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ["reference", "auth", "expected"],
-    [
-        pytest.param(
-            "registry.redhat.io/test@sha256:deadbeef",
-            json.dumps(
-                {
-                    "auths": {
-                        "registry.redhat.io": {"auth": "token"},
-                        "docker.io": {"auth": "token"},
+class TestMakeOciAuth:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ["reference", "auth", "expected"],
+        [
+            pytest.param(
+                "registry.redhat.io/test@sha256:deadbeef",
+                json.dumps(
+                    {
+                        "auths": {
+                            "registry.redhat.io": {"auth": "token"},
+                            "docker.io": {"auth": "token"},
+                        }
                     }
-                }
+                ),
+                {"auths": {"registry.redhat.io": {"auth": "token"}}},
+                id="success",
             ),
-            {"auths": {"registry.redhat.io": {"auth": "token"}}},
-            id="success",
-        ),
-        pytest.param(
-            "registry.redhat.io/test@sha256:deadbeef",
-            json.dumps(
-                {
-                    "auths": {
-                        "docker.io": {"auth": "token"},
+            pytest.param(
+                "registry.redhat.io/test@sha256:deadbeef",
+                json.dumps(
+                    {
+                        "auths": {
+                            "docker.io": {"auth": "token"},
+                        }
                     }
-                }
+                ),
+                {"auths": {}},
+                id="no-auth",
             ),
-            {"auths": {}},
-            id="no-auth",
-        ),
-    ],
-)
-async def test_make_oci_auth_file(
-    reference: str, auth: str, expected: dict[str, Any]
-) -> None:
+        ],
+    )
+    async def test_make_oci_auth_file_specified(
+        self, reference: str, auth: str, expected: dict[str, Any]
+    ) -> None:
 
-    with tempfile.NamedTemporaryFile("+w") as tmpf:
-        tmpf.write(auth)
-        tmpf.flush()
+        with tempfile.NamedTemporaryFile("+w") as tmpf:
+            tmpf.write(auth)
+            tmpf.flush()
 
-        with make_oci_auth_file(reference, auth=Path(tmpf.name)) as new_auth_path:
-            with open(new_auth_path) as fp:
-                new_auth = json.load(fp)
+            with make_oci_auth_file(reference, auth=Path(tmpf.name)) as new_auth_path:
+                with open(new_auth_path) as fp:
+                    new_auth = json.load(fp)
 
-    assert new_auth == expected
+        assert new_auth == expected
 
+    @pytest.mark.asyncio
+    async def test_make_oci_auth_file_nonexistent_auth(self) -> None:
+        with pytest.raises(ValueError):
+            with make_oci_auth_file("", Path("/nonexistent")) as _:
+                pass
 
-@pytest.mark.asyncio
-async def test_make_oci_auth_file_default() -> None:
-    reference = "registry.redhat.io/test@sha256:deadbeef"
-    expected = {"auths": {"registry.redhat.io": {"auth": "token"}}}
+    @pytest.mark.asyncio
+    async def test_make_oci_auth_file_nonexistent_find_auth(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("mobster.oci.find_auth_file", lambda: None)
+        with pytest.raises(ValueError):
+            with make_oci_auth_file("") as _:
+                pass
 
-    with patch("builtins.open", mock_open(read_data=json.dumps(expected))):
-        with make_oci_auth_file(reference) as new_auth_path:
-            with open(new_auth_path) as fp:
-                new_auth = json.load(fp)
+    @pytest.mark.asyncio
+    async def test_make_oci_auth_file_registry_port(self) -> None:
+        reference = "registry.redhat.io:5000/test@sha256:deadbeef"
+        with pytest.raises(ValueError):
+            with make_oci_auth_file(reference) as _:
+                pass
 
-    assert new_auth == expected
+    @pytest.mark.parametrize(
+        ["linux", "env", "path_mapping", "expected"],
+        [
+            pytest.param(
+                True,
+                {
+                    "HOME": "/home/user",
+                    "XDG_RUNTIME_DIR": "/run/user/1000",
+                    "REGISTRY_AUTH_FILE": "/home/user/config.json",
+                },
+                {Path("/home/user/config.json"): True},
+                Path("/home/user/config.json"),
+                id="REGISTRY_AUTH_FILE-specified-exist",
+            ),
+            pytest.param(
+                True,
+                {
+                    "HOME": "/home/user",
+                    "XDG_RUNTIME_DIR": "/run/user/1000",
+                    "REGISTRY_AUTH_FILE": "/home/user/config.json",
+                },
+                {Path("/home/user/config.json"): False},
+                None,
+                id="REGISTRY_AUTH_FILE-specified-nonexist",
+            ),
+            pytest.param(
+                True,
+                {
+                    "HOME": "/home/user",
+                    "XDG_RUNTIME_DIR": "/run/user/1000",
+                },
+                {Path("/run/user/1000/containers/auth.json"): True},
+                Path("/run/user/1000/containers/auth.json"),
+                id="XDG_RUNTIME_DIR-specified-exist",
+            ),
+            pytest.param(
+                True,
+                {
+                    "HOME": "/home/user",
+                    "XDG_RUNTIME_DIR": "/run/user/1000",
+                },
+                {
+                    Path("/run/user/1000/containers/auth.json"): False,
+                    Path("/home/user/.docker/config.json"): True,
+                },
+                Path("/home/user/.docker/config.json"),
+                id="XDG_RUNTIME_DIR-specified-nonexist-docker-exist",
+            ),
+            pytest.param(
+                True,
+                {
+                    "HOME": "/home/user",
+                    "XDG_RUNTIME_DIR": "/run/user/1000",
+                },
+                {
+                    Path("/run/user/1000/containers/auth.json"): False,
+                    Path("/home/user/.docker/config.json"): False,
+                },
+                None,
+                id="XDG_RUNTIME_DIR-specified-nonexist-docker-nonexist",
+            ),
+            pytest.param(
+                True,
+                {
+                    "HOME": "/home/user",
+                },
+                {
+                    Path("/home/user/.docker/config.json"): True,
+                },
+                Path("/home/user/.docker/config.json"),
+                id="XDG_RUNTIME_DIR-unspecified-docker-exist",
+            ),
+            pytest.param(
+                True,
+                {
+                    "HOME": "/home/user",
+                },
+                {
+                    Path("/home/user/.docker/config.json"): False,
+                },
+                None,
+                id="XDG_RUNTIME_DIR-unspecified-docker-nonexist",
+            ),
+            pytest.param(
+                False,
+                {
+                    "HOME": "/home/user",
+                },
+                {
+                    Path("/home/user/.config/containers/auth.json"): True,
+                },
+                Path("/home/user/.config/containers/auth.json"),
+                id="NONLINUX-exists",
+            ),
+            pytest.param(
+                False,
+                {
+                    "HOME": "/home/user",
+                },
+                {
+                    Path("/home/user/.config/containers/auth.json"): False,
+                    Path("/home/user/.docker/config.json"): True,
+                },
+                Path("/home/user/.docker/config.json"),
+                id="NONLINUX-nonexists-docker-exists",
+            ),
+        ],
+    )
+    def test_find_auth_file_linux(
+        self,
+        linux: bool,
+        env: dict[str, str],
+        path_mapping: dict[Path, bool],
+        expected: Path | None,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        system = "Linux"
+        if not linux:
+            system = "Windows"
+        monkeypatch.setattr("mobster.oci.platform.system", lambda: system)
 
+        for name, val in env.items():
+            monkeypatch.setenv(name, val)
 
-@pytest.mark.asyncio
-async def test_make_oci_auth_file_nonexistent_auth() -> None:
-    with pytest.raises(ValueError):
-        with make_oci_auth_file("", Path("/nonexistent")) as _:
-            pass
+        def fake_is_file(path: Path) -> bool:
+            return path_mapping.get(path, False)
 
+        monkeypatch.setattr("mobster.oci.Path.is_file", fake_is_file)
 
-@pytest.mark.asyncio
-async def test_make_oci_auth_file_registry() -> None:
-    reference = "registry.redhat.io:5000/test@sha256:deadbeef"
-    with pytest.raises(ValueError):
-        with make_oci_auth_file(reference) as _:
-            pass
+        assert find_auth_file() == expected
 
 
 def test_provenance_bad_predicate_type() -> None:

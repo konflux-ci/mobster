@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import os
+import platform
 import tempfile
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -102,15 +103,20 @@ def make_oci_auth_file(
                 perform_work_in_oci()
     """
     if auth is None:
-        auth = Path(os.path.expanduser("~/.docker/config.json"))
+        logger.debug("No auth path provided to make_oci_auth_file.")
+        auth = find_auth_file()
+        if auth is None:
+            raise ValueError("Could not find a valid OCI authentication file.")
 
     if not auth.is_file():
-        raise ValueError(f"No docker config file at {auth}")
+        raise ValueError(f"No auth config file at {auth}.")
 
     if reference.count(":") > 1:
         raise ValueError(
             f"Multiple ':' symbols in {reference}. Registry ports are not supported."
         )
+
+    logger.debug("Looking for auth entry for %s in auth file %s", reference, auth)
 
     repository, _ = reference.split("@", 1)
     # Registry is up to the first slash
@@ -144,3 +150,37 @@ def make_oci_auth_file(
         if tmpfile is not None:
             # this also deletes the file
             tmpfile.close()
+
+
+def find_auth_file() -> Path | None:
+    """
+    Find an authentication file that can be used to access an OCI registry.
+    Mimics the process that podman uses on login:
+    https://docs.podman.io/en/v5.1.0/markdown/podman-login.1.html
+
+    Returns:
+        Path | None: A path to the authentication file if it exists, or None
+    """
+    if "REGISTRY_AUTH_FILE" in os.environ:
+        path = Path(os.environ["REGISTRY_AUTH_FILE"])
+        return path if path.is_file() else None
+
+    possible_auths: list[Path] = []
+    if platform.system() == "Linux" and "XDG_RUNTIME_DIR" in os.environ:
+        possible_auths.append(
+            Path(f"{os.environ.get("XDG_RUNTIME_DIR")}/containers/auth.json")
+        )
+    else:
+        possible_auths.append(
+            Path(os.path.expanduser("~/.config/containers/auth.json"))
+        )
+
+    docker_auth = Path(os.path.expanduser("~/.docker/config.json"))
+    possible_auths.append(docker_auth)
+    logger.debug("List of possible OCI auth files: %s", possible_auths)
+
+    for curr_auth in possible_auths:
+        if curr_auth.is_file():
+            return curr_auth
+
+    return None
