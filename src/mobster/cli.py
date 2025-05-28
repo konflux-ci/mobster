@@ -228,6 +228,14 @@ def augment_command_parser(subparsers: Any) -> None:
     augment_parser = subparsers.add_parser(
         "augment", help="augment SBOMs with additional information"
     )
+    augment_parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path.cwd(),
+        help="path to the output file. If not provided, the SBOMs will be saved "
+        "to the working directory",
+    )
+
     augment_subparsers = augment_parser.add_subparsers(dest="type", required=True)
     generate_augment_oci_image_parser(augment_subparsers)
 
@@ -239,14 +247,7 @@ def generate_augment_oci_image_parser(subparsers: Any) -> None:
     augment_oci_image_parser = subparsers.add_parser(
         "oci-image",
         help="augment SBOM documents with additional information from a mapped"
-        "snapshot spec and save them to a directory.",
-    )
-
-    augment_oci_image_parser.add_argument(
-        "--output",
-        type=Path,
-        help="path to the output file. If not provided, the SBOMs will be saved "
-        "to the working directory",
+        "snapshot spec and save them to a directory",
     )
     augment_oci_image_parser.add_argument(
         "--snapshot",
