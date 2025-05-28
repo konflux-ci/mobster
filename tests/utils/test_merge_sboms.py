@@ -10,13 +10,17 @@ from packageurl import PackageURL
 
 from mobster.utils.merge_sboms import (
     CDXComponent,
-    ComponentsMerger,
     CycloneDXMerger,
     SBOMItem,
-    SBOMMergerProcessor,
     SPDXMerger,
     SPDXPackage,
+    _create_merger,
+    _detect_sbom_type,
+    _get_syft_component_filter,
+    _subpath_is_version,
     fallback_key,
+    merge_by_apparent_sameness,
+    merge_by_prefering_hermeto,
     merge_sboms,
     try_parse_purl,
     wrap_as_cdx,
@@ -67,7 +71,7 @@ def count_components(sbom: dict[str, Any]) -> Counter[str]:
             return purl.to_string()  # type: ignore
         return fallback_key(component)  # type: ignore
 
-    if SBOMMergerProcessor._detect_sbom_type(sbom) == "cyclonedx":
+    if _detect_sbom_type(sbom) == "cyclonedx":
         components = wrap_as_cdx(sbom["components"])
     else:
         components = wrap_as_spdx(sbom["packages"])
@@ -253,9 +257,9 @@ def test_wrap_as_spdx() -> None:
 
 
 def test__subpath_is_version() -> None:
-    assert ComponentsMerger._subpath_is_version("v2") is True
-    assert ComponentsMerger._subpath_is_version("v10noversion") is False
-    assert ComponentsMerger._subpath_is_version("noversion") is False
+    assert _subpath_is_version("v2") is True
+    assert _subpath_is_version("v10noversion") is False
+    assert _subpath_is_version("noversion") is False
 
 
 @pytest.mark.parametrize(
@@ -328,8 +332,8 @@ def test__merge_tools_metadata(
         "components": [],
     }
 
-    merger = CycloneDXMerger(ComponentsMerger.merge_by_apparent_sameness)
-    merger2 = CycloneDXMerger(ComponentsMerger.merge_by_prefering_hermeto)
+    merger = CycloneDXMerger(merge_by_apparent_sameness)
+    merger2 = CycloneDXMerger(merge_by_prefering_hermeto)
     result = merger.merge(syft_sbom, hermeto_sbom)
     result2 = merger2.merge(syft_sbom, hermeto_sbom)
 
@@ -356,7 +360,7 @@ def test__merge_tools_metadata_invalid() -> None:
         "components": [],
     }
 
-    merger = CycloneDXMerger(ComponentsMerger.merge_by_apparent_sameness)
+    merger = CycloneDXMerger(merge_by_apparent_sameness)
     with pytest.raises(RuntimeError):
         merger.merge(syft_sbom, hermeto_sbom)
 
@@ -404,17 +408,13 @@ def make_cdx_component(
 def test__get_syft_component_filter_duplicate_by_key() -> None:
     hermeto_spdx = [make_spdx_package("foo", "1.0.0", "pkg:pypi/foo@1.0.0")]
     syft_spdx = [make_spdx_package("foo", "1.0.0", "pkg:pypi/foo@1.0.0")]
-    component_is_removable_spdx = ComponentsMerger._get_syft_component_filter(
-        hermeto_spdx
-    )
+    component_is_removable_spdx = _get_syft_component_filter(hermeto_spdx)
 
     assert component_is_removable_spdx(syft_spdx[0]) is True
 
     hermeto_cdx = [make_cdx_component("foo", "1.0.0", "pkg:pypi/foo@1.0.0")]
     syft_cdx = [make_cdx_component("foo", "1.0.0", "pkg:pypi/foo@1.0.0")]
-    component_is_removable_cdx = ComponentsMerger._get_syft_component_filter(
-        hermeto_cdx
-    )
+    component_is_removable_cdx = _get_syft_component_filter(hermeto_cdx)
     assert component_is_removable_cdx(syft_cdx[0]) is True
 
 
@@ -425,9 +425,7 @@ def test__get_syft_component_filter_duplicate_non_registry() -> None:
         )
     ]
     syft_spdx = [make_spdx_package("bar", "2.0.0", "pkg:pypi/bar@2.0.0")]
-    component_is_removable_spdx = ComponentsMerger._get_syft_component_filter(
-        hermeto_spdx
-    )
+    component_is_removable_spdx = _get_syft_component_filter(hermeto_spdx)
     assert component_is_removable_spdx(syft_spdx[0]) is True
 
     hermeto_cdx = [
@@ -436,27 +434,21 @@ def test__get_syft_component_filter_duplicate_non_registry() -> None:
         )
     ]
     syft_cdx = [make_cdx_component("bar", "2.0.0", "pkg:pypi/bar@2.0.0")]
-    component_is_removable_cdx = ComponentsMerger._get_syft_component_filter(
-        hermeto_cdx
-    )
+    component_is_removable_cdx = _get_syft_component_filter(hermeto_cdx)
     assert component_is_removable_cdx(syft_cdx[0]) is True
 
 
 def test__get_syft_component_filter_duplicate_npm_localpath() -> None:
     hermeto_spdx = [make_spdx_package("baz", "3.0.0", "pkg:npm/baz@3.0.0#subdir")]
     syft_spdx = [make_spdx_package("subdir", "3.0.0", "pkg:npm/subdir@3.0.0")]
-    component_is_removable_spdx = ComponentsMerger._get_syft_component_filter(
-        hermeto_spdx
-    )
+    component_is_removable_spdx = _get_syft_component_filter(hermeto_spdx)
 
     assert component_is_removable_spdx(syft_spdx[0]) is True
 
     hermeto_cdx = [make_cdx_component("baz", "3.0.0", "pkg:npm/baz@3.0.0#subdir")]
 
     syft_cdx = [make_cdx_component("subdir", "3.0.0", "pkg:npm/subdir@3.0.0")]
-    component_is_removable_cdx = ComponentsMerger._get_syft_component_filter(
-        hermeto_cdx
-    )
+    component_is_removable_cdx = _get_syft_component_filter(hermeto_cdx)
     assert component_is_removable_cdx(syft_cdx[0]) is True
 
 
@@ -466,7 +458,7 @@ def test__get_syft_component_filter_local_golang_replacement() -> None:
         make_spdx_package(".localmod", "(devel)", "pkg:golang/.localmod@(devel)"),
         make_spdx_package(".local", "(devel)", "pkg:golang/.local@@(devel)#subdir"),
     ]
-    component_is_removable = ComponentsMerger._get_syft_component_filter(hermeto)
+    component_is_removable = _get_syft_component_filter(hermeto)
     assert component_is_removable(syft[0]) is True
     assert component_is_removable(syft[1]) is True
 
@@ -474,22 +466,22 @@ def test__get_syft_component_filter_local_golang_replacement() -> None:
 def test__get_syft_component_filter_not_duplicate() -> None:
     hermeto = [make_cdx_component("foo", "1.0.0", "pkg:pypi/foo@1.0.0")]
     syft = [make_cdx_component("bar", "2.0.0", "pkg:pypi/bar@2.0.0")]
-    component_is_removable = ComponentsMerger._get_syft_component_filter(hermeto)
+    component_is_removable = _get_syft_component_filter(hermeto)
     assert component_is_removable(syft[0]) is False
 
 
-@patch("mobster.utils.merge_sboms.SBOMMergerProcessor._detect_sbom_type")
+@patch("mobster.utils.merge_sboms._detect_sbom_type")
 def test__create_merger(mock_detect_sbom_type: Mock) -> None:
     mock_detect_sbom_type.return_value = "cyclonedx"
 
     def mock_function() -> None:
         pass
 
-    merger = SBOMMergerProcessor._create_merger({}, {}, mock_function)
+    merger = _create_merger({}, {}, mock_function)
     assert isinstance(merger, CycloneDXMerger)
 
     mock_detect_sbom_type.return_value = "spdx"
-    merger = SBOMMergerProcessor._create_merger({}, {}, mock_function)
+    merger = _create_merger({}, {}, mock_function)
     assert isinstance(merger, SPDXMerger)
 
 
@@ -513,7 +505,7 @@ def test__create_merger_invalid() -> None:
         pass
 
     with pytest.raises(ValueError):
-        SBOMMergerProcessor._create_merger(spdx_sbom, cycloneDX_sbom, mock_function)
+        _create_merger(spdx_sbom, cycloneDX_sbom, mock_function)
 
 
 @pytest.mark.parametrize(
@@ -542,7 +534,7 @@ def test__create_merger_invalid() -> None:
     ],
 )
 def test__detect_sbom_type(sbom: dict[str, Any], expected_type: str) -> None:
-    assert SBOMMergerProcessor._detect_sbom_type(sbom) == expected_type
+    assert _detect_sbom_type(sbom) == expected_type
 
 
 def test__detect_sbom_type_invalid() -> None:
@@ -551,7 +543,7 @@ def test__detect_sbom_type_invalid() -> None:
     }
 
     with pytest.raises(ValueError):
-        SBOMMergerProcessor._detect_sbom_type(invalid_sbom)
+        _detect_sbom_type(invalid_sbom)
 
 
 @pytest.mark.parametrize(
