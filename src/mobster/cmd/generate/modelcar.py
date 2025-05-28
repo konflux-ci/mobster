@@ -93,6 +93,7 @@ class GenerateModelcarCommand(GenerateCommand):
         # Add the base and model components to the BOM
         document.components.add(base_component)
         document.components.add(model_component)
+        document.components.add(root_component)
 
         # Add the dependencies between the root, base, and model components
         document.dependencies.add(

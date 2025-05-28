@@ -25,6 +25,19 @@
       "purl": "pkg:oci/model@sha256:087dc7896b97911a582702b45ff1d41ffa3e142d0b000b0fbb11058188293cfc?repository_url=quay.io/example/model",
       "type": "container",
       "version": "v1"
+    },
+    {
+      "bom-ref": "BomRef.modelcar-665ffa505e404dbd7df8918346c1c47bf75f67b8a530f9aa19a89dfc93068c06",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "cc6016b62f25d56507033c48b04517ba40b3490b1e9b01f1c485371311ed42c4"
+        }
+      ],
+      "name": "modelcar",
+      "purl": "pkg:oci/modelcar@sha256:cc6016b62f25d56507033c48b04517ba40b3490b1e9b01f1c485371311ed42c4?repository_url=quay.io/example/modelcar",
+      "type": "container",
+      "version": "v22"
     }
   ],
   "dependencies": [
