@@ -61,8 +61,7 @@ async def get_image_manifest(reference: str) -> dict[str, Any]:
     repository.
 
     Args:
-        repository (str): image repository URL
-        image_digest (str): an image digest in the form sha256:<sha>
+        reference (str): full image reference (repository@sha256<sha>)
     """
     logger.info("Fetching manifest for %s", reference)
 

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class Cosign(typing.Protocol):  # pragma: nocover
     """
-    Definition of a Cosign protocl.
+    Definition of a Cosign protocol.
     """
 
     async def fetch_latest_provenance(self, image: Image) -> Provenance02:

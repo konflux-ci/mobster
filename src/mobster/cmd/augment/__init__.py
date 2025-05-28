@@ -149,9 +149,9 @@ async def update_sbom(
     component: Component, image: Image, cosign: Cosign, verify: bool
 ) -> SBOM | None:
     """
-    Update an SBOM of an image in a repository and save it to a directory.
-    Determines format of the SBOM and calls the correct handler or throws
-    SBOMError if the format of the SBOM is unsupported.
+    Get an augmented SBOM of an image in a repository. Determines format of the
+    SBOM and calls the correct handler or throws SBOMError if the format of the
+    SBOM is unsupported.
 
     Args:
         component (Component): The component the image belongs to.
@@ -177,7 +177,7 @@ async def update_component_sboms(
     component: Component, cosign: Cosign, verify: bool
 ) -> tuple[bool, list[SBOM]]:
     """
-    Update SBOMs for a component and save them to a directory.
+    Update SBOMs for a component.
 
     Handles multiarch images as well.
 
@@ -210,8 +210,7 @@ async def update_sboms(
     snapshot: Snapshot, cosign: Cosign, verify: bool
 ) -> tuple[bool, list[SBOM]]:
     """
-    Update component SBOMs with release-time information based on a Snapshot and
-    save them to a directory.
+    Update component SBOMs with release-time information based on a Snapshot.
 
     Args:
         snapshot (Snapshot): an object representing a snapshot being released.
