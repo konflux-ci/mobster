@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 from packageurl import PackageURL
 
-from mobster.utils.merge_sboms import (
+from mobster.sbom.merge import (
     CDXComponent,
     CycloneDXMerger,
     SBOMItem,
@@ -61,7 +61,7 @@ INDIVIDUAL_SYFT_SBOMS = [
 @pytest.fixture
 def data_dir() -> Path:
     """Path to the directory for storing SBOM sample test data."""
-    return Path(__file__).parent / "test_data"
+    return Path(__file__).parent / "test_merge_data"
 
 
 def count_components(sbom: dict[str, Any]) -> Counter[str]:
@@ -470,7 +470,7 @@ def test__get_syft_component_filter_not_duplicate() -> None:
     assert component_is_removable(syft[0]) is False
 
 
-@patch("mobster.utils.merge_sboms._detect_sbom_type")
+@patch("mobster.sbom.merge._detect_sbom_type")
 def test__create_merger(mock_detect_sbom_type: Mock) -> None:
     mock_detect_sbom_type.return_value = "cyclonedx"
 
