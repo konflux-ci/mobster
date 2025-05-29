@@ -1,6 +1,7 @@
 import json
 import pathlib
 import tempfile
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -73,5 +74,22 @@ async def test_generate_modelcar_sbom(
                 result["metadata"]["timestamp"] = expected_output["metadata"][
                     "timestamp"
                 ]
+                root_bom_ref = result["metadata"]["component"]["bom-ref"]
+                patch_bom_ref(
+                    result,
+                    root_bom_ref,
+                    expected_output["metadata"]["component"]["bom-ref"],
+                )
 
             assert result == expected_output
+
+
+def patch_bom_ref(document: Any, old: str, new: str) -> Any:
+    document["metadata"]["component"]["bom-ref"] = new
+    for component in document["components"]:
+        if component["bom-ref"] == old:
+            component["bom-ref"] = new
+    for dependency in document["dependencies"]:
+        if dependency["ref"] == old:
+            dependency["ref"] = new
+    return document
