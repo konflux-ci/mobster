@@ -666,7 +666,7 @@ def _merge_sboms(
 
 
 def merge_syft_and_hermeto_sboms(
-    syft_sbom_paths: list[str], hermeto_sbom_path: str
+    syft_sbom_paths: list[Path], hermeto_sbom_path: Path
 ) -> dict[str, Any]:
     """
     Merge multiple Syft and 1 hermeto SBOMs.
@@ -679,7 +679,7 @@ def merge_syft_and_hermeto_sboms(
     return _merge_sboms(syft_sbom, hermeto_sbom, merge_by_prefering_hermeto)
 
 
-def merge_multiple_syft_sboms(syft_sbom_paths: list[str]) -> dict[str, Any]:
+def merge_multiple_syft_sboms(syft_sbom_paths: list[Path]) -> dict[str, Any]:
     """
     Merge multiple Syft SBOMs.
     """
@@ -697,7 +697,7 @@ def merge_multiple_syft_sboms(syft_sbom_paths: list[str]) -> dict[str, Any]:
 
 
 def merge_sboms(
-    syft_sbom_paths: list[str], hermeto_sbom_path: str | None = None
+    syft_sbom_paths: list[Path], hermeto_sbom_path: Path | None = None
 ) -> dict[str, Any]:
     """
     Merge multiple SBOMs.

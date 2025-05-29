@@ -51,10 +51,10 @@ TOOLS_METADATA = {
 }
 
 INDIVIDUAL_SYFT_SBOMS = [
-    "syft-sboms/gomod-pandemonium.bom.json",
-    "syft-sboms/npm-cachi2-smoketest.bom.json",
-    "syft-sboms/pip-e2e-test.bom.json",
-    "syft-sboms/ubi-micro.bom.json",
+    Path("syft-sboms/gomod-pandemonium.bom.json"),
+    Path("syft-sboms/npm-cachi2-smoketest.bom.json"),
+    Path("syft-sboms/pip-e2e-test.bom.json"),
+    Path("syft-sboms/ubi-micro.bom.json"),
 ]
 
 
@@ -549,11 +549,11 @@ def test__detect_sbom_type_invalid() -> None:
 @pytest.mark.parametrize(
     "syft_sboms, hermeto_sbom",
     [
-        (["syft.merged-by-us.bom.json"], "cachi2.bom.json"),
+        ([Path("syft.merged-by-us.bom.json")], Path("cachi2.bom.json")),
         (
             INDIVIDUAL_SYFT_SBOMS,
             # merging these 4 should result in syft.merged-by-us.bom.json
-            "cachi2.bom.json",
+            Path("cachi2.bom.json"),
             # merging the result with the cachi2.bom.json should be the same as the cases above
         ),
     ],
@@ -627,8 +627,8 @@ def test__detect_sbom_type_invalid() -> None:
     ],
 )
 def test_merge_syft_and_hermeto_sboms(
-    syft_sboms: list[str],
-    hermeto_sbom: str,
+    syft_sboms: list[Path],
+    hermeto_sbom: Path,
     sbom_type: str,
     should_take_from_syft: dict[str, int],
     data_dir: Path,
@@ -637,12 +637,12 @@ def test_merge_syft_and_hermeto_sboms(
     monkeypatch.chdir(data_dir / sbom_type)
     result = merge_sboms(syft_sboms, hermeto_sbom)
 
-    with open("merged.bom.json") as file:
+    with open("merged.bom.json", encoding="utf-8") as file:
         expected_sbom = json.load(file)
 
     assert result == expected_sbom
 
-    with open("cachi2.bom.json") as f:
+    with open("cachi2.bom.json", encoding="utf-8") as f:
         cachi2_sbom = json.load(f)
 
     taken_from_syft = diff_counts(
@@ -713,12 +713,12 @@ def test_merge_multiple_syft_sboms(
         INDIVIDUAL_SYFT_SBOMS,
     )
 
-    with open("syft.merged-by-us.bom.json") as f:
+    with open("syft.merged-by-us.bom.json", encoding="utf-8") as f:
         merged_by_us = json.load(f)
 
     assert result == merged_by_us
 
-    with open("syft.merged-by-syft.bom.json") as f:
+    with open("syft.merged-by-syft.bom.json", encoding="utf-8") as f:
         merged_by_syft = json.load(f)
 
     compared_to_syft = diff_counts(
@@ -745,13 +745,13 @@ def test_merge_multiple_syft_sboms(
 @pytest.mark.parametrize(
     "syft_sboms, hermeto_sbom",
     [
-        ([], "hermeto-bom.json"),
-        (["only-one-syft.bom.json"], None),
+        ([], Path("hermeto-bom.json")),
+        ([Path("only-one-syft.bom.json")], None),
     ],
 )
 def test_merge_sboms_invalid(
-    syft_sboms: list[str],
-    hermeto_sbom: str | None,
+    syft_sboms: list[Path],
+    hermeto_sbom: Path | None,
 ) -> None:
     """Test the merge_sboms function."""
     with pytest.raises(ValueError):
