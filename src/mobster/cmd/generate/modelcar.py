@@ -35,7 +35,7 @@ class GenerateModelcarCommand(GenerateCommand):
         self._content = sbom
         return self.content
 
-    async def save(self) -> None:
+    async def save(self) -> bool:
         """
         Convert document to JSON and save it to a file.
         """
@@ -50,7 +50,8 @@ class GenerateModelcarCommand(GenerateCommand):
                     self._content,
                     str(self.cli_args.output),
                     validate=True,
-                )
+                )  # pylint: disable=duplicate-code
+        return True
 
     async def to_sbom(self, modelcar: Image, base: Image, model: Image) -> Any:
         """

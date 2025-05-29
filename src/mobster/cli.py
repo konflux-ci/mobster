@@ -224,30 +224,50 @@ def generate_oci_artifact_parser(subparsers: Any) -> None:
 def augment_command_parser(subparsers: Any) -> None:
     """
     A parser for augmenting SBOMs documents.
-
     """
     augment_parser = subparsers.add_parser(
-        "augment", help="Augment an SBOM document with additional information"
+        "augment", help="augment SBOMs with additional information"
     )
-    augment_subparser = augment_parser.add_subparsers(dest="type", required=True)
-    augment_oci_image_parser(augment_subparser)
-
-
-def augment_oci_image_parser(subparsers: Any) -> None:
-    """
-    A parser for augmenting SBOMs documents for OCI image.
-    """
-    oci_image_parser = subparsers.add_parser(
-        "oci-image", help="Augment an SBOM document for OCI image"
-    )
-    oci_image_parser.add_argument(
-        "--snapshot-path",
-        required=True,
+    augment_parser.add_argument(
+        "--output",
         type=Path,
-        help="Path to the snapshot spec file in JSON format.",
+        default=Path.cwd(),
+        help="path to the output file. If not provided, the SBOMs will be saved "
+        "to the working directory",
     )
 
-    oci_image_parser.set_defaults(func=augment.AugmentComponentCommand)
+    augment_subparsers = augment_parser.add_subparsers(dest="type", required=True)
+    generate_augment_oci_image_parser(augment_subparsers)
+
+
+def generate_augment_oci_image_parser(subparsers: Any) -> None:
+    """
+    A parser for augmenting SBOMs for OCI images.
+    """
+    augment_oci_image_parser = subparsers.add_parser(
+        "oci-image",
+        help="augment SBOM documents with additional information from a mapped"
+        "snapshot spec and save them to a directory",
+    )
+    augment_oci_image_parser.add_argument(
+        "--snapshot",
+        type=Path,
+        required=True,
+        help="path to the mapped snapshot spec file in JSON format",
+    )
+    augment_oci_image_parser.add_argument(
+        "--reference",
+        type=str,
+        help="OCI image reference in the format <repository>@<digest>. If "
+        "unspecified, SBOMs for all images in the snapshot will be augmented",
+    )
+    augment_oci_image_parser.add_argument(
+        "--verification-key",
+        type=Path,
+        help="path to public key used to verify the image provenance",
+    )
+
+    augment_oci_image_parser.set_defaults(func=augment.AugmentImageCommand)
 
 
 def upload_command_parser(subparsers: Any) -> None:

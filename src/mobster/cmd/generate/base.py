@@ -25,7 +25,7 @@ class GenerateCommand(Command, ABC):
         """
         return self._content
 
-    async def save(self) -> None:
+    async def save(self) -> bool:
         """
         Save the SBOM document to a file if the output argument is provided.
         """
@@ -33,3 +33,4 @@ class GenerateCommand(Command, ABC):
             LOGGER.debug("Saving SBOM document to '%s'", self.cli_args.output)
             with open(self.cli_args.output, "w", encoding="utf8") as output_file:
                 json.dump(self.content, output_file, indent=2)
+        return True

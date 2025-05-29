@@ -1,6 +1,10 @@
+from typing import Any
+from unittest.mock import patch
+
 import pytest
 
-from mobster.image import Image
+from mobster.error import SBOMError
+from mobster.image import Image, IndexImage
 
 
 def test_image() -> None:
@@ -74,3 +78,53 @@ def test_image_from_oci_artifact_reference() -> None:
     assert (
         image.digest_hex_val == "1234567890abcdef1234567890abcdef1234567890abcdef123456"
     )
+
+
+@pytest.mark.parametrize(
+    ["manifest", "image"],
+    [
+        pytest.param(
+            {"mediaType": "application/vnd.oci.image.manifest.v1+json"},
+            Image("quay.io/repo", "sha256:deadbeef"),
+            id="single-arch",
+        ),
+        pytest.param(
+            {
+                "mediaType": "application/vnd.oci.image.index.v1+json",
+                "manifests": [{"digest": "sha256:aaaaaaaa"}],
+            },
+            IndexImage(
+                "quay.io/repo",
+                "sha256:deadbeef",
+                children=[Image("quay.io/repo", "sha256:aaaaaaaa")],
+            ),
+            id="multiarch",
+        ),
+    ],
+)
+@pytest.mark.asyncio
+async def test_image_from_repo_digest(manifest: dict[Any, Any], image: Image) -> None:
+    async def fake_get_image_manifest(_: Any) -> dict[Any, Any]:
+        return manifest
+
+    with patch(
+        "mobster.image.get_image_manifest", side_effect=fake_get_image_manifest
+    ) as mock_get_image_manifest:
+        assert image == await Image.from_repository_digest_manifest(
+            "quay.io/repo", "sha256:deadbeef"
+        )
+        mock_get_image_manifest.assert_awaited_once_with(image.reference)
+
+
+@pytest.mark.asyncio
+async def test_image_from_repo_digest_unsupported_manifest() -> None:
+    manifest = {"mediaType": "unsupported/manifest"}
+
+    async def fake_get_image_manifest(_: Any) -> dict[Any, Any]:
+        return manifest
+
+    with patch("mobster.image.get_image_manifest", side_effect=fake_get_image_manifest):
+        with pytest.raises(SBOMError):
+            await Image.from_repository_digest_manifest(
+                "quay.io/repo", "sha256:deadbeef"
+            )
