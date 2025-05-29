@@ -47,7 +47,7 @@ def sboms_path(testdata_path: Path) -> Path:
         ),
         pytest.param(
             0,
-            {"PATH": "/usr/bin"},
+            {"ENV_VAR": "/usr/bin"},
             [(0, b"output", b"")],
             (0, b"output", b""),
             id="custom-env",
@@ -80,7 +80,9 @@ async def test_run_async_subprocess(
     env: dict[str, Any],
     exec_results: list[tuple[int, bytes, bytes]],
     expected: tuple[int, bytes, bytes],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setenv("EXISTING", "VAR")
     with patch("asyncio.create_subprocess_exec") as mock_exec:
         mock_processes = []
         for return_code, stdout, stderr in exec_results:
@@ -99,7 +101,11 @@ async def test_run_async_subprocess(
         assert mock_exec.call_count == min(len(exec_results), retry_times + 1)
 
         for call in mock_exec.call_args_list:
-            assert call.kwargs["env"] == env
+            # make sure we keep the existing env vars
+            assert "EXISTING" in call.kwargs["env"]
+            # make sure we pass env vars
+            if env is not None:
+                assert env.items() <= call.kwargs["env"].items()
 
 
 @pytest.mark.asyncio
