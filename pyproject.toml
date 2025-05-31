@@ -82,7 +82,7 @@ yamllint = "^1.37.0"
 tox = "^4.25.0"
 pip-audit = "^2.9.0"
 pylint = "^3.3.7"
-pytest-asyncio = "^0.26.0"
+pytest-asyncio = "^1.0.0"
 types-python-dateutil = "^2.9.0.20241206"
 types-aiofiles = "^24.1.0.20250516"
 
