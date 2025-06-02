@@ -363,8 +363,17 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
             metadata["tools"] = {"components": []}
 
         components = metadata["tools"]["components"]
-        if "Mobster" not in [c["name"] for c in components]:
+        if not self._has_current_mobster_version(components):
             components.append(cyclonedx.get_tools_component_dict())
+
+    def _has_current_mobster_version(self, components: list[Any]) -> bool:
+        """
+        Check whether a list of components contains a component with name
+        "Mobster" and the current Mobster version.
+        """
+        return ("Mobster", get_mobster_version()) in [
+            (c["name"], c.get("version")) for c in components
+        ]
 
     def _update_metadata_component(
         self, kflx_component: Component, image: Image, sbom: Any
