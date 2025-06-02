@@ -4,8 +4,9 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from mobster.cmd import augment, upload
+from mobster.cmd import augment
 from mobster.cmd.generate import modelcar, oci_artifact, oci_image, oci_index, product
+from mobster.cmd.upload import upload
 
 
 def setup_arg_parser() -> argparse.ArgumentParser:
@@ -302,7 +303,10 @@ def upload_tpa_parser(subparsers: Any) -> None:
         default=1,
         help="Number of workers to execute uploads in parallel",
     )
-    tpa_parser.add_argument("--from-dir", type=Path, help="Directory to upload from")
-    tpa_parser.add_argument("--file", type=Path, help="File to upload")
+
+    # Create a mutually exclusive group and require one of the arguments
+    source_group = tpa_parser.add_mutually_exclusive_group(required=True)
+    source_group.add_argument("--from-dir", type=Path, help="Directory to upload from")
+    source_group.add_argument("--file", type=Path, help="File to upload")
 
     tpa_parser.set_defaults(func=upload.TPAUploadCommand)
