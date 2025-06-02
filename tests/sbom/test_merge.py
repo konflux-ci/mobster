@@ -1,6 +1,7 @@
 # ruff: noqa: E501
 import json
 from collections import Counter
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
@@ -68,8 +69,10 @@ def count_components(sbom: dict[str, Any]) -> Counter[str]:
     def key(component: SBOMItem) -> str:
         purl = component.purl()
         if purl:
-            return purl.to_string()  # type: ignore
-        return fallback_key(component)  # type: ignore
+            return purl.to_string()
+        return fallback_key(component)
+
+    components: Sequence[CDXComponent | SPDXPackage]
 
     if _detect_sbom_type(sbom) == "cyclonedx":
         components = wrap_as_cdx(sbom["components"])
@@ -453,7 +456,7 @@ def test__get_syft_component_filter_duplicate_npm_localpath() -> None:
 
 
 def test__get_syft_component_filter_local_golang_replacement() -> None:
-    hermeto: list[str] = []
+    hermeto: list[Any] = []
     syft = [
         make_spdx_package(".localmod", "(devel)", "pkg:golang/.localmod@(devel)"),
         make_spdx_package(".local", "(devel)", "pkg:golang/.local@@(devel)#subdir"),
@@ -470,12 +473,14 @@ def test__get_syft_component_filter_not_duplicate() -> None:
     assert component_is_removable(syft[0]) is False
 
 
+MockFunction = Callable[[Sequence[SBOMItem], Sequence[SBOMItem]], list[dict[str, Any]]]
+
+
 @patch("mobster.sbom.merge._detect_sbom_type")
 def test__create_merger(mock_detect_sbom_type: Mock) -> None:
     mock_detect_sbom_type.return_value = "cyclonedx"
 
-    def mock_function() -> None:
-        pass
+    mock_function: MockFunction = Mock(spec=MockFunction)
 
     merger = _create_merger({}, {}, mock_function)
     assert isinstance(merger, CycloneDXMerger)
@@ -501,8 +506,7 @@ def test__create_merger_invalid() -> None:
         "creationInfo": {},
     }
 
-    def mock_function() -> None:
-        pass
+    mock_function: MockFunction = Mock(spec=MockFunction)
 
     with pytest.raises(ValueError):
         _create_merger(spdx_sbom, cycloneDX_sbom, mock_function)
