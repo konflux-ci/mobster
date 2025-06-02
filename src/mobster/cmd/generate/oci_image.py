@@ -3,12 +3,12 @@
 import logging
 from typing import Any
 
-from mobster.cmd.generate.base import GenerateCommand
+from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 
 LOGGER = logging.getLogger(__name__)
 
 
-class GenerateOciImageCommand(GenerateCommand):
+class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
     """
     Command to generate an SBOM document for an OCI image.
     """

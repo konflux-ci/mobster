@@ -5,19 +5,17 @@ from typing import Any
 
 from cyclonedx.model.bom import Bom
 from cyclonedx.model.dependency import Dependency
-from cyclonedx.output.json import JsonV1Dot5
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
-from spdx_tools.spdx.writer.write_anything import write_file
 
-from mobster.cmd.generate.base import GenerateCommand
+from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.image import Image
 from mobster.sbom import cyclonedx, spdx
 
 LOGGER = logging.getLogger(__name__)
 
 
-class GenerateModelcarCommand(GenerateCommand):
+class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
     """
     Command to generate an SBOM document for a model car task.
     """
@@ -34,24 +32,6 @@ class GenerateModelcarCommand(GenerateCommand):
 
         self._content = sbom
         return self.content
-
-    async def save(self) -> bool:
-        """
-        Convert document to JSON and save it to a file.
-        """
-        if self.cli_args.output and self._content:
-            LOGGER.info("Saving SBOM document to '%s'", self.cli_args.output)
-            if self.cli_args.sbom_type == "cyclonedx":
-                with open(str(self.cli_args.output), "w", encoding="utf-8") as file:
-                    outputter = JsonV1Dot5(self._content)
-                    file.write(outputter.output_as_string(indent=2))
-            else:
-                write_file(
-                    self._content,
-                    str(self.cli_args.output),
-                    validate=True,
-                )  # pylint: disable=duplicate-code
-        return True
 
     async def to_sbom(self, modelcar: Image, base: Image, model: Image) -> Any:
         """
@@ -127,7 +107,7 @@ class GenerateModelcarCommand(GenerateCommand):
             spdx.get_package(model, model.propose_spdx_id()),
         ]
         relationships = [
-            await self.get_modelcar_image_relationship(
+            spdx.get_root_package_relationship(
                 modelcar.propose_spdx_id(),
             ),
             await self.get_modelcar_descendant_image_relationship(
@@ -146,23 +126,6 @@ class GenerateModelcarCommand(GenerateCommand):
         )
 
         return document
-
-    async def get_modelcar_image_relationship(self, spdx_id: str) -> Relationship:
-        """
-        Get a relationship for the modelcar image in relation to the SPDX document.
-        This relationship indicates that the document describes the modelcar image.
-
-        Args:
-            spdx_id (str): An SPDX ID for the modelcar image.
-
-        Returns:
-            Relationship: A SPDX relationship object for the modelcar image.
-        """
-        return Relationship(
-            spdx_element_id="SPDXRef-DOCUMENT",
-            relationship_type=RelationshipType.DESCRIBES,
-            related_spdx_element_id=spdx_id,
-        )
 
     async def get_modelcar_descendant_image_relationship(
         self, spdx_id: str, modelcar_spdx_id: str

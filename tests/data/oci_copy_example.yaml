@@ -1,0 +1,12 @@
+---
+# from https://github.com/ralphbean/merlinite-poc/blob/main/oci-copy.yaml
+artifact_type: application/x-mlmodel
+artifacts:
+  - source: https://huggingface.co/instructlab/merlinite-7b-lab-GGUF/resolve/4bb27da133fc4888d687ab731ac7faf0ed804c6d/merlinite-7b-lab-Q4_K_M.gguf
+    filename: merlinite-7b-lab-Q4_K_M.gguf
+    type: application/vnd.gguf
+    sha256sum: 9ca044d727db34750e1aeb04e3b18c3cf4a8c064a9ac96cf00448c506631d16c
+  - source: https://huggingface.co/front/assets/huggingface_logo-noborder.svg
+    filename: huggingface.svg
+    type: image/svg+xml
+    sha256sum: 3613c73f07ccae19118bfe6d2f8cd127183d08cf99468a708e090953e116ed0a

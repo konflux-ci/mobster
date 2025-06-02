@@ -34,7 +34,7 @@ dependencies = [
     "python-dateutil (>=2.9.0.post0,<3.0.0)",
     "packageurl-python (>=0.16.0,<0.17.0)",
     "aiofiles (>=24.1.0,<25.0.0)",
-    "httpx (>=0.28.1,<0.29.0)"
+    "httpx (>=0.28.1,<0.29.0)",
 ]
 
 [project.urls]
@@ -66,6 +66,8 @@ module = "tests.*"
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
 
+[tool.pylint.SIMILARITIES]
+min-similarity-lines = 6
 
 [tool.poetry]
 packages = [{ include = "mobster", from = "src" }]
@@ -87,6 +89,7 @@ pytest-asyncio = "^1.0.0"
 types-python-dateutil = "^2.9.0.20241206"
 types-aiofiles = "^24.1.0.20250516"
 pytest-httpx = "^0.35.0"
+types-pyyaml = "^6.0.12.20250516"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
