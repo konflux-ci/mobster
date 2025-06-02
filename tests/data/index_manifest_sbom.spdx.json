@@ -40,14 +40,14 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+          "checksumValue": "e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f"
         }
       ],
       "downloadLocation": "NOASSERTION",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE_MANAGER",
-          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?arch=amd64&repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceLocator": "pkg:oci/ubi@sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f?arch=amd64&repository_url=registry.redhat.io/ubi10-beta/ubi",
           "referenceType": "purl"
         }
       ],
@@ -62,14 +62,14 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+          "checksumValue": "c85623b2a5822b6e101efb05424919da653e7c15e2e3e150871c48957087d65a"
         }
       ],
       "downloadLocation": "NOASSERTION",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE_MANAGER",
-          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?arch=arm64&repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceLocator": "pkg:oci/ubi@sha256:c85623b2a5822b6e101efb05424919da653e7c15e2e3e150871c48957087d65a?arch=arm64&repository_url=registry.redhat.io/ubi10-beta/ubi",
           "referenceType": "purl"
         }
       ],
@@ -84,14 +84,14 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+          "checksumValue": "874debf2354befc6ce90ccee2cbdab4abe2bf437aa6f4ab7649f7aeb4d57373a"
         }
       ],
       "downloadLocation": "NOASSERTION",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE_MANAGER",
-          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?arch=s390x&repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceLocator": "pkg:oci/ubi@sha256:874debf2354befc6ce90ccee2cbdab4abe2bf437aa6f4ab7649f7aeb4d57373a?arch=s390x&repository_url=registry.redhat.io/ubi10-beta/ubi",
           "referenceType": "purl"
         }
       ],
@@ -106,14 +106,14 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+          "checksumValue": "c8799d5d851ddd76729ebb7227818f8c0030c4443c9e8542a75ff393fc90ce12"
         }
       ],
       "downloadLocation": "NOASSERTION",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE_MANAGER",
-          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?arch=ppc64le&repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceLocator": "pkg:oci/ubi@sha256:c8799d5d851ddd76729ebb7227818f8c0030c4443c9e8542a75ff393fc90ce12?arch=ppc64le&repository_url=registry.redhat.io/ubi10-beta/ubi",
           "referenceType": "purl"
         }
       ],
