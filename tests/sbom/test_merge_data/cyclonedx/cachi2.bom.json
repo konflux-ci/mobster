@@ -1,0 +1,3132 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "name": "bufio",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/bufio?type=package",
+      "type": "library"
+    },
+    {
+      "name": "bytes",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/bytes?type=package",
+      "type": "library"
+    },
+    {
+      "name": "compress/flate",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/compress/flate?type=package",
+      "type": "library"
+    },
+    {
+      "name": "compress/gzip",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/compress/gzip?type=package",
+      "type": "library"
+    },
+    {
+      "name": "container/list",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/container/list?type=package",
+      "type": "library"
+    },
+    {
+      "name": "context",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/context?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/aes",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/aes?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/cipher",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/cipher?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/des",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/des?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/dsa",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/dsa?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/ecdh",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/ecdh?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/ecdsa",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/ecdsa?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/ed25519",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/ed25519?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/elliptic",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/elliptic?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/hmac",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/hmac?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/internal/alias",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/alias?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/internal/bigmod",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/bigmod?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/internal/boring/bbig",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/boring/bbig?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/internal/boring/sig",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/boring/sig?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/internal/boring",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/boring?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/internal/edwards25519/field",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/edwards25519/field?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/internal/edwards25519",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/edwards25519?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/internal/nistec/fiat",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/nistec/fiat?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/internal/nistec",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/nistec?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/internal/randutil",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/randutil?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/md5",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/md5?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/rand",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/rand?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/rc4",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/rc4?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/rsa",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/rsa?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/sha1",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/sha1?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/sha256",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/sha256?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/sha512",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/sha512?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/subtle",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/subtle?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/tls",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/tls?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/x509/pkix",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/x509/pkix?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto/x509",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/x509?type=package",
+      "type": "library"
+    },
+    {
+      "name": "crypto",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto?type=package",
+      "type": "library"
+    },
+    {
+      "name": "embed",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/embed?type=package",
+      "type": "library"
+    },
+    {
+      "name": "encoding/asn1",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/asn1?type=package",
+      "type": "library"
+    },
+    {
+      "name": "encoding/base64",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/base64?type=package",
+      "type": "library"
+    },
+    {
+      "name": "encoding/binary",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/binary?type=package",
+      "type": "library"
+    },
+    {
+      "name": "encoding/hex",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/hex?type=package",
+      "type": "library"
+    },
+    {
+      "name": "encoding/json",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/json?type=package",
+      "type": "library"
+    },
+    {
+      "name": "encoding/pem",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/pem?type=package",
+      "type": "library"
+    },
+    {
+      "name": "encoding/xml",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/xml?type=package",
+      "type": "library"
+    },
+    {
+      "name": "encoding",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding?type=package",
+      "type": "library"
+    },
+    {
+      "name": "errors",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/errors?type=package",
+      "type": "library"
+    },
+    {
+      "name": "fmt",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/fmt?type=package",
+      "type": "library"
+    },
+    {
+      "name": "github.com/Azure/go-ansiterm",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/Azure/go-ansiterm@v0.0.0-20210617225240-d185dfc1b5a1?type=module",
+      "type": "library",
+      "version": "v0.0.0-20210617225240-d185dfc1b5a1"
+    },
+    {
+      "name": "github.com/Masterminds/semver",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/Masterminds/semver@v1.4.2?type=module",
+      "type": "library",
+      "version": "v1.4.2"
+    },
+    {
+      "name": "github.com/Masterminds/semver",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/Masterminds/semver@v1.4.2?type=package",
+      "type": "library",
+      "version": "v1.4.2"
+    },
+    {
+      "name": "github.com/Microsoft/go-winio",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/Microsoft/go-winio@v0.6.0?type=module",
+      "type": "library",
+      "version": "v0.6.0"
+    },
+    {
+      "name": "github.com/cachito-testing/gomod-pandemonium/terminaltor",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium/terminaltor@v1.0.0?type=module",
+      "type": "library",
+      "version": "v1.0.0"
+    },
+    {
+      "name": "github.com/cachito-testing/gomod-pandemonium/terminaltor",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium/terminaltor@v1.0.0?type=package",
+      "type": "library",
+      "version": "v1.0.0"
+    },
+    {
+      "name": "github.com/cachito-testing/gomod-pandemonium/weird",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium/weird@v0.0.0-20230417073518-0c6890c3280a?type=module",
+      "type": "library",
+      "version": "v0.0.0-20230417073518-0c6890c3280a"
+    },
+    {
+      "name": "github.com/cachito-testing/gomod-pandemonium/weird",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium/weird@v0.0.0-20230417073518-0c6890c3280a?type=package",
+      "type": "library",
+      "version": "v0.0.0-20230417073518-0c6890c3280a"
+    },
+    {
+      "name": "github.com/cachito-testing/gomod-pandemonium/where-was-i-built",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium/where-was-i-built@v0.1.0?type=package",
+      "type": "library",
+      "version": "v0.1.0"
+    },
+    {
+      "name": "github.com/cachito-testing/gomod-pandemonium",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium@v0.1.0?type=module",
+      "type": "library",
+      "version": "v0.1.0"
+    },
+    {
+      "name": "github.com/cachito-testing/gomod-pandemonium",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium@v0.1.0?type=package",
+      "type": "library",
+      "version": "v0.1.0"
+    },
+    {
+      "name": "github.com/cachito-testing/retrodep/v2/retrodep/glide",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/retrodep/v2/retrodep/glide@v2.1.1?type=package",
+      "type": "library",
+      "version": "v2.1.1"
+    },
+    {
+      "name": "github.com/cachito-testing/retrodep/v2/retrodep",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/retrodep/v2/retrodep@v2.1.1?type=package",
+      "type": "library",
+      "version": "v2.1.1"
+    },
+    {
+      "name": "github.com/cachito-testing/retrodep/v2",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/retrodep/v2@v2.1.1?type=module",
+      "type": "library",
+      "version": "v2.1.1"
+    },
+    {
+      "name": "github.com/go-logr/logr",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/go-logr/logr@v1.2.3?type=module",
+      "type": "library",
+      "version": "v1.2.3"
+    },
+    {
+      "name": "github.com/go-task/slim-sprig",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/go-task/slim-sprig@v0.0.0-20230315185526-52ccab3ef572?type=module",
+      "type": "library",
+      "version": "v0.0.0-20230315185526-52ccab3ef572"
+    },
+    {
+      "name": "github.com/google/go-cmp",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/google/go-cmp@v0.5.9?type=module",
+      "type": "library",
+      "version": "v0.5.9"
+    },
+    {
+      "name": "github.com/google/pprof",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/google/pprof@v0.0.0-20210407192527-94a9f03dee38?type=module",
+      "type": "library",
+      "version": "v0.0.0-20210407192527-94a9f03dee38"
+    },
+    {
+      "name": "github.com/moby/term",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/moby/term@v0.0.0-20221205130635-1aeaba878587?type=module",
+      "type": "library",
+      "version": "v0.0.0-20221205130635-1aeaba878587"
+    },
+    {
+      "name": "github.com/moby/term",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/moby/term@v0.0.0-20221205130635-1aeaba878587?type=package",
+      "type": "library",
+      "version": "v0.0.0-20221205130635-1aeaba878587"
+    },
+    {
+      "name": "github.com/onsi/ginkgo/v2",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/onsi/ginkgo/v2@v2.9.2?type=module",
+      "type": "library",
+      "version": "v2.9.2"
+    },
+    {
+      "name": "github.com/onsi/gomega",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/onsi/gomega@v1.27.4?type=module",
+      "type": "library",
+      "version": "v1.27.4"
+    },
+    {
+      "name": "github.com/op/go-logging",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/op/go-logging@v0.0.0-20160315200505-970db520ece7?type=module",
+      "type": "library",
+      "version": "v0.0.0-20160315200505-970db520ece7"
+    },
+    {
+      "name": "github.com/op/go-logging",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/op/go-logging@v0.0.0-20160315200505-970db520ece7?type=package",
+      "type": "library",
+      "version": "v0.0.0-20160315200505-970db520ece7"
+    },
+    {
+      "name": "github.com/pkg/errors",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/pkg/errors@v0.8.1?type=module",
+      "type": "library",
+      "version": "v0.8.1"
+    },
+    {
+      "name": "github.com/pkg/errors",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/pkg/errors@v0.8.1?type=package",
+      "type": "library",
+      "version": "v0.8.1"
+    },
+    {
+      "name": "go/ast",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/ast?type=package",
+      "type": "library"
+    },
+    {
+      "name": "go/build/constraint",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/build/constraint?type=package",
+      "type": "library"
+    },
+    {
+      "name": "go/build",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/build?type=package",
+      "type": "library"
+    },
+    {
+      "name": "go/doc/comment",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/doc/comment?type=package",
+      "type": "library"
+    },
+    {
+      "name": "go/doc",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/doc?type=package",
+      "type": "library"
+    },
+    {
+      "name": "go/internal/typeparams",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/internal/typeparams?type=package",
+      "type": "library"
+    },
+    {
+      "name": "go/parser",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/parser?type=package",
+      "type": "library"
+    },
+    {
+      "name": "go/scanner",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/scanner?type=package",
+      "type": "library"
+    },
+    {
+      "name": "go/token",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/token?type=package",
+      "type": "library"
+    },
+    {
+      "name": "golang.org/x/mod",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/mod@v0.9.0?type=module",
+      "type": "library",
+      "version": "v0.9.0"
+    },
+    {
+      "name": "golang.org/x/net",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/net@v0.8.0?type=module",
+      "type": "library",
+      "version": "v0.8.0"
+    },
+    {
+      "name": "golang.org/x/sys/execabs",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/sys/execabs@v0.6.0?type=package",
+      "type": "library",
+      "version": "v0.6.0"
+    },
+    {
+      "name": "golang.org/x/sys/unix",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/sys/unix@v0.6.0?type=package",
+      "type": "library",
+      "version": "v0.6.0"
+    },
+    {
+      "name": "golang.org/x/sys",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/sys@v0.6.0?type=module",
+      "type": "library",
+      "version": "v0.6.0"
+    },
+    {
+      "name": "golang.org/x/text",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/text@v0.8.0?type=module",
+      "type": "library",
+      "version": "v0.8.0"
+    },
+    {
+      "name": "golang.org/x/tools/go/vcs",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/tools/go/vcs@v0.7.0?type=package",
+      "type": "library",
+      "version": "v0.7.0"
+    },
+    {
+      "name": "golang.org/x/tools",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/tools@v0.7.0?type=module",
+      "type": "library",
+      "version": "v0.7.0"
+    },
+    {
+      "name": "gopkg.in/yaml.v2",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/gopkg.in/yaml.v2@v2.2.2?type=module",
+      "type": "library",
+      "version": "v2.2.2"
+    },
+    {
+      "name": "gopkg.in/yaml.v2",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/gopkg.in/yaml.v2@v2.2.2?type=package",
+      "type": "library",
+      "version": "v2.2.2"
+    },
+    {
+      "name": "gopkg.in/yaml.v3",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/gopkg.in/yaml.v3@v3.0.1?type=module",
+      "type": "library",
+      "version": "v3.0.1"
+    },
+    {
+      "name": "hash/crc32",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/hash/crc32?type=package",
+      "type": "library"
+    },
+    {
+      "name": "hash",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/hash?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/abi",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/abi?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/buildcfg",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/buildcfg?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/bytealg",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/bytealg?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/coverage/rtcov",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/coverage/rtcov?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/cpu",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/cpu?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/fmtsort",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/fmtsort?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/goarch",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/goarch?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/godebug",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/godebug?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/goexperiment",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/goexperiment?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/goos",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/goos?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/goroot",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/goroot?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/goversion",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/goversion?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/intern",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/intern?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/itoa",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/itoa?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/lazyregexp",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/lazyregexp?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/nettrace",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/nettrace?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/oserror",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/oserror?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/poll",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/poll?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/race",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/race?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/reflectlite",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/reflectlite?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/safefilepath",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/safefilepath?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/singleflight",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/singleflight?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/syscall/execenv",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/syscall/execenv?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/syscall/unix",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/syscall/unix?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/testlog",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/testlog?type=package",
+      "type": "library"
+    },
+    {
+      "name": "internal/unsafeheader",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/unsafeheader?type=package",
+      "type": "library"
+    },
+    {
+      "name": "io/fs",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/io/fs?type=package",
+      "type": "library"
+    },
+    {
+      "name": "io/ioutil",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/io/ioutil?type=package",
+      "type": "library"
+    },
+    {
+      "name": "io",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/io?type=package",
+      "type": "library"
+    },
+    {
+      "name": "log/syslog",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/log/syslog?type=package",
+      "type": "library"
+    },
+    {
+      "name": "log",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/log?type=package",
+      "type": "library"
+    },
+    {
+      "name": "math/big",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/math/big?type=package",
+      "type": "library"
+    },
+    {
+      "name": "math/bits",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/math/bits?type=package",
+      "type": "library"
+    },
+    {
+      "name": "math/rand",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/math/rand?type=package",
+      "type": "library"
+    },
+    {
+      "name": "math",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/math?type=package",
+      "type": "library"
+    },
+    {
+      "name": "mime/multipart",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/mime/multipart?type=package",
+      "type": "library"
+    },
+    {
+      "name": "mime/quotedprintable",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/mime/quotedprintable?type=package",
+      "type": "library"
+    },
+    {
+      "name": "mime",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/mime?type=package",
+      "type": "library"
+    },
+    {
+      "name": "net/http/httptrace",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/http/httptrace?type=package",
+      "type": "library"
+    },
+    {
+      "name": "net/http/internal/ascii",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/http/internal/ascii?type=package",
+      "type": "library"
+    },
+    {
+      "name": "net/http/internal",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/http/internal?type=package",
+      "type": "library"
+    },
+    {
+      "name": "net/http",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/http?type=package",
+      "type": "library"
+    },
+    {
+      "name": "net/netip",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/netip?type=package",
+      "type": "library"
+    },
+    {
+      "name": "net/textproto",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/textproto?type=package",
+      "type": "library"
+    },
+    {
+      "name": "net/url",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/url?type=package",
+      "type": "library"
+    },
+    {
+      "name": "net",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net?type=package",
+      "type": "library"
+    },
+    {
+      "name": "os/exec",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/os/exec?type=package",
+      "type": "library"
+    },
+    {
+      "name": "os",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/os?type=package",
+      "type": "library"
+    },
+    {
+      "name": "path/filepath",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/path/filepath?type=package",
+      "type": "library"
+    },
+    {
+      "name": "path",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/path?type=package",
+      "type": "library"
+    },
+    {
+      "name": "reflect",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/reflect?type=package",
+      "type": "library"
+    },
+    {
+      "name": "regexp/syntax",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/regexp/syntax?type=package",
+      "type": "library"
+    },
+    {
+      "name": "regexp",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/regexp?type=package",
+      "type": "library"
+    },
+    {
+      "name": "runtime/cgo",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/runtime/cgo?type=package",
+      "type": "library"
+    },
+    {
+      "name": "runtime/internal/atomic",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/runtime/internal/atomic?type=package",
+      "type": "library"
+    },
+    {
+      "name": "runtime/internal/math",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/runtime/internal/math?type=package",
+      "type": "library"
+    },
+    {
+      "name": "runtime/internal/sys",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/runtime/internal/sys?type=package",
+      "type": "library"
+    },
+    {
+      "name": "runtime/internal/syscall",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/runtime/internal/syscall?type=package",
+      "type": "library"
+    },
+    {
+      "name": "runtime",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/runtime?type=package",
+      "type": "library"
+    },
+    {
+      "name": "sort",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/sort?type=package",
+      "type": "library"
+    },
+    {
+      "name": "strconv",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/strconv?type=package",
+      "type": "library"
+    },
+    {
+      "name": "strings",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/strings?type=package",
+      "type": "library"
+    },
+    {
+      "name": "sync/atomic",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/sync/atomic?type=package",
+      "type": "library"
+    },
+    {
+      "name": "sync",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/sync?type=package",
+      "type": "library"
+    },
+    {
+      "name": "syscall",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/syscall?type=package",
+      "type": "library"
+    },
+    {
+      "name": "time",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/time?type=package",
+      "type": "library"
+    },
+    {
+      "name": "unicode/utf16",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/unicode/utf16?type=package",
+      "type": "library"
+    },
+    {
+      "name": "unicode/utf8",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/unicode/utf8?type=package",
+      "type": "library"
+    },
+    {
+      "name": "unicode",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/unicode?type=package",
+      "type": "library"
+    },
+    {
+      "name": "unsafe",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/unsafe?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/crypto/chacha20",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/chacha20?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/crypto/chacha20poly1305",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/chacha20poly1305?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/crypto/cryptobyte/asn1",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/cryptobyte/asn1?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/crypto/cryptobyte",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/cryptobyte?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/crypto/hkdf",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/hkdf?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/crypto/internal/alias",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/internal/alias?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/crypto/internal/poly1305",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/internal/poly1305?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/net/dns/dnsmessage",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/net/dns/dnsmessage?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/net/http/httpguts",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/net/http/httpguts?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/net/http/httpproxy",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/net/http/httpproxy?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/net/http2/hpack",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/net/http2/hpack?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/net/idna",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/net/idna?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/sys/cpu",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/sys/cpu?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/text/secure/bidirule",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/text/secure/bidirule?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/text/transform",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/text/transform?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/text/unicode/bidi",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/text/unicode/bidi?type=package",
+      "type": "library"
+    },
+    {
+      "name": "vendor/golang.org/x/text/unicode/norm",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/text/unicode/norm?type=package",
+      "type": "library"
+    },
+    {
+      "name": "@types/prop-types",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/%40types/prop-types@15.7.5",
+      "type": "library",
+      "version": "15.7.5"
+    },
+    {
+      "name": "@types/react-dom",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/%40types/react-dom@18.0.11",
+      "type": "library",
+      "version": "18.0.11"
+    },
+    {
+      "name": "@types/react",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/%40types/react@18.0.35",
+      "type": "library",
+      "version": "18.0.35"
+    },
+    {
+      "name": "@types/scheduler",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/%40types/scheduler@0.16.3",
+      "type": "library",
+      "version": "0.16.3"
+    },
+    {
+      "name": "abbrev",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/abbrev@2.0.0",
+      "type": "library",
+      "version": "2.0.0"
+    },
+    {
+      "name": "accepts",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/accepts@1.3.8",
+      "type": "library",
+      "version": "1.3.8"
+    },
+    {
+      "name": "array-flatten",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/array-flatten@1.1.1",
+      "type": "library",
+      "version": "1.1.1"
+    },
+    {
+      "name": "bar",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/bar@1.0.0?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd#bar",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "name": "bitbucket-cachi2-npm-without-deps-second",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/bitbucket-cachi2-npm-without-deps-second@2.0.0?vcs_url=git%2Bssh://git%40bitbucket.org/cachi-testing/cachi2-without-deps-second.git%4009992d418fc44a2895b7a9ff27c4e32d6f74a982",
+      "type": "library",
+      "version": "2.0.0"
+    },
+    {
+      "name": "bitbucket-cachi2-npm-without-deps",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/bitbucket-cachi2-npm-without-deps@1.0.0?vcs_url=git%2Bssh://git%40bitbucket.org/cachi-testing/cachi2-without-deps.git%409e164b97043a2d91bbeb992f6cc68a3d1015086a",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "name": "body-parser",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/body-parser@1.20.1",
+      "type": "library",
+      "version": "1.20.1"
+    },
+    {
+      "name": "bytes",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/bytes@3.1.2",
+      "type": "library",
+      "version": "3.1.2"
+    },
+    {
+      "name": "cachito-npm-without-deps",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/cachito-npm-without-deps@1.0.0?checksum=sha512:43e71f90ad5f9eb349ab18a283f8954994def373962ddc61b866bdea4d48249e67913c6b84dca1e8c519e981ca1fcc62b438292104a88ee9ed72db76a41efede&download_url=https://github.com/cachito-testing/cachito-npm-without-deps/raw/tarball/cachito-npm-without-deps-1.0.0.tgz",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "name": "call-bind",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/call-bind@1.0.2",
+      "type": "library",
+      "version": "1.0.2"
+    },
+    {
+      "name": "classnames",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/classnames@2.3.2",
+      "type": "library",
+      "version": "2.3.2"
+    },
+    {
+      "name": "colors",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/colors@1.4.0",
+      "type": "library",
+      "version": "1.4.0"
+    },
+    {
+      "name": "content-disposition",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/content-disposition@0.5.4",
+      "type": "library",
+      "version": "0.5.4"
+    },
+    {
+      "name": "content-type",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/content-type@1.0.5",
+      "type": "library",
+      "version": "1.0.5"
+    },
+    {
+      "name": "cookie-signature",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/cookie-signature@1.0.6",
+      "type": "library",
+      "version": "1.0.6"
+    },
+    {
+      "name": "cookie",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/cookie@0.5.0",
+      "type": "library",
+      "version": "0.5.0"
+    },
+    {
+      "name": "csstype",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/csstype@3.1.2",
+      "type": "library",
+      "version": "3.1.2"
+    },
+    {
+      "name": "dateformat",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/dateformat@5.0.3",
+      "type": "library",
+      "version": "5.0.3"
+    },
+    {
+      "name": "debug",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/debug@2.6.9",
+      "type": "library",
+      "version": "2.6.9"
+    },
+    {
+      "name": "depd",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/depd@2.0.0",
+      "type": "library",
+      "version": "2.0.0"
+    },
+    {
+      "name": "destroy",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/destroy@1.2.0",
+      "type": "library",
+      "version": "1.2.0"
+    },
+    {
+      "name": "ee-first",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/ee-first@1.1.1",
+      "type": "library",
+      "version": "1.1.1"
+    },
+    {
+      "name": "eggs",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/eggs@1.0.0?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd#eggs-packages/eggs",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "name": "encodeurl",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/encodeurl@1.0.2",
+      "type": "library",
+      "version": "1.0.2"
+    },
+    {
+      "name": "escape-html",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/escape-html@1.0.3",
+      "type": "library",
+      "version": "1.0.3"
+    },
+    {
+      "name": "etag",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/etag@1.8.1",
+      "type": "library",
+      "version": "1.8.1"
+    },
+    {
+      "name": "express",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/express@4.18.2",
+      "type": "library",
+      "version": "4.18.2"
+    },
+    {
+      "name": "fecha",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/fecha@4.2.3?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd#fecha-4.2.3.tgz",
+      "type": "library",
+      "version": "4.2.3"
+    },
+    {
+      "name": "finalhandler",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/finalhandler@1.2.0",
+      "type": "library",
+      "version": "1.2.0"
+    },
+    {
+      "name": "foo",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/foo@1.0.0?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd#foo",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "name": "forwarded",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/forwarded@0.2.0",
+      "type": "library",
+      "version": "0.2.0"
+    },
+    {
+      "name": "fresh",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/fresh@0.5.2",
+      "type": "library",
+      "version": "0.5.2"
+    },
+    {
+      "name": "function-bind",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/function-bind@1.1.1",
+      "type": "library",
+      "version": "1.1.1"
+    },
+    {
+      "name": "get-intrinsic",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/get-intrinsic@1.2.0",
+      "type": "library",
+      "version": "1.2.0"
+    },
+    {
+      "name": "has-symbols",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/has-symbols@1.0.3",
+      "type": "library",
+      "version": "1.0.3"
+    },
+    {
+      "name": "has",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/has@1.0.3",
+      "type": "library",
+      "version": "1.0.3"
+    },
+    {
+      "name": "http-errors",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/http-errors@2.0.0",
+      "type": "library",
+      "version": "2.0.0"
+    },
+    {
+      "name": "iconv-lite",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/iconv-lite@0.4.24",
+      "type": "library",
+      "version": "0.4.24"
+    },
+    {
+      "name": "inherits",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/inherits@2.0.4",
+      "type": "library",
+      "version": "2.0.4"
+    },
+    {
+      "name": "ipaddr.js",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/ipaddr.js@1.9.1",
+      "type": "library",
+      "version": "1.9.1"
+    },
+    {
+      "name": "is-positive",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/is-positive@3.1.0?vcs_url=git%2Bssh://git%40github.com/kevva/is-positive.git%4097edff6f525f192a3f83cea1944765f769ae2678",
+      "type": "library",
+      "version": "3.1.0"
+    },
+    {
+      "name": "media-typer",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/media-typer@0.3.0",
+      "type": "library",
+      "version": "0.3.0"
+    },
+    {
+      "name": "merge-descriptors",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/merge-descriptors@1.0.1",
+      "type": "library",
+      "version": "1.0.1"
+    },
+    {
+      "name": "methods",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/methods@1.1.2",
+      "type": "library",
+      "version": "1.1.2"
+    },
+    {
+      "name": "mime-db",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/mime-db@1.52.0",
+      "type": "library",
+      "version": "1.52.0"
+    },
+    {
+      "name": "mime-types",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/mime-types@2.1.35",
+      "type": "library",
+      "version": "2.1.35"
+    },
+    {
+      "name": "mime",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/mime@1.6.0",
+      "type": "library",
+      "version": "1.6.0"
+    },
+    {
+      "name": "ms",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/ms@2.0.0",
+      "type": "library",
+      "version": "2.0.0"
+    },
+    {
+      "name": "ms",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/ms@2.1.3",
+      "type": "library",
+      "version": "2.1.3"
+    },
+    {
+      "name": "negotiator",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/negotiator@0.6.3",
+      "type": "library",
+      "version": "0.6.3"
+    },
+    {
+      "name": "not-baz",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/not-baz@1.0.0?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd#baz",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "name": "npm_test",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/npm_test@1.1.0?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd",
+      "type": "library",
+      "version": "1.1.0"
+    },
+    {
+      "name": "object-inspect",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/object-inspect@1.12.3",
+      "type": "library",
+      "version": "1.12.3"
+    },
+    {
+      "name": "on-finished",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/on-finished@2.4.1",
+      "type": "library",
+      "version": "2.4.1"
+    },
+    {
+      "name": "parseurl",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/parseurl@1.3.3",
+      "type": "library",
+      "version": "1.3.3"
+    },
+    {
+      "name": "path-to-regexp",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/path-to-regexp@0.1.7",
+      "type": "library",
+      "version": "0.1.7"
+    },
+    {
+      "name": "proxy-addr",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/proxy-addr@2.0.7",
+      "type": "library",
+      "version": "2.0.7"
+    },
+    {
+      "name": "qs",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/qs@6.11.0",
+      "type": "library",
+      "version": "6.11.0"
+    },
+    {
+      "name": "range-parser",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/range-parser@1.2.1",
+      "type": "library",
+      "version": "1.2.1"
+    },
+    {
+      "name": "raw-body",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/raw-body@2.5.1",
+      "type": "library",
+      "version": "2.5.1"
+    },
+    {
+      "name": "safe-buffer",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/safe-buffer@5.2.1",
+      "type": "library",
+      "version": "5.2.1"
+    },
+    {
+      "name": "safer-buffer",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/safer-buffer@2.1.2",
+      "type": "library",
+      "version": "2.1.2"
+    },
+    {
+      "name": "sax",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/sax@0.1.1",
+      "type": "library",
+      "version": "0.1.1"
+    },
+    {
+      "name": "send",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/send@0.18.0",
+      "type": "library",
+      "version": "0.18.0"
+    },
+    {
+      "name": "serve-static",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/serve-static@1.15.0",
+      "type": "library",
+      "version": "1.15.0"
+    },
+    {
+      "name": "setprototypeof",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/setprototypeof@1.2.0",
+      "type": "library",
+      "version": "1.2.0"
+    },
+    {
+      "name": "side-channel",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/side-channel@1.0.4",
+      "type": "library",
+      "version": "1.0.4"
+    },
+    {
+      "name": "spam",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/spam@1.0.0?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd#spam-packages/spam",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "name": "statuses",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/statuses@2.0.1",
+      "type": "library",
+      "version": "2.0.1"
+    },
+    {
+      "name": "toidentifier",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/toidentifier@1.0.1",
+      "type": "library",
+      "version": "1.0.1"
+    },
+    {
+      "name": "type-is",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/type-is@1.6.18",
+      "type": "library",
+      "version": "1.6.18"
+    },
+    {
+      "name": "unpipe",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/unpipe@1.0.0",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "name": "utils-merge",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/utils-merge@1.0.1",
+      "type": "library",
+      "version": "1.0.1"
+    },
+    {
+      "name": "uuid",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/uuid@9.0.0",
+      "type": "library",
+      "version": "9.0.0"
+    },
+    {
+      "name": "vary",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/vary@1.1.2",
+      "type": "library",
+      "version": "1.1.2"
+    },
+    {
+      "name": "certifi",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/certifi@2022.12.7",
+      "type": "library",
+      "version": "2022.12.7"
+    },
+    {
+      "name": "charset-normalizer",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/charset-normalizer@3.0.1",
+      "type": "library",
+      "version": "3.0.1"
+    },
+    {
+      "name": "dockerfile-parse",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/dockerfile-parse?checksum=sha256:36e4469abb0d96b0e3cd656284d5016e8a674cd57b8ebe5af64786fe63b8184d&download_url=https://github.com/containerbuildsystem/dockerfile-parse/archive/refs/tags/2.0.0.tar.gz",
+      "type": "library"
+    },
+    {
+      "name": "flit-core",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/flit-core@3.8.0",
+      "type": "library",
+      "version": "3.8.0"
+    },
+    {
+      "name": "idna",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/idna@3.4",
+      "type": "library",
+      "version": "3.4"
+    },
+    {
+      "name": "requests",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/requests@2.28.2",
+      "type": "library",
+      "version": "2.28.2"
+    },
+    {
+      "name": "setuptools",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/setuptools@67.1.0",
+      "type": "library",
+      "version": "67.1.0"
+    },
+    {
+      "name": "test_package_cachi2",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/test-package-cachi2@1.0.0?vcs_url=git%2Bhttps://github.com/cachito-testing/pip-e2e-test%401ecda839ba9ca55070d75c86c26a1bb07d777bba",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "name": "urllib3",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/urllib3@1.26.14",
+      "type": "library",
+      "version": "1.26.14"
+    },
+    {
+      "name": "wheel",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/wheel@0.38.4",
+      "type": "library",
+      "version": "0.38.4"
+    }
+  ],
+  "metadata": {
+    "tools": [
+      {
+        "name": "cachi2",
+        "vendor": "red hat"
+      }
+    ]
+  },
+  "specVersion": "1.4",
+  "version": 1
+}
