@@ -1,0 +1,97 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "creationInfo": {
+    "created": "2025-05-30T11:40:49Z",
+    "creators": [
+      "Organization: Red Hat",
+      "Tool: Konflux CI"
+    ]
+  },
+  "dataLicense": "CC0-1.0",
+  "name": "quay.io/example/base@sha256:087dc7896b97911a582702b45ff1d41ffa3e142d0b000b0fbb11058188293cfc",
+  "spdxVersion": "SPDX-2.3",
+  "documentNamespace": "https://konflux-ci.dev/spdxdocs/quay.io/example/base@sha256:087dc7896b97911a582702b45ff1d41ffa3e142d0b000b0fbb11058188293cfc-accf7ec6-0458-48d4-8f6f-12e9ebcad3ca",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-image-base-8d8898b5a28747f5d4959ca4de83f9f621924b44804a155eacbe945b6bd187c3",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "087dc7896b97911a582702b45ff1d41ffa3e142d0b000b0fbb11058188293cfc"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/base@sha256:087dc7896b97911a582702b45ff1d41ffa3e142d0b000b0fbb11058188293cfc?repository_url=quay.io/example/base",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "base",
+      "supplier": "Organization: Red Hat",
+      "versionInfo": "v9.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-merlinite-7b-lab-Q4-K-M.gguf-8809169785e5ac29bd1777171256c0c4f4b584dbc5838bf9178ac72c1dc23585",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "9ca044d727db34750e1aeb04e3b18c3cf4a8c064a9ac96cf00448c506631d16c"
+        }
+      ],
+      "downloadLocation": "https://huggingface.co/instructlab/merlinite-7b-lab-GGUF/resolve/4bb27da133fc4888d687ab731ac7faf0ed804c6d/merlinite-7b-lab-Q4_K_M.gguf",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:generic/merlinite-7b-lab-Q4_K_M.gguf?checksum=sha256:9ca044d727db34750e1aeb04e3b18c3cf4a8c064a9ac96cf00448c506631d16c&download_url=https://huggingface.co/instructlab/merlinite-7b-lab-GGUF/resolve/4bb27da133fc4888d687ab731ac7faf0ed804c6d/merlinite-7b-lab-Q4_K_M.gguf",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "merlinite-7b-lab-Q4_K_M.gguf",
+      "supplier": "Organization: Red Hat"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-huggingface.svg-7206c6f7c832ae92d3c1e09864c981221c4371209d05e13862d5d93eaafc7c04",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3613c73f07ccae19118bfe6d2f8cd127183d08cf99468a708e090953e116ed0a"
+        }
+      ],
+      "downloadLocation": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:generic/huggingface.svg?checksum=sha256:3613c73f07ccae19118bfe6d2f8cd127183d08cf99468a708e090953e116ed0a&download_url=https://huggingface.co/front/assets/huggingface_logo-noborder.svg",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "huggingface.svg",
+      "supplier": "Organization: Red Hat"
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relatedSpdxElement": "SPDXRef-image-base-8d8898b5a28747f5d4959ca4de83f9f621924b44804a155eacbe945b6bd187c3",
+      "relationshipType": "DESCRIBES"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-base-8d8898b5a28747f5d4959ca4de83f9f621924b44804a155eacbe945b6bd187c3",
+      "relatedSpdxElement": "SPDXRef-Package-merlinite-7b-lab-Q4-K-M.gguf-8809169785e5ac29bd1777171256c0c4f4b584dbc5838bf9178ac72c1dc23585",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-base-8d8898b5a28747f5d4959ca4de83f9f621924b44804a155eacbe945b6bd187c3",
+      "relatedSpdxElement": "SPDXRef-Package-huggingface.svg-7206c6f7c832ae92d3c1e09864c981221c4371209d05e13862d5d93eaafc7c04",
+      "relationshipType": "CONTAINS"
+    }
+  ]
+}

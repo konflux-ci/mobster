@@ -45,18 +45,6 @@ async def test_generate_oci_index_sbom() -> None:
             assert_spdx_sbom(result, expected_output)
 
 
-def test_GenerateOciIndexCommand_get_index_image_relationship() -> None:
-    args = MagicMock()
-    command = GenerateOciIndexCommand(args)
-
-    result = command.get_index_image_relationship("fake_spdx_id")
-
-    assert isinstance(result, Relationship)
-    assert result.spdx_element_id == command.DOC_ELEMENT_ID
-    assert result.relationship_type == RelationshipType.DESCRIBES
-    assert result.related_spdx_element_id == "fake_spdx_id"
-
-
 def test_GenerateOciIndexCommand_get_child_image_relationship() -> None:
     args = MagicMock()
     command = GenerateOciIndexCommand(args)
@@ -154,9 +142,7 @@ def test_GenerateOciIndexCommand_get_child_packages_unknown(
 @patch("mobster.cmd.generate.oci_index.Document")
 @patch("mobster.cmd.generate.oci_index.spdx.get_creation_info")
 @patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_child_packages")
-@patch(
-    "mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_index_image_relationship"
-)
+@patch("mobster.cmd.generate.oci_index.spdx.get_root_package_relationship")
 @patch("mobster.cmd.generate.oci_index.spdx.get_package")
 @patch("mobster.cmd.generate.oci_index.Image.from_image_index_url_and_digest")
 async def test_GenerateOciIndexCommand_execute(
