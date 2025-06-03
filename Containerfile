@@ -1,3 +1,5 @@
+FROM quay.io/konflux-ci/oras:3d83c68 AS oras
+FROM registry.redhat.io/rhtas/cosign-rhel9:1.2.0-1744791100 AS cosign
 FROM registry.access.redhat.com/ubi9/python-312@sha256:e80ff3673c95b91f0dafdbe97afb261eab8244d7fd8b47e20ffcbcfee27fb168 AS builder
 
 # Set the working directory in the container
@@ -40,6 +42,10 @@ WORKDIR /app
 
 # Copy installed dependencies from the builder stage
 COPY --from=builder /app /app
+
+# Copy needed binaries for SBOM augmentation
+COPY --from=oras /usr/bin/oras /usr/bin/oras
+COPY --from=cosign /usr/local/bin/cosign /usr/bin/cosign
 
 ENV PATH=/app/.venv/bin:$PATH
 

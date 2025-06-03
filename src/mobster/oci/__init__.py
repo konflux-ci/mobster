@@ -33,6 +33,10 @@ async def run_async_subprocess(
     if retry_times < 0:
         raise ValueError("Retry count cannot be negative.")
 
+    cmd_env = dict(os.environ)
+    if env:
+        cmd_env.update(env)
+
     # do this to avoid unbound warnings,
     # the loop always runs at least once, so they're always set
     code, stdout, stderr = 0, b"", b""
@@ -42,7 +46,7 @@ async def run_async_subprocess(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env=env,
+            env=cmd_env,
         )
 
         stdout, stderr = await proc.communicate()
