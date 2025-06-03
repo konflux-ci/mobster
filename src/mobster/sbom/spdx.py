@@ -41,7 +41,7 @@ def get_creation_info(sbom_name: str) -> CreationInfo:
     )
 
 
-def get_package(image: Image, spdx_id: str) -> Package:
+def get_package(image: Image, spdx_id: str, package_name: str | None = None) -> Package:
     """
     Transform the parsed image object into SPDX package object.
 
@@ -53,10 +53,12 @@ def get_package(image: Image, spdx_id: str) -> Package:
     Returns:
         Package: A package object representing the OCI image.
     """
+    if not package_name:
+        package_name = image.name if not image.arch else f"{image.name}_{image.arch}"
 
     package = Package(
         spdx_id=spdx_id,
-        name=image.name if not image.arch else f"{image.name}_{image.arch}",
+        name=package_name,
         version=image.tag,
         download_location=SpdxNoAssertion(),
         supplier=Actor(ActorType.ORGANIZATION, "Red Hat"),
