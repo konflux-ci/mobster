@@ -1,12 +1,12 @@
 import json
 import pathlib
 import tempfile
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
 from mobster.cmd.generate.modelcar import GenerateModelcarCommand
+from tests.conftest import assert_cdx_sbom, assert_spdx_sbom
 
 
 @pytest.mark.asyncio
@@ -64,32 +64,6 @@ async def test_generate_modelcar_sbom(
             result = json.load(result_file)
 
             if sbom_type == "spdx":
-                # Copy dynamic values from expected output
-                result["creationInfo"]["created"] = expected_output["creationInfo"][
-                    "created"
-                ]
-                result["documentNamespace"] = expected_output["documentNamespace"]
+                assert_spdx_sbom(result, expected_output)
             if sbom_type == "cyclonedx":
-                result["serialNumber"] = expected_output["serialNumber"]
-                result["metadata"]["timestamp"] = expected_output["metadata"][
-                    "timestamp"
-                ]
-                root_bom_ref = result["metadata"]["component"]["bom-ref"]
-                patch_bom_ref(
-                    result,
-                    root_bom_ref,
-                    expected_output["metadata"]["component"]["bom-ref"],
-                )
-
-            assert result == expected_output
-
-
-def patch_bom_ref(document: Any, old: str, new: str) -> Any:
-    document["metadata"]["component"]["bom-ref"] = new
-    for component in document["components"]:
-        if component["bom-ref"] == old:
-            component["bom-ref"] = new
-    for dependency in document["dependencies"]:
-        if dependency["ref"] == old:
-            dependency["ref"] = new
-    return document
+                assert_cdx_sbom(result, expected_output)

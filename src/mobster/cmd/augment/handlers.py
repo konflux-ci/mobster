@@ -7,10 +7,12 @@ from typing import Any
 
 from packageurl import PackageURL
 
+from mobster import get_mobster_version
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOMFormat
 from mobster.release import Component
+from mobster.sbom import cyclonedx
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +175,16 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
         return None
 
     @classmethod
+    def _augment_creation_info(cls, creation_info: Any) -> None:
+        """
+        Add Mobster version information to creationInfo.
+        """
+        version = get_mobster_version()
+        creator = f"Tool: Mobster-{version}"
+        if creator not in creation_info["creators"]:
+            creation_info["creators"].append(creator)
+
+    @classmethod
     def _update_index_image_sbom(
         cls, component: Component, index: IndexImage, sbom: Any
     ) -> None:
@@ -238,6 +250,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
         """
         Update a build-time SBOM with release-time data.
         """
+        self._augment_creation_info(sbom["creationInfo"])
         if isinstance(image, IndexImage):
             SPDXVersion2._update_index_image_sbom(component, image, sbom)
         elif isinstance(image, Image):
@@ -288,6 +301,7 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         if sbom["specVersion"] not in ["1.4", "1.5", "1.6"]:
             raise SBOMError("Attempted to downgrade an SBOM.")
 
+        logger.debug("Bumping CycloneDX version to 1.6")
         sbom["$schema"] = "http://cyclonedx.org/schema/bom-1.6.schema.json"
         sbom["specVersion"] = "1.6"
 
@@ -341,6 +355,26 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
                 kflx_component, image, arch, cdx_component
             )
 
+    def _augment_metadata_tools_components(self, metadata: Any) -> None:
+        """
+        Add Mobster version information to metadata.tools.components
+        """
+        if "tools" not in metadata:
+            metadata["tools"] = {"components": []}
+
+        components = metadata["tools"]["components"]
+        if not self._has_current_mobster_version(components):
+            components.append(cyclonedx.get_tools_component_dict())
+
+    def _has_current_mobster_version(self, components: list[Any]) -> bool:
+        """
+        Check whether a list of components contains a component with name
+        "Mobster" and the current Mobster version.
+        """
+        return ("Mobster", get_mobster_version()) in [
+            (c["name"], c.get("version")) for c in components
+        ]
+
     def _update_metadata_component(
         self, kflx_component: Component, image: Image, sbom: Any
     ) -> None:
@@ -354,6 +388,8 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         else:
             metadata = {"component": component}
             sbom["metadata"] = metadata
+
+        self._augment_metadata_tools_components(sbom["metadata"])
 
 
 def construct_purl(

@@ -8,6 +8,7 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
 from mobster.cmd.generate.oci_index import GenerateOciIndexCommand
 from mobster.image import Image
+from tests.conftest import assert_spdx_sbom
 
 
 @pytest.mark.asyncio
@@ -41,13 +42,7 @@ async def test_generate_oci_index_sbom() -> None:
         with open(args.output, encoding="utf8") as result_file:
             result = json.load(result_file)
 
-            # Copy dynamic values from expected output
-            result["creationInfo"]["created"] = expected_output["creationInfo"][
-                "created"
-            ]
-            result["documentNamespace"] = expected_output["documentNamespace"]
-
-            assert result == expected_output
+            assert_spdx_sbom(result, expected_output)
 
 
 def test_GenerateOciIndexCommand_get_index_image_relationship() -> None:
