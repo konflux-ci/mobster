@@ -27,10 +27,14 @@ the tool:
 
 ```bash
 pip install mobster
+mobster --help
 ```
 ### Using container image
 
-TODO: Add this section once the release is configured in Konflux.
+```bash
+podman pull quay.io/konflux-ci/mobster:latest
+podman run -it quay.io/konflux-ci/mobster:latest mobster --help
+```
 
 ## Development environment
 
@@ -50,6 +54,13 @@ We welcome contributions to the Mobster project! If you would like to contribute
 6. Wait for the review and address any comments or suggestions
 7. Once your changes are approved, they will be merged into the main branch
 8. Congratulations! You have successfully contributed to the Mobster project
+
+## Release process
+The release process is automated using GitHub Actions and Konflux. The process
+is described in detail in the [release.md](docs/release.md) file.
+
+## Documentation
+The documentation for the Mobster project is available in the [docs](/docs/) directory.
 
 ## License
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
