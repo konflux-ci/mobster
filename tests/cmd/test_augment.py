@@ -22,7 +22,7 @@ from mobster.oci.artifact import SBOM, Provenance02
 from mobster.oci.cosign import Cosign
 from mobster.release import Component, Snapshot
 from mobster.sbom import cyclonedx
-from tests.conftest import assert_spdx_sbom
+from tests.conftest import assert_spdx_sbom, awaitable
 
 TESTDATA_PATH = Path(__file__).parent.parent.joinpath("data/component")
 
@@ -33,10 +33,6 @@ class AugmentArgs:
     output: Path
     verification_key: Path | None
     reference: str | None
-
-
-async def awaitable(obj: Any) -> Any:
-    return obj
 
 
 MakeAugmentCommand = Callable[[AugmentArgs, Snapshot | None], AugmentImageCommand]
