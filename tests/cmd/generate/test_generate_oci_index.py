@@ -60,7 +60,7 @@ def test_GenerateOciIndexCommand_get_child_image_relationship() -> None:
 @patch(
     "mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_child_image_relationship"
 )
-@patch("mobster.cmd.generate.oci_index.spdx.get_package")
+@patch("mobster.cmd.generate.oci_index.spdx.get_image_package")
 @patch("mobster.cmd.generate.oci_index.json.load")
 def test_GenerateOciIndexCommand_get_child_packages(
     mock_json_load: MagicMock,
@@ -112,7 +112,7 @@ def test_GenerateOciIndexCommand_get_child_packages(
 @patch(
     "mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_child_image_relationship"
 )
-@patch("mobster.cmd.generate.oci_index.spdx.get_package")
+@patch("mobster.cmd.generate.oci_index.spdx.get_image_package")
 @patch("mobster.cmd.generate.oci_index.json.load")
 def test_GenerateOciIndexCommand_get_child_packages_unknown(
     mock_json_load: MagicMock,
@@ -143,7 +143,7 @@ def test_GenerateOciIndexCommand_get_child_packages_unknown(
 @patch("mobster.cmd.generate.oci_index.spdx.get_creation_info")
 @patch("mobster.cmd.generate.oci_index.GenerateOciIndexCommand.get_child_packages")
 @patch("mobster.cmd.generate.oci_index.spdx.get_root_package_relationship")
-@patch("mobster.cmd.generate.oci_index.spdx.get_package")
+@patch("mobster.cmd.generate.oci_index.spdx.get_image_package")
 @patch("mobster.cmd.generate.oci_index.Image.from_image_index_url_and_digest")
 async def test_GenerateOciIndexCommand_execute(
     mock_image: MagicMock,

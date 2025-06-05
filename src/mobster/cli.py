@@ -133,23 +133,16 @@ def generate_product_parser(subparsers: Any) -> None:
         "product", help="generate an SBOM document for product"
     )
     product_parser.add_argument(
-        "data",
+        "--data",
         required=True,
         type=Path,
         help="path to the merged data file in JSON format.",
     )
     product_parser.add_argument(
-        "snapshot",
+        "--snapshot",
         required=True,
         type=Path,
         help="path to the mapped snapshot spec data in JSON format.",
-    )
-    product_parser.add_argument(
-        "output",
-        type=Path,
-        nargs="?",
-        default=Path.cwd(),
-        help="path to the output directory",
     )
 
     product_parser.set_defaults(func=product.GenerateProductCommand)

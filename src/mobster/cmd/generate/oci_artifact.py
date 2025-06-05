@@ -109,7 +109,7 @@ class GenerateOciArtifactCommand(GenerateCommandWithOutputTypeSelector):
         Returns:
             Any: An SBOM document object in SPDX format.
         """
-        packages = [spdx.get_package(oci_image, oci_image.propose_spdx_id())]
+        packages = [spdx.get_image_package(oci_image, oci_image.propose_spdx_id())]
         artifact_packages = [
             spdx.get_package_from_artifact(artifact) for artifact in artifacts
         ]

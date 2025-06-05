@@ -3,6 +3,10 @@ from typing import Any
 from mobster import get_mobster_version
 
 
+async def awaitable(obj: Any) -> Any:
+    return obj
+
+
 def assert_spdx_sbom(actual: Any, expected: Any) -> None:
     """
     Compare and assert result SPDX SBOM with the expected SBOM, handling

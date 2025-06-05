@@ -1,48 +1,44 @@
 """A module for generating SBOM documents for products."""
 
 import logging
-from typing import Any
-import uuid
-from datetime import datetime, timezone
-import argparse
-from typing import List, Union
+import sys
 from pathlib import Path
-import asyncio
-
+from typing import Any
 
 import pydantic as pdc
-
-from spdx_tools.spdx.model.actor import Actor, ActorType
+import spdx_tools.spdx.writer.json.json_writer as spdx_json_writer
+from packageurl import PackageURL
 from spdx_tools.spdx.model.checksum import Checksum, ChecksumAlgorithm
-from spdx_tools.spdx.model.document import CreationInfo, Document
+from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import (
     ExternalPackageRef,
     ExternalPackageRefCategory,
     Package,
 )
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
-from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
-from spdx_tools.spdx.writer.write_anything import write_file
 
 from mobster.cmd.generate.base import GenerateCommand
-from mobster.release import Snapshot, make_snapshot
+from mobster.release import Component, Snapshot, make_snapshot
 from mobster.sbom import spdx
-
 
 LOGGER = logging.getLogger(__name__)
 
 
 class ReleaseNotes(pdc.BaseModel):
     """
-    Pydantic model representing the merged data file with flattened release notes.
+    Pydantic model representing the release notes.
     """
 
     product_name: str = pdc.Field(alias="product_name")
     product_version: str = pdc.Field(alias="product_version")
-    cpe: Union[str, List[str]] = pdc.Field(alias="cpe", union_mode="left_to_right")
+    cpe: str | list[str] = pdc.Field(alias="cpe", union_mode="left_to_right")
 
 
 class ReleaseData(pdc.BaseModel):
+    """
+    Pydantic model representing the merged data file.
+    """
+
     release_notes: ReleaseNotes = pdc.Field(alias="releaseNotes")
 
 
@@ -64,18 +60,36 @@ class GenerateProductCommand(GenerateCommand):
         snapshot = await make_snapshot(self.cli_args.snapshot)
 
         self.release_notes = parse_release_notes(self.cli_args.data)
-        self.document = await create_sbom(self.release_notes, snapshot)
+        self.document = create_sbom(self.release_notes, snapshot)
         LOGGER.info("Successfully created product-level SBOM.")
 
-    async def save(self) -> None:
+    async def save(self) -> bool:
         assert self.release_notes, "release_notes not set"
         assert self.document, "document not set"
 
         fname = get_filename(self.release_notes)
-        output_path: Path = self.cli_args.output.joinpath(fname)
-        LOGGER.info("Saving SBOM to %s.", output_path)
-        write_file(document=self.document, file_name=str(output_path), validate=True)
-        print(output_path.absolute())
+
+        if self.cli_args.output:
+            output_path: Path = self.cli_args.output.joinpath(fname)
+            LOGGER.info("Saving SBOM to %s.", output_path)
+            await self._save_file(self.document, output_path)
+        else:
+            LOGGER.info("Outputting SBOM to stdout.")
+            await self._save_stdout(self.document)
+
+        return True
+
+    async def _save_stdout(self, document: Document) -> None:
+        return await self._save(document, sys.stdout)
+
+    async def _save_file(self, document: Document, output: Path) -> None:
+        with open(output, "w", encoding="utf-8") as fp:
+            await self._save(document, fp)
+
+    async def _save(self, document: Document, stream: Any) -> None:
+        spdx_json_writer.write_document_to_stream(
+            document=document, stream=stream, validate=True
+        )
 
 
 def create_sbom(release_notes: ReleaseNotes, snapshot: Snapshot) -> Document:
@@ -122,15 +136,12 @@ def create_product_package(
         for cpe in cpes
     ]
 
-    return Package(
+    return spdx.get_package(
         spdx_id=product_elem_id,
         name=release_notes.product_name,
         version=release_notes.product_version,
-        download_location=SpdxNoAssertion(),
-        supplier=Actor(ActorType.ORGANIZATION, "Red Hat"),
-        license_declared=SpdxNoAssertion(),
-        files_analyzed=False,
-        external_references=refs,
+        external_refs=refs,
+        checksums=[],
     )
 
 
@@ -143,7 +154,28 @@ def create_product_relationship(doc_elem_id: str, product_elem_id: str) -> Relat
     )
 
 
-def get_component_packages(components: List[Component]) -> List[Package]:
+def without_sha_header(digest: str) -> str:
+    """
+    Return an image digest without the 'sha256:' header.
+    """
+    return digest.split(":", 1)[1]
+
+
+def get_repo_name(repository: str) -> str:
+    """
+    Get the name of an OCI repository from full repository.
+
+    Args:
+        repository (str): The full repository string
+
+    Example:
+        >>> get_repo_name("registry.redhat.io/org/suborg/rhel")
+        "rhel"
+    """
+    return repository.split("/")[-1]
+
+
+def get_component_packages(components: list[Component]) -> list[Package]:
     """
     Get a list of SPDX packages - one per each component.
 
@@ -151,43 +183,45 @@ def get_component_packages(components: List[Component]) -> List[Package]:
     """
     packages = []
     for component in components:
-        checksum = component.image.digest.split(":", 1)[1]
+        checksum = without_sha_header(component.image.digest)
+        repo_name = get_repo_name(component.repository)
 
         purls = [
-            construct_purl(
-                component.release_repository, component.image.digest, tag=tag
-            )
+            PackageURL(
+                type="oci",
+                name=repo_name,
+                version=component.image.digest,
+                qualifiers={"repository_url": component.repository, "tag": tag},
+            ).to_string()
             for tag in component.tags
         ]
 
-        packages.append(
-            Package(
-                spdx_id=f"SPDXRef-component-{component.name}",
-                name=component.name,
-                license_declared=SpdxNoAssertion(),
-                download_location=SpdxNoAssertion(),
-                files_analyzed=False,
-                supplier=Actor(ActorType.ORGANIZATION, "Red Hat"),
-                external_references=[
-                    ExternalPackageRef(
-                        category=ExternalPackageRefCategory.PACKAGE_MANAGER,
-                        reference_type="purl",
-                        locator=purl,
-                    )
-                    for purl in purls
-                ],
-                checksums=[
-                    Checksum(algorithm=ChecksumAlgorithm.SHA256, value=checksum)
-                ],
+        external_refs = [
+            ExternalPackageRef(
+                category=ExternalPackageRefCategory.PACKAGE_MANAGER,
+                reference_type="purl",
+                locator=purl,
             )
+            for purl in purls
+        ]
+
+        checksums = [Checksum(algorithm=ChecksumAlgorithm.SHA256, value=checksum)]
+
+        package = spdx.get_package(
+            spdx_id=f"SPDXRef-component-{component.name}",
+            name=component.name,
+            version=None,
+            external_refs=external_refs,
+            checksums=checksums,
         )
+        packages.append(package)
 
     return packages
 
 
 def get_component_relationships(
-    product_elem_id: str, packages: List[Package]
-) -> List[Relationship]:
+    product_elem_id: str, packages: list[Package]
+) -> list[Relationship]:
     """Get SPDX relationship for each SPDX component package."""
     return [
         Relationship(
@@ -203,7 +237,7 @@ def parse_release_notes(data: Path) -> ReleaseNotes:
     """
     Parse the data file at the specified path into a ReleaseNotes object.
     """
-    with open(data, "r") as fp:
+    with open(data, encoding="utf-8") as fp:
         raw_json = fp.read()
         return ReleaseData.model_validate_json(raw_json).release_notes
 
