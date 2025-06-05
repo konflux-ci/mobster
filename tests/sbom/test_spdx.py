@@ -9,7 +9,7 @@ def test_get_package() -> None:
     mock_image = Image.from_image_index_url_and_digest(
         "registry/repo:tag", "sha256:1234567890abcdef"
     )
-    result = spdx.get_package(mock_image, "fake_spdx_id")
+    result = spdx.get_image_package(mock_image, "fake_spdx_id")
 
     assert isinstance(result, Package)
     assert result.spdx_id == "fake_spdx_id"

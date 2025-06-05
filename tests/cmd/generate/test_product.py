@@ -1,11 +1,11 @@
+import json
+import tempfile
+from collections import namedtuple
+from collections.abc import Callable
 from dataclasses import dataclass
 from io import StringIO
-import json
 from pathlib import Path
-from sys import exec_prefix
-from typing import Callable, List, Any
-from collections import namedtuple
-import tempfile
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,9 +19,9 @@ from mobster.cmd.generate.product import (
     get_filename,
     parse_release_notes,
 )
-
-# from mobster.release import Component, Image, IndexImage, Snapshot
-
+from mobster.image import Image, IndexImage
+from mobster.release import Component, Snapshot
+from tests.conftest import awaitable
 
 Digests = namedtuple("Digests", ["single_arch", "multi_arch"])
 DIGESTS = Digests(
@@ -33,16 +33,16 @@ DIGESTS = Digests(
 @dataclass
 class Args:
     snapshot: Path
-    release_notes: Path
+    data: Path
     output: Path
 
 
-@pytest.fixture()
-def generate_product_command_args() -> Args:
+@pytest.fixture(params=[Path("product.json"), None], ids=["file", "stdout"])
+def generate_product_command_args(request: Any) -> Args:
     return Args(
         snapshot=Path("snapshot"),
-        release_notes=Path("data.json"),
-        output=Path("output/"),
+        data=Path("data.json"),
+        output=request.param,
     )
 
 
@@ -56,7 +56,9 @@ def generate_product_command(
 @pytest.fixture()
 def patch_make_snapshot(monkeypatch: pytest.MonkeyPatch) -> Any:
     def _patch_make_snapshot(snapshot: Snapshot) -> None:
-        monkeypatch.setattr("mobster.release.make_snapshot", lambda *_: snapshot)
+        monkeypatch.setattr(
+            "mobster.cmd.generate.product.make_snapshot", lambda *_: awaitable(snapshot)
+        )
 
     return _patch_make_snapshot
 
@@ -112,6 +114,7 @@ class TestGenerateProductCommand:
                                         repository="quay.io/repo", digest="sha256:bbb"
                                     ),
                                 ],
+                                repository="quay.io/repo",
                             ),
                             tags=["1.0", "latest"],
                             repository="registry.redhat.io/repo",
@@ -137,7 +140,7 @@ class TestGenerateProductCommand:
                                         repository="quay.io/repo", digest="sha256:aaa"
                                     ),
                                     Image(
-                                        repositor="quay.io/repo", digest="sha256:bbb"
+                                        repository="quay.io/repo", digest="sha256:bbb"
                                     ),
                                 ],
                             ),
@@ -176,6 +179,7 @@ class TestGenerateProductCommand:
         cpe: str | list[str],
         snapshot: Snapshot,
         purls: list[str],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         patch_make_snapshot(snapshot)
 
@@ -184,6 +188,9 @@ class TestGenerateProductCommand:
             product_version="1.0",
             cpe=cpe,
         )
+        monkeypatch.setattr(
+            "mobster.cmd.generate.product.parse_release_notes", lambda *_: release_notes
+        )
 
         await generate_product_command.execute()
 
@@ -191,7 +198,7 @@ class TestGenerateProductCommand:
         assert generate_product_command.release_notes is not None
 
         output = StringIO()
-        write_document_to_stream(generate_product_command.document, output)  # type: ignore
+        write_document_to_stream(generate_product_command.document, output)
         output.seek(0)
 
         sbom_dict = json.load(output)
@@ -208,13 +215,13 @@ class TestGenerateProductCommand:
 
         assert sbom_dict["dataLicense"] == "CC0-1.0"
 
+    @pytest.mark.asyncio
     async def test_save(
         self,
         generate_product_command_args: Args,
         generate_product_command: GenerateProductCommand,
         capsys: Any,
     ) -> None:
-
         release_notes = ReleaseNotes(
             product_name="Product",
             product_version="1.0",
@@ -223,16 +230,24 @@ class TestGenerateProductCommand:
         generate_product_command.release_notes = release_notes
         mock_doc = MagicMock()
         generate_product_command.document = mock_doc
-        file_name = generate_product_command_args.output.joinpath("Product-1.0.json")
 
-        with patch("mobster.cmd.generate.product.write_file") as mock_write_file:
-            mock_write_file.assert_called_once_with(
-                document=mock_doc,
-                file_name=str(file_name),
-                validate=True,
+        # check both file and stdout output functionality
+        if generate_product_command_args.output is not None:
+            file_name = generate_product_command_args.output.joinpath(
+                "Product-1.0.json"
             )
-            captured = capsys.readouterr()
-            assert Path(captured.out).absolute() == file_name.absolute()
+
+            with patch(
+                "mobster.cmd.generate.product.GenerateProductCommand._save_file"
+            ) as mock_save_file:
+                assert await generate_product_command.save()
+                mock_save_file.assert_awaited_once_with(mock_doc, file_name)
+        else:
+            with patch(
+                "mobster.cmd.generate.product.GenerateProductCommand._save_stdout"
+            ) as mock_save_stdout:
+                assert await generate_product_command.save()
+                mock_save_stdout.assert_awaited_once_with(mock_doc)
 
 
 @pytest.mark.parametrize(
@@ -272,7 +287,7 @@ class TestGenerateProductCommand:
         ),
     ],
 )
-def test_parse_release_notes(data: dict, expected_rn: ReleaseNotes) -> None:
+def test_parse_release_notes(data: dict[str, Any], expected_rn: ReleaseNotes) -> None:
     with tempfile.NamedTemporaryFile(mode="w") as tmpf:
         tmpf.write(json.dumps(data))
         tmpf.flush()
@@ -289,7 +304,7 @@ def verify_creation_info(sbom: Any, expected_name: str) -> None:
     assert sbom["name"] == expected_name
 
 
-def verify_cpe(sbom: Any, expected_cpe: str | List[str]) -> None:
+def verify_cpe(sbom: Any, expected_cpe: str | list[str]) -> None:
     """
     Verify that all CPE externalRefs are in the first package.
     """
@@ -302,7 +317,7 @@ def verify_cpe(sbom: Any, expected_cpe: str | List[str]) -> None:
         } in sbom["packages"][0]["externalRefs"]
 
 
-def verify_purls(sbom: Any, expected: List[str]) -> None:
+def verify_purls(sbom: Any, expected: list[str]) -> None:
     """
     Verify that the actual purls in the SBOM match the expected purls.
     """
@@ -342,7 +357,7 @@ def verify_checksums(sbom: Any) -> None:
         assert actual_checksums == expected_checksums
 
 
-def verify_relationships(sbom: Any, components: List[Component]) -> None:
+def verify_relationships(sbom: Any, components: list[Component]) -> None:
     """
     Verify that the correct relationships exist for each component and the product.
     """

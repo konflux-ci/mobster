@@ -42,10 +42,9 @@ def get_creation_info(sbom_name: str) -> CreationInfo:
     )
 
 
-def get_package(image: Image, spdx_id: str) -> Package:
+def get_image_package(image: Image, spdx_id: str) -> Package:
     """
     Transform the parsed image object into SPDX package object.
-
 
     Args:
         image (Image): A parsed image object.
@@ -54,16 +53,11 @@ def get_package(image: Image, spdx_id: str) -> Package:
     Returns:
         Package: A package object representing the OCI image.
     """
-
-    package = Package(
-        spdx_id=spdx_id,
+    return get_package(
+        spdx_id,
         name=image.name if not image.arch else f"{image.name}_{image.arch}",
         version=image.tag,
-        download_location=SpdxNoAssertion(),
-        supplier=Actor(ActorType.ORGANIZATION, "Red Hat"),
-        license_declared=SpdxNoAssertion(),
-        files_analyzed=False,
-        external_references=[
+        external_refs=[
             ExternalPackageRef(
                 category=ExternalPackageRefCategory.PACKAGE_MANAGER,
                 reference_type="purl",
@@ -78,4 +72,35 @@ def get_package(image: Image, spdx_id: str) -> Package:
         ],
     )
 
-    return package
+
+def get_package(
+    spdx_id: str,
+    name: str,
+    version: str | None,
+    external_refs: list[ExternalPackageRef],
+    checksums: list[Checksum],
+) -> Package:
+    """
+    Create an SPDX package from input data.
+
+    Args:
+        spdx_id (str): An SPDX ID of the package.
+        name (str): Name field of the package
+        version (str | None): Version field of the package
+        external_refs (list[ExternalPackageRef]): List of SPDX external references
+        checksums (list[Checksum]): List of SPDX checksums
+
+    Returns:
+        Package: An SPDX package object.
+    """
+    return Package(
+        spdx_id=spdx_id,
+        name=name,
+        version=version,
+        download_location=SpdxNoAssertion(),
+        supplier=Actor(ActorType.ORGANIZATION, "Red Hat"),
+        license_declared=SpdxNoAssertion(),
+        files_analyzed=False,
+        external_references=external_refs,
+        checksums=checksums,
+    )
