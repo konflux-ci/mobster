@@ -38,6 +38,7 @@ class ReleaseData(pdc.BaseModel):
     """
     Pydantic model representing the merged data file.
     """
+
     release_notes: ReleaseNotes = pdc.Field(alias="releaseNotes")
 
 
@@ -82,7 +83,7 @@ class GenerateProductCommand(GenerateCommand):
         return await self._save(document, sys.stdout)
 
     async def _save_file(self, document: Document, output: Path) -> None:
-        with open(output, "w", encoding='utf-8') as fp:
+        with open(output, "w", encoding="utf-8") as fp:
             await self._save(document, fp)
 
     async def _save(self, document: Document, stream: Any) -> None:
@@ -157,7 +158,7 @@ def without_sha_header(digest: str) -> str:
     """
     Return an image digest without the 'sha256:' header.
     """
-    return digest.split(':', 1)[1]
+    return digest.split(":", 1)[1]
 
 
 def get_repo_name(repository: str) -> str:
@@ -236,7 +237,7 @@ def parse_release_notes(data: Path) -> ReleaseNotes:
     """
     Parse the data file at the specified path into a ReleaseNotes object.
     """
-    with open(data, encoding='utf-8') as fp:
+    with open(data, encoding="utf-8") as fp:
         raw_json = fp.read()
         return ReleaseData.model_validate_json(raw_json).release_notes
 
