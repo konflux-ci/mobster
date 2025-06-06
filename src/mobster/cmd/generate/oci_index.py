@@ -99,19 +99,19 @@ class GenerateOciIndexCommand(GenerateCommand):
                 continue
 
             arch = manifest.get("platform", {}).get("architecture")
-
             LOGGER.info("Found child image with architecture: %s", arch)
 
+            # assign actual image architecture once image SBOMs contain
+            # the architecture in their purls
             arch_image = Image(
-                arch=arch,
-                digest=self.cli_args.index_image_digest,
+                digest=manifest["digest"],
                 tag=index_image.tag,
                 repository=index_image.repository,
+                arch=None,
             )
             spdx_id = arch_image.propose_spdx_id()
             package = spdx.get_package(
-                arch_image,
-                spdx_id,
+                arch_image, spdx_id, package_name=f"{arch_image.name}_{arch}"
             )
             relationship = self.get_child_image_relationship(spdx_id)
 

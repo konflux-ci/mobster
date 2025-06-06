@@ -35,18 +35,18 @@
       "versionInfo": "latest"
     },
     {
-      "SPDXID": "SPDXRef-image-ubi-eed2511e5b2f6c7891d79466ef64ed13e9e29e8fe536709666084922e3ff2ff6",
+      "SPDXID": "SPDXRef-image-ubi-bbbda2a1b066f44bbf56e9c0af7f080356e1f200fb4b3671da0ed6041b4b5a6b",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+          "checksumValue": "e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f"
         }
       ],
       "downloadLocation": "NOASSERTION",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE_MANAGER",
-          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?arch=amd64&repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceLocator": "pkg:oci/ubi@sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f?repository_url=registry.redhat.io/ubi10-beta/ubi",
           "referenceType": "purl"
         }
       ],
@@ -57,18 +57,18 @@
       "versionInfo": "latest"
     },
     {
-      "SPDXID": "SPDXRef-image-ubi-2ded713f6a4f846c080a42f73f1e1af6f5b4a7653825480f0e0f1d86dec89375",
+      "SPDXID": "SPDXRef-image-ubi-de3525a3ab798362b54ba8450f5fb3a7ee87cd5fadc8eaf7e4536478d5c82a63",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+          "checksumValue": "c85623b2a5822b6e101efb05424919da653e7c15e2e3e150871c48957087d65a"
         }
       ],
       "downloadLocation": "NOASSERTION",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE_MANAGER",
-          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?arch=arm64&repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceLocator": "pkg:oci/ubi@sha256:c85623b2a5822b6e101efb05424919da653e7c15e2e3e150871c48957087d65a?repository_url=registry.redhat.io/ubi10-beta/ubi",
           "referenceType": "purl"
         }
       ],
@@ -79,18 +79,18 @@
       "versionInfo": "latest"
     },
     {
-      "SPDXID": "SPDXRef-image-ubi-e568fd454597f2450f75978641c020c50874cf4760e986a1cd9f4a1b3fbc2c4c",
+      "SPDXID": "SPDXRef-image-ubi-d75f9381292039ba5081f69b5fda162dc04c243aaa9c647147d72af4b3354ff9",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+          "checksumValue": "874debf2354befc6ce90ccee2cbdab4abe2bf437aa6f4ab7649f7aeb4d57373a"
         }
       ],
       "downloadLocation": "NOASSERTION",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE_MANAGER",
-          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?arch=s390x&repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceLocator": "pkg:oci/ubi@sha256:874debf2354befc6ce90ccee2cbdab4abe2bf437aa6f4ab7649f7aeb4d57373a?repository_url=registry.redhat.io/ubi10-beta/ubi",
           "referenceType": "purl"
         }
       ],
@@ -101,18 +101,18 @@
       "versionInfo": "latest"
     },
     {
-      "SPDXID": "SPDXRef-image-ubi-b7c40d971296f5b6197d0a0833e91f4172720d37db4089ebb1159a9bbe68b52e",
+      "SPDXID": "SPDXRef-image-ubi-4b9921b7d73887e8f655dc51f8efbe4c76ea010f758dea73dfac7044aa0cc44b",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac"
+          "checksumValue": "c8799d5d851ddd76729ebb7227818f8c0030c4443c9e8542a75ff393fc90ce12"
         }
       ],
       "downloadLocation": "NOASSERTION",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE_MANAGER",
-          "referenceLocator": "pkg:oci/ubi@sha256:4b4976d86eefeedab6884c9d2923206c6c3c2e2471206f97fd9d7aaaecbc04ac?arch=ppc64le&repository_url=registry.redhat.io/ubi10-beta/ubi",
+          "referenceLocator": "pkg:oci/ubi@sha256:c8799d5d851ddd76729ebb7227818f8c0030c4443c9e8542a75ff393fc90ce12?repository_url=registry.redhat.io/ubi10-beta/ubi",
           "referenceType": "purl"
         }
       ],
@@ -130,22 +130,22 @@
       "relationshipType": "DESCRIBES"
     },
     {
-      "spdxElementId": "SPDXRef-image-ubi-eed2511e5b2f6c7891d79466ef64ed13e9e29e8fe536709666084922e3ff2ff6",
+      "spdxElementId": "SPDXRef-image-ubi-bbbda2a1b066f44bbf56e9c0af7f080356e1f200fb4b3671da0ed6041b4b5a6b",
       "relatedSpdxElement": "SPDXRef-image-index",
       "relationshipType": "VARIANT_OF"
     },
     {
-      "spdxElementId": "SPDXRef-image-ubi-2ded713f6a4f846c080a42f73f1e1af6f5b4a7653825480f0e0f1d86dec89375",
+      "spdxElementId": "SPDXRef-image-ubi-de3525a3ab798362b54ba8450f5fb3a7ee87cd5fadc8eaf7e4536478d5c82a63",
       "relatedSpdxElement": "SPDXRef-image-index",
       "relationshipType": "VARIANT_OF"
     },
     {
-      "spdxElementId": "SPDXRef-image-ubi-e568fd454597f2450f75978641c020c50874cf4760e986a1cd9f4a1b3fbc2c4c",
+      "spdxElementId": "SPDXRef-image-ubi-d75f9381292039ba5081f69b5fda162dc04c243aaa9c647147d72af4b3354ff9",
       "relatedSpdxElement": "SPDXRef-image-index",
       "relationshipType": "VARIANT_OF"
     },
     {
-      "spdxElementId": "SPDXRef-image-ubi-b7c40d971296f5b6197d0a0833e91f4172720d37db4089ebb1159a9bbe68b52e",
+      "spdxElementId": "SPDXRef-image-ubi-4b9921b7d73887e8f655dc51f8efbe4c76ea010f758dea73dfac7044aa0cc44b",
       "relatedSpdxElement": "SPDXRef-image-index",
       "relationshipType": "VARIANT_OF"
     }
