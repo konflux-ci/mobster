@@ -11,9 +11,11 @@ from spdx_tools.spdx.model.package import (
     ExternalPackageRefCategory,
     Package,
 )
+from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster import get_mobster_version
+from mobster.artifact import Artifact
 from mobster.image import Image
 
 
@@ -81,3 +83,56 @@ def get_package(image: Image, spdx_id: str, package_name: str | None = None) -> 
     )
 
     return package
+
+
+def get_package_from_artifact(artifact: Artifact) -> Package:
+    """
+    Transform the parsed artifact object into SPDX package object.
+
+    Args:
+        artifact (Artifact): A parsed artifact object.
+
+    Returns:
+        Package: A package object representing the artifact.
+    """
+    package = Package(
+        spdx_id=artifact.propose_spdx_id(),
+        name=artifact.filename,
+        download_location=artifact.source,
+        supplier=Actor(ActorType.ORGANIZATION, "Red Hat"),
+        license_declared=SpdxNoAssertion(),
+        files_analyzed=False,
+        external_references=[
+            ExternalPackageRef(
+                category=ExternalPackageRefCategory.PACKAGE_MANAGER,
+                reference_type="purl",
+                locator=artifact.purl_str(),
+            )
+        ],
+        checksums=[
+            Checksum(
+                algorithm=ChecksumAlgorithm.SHA256,
+                value=artifact.sha256sum,
+            )
+        ],
+    )
+
+    return package
+
+
+def get_root_package_relationship(spdx_id: str) -> Relationship:
+    """
+    Get a relationship for the root package in relation to the SPDX document.
+    This relationship indicates that the document describes the root package.
+
+    Args:
+        spdx_id (str): An SPDX ID for the root package.
+
+    Returns:
+        Relationship: An object representing the relationship for the root package.
+    """
+    return Relationship(
+        spdx_element_id="SPDXRef-DOCUMENT",
+        relationship_type=RelationshipType.DESCRIBES,
+        related_spdx_element_id=spdx_id,
+    )
