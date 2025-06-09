@@ -12,6 +12,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
+
 import pydantic
 
 from mobster.error import SBOMError
@@ -143,7 +144,7 @@ def make_oci_auth_file(
         # the file has to be named "config.json" for cosign compatibility
         new_config_path = Path(tempdir.name).joinpath("config.json")
 
-        with open(new_config_path, "w") as new_config_fp:
+        with open(new_config_path, "w", encoding="utf-8") as new_config_fp:
             subconfig = _get_auth_subconfig(config, reference)
             new_config_fp.write(subconfig.model_dump_json(by_alias=True))
 
@@ -164,7 +165,9 @@ def _get_auth_subconfig(config: DockerConfig, reference: str) -> DockerConfig:
                     "registry.redhat.io/specific-repo": AuthDetails(token="token"),
                 },
             )
-        >>> _get_auth_subconfig(config, "registry.redhat.io/specific-repo@sha256:deadbeef")
+        >>> _get_auth_subconfig(
+                config, "registry.redhat.io/specific-repo@sha256:deadbeef"
+            )
         DockerConfig(
             auths={
                 "registry.redhat.io/specific-repo": AuthDetails(token="token"),
