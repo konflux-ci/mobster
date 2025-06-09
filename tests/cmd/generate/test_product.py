@@ -16,7 +16,6 @@ from mobster import get_mobster_version
 from mobster.cmd.generate.product import (
     GenerateProductCommand,
     ReleaseNotes,
-    get_filename,
     parse_release_notes,
 )
 from mobster.image import Image, IndexImage
@@ -204,7 +203,7 @@ class TestGenerateProductCommand:
         sbom_dict = json.load(output)
 
         verify_creation_info(
-            sbom_dict, f"{release_notes.product_name} {release_notes.product_version}"
+            sbom_dict, f"{release_notes.product_name}-{release_notes.product_version}"
         )
         verify_cpe(sbom_dict, cpe)
         verify_purls(sbom_dict, purls)
@@ -233,9 +232,7 @@ class TestGenerateProductCommand:
 
         # check both file and stdout output functionality
         if generate_product_command_args.output is not None:
-            file_name = generate_product_command_args.output.joinpath(
-                "Product-1.0.json"
-            )
+            file_name = generate_product_command_args.output
 
             with patch(
                 "mobster.cmd.generate.product.GenerateProductCommand._save_file"
@@ -385,10 +382,3 @@ def verify_supplier(sbom: Any) -> None:
 def verify_package_licenses(sbom: Any) -> None:
     for package in sbom["packages"]:
         assert package["licenseDeclared"] == "NOASSERTION"
-
-
-def test_get_filename() -> None:
-    notes = ReleaseNotes(
-        product_name="Amazing Red Hat Product", product_version="1.0", cpe=""
-    )
-    assert get_filename(notes) == "Amazing-Red-Hat-Product-1.0.json"

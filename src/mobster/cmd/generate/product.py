@@ -67,10 +67,8 @@ class GenerateProductCommand(GenerateCommand):
         assert self.release_notes, "release_notes not set"
         assert self.document, "document not set"
 
-        fname = get_filename(self.release_notes)
-
         if self.cli_args.output:
-            output_path: Path = self.cli_args.output.joinpath(fname)
+            output_path = self.cli_args.output
             LOGGER.info("Saving SBOM to %s.", output_path)
             await self._save_file(self.document, output_path)
         else:
@@ -100,7 +98,7 @@ def create_sbom(release_notes: ReleaseNotes, snapshot: Snapshot) -> Document:
     product_elem_id = "SPDXRef-product"
 
     creation_info = spdx.get_creation_info(
-        f"{release_notes.product_name} {release_notes.product_version}"
+        f"{release_notes.product_name}-{release_notes.product_version}"
     )
 
     product_package = create_product_package(product_elem_id, release_notes)
@@ -240,11 +238,3 @@ def parse_release_notes(data: Path) -> ReleaseNotes:
     with open(data, encoding="utf-8") as fp:
         raw_json = fp.read()
         return ReleaseData.model_validate_json(raw_json).release_notes
-
-
-def get_filename(release_notes: ReleaseNotes) -> str:
-    """
-    Get the filename for the SBOM based on release notes.
-    """
-    normalized_name = "-".join(release_notes.product_name.split())
-    return f"{normalized_name}-{release_notes.product_version}.json"
