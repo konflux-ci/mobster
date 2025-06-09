@@ -13,7 +13,7 @@ from dateutil.parser import isoparse
 from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import (
-    find_auth_file,
+    _find_auth_file,
     get_image_manifest,
     make_oci_auth_file,
     run_async_subprocess,
@@ -239,6 +239,7 @@ class TestMakeOciAuth:
             tmpf.flush()
 
             with make_oci_auth_file(reference, auth=Path(tmpf.name)) as new_auth_path:
+                assert new_auth_path.name == "config.json"
                 with open(new_auth_path) as fp:
                     new_auth = json.load(fp)
 
@@ -254,7 +255,7 @@ class TestMakeOciAuth:
     async def test_make_oci_auth_file_nonexistent_find_auth(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr("mobster.oci.find_auth_file", lambda: None)
+        monkeypatch.setattr("mobster.oci._find_auth_file", lambda: None)
         with pytest.raises(ValueError):
             with make_oci_auth_file("") as _:
                 pass
@@ -395,7 +396,7 @@ class TestMakeOciAuth:
 
         monkeypatch.setattr("mobster.oci.Path.is_file", fake_is_file)
 
-        assert find_auth_file() == expected
+        assert _find_auth_file() == expected
 
 
 def test_provenance_bad_predicate_type() -> None:
