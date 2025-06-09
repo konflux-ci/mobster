@@ -36,23 +36,6 @@ class GenerateOciIndexCommand(GenerateCommand):
     DOC_ELEMENT_ID = "SPDXRef-DOCUMENT"
     INDEX_ELEMENT_ID = "SPDXRef-image-index"
 
-    def get_index_image_relationship(self, spdx_id: str) -> Relationship:
-        """
-        Get a relationship for the OCI index image in relation to the SPDX document.
-        This relationship indicates that the document describes the index image.
-
-        Args:
-            spdx_id (str): An SPDX ID for the index image.
-
-        Returns:
-            Relationship: A SPDX relationship object for the index image.
-        """
-        return Relationship(
-            spdx_element_id=self.DOC_ELEMENT_ID,
-            relationship_type=RelationshipType.DESCRIBES,
-            related_spdx_element_id=spdx_id,
-        )
-
     def get_child_image_relationship(self, spdx_id: str) -> Relationship:
         """
         Get a relationship for the child image in relation to the OCI index image.
@@ -131,7 +114,7 @@ class GenerateOciIndexCommand(GenerateCommand):
         )
 
         main_package = spdx.get_package(index_image, self.INDEX_ELEMENT_ID)
-        main_relationship = self.get_index_image_relationship(self.INDEX_ELEMENT_ID)
+        main_relationship = spdx.get_root_package_relationship(self.INDEX_ELEMENT_ID)
         component_packages, component_relationships = self.get_child_packages(
             index_image
         )
