@@ -232,24 +232,42 @@ async def test__request_fail_on_error(
 
 
 @pytest.mark.asyncio
-@patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._request")
-async def test_put(mock_request: AsyncMock) -> None:
+async def test_put() -> None:
     client = _get_valid_client()
 
-    await client.put("foo", '{"file": ""}', headers={"header": "test"})
+    with patch.object(
+        client,
+        "_request",
+        new_callable=AsyncMock,
+        return_value=MagicMock(),
+    ) as mock_request:
+        await client.put("foo", '{"file": ""}', headers={"header": "test"})
 
-    mock_request.assert_awaited_once_with(
-        "put", "foo", content='{"file": ""}', headers={"header": "test"}, params=None
-    )
+        mock_request.assert_awaited_once_with(
+            "put",
+            "foo",
+            content='{"file": ""}',
+            headers={"header": "test"},
+            params=None,
+        )
 
 
 @pytest.mark.asyncio
-@patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._request")
-async def test_post(mock_request: AsyncMock) -> None:
+async def test_post() -> None:
     client = _get_valid_client()
 
-    await client.post("foo", '{"file": ""}', headers={"header": "test"})
+    with patch.object(
+        client,
+        "_request",
+        new_callable=AsyncMock,
+        return_value=MagicMock(),
+    ) as mock_request:
+        await client.post("foo", '{"file": ""}', headers={"header": "test"})
 
-    mock_request.assert_awaited_once_with(
-        "post", "foo", content='{"file": ""}', headers={"header": "test"}, params=None
-    )
+        mock_request.assert_awaited_once_with(
+            "post",
+            "foo",
+            content='{"file": ""}',
+            headers={"header": "test"},
+            params=None,
+        )
