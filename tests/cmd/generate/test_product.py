@@ -32,7 +32,7 @@ DIGESTS = Digests(
 @dataclass
 class Args:
     snapshot: Path
-    data: Path
+    release_data: Path
     output: Path
 
 
@@ -40,7 +40,7 @@ class Args:
 def generate_product_command_args(request: Any) -> Args:
     return Args(
         snapshot=Path("snapshot"),
-        data=Path("data.json"),
+        release_data=Path("data.json"),
         output=request.param,
     )
 

@@ -59,7 +59,7 @@ class GenerateProductCommand(GenerateCommand):
         LOGGER.info("Starting product SBOM generation.")
         snapshot = await make_snapshot(self.cli_args.snapshot)
 
-        self.release_notes = parse_release_notes(self.cli_args.data)
+        self.release_notes = parse_release_notes(self.cli_args.release_data)
         self.document = create_sbom(self.release_notes, snapshot)
         LOGGER.info("Successfully created product-level SBOM.")
 

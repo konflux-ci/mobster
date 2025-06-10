@@ -133,7 +133,7 @@ def generate_product_parser(subparsers: Any) -> None:
         "product", help="generate an SBOM document for product"
     )
     product_parser.add_argument(
-        "--data",
+        "--release-data",
         required=True,
         type=Path,
         help="path to the merged data file in JSON format.",
