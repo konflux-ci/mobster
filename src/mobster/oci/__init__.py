@@ -23,14 +23,15 @@ logger = logging.getLogger(__name__)
 async def run_async_subprocess(
     cmd: list[str], env: dict[str, str] | None = None, retry_times: int = 0
 ) -> tuple[int, bytes, bytes]:
-    """
-    Run command in subprocess asynchronously.
+    """Run command in subprocess asynchronously.
 
     Args:
-        cmd (list[str]): command to run in subprocess.
-        env (dict[str, str] | None): environ dict
-        retry_times (int): number of retries if the process ends with
-            non-zero return code
+        cmd: Command to run in subprocess.
+        env: Environment dictionary.
+        retry_times: Number of retries if the process ends with non-zero return code.
+
+    Returns:
+        tuple[int, bytes, bytes]: Return code, stdout, and stderr.
     """
     if retry_times < 0:
         raise ValueError("Retry count cannot be negative.")
@@ -68,7 +69,10 @@ async def get_image_manifest(reference: str) -> dict[str, Any]:
     repository.
 
     Args:
-        reference (str): full image reference (repository@sha256<sha>)
+        reference: Full image reference (repository@sha256<sha>).
+
+    Returns:
+        dict[str, Any]: Dictionary containing the manifest data.
     """
     logger.info("Fetching manifest for %s", reference)
 
@@ -108,13 +112,18 @@ def make_oci_auth_file(
 ) -> Generator[Path, Any, None]:
     """
     Gets path to a temporary file containing the docker config JSON for
-    <reference>.  Deletes the file after the with statement. If no path to the
-    docker config is provided, tries using ~/.docker/config.json . Ports in the
-    registry are NOT supported.
+    reference.
+
+    Deletes the file after the with statement. If no path to the docker config
+    is provided, tries using ~/.docker/config.json. Ports in the registry are
+    NOT supported.
 
     Args:
-        reference (str): Reference to an image in the form registry/repo@sha256-deadbeef
-        auth (Path | None): Existing docker config.json
+        reference: Reference to an image in the form registry/repo@sha256-deadbeef.
+        auth: Existing docker config.json path.
+
+    Yields:
+        Path: Path to temporary authentication file.
 
     Example:
         >>> with make_oci_auth_file(ref) as auth_path:
@@ -156,7 +165,17 @@ def make_oci_auth_file(
 def _get_auth_subconfig(config: DockerConfig, reference: str) -> DockerConfig:
     """
     Create a docker config containing token authentication only for a specific
-    image reference. Tries to match specific repository paths first.
+    image reference.
+
+    Tries to match specific repository paths first.
+
+    Args:
+        config: The docker configuration containing authentication details.
+        reference: The image reference to match authentication for.
+
+    Returns:
+        DockerConfig: Docker configuration with authentication for the specific
+            reference.
 
     Example:
         >>> config = DockerConfig(
@@ -193,13 +212,13 @@ def _get_auth_subconfig(config: DockerConfig, reference: str) -> DockerConfig:
 
 
 def _find_auth_file() -> Path | None:
-    """
-    Find an authentication file that can be used to access an OCI registry.
+    """Find an authentication file that can be used to access an OCI registry.
+
     Mimics the process that podman uses on login:
     https://docs.podman.io/en/v5.1.0/markdown/podman-login.1.html
 
     Returns:
-        Path | None: A path to the authentication file if it exists, or None
+        Path | None: A path to the authentication file if it exists, or None.
     """
     if "REGISTRY_AUTH_FILE" in os.environ:
         path = Path(os.environ["REGISTRY_AUTH_FILE"])

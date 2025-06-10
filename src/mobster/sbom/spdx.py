@@ -21,12 +21,12 @@ from mobster.image import Image
 
 
 def get_root_package_relationship(spdx_id: str) -> Relationship:
-    """
-    Get a relationship for the root package in relation to the SPDX document.
+    """Get a relationship for the root package in relation to the SPDX document.
+
     This relationship indicates that the document describes the root package.
 
     Args:
-        spdx_id (str): An SPDX ID for the root package.
+        spdx_id: An SPDX ID for the root package.
 
     Returns:
         Relationship: An object representing the relationship for the root package.
@@ -39,11 +39,10 @@ def get_root_package_relationship(spdx_id: str) -> Relationship:
 
 
 def get_creation_info(sbom_name: str) -> CreationInfo:
-    """
-    Create the creation information for the SPDX document.
+    """Create the creation information for the SPDX document.
 
     Args:
-        index_image (Image): An OCI index image object.
+        sbom_name: The name for the SBOM document.
 
     Returns:
         CreationInfo: A creation information object for the SPDX document.
@@ -66,14 +65,13 @@ def get_creation_info(sbom_name: str) -> CreationInfo:
 def get_image_package(
     image: Image, spdx_id: str, package_name: str | None = None
 ) -> Package:
-    """
-    Transform the parsed image object into SPDX package object.
+    """Transform the parsed image object into SPDX package object.
 
     Args:
-        image (Image): A parsed image object.
-        spdx_id (str): An SPDX ID for the image.
-        package_name (str | None): An optional package name. The image name and
-            architecture will be used if not provided.
+        image: A parsed image object.
+        spdx_id: An SPDX ID for the image.
+        package_name: An optional package name. The image name and architecture
+            will be used if not provided.
 
     Returns:
         Package: A package object representing the OCI image.
@@ -102,11 +100,10 @@ def get_image_package(
 
 
 def get_package_from_artifact(artifact: Artifact) -> Package:
-    """
-    Transform the parsed artifact object into SPDX package object.
+    """Transform the parsed artifact object into SPDX package object.
 
     Args:
-        artifact (Artifact): A parsed artifact object.
+        artifact: A parsed artifact object.
 
     Returns:
         Package: A package object representing the artifact.
@@ -140,17 +137,16 @@ def get_package(
     version: str | None = None,
     download_location: str | SpdxNoAssertion | SpdxNone | None = None,
 ) -> Package:
-    """
-    Create an SPDX package from input data.
+    """Create an SPDX package from input data.
 
     Args:
-        spdx_id (str): An SPDX ID of the package.
-        name (str): Name field of the package
-        version (str | None): Version field of the package
-        external_refs (list[ExternalPackageRef]): List of SPDX external references
-        checksums (list[Checksum]): List of SPDX checksums
-        download_location (str | SpdxNoAssertion | SpdxNone | None): Package
-            download location. If not provided, SpdxNoAssertion is used.
+        spdx_id: An SPDX ID of the package.
+        name: Name field of the package.
+        external_refs: List of SPDX external references.
+        checksums: List of SPDX checksums.
+        version: Version field of the package.
+        download_location: Package download location. If not provided,
+            SpdxNoAssertion is used.
 
     Returns:
         Package: An SPDX package object.

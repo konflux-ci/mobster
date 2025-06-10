@@ -25,9 +25,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ReleaseNotes(pdc.BaseModel):
-    """
-    Pydantic model representing the release notes.
-    """
+    """Pydantic model representing the release notes."""
 
     product_name: str = pdc.Field(alias="product_name")
     product_version: str = pdc.Field(alias="product_version")
@@ -35,17 +33,13 @@ class ReleaseNotes(pdc.BaseModel):
 
 
 class ReleaseData(pdc.BaseModel):
-    """
-    Pydantic model representing the merged data file.
-    """
+    """Pydantic model representing the merged data file."""
 
     release_notes: ReleaseNotes = pdc.Field(alias="releaseNotes")
 
 
 class GenerateProductCommand(GenerateCommand):
-    """
-    Command to generate an SBOM document for a product level.
-    """
+    """Command to generate a product-level SBOM document."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -53,8 +47,10 @@ class GenerateProductCommand(GenerateCommand):
         self.release_notes: ReleaseNotes | None = None
 
     async def execute(self) -> Any:
-        """
-        Generate an SBOM document for a product.
+        """Generate an SBOM document for a product.
+
+        Returns:
+            Any: The generated SBOM document.
         """
         LOGGER.info("Starting product SBOM generation.")
         snapshot = await make_snapshot(self.cli_args.snapshot)
@@ -78,21 +74,29 @@ class GenerateProductCommand(GenerateCommand):
         return True
 
     async def _save_stdout(self, document: Document) -> None:
-        """
-        Validate and print the passed SPDX document to stdout.
+        """Validate and print the passed SPDX document to stdout.
+
+        Args:
+            document: The SPDX document to output.
         """
         return await self._save(document, sys.stdout)
 
     async def _save_file(self, document: Document, output: Path) -> None:
-        """
-        Validate and save the passed SPDX document to a specified path.
+        """Validate and save the passed SPDX document to a specified path.
+
+        Args:
+            document: The SPDX document to save.
+            output: The file path to save to.
         """
         with open(output, "w", encoding="utf-8") as fp:
             await self._save(document, fp)
 
     async def _save(self, document: Document, stream: Any) -> None:
-        """
-        Validate and save the passed SDPX document do a stream.
+        """Validate and save the passed SPDX document to a stream.
+
+        Args:
+            document: The SPDX document to save.
+            stream: The stream to write to.
         """
         spdx_json_writer.write_document_to_stream(
             document=document, stream=stream, validate=True
@@ -100,8 +104,14 @@ class GenerateProductCommand(GenerateCommand):
 
 
 def create_sbom(release_notes: ReleaseNotes, snapshot: Snapshot) -> Document:
-    """
-    Create an SPDX document based on release notes and a snapshot.
+    """Create an SPDX document based on release notes and a snapshot.
+
+    Args:
+        release_notes: The release notes containing product information.
+        snapshot: The snapshot containing component information.
+
+    Returns:
+        Document: The generated SPDX document.
     """
     product_elem_id = "SPDXRef-product"
 
@@ -127,7 +137,15 @@ def create_sbom(release_notes: ReleaseNotes, snapshot: Snapshot) -> Document:
 def create_product_package(
     product_elem_id: str, release_notes: ReleaseNotes
 ) -> Package:
-    """Create SPDX package corresponding to the product."""
+    """Create SPDX package corresponding to the product.
+
+    Args:
+        product_elem_id: The SPDX element ID for the product.
+        release_notes: The release notes containing product information.
+
+    Returns:
+        Package: The SPDX package for the product.
+    """
     if isinstance(release_notes.cpe, str):
         cpes = [release_notes.cpe]
     else:
@@ -152,18 +170,25 @@ def create_product_package(
 
 
 def without_sha_header(digest: str) -> str:
-    """
-    Return an image digest without the 'sha256:' header.
+    """Return an image digest without the 'sha256:' header.
+
+    Args:
+        digest: The image digest with sha256 header.
+
+    Returns:
+        str: The digest without the header.
     """
     return digest.split(":", 1)[1]
 
 
 def get_repo_name(repository: str) -> str:
-    """
-    Get the name of an OCI repository from full repository.
+    """Get the name of an OCI repository from full repository.
 
     Args:
-        repository (str): The full repository string
+        repository: The full repository string.
+
+    Returns:
+        str: The repository name.
 
     Example:
         >>> get_repo_name("registry.redhat.io/org/suborg/rhel")
@@ -173,10 +198,15 @@ def get_repo_name(repository: str) -> str:
 
 
 def get_component_packages(components: list[Component]) -> list[Package]:
-    """
-    Get a list of SPDX packages - one per each component.
+    """Get a list of SPDX packages - one per each component.
 
     Each component can have multiple external references - purls.
+
+    Args:
+        components: List of components to convert to SPDX packages.
+
+    Returns:
+        list[Package]: List of SPDX packages.
     """
     packages = []
     for component in components:
@@ -219,7 +249,15 @@ def get_component_packages(components: list[Component]) -> list[Package]:
 def get_component_relationships(
     product_elem_id: str, packages: list[Package]
 ) -> list[Relationship]:
-    """Get SPDX relationship for each SPDX component package."""
+    """Get SPDX relationship for each SPDX component package.
+
+    Args:
+        product_elem_id: The SPDX ID of the product element.
+        packages: List of SPDX packages to create relationships for.
+
+    Returns:
+        list[Relationship]: List of SPDX relationships.
+    """
     return [
         Relationship(
             spdx_element_id=package.spdx_id,
@@ -231,8 +269,13 @@ def get_component_relationships(
 
 
 def parse_release_notes(data: Path) -> ReleaseNotes:
-    """
-    Parse the data file at the specified path into a ReleaseNotes object.
+    """Parse the data file at the specified path into a ReleaseNotes object.
+
+    Args:
+        data: Path to the release data file.
+
+    Returns:
+        ReleaseNotes: Parsed ReleaseNotes object.
     """
     with open(data, encoding="utf-8") as fp:
         raw_json = fp.read()
