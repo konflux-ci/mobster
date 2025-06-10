@@ -78,13 +78,22 @@ class GenerateProductCommand(GenerateCommand):
         return True
 
     async def _save_stdout(self, document: Document) -> None:
+        """
+        Validate and print the passed SPDX document to stdout.
+        """
         return await self._save(document, sys.stdout)
 
     async def _save_file(self, document: Document, output: Path) -> None:
+        """
+        Validate and save the passed SPDX document to a specified path.
+        """
         with open(output, "w", encoding="utf-8") as fp:
             await self._save(document, fp)
 
     async def _save(self, document: Document, stream: Any) -> None:
+        """
+        Validate and save the passed SDPX document do a stream.
+        """
         spdx_json_writer.write_document_to_stream(
             document=document, stream=stream, validate=True
         )
@@ -94,7 +103,6 @@ def create_sbom(release_notes: ReleaseNotes, snapshot: Snapshot) -> Document:
     """
     Create an SPDX document based on release notes and a snapshot.
     """
-    doc_elem_id = "SPDXRef-DOCUMENT"
     product_elem_id = "SPDXRef-product"
 
     creation_info = spdx.get_creation_info(
@@ -102,7 +110,7 @@ def create_sbom(release_notes: ReleaseNotes, snapshot: Snapshot) -> Document:
     )
 
     product_package = create_product_package(product_elem_id, release_notes)
-    product_relationship = create_product_relationship(doc_elem_id, product_elem_id)
+    product_relationship = spdx.get_root_package_relationship(product_elem_id)
 
     component_packages = get_component_packages(snapshot.components)
     component_relationships = get_component_relationships(
@@ -140,15 +148,6 @@ def create_product_package(
         version=release_notes.product_version,
         external_refs=refs,
         checksums=[],
-    )
-
-
-def create_product_relationship(doc_elem_id: str, product_elem_id: str) -> Relationship:
-    """Create SPDX relationship corresponding to the product SPDX package."""
-    return Relationship(
-        spdx_element_id=doc_elem_id,
-        relationship_type=RelationshipType.DESCRIBES,
-        related_spdx_element_id=product_elem_id,
     )
 
 
