@@ -56,6 +56,9 @@ class GenerateProductCommand(GenerateCommand):
         LOGGER.info("Successfully created product-level SBOM.")
 
     async def save(self) -> bool:
+        """
+        Save the current generated SBOM document to a file or stdout.
+        """
         assert self.release_notes, "release_notes not set"
         assert self.document, "document not set"
 
