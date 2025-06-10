@@ -46,12 +46,8 @@ class GenerateProductCommand(GenerateCommand):
         self.document: Document | None = None
         self.release_notes: ReleaseNotes | None = None
 
-    async def execute(self) -> Any:
-        """Generate an SBOM document for a product.
-
-        Returns:
-            Any: The generated SBOM document.
-        """
+    async def execute(self) -> None:
+        """Generate an SBOM document for a product."""
         LOGGER.info("Starting product SBOM generation.")
         snapshot = await make_snapshot(self.cli_args.snapshot)
 

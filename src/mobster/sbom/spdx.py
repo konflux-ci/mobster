@@ -23,8 +23,6 @@ from mobster.image import Image
 def get_root_package_relationship(spdx_id: str) -> Relationship:
     """Get a relationship for the root package in relation to the SPDX document.
 
-    This relationship indicates that the document describes the root package.
-
     Args:
         spdx_id: An SPDX ID for the root package.
 
