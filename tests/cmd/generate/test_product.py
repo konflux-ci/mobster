@@ -1,13 +1,12 @@
-from datetime import datetime
 import json
 import tempfile
 from collections import namedtuple
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 from packageurl import PackageURL
