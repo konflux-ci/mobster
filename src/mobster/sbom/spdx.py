@@ -1,7 +1,6 @@
 """A module for SPDX SBOM format"""
 
 from datetime import datetime, timezone
-from typing import Any
 from uuid import uuid4
 
 from spdx_tools.spdx.model.actor import Actor, ActorType
@@ -14,6 +13,7 @@ from spdx_tools.spdx.model.package import (
 )
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
+from spdx_tools.spdx.model.spdx_none import SpdxNone
 
 from mobster import get_mobster_version
 from mobster.artifact import Artifact
@@ -138,7 +138,7 @@ def get_package(
     external_refs: list[ExternalPackageRef],
     checksums: list[Checksum],
     version: str | None = None,
-    download_location: Any | None = None,
+    download_location: str | SpdxNoAssertion | SpdxNone | None = None,
 ) -> Package:
     """
     Create an SPDX package from input data.
@@ -149,6 +149,8 @@ def get_package(
         version (str | None): Version field of the package
         external_refs (list[ExternalPackageRef]): List of SPDX external references
         checksums (list[Checksum]): List of SPDX checksums
+        download_location (str | SpdxNoAssertion | SpdxNone | None): Package
+            download location. If not provided, SpdxNoAssertion is used.
 
     Returns:
         Package: An SPDX package object.
