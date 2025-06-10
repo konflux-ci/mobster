@@ -1,8 +1,8 @@
 """A module for SPDX SBOM format"""
 
 from datetime import datetime, timezone
-from uuid import uuid4
 from typing import Any
+from uuid import uuid4
 
 from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.checksum import Checksum, ChecksumAlgorithm
@@ -100,8 +100,6 @@ def get_image_package(
         ],
     )
 
-    return package
-
 
 def get_package_from_artifact(artifact: Artifact) -> Package:
     """
@@ -133,6 +131,7 @@ def get_package_from_artifact(artifact: Artifact) -> Package:
     )
 
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 def get_package(
     spdx_id: str,
     name: str,
