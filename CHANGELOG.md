@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.3.0](https://github.com/konflux-ci/mobster/compare/v0.2.1...v0.3.0) (2025-06-10)
+
+
+### Features
+
+* Add code coverage github action ([2da25ae](https://github.com/konflux-ci/mobster/commit/2da25ae7fac3c22cee6ba2966a3fa4f654e534e2))
+* **ISV-5870:** Generator for oci-artifact ([f297aa8](https://github.com/konflux-ci/mobster/commit/f297aa8ca66fa1cc4e252a0b62fa659d2f6e0705))
+* **ISV-5870:** Generator for oci-artifact ([84f1bdf](https://github.com/konflux-ci/mobster/commit/84f1bdf6fffff7f960ede99bbdb75bed0588dde6))
+* **ISV-5877:** Implement uploading to TPA ([fb7748f](https://github.com/konflux-ci/mobster/commit/fb7748f6b2eca860fdbb733d5a1d9f52c2bedc22))
+* **ISV-5877:** Implement uploading to TPA ([0ff8d03](https://github.com/konflux-ci/mobster/commit/0ff8d0383cbad779493066f43442190d2650c381))
+
+
+### Bug Fixes
+
+* **ISV-5982:** link to arch-specific images ([2eecb63](https://github.com/konflux-ci/mobster/commit/2eecb63b5757309947fb3e199c2e566741d80ec6))
+* Properly mock OIDC responses ([8e38a55](https://github.com/konflux-ci/mobster/commit/8e38a550e946b80ecabdec0a481687f92638c794))
+* Properly mock OIDC responses ([6874935](https://github.com/konflux-ci/mobster/commit/68749351936429cfec30283d189ab5b575aabb5e))
+
+
+### Documentation
+
+* Update a release documentation ([0f071e5](https://github.com/konflux-ci/mobster/commit/0f071e53ad99d10252b3511e773527569e67ba88))
+
 ## 0.2.1 (2025-06-04)
 
 
