@@ -247,7 +247,7 @@ class TestGenerateProductCommand:
         sbom_dict = json.load(output)
 
         verify_creation_info(
-            sbom_dict, f"{release_notes.product_name}-{release_notes.product_version}"
+            sbom_dict, f"{release_notes.product_name} {release_notes.product_version}"
         )
         verify_cpe(sbom_dict, cpe)
         verify_purls(sbom_dict, purls)

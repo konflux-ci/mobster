@@ -106,7 +106,7 @@ def create_sbom(release_notes: ReleaseNotes, snapshot: Snapshot) -> Document:
     product_elem_id = "SPDXRef-product"
 
     creation_info = spdx.get_creation_info(
-        f"{release_notes.product_name}-{release_notes.product_version}"
+        f"{release_notes.product_name} {release_notes.product_version}"
     )
 
     product_package = create_product_package(product_elem_id, release_notes)
