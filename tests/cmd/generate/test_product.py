@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import tempfile
 from collections import namedtuple
@@ -6,10 +7,15 @@ from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 from packageurl import PackageURL
+from spdx_tools.spdx.model.actor import Actor, ActorType
+from spdx_tools.spdx.model.document import CreationInfo, Document
+from spdx_tools.spdx.model.package import Package
+from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
+from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.writer.json.json_writer import write_document_to_stream
 
 from mobster import get_mobster_version
@@ -60,6 +66,44 @@ def patch_make_snapshot(monkeypatch: pytest.MonkeyPatch) -> Any:
         )
 
     return _patch_make_snapshot
+
+
+@pytest.fixture()
+def minimal_spdx_document() -> Document:
+    spdx_id = "SPDXRef-DOCUMENT"
+    creation_info = CreationInfo(
+        spdx_version="SPDX-2.3",
+        spdx_id=spdx_id,
+        name="document name",
+        data_license="CC0-1.0",
+        document_namespace="https://some.namespace",
+        creators=[Actor(ActorType.PERSON, "Jane Doe", "jane.doe@example.com")],
+        created=datetime(2022, 1, 1),
+    )
+
+    package = Package(
+        spdx_id="SPDXRef-package",
+        name="software",
+        download_location=SpdxNoAssertion(),
+        version="1.0.0",
+    )
+
+    relationship = Relationship(
+        spdx_element_id="SPDXRef-DOCUMENT",
+        relationship_type=RelationshipType.DESCRIBES,
+        related_spdx_element_id="SPDXRef-package",
+    )
+
+    return Document(
+        creation_info=creation_info, packages=[package], relationships=[relationship]
+    )
+
+
+@pytest.fixture()
+def minimal_spdx_document_json(minimal_spdx_document: Document) -> str:
+    io = StringIO()
+    write_document_to_stream(document=minimal_spdx_document, stream=io)
+    return io.getvalue()
 
 
 class TestGenerateProductCommand:
@@ -219,6 +263,8 @@ class TestGenerateProductCommand:
         self,
         generate_product_command_args: Args,
         generate_product_command: GenerateProductCommand,
+        minimal_spdx_document: Document,
+        minimal_spdx_document_json: str,
         capsys: Any,
     ) -> None:
         release_notes = ReleaseNotes(
@@ -227,24 +273,22 @@ class TestGenerateProductCommand:
             cpe="cpe:/a:redhat:discovery:1.0::el10",
         )
         generate_product_command.release_notes = release_notes
-        mock_doc = MagicMock()
-        generate_product_command.document = mock_doc
+        generate_product_command.document = minimal_spdx_document
 
         # check both file and stdout output functionality
         if generate_product_command_args.output is not None:
-            file_name = generate_product_command_args.output
-
-            with patch(
-                "mobster.cmd.generate.product.GenerateProductCommand._save_file"
-            ) as mock_save_file:
+            with tempfile.TemporaryDirectory() as dir:
+                file_name = generate_product_command_args.output
+                out = Path(dir).joinpath(file_name)
+                generate_product_command.cli_args.output = out
                 assert await generate_product_command.save()
-                mock_save_file.assert_awaited_once_with(mock_doc, file_name)
+                with open(out, encoding="utf-8") as fp:
+                    assert json.load(fp) == json.loads(minimal_spdx_document_json)
         else:
-            with patch(
-                "mobster.cmd.generate.product.GenerateProductCommand._save_stdout"
-            ) as mock_save_stdout:
-                assert await generate_product_command.save()
-                mock_save_stdout.assert_awaited_once_with(mock_doc)
+            # stdout
+            assert await generate_product_command.save()
+            out, _ = capsys.readouterr()
+            assert json.loads(out) == json.loads(minimal_spdx_document_json)
 
 
 @pytest.mark.parametrize(
