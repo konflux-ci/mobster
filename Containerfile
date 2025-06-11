@@ -30,6 +30,10 @@ COPY src/mobster /app/src/mobster
 # Install the package
 RUN poetry install --without dev
 
+# We don't want the AWS cli as a direct dependency of mobster, so we have to
+# use a workaround.
+RUN .venv/bin/pip install awscli==1.40.33
+
 # Use Red Hat UBI 9 Python base image for the runtime
 FROM registry.access.redhat.com/ubi9/python-312@sha256:e80ff3673c95b91f0dafdbe97afb261eab8244d7fd8b47e20ffcbcfee27fb168
 
