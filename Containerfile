@@ -1,6 +1,6 @@
 FROM quay.io/konflux-ci/oras:3d83c68 AS oras
 FROM registry.redhat.io/rhtas/cosign-rhel9:1.2.0-1744791100 AS cosign
-FROM registry.access.redhat.com/ubi9/python-312@sha256:9d6f32c64224dd7f3a57ae5ad6a2ba62293cdf4e2e85fd3b195475ee19026c33 AS builder
+FROM registry.access.redhat.com/ubi9/python-312@sha256:2970a99fed0b2bc9597e6a69fb555d3ede9669007e3d113c725ef6909a53e727 AS builder
 
 # Set the working directory in the container
 WORKDIR /app
@@ -35,7 +35,7 @@ RUN poetry install --without dev
 RUN .venv/bin/pip install awscli==1.40.33
 
 # Use Red Hat UBI 9 Python base image for the runtime
-FROM registry.access.redhat.com/ubi9/python-312@sha256:9d6f32c64224dd7f3a57ae5ad6a2ba62293cdf4e2e85fd3b195475ee19026c33
+FROM registry.access.redhat.com/ubi9/python-312@sha256:2970a99fed0b2bc9597e6a69fb555d3ede9669007e3d113c725ef6909a53e727
 
 LABEL name="mobster" \
       description="A tool for generating and managing Software Bill of Materials (SBOM)" \
