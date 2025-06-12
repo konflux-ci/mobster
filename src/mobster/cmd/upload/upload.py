@@ -39,7 +39,7 @@ class TPAUploadCommand(Command):
         elif self.cli_args.file:
             sbom_files = [self.cli_args.file]
 
-        workers = self.cli_args.workers if self.cli_args.file else 1
+        workers = self.cli_args.workers if self.cli_args.from_dir else 1
 
         await self.upload(auth, self.cli_args.tpa_base_url, sbom_files, workers)
 
