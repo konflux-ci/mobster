@@ -93,8 +93,10 @@ class GenerateOciIndexCommand(GenerateCommand):
                 arch=None,
             )
             spdx_id = arch_image.propose_spdx_id()
-            package = spdx.get_package(
-                arch_image, spdx_id, package_name=f"{arch_image.name}_{arch}"
+            package = spdx.get_image_package(
+                arch_image,
+                spdx_id,
+                package_name=f"{arch_image.name}_{arch}",
             )
             relationship = self.get_child_image_relationship(spdx_id)
 
@@ -113,7 +115,7 @@ class GenerateOciIndexCommand(GenerateCommand):
             self.cli_args.index_image_pullspec, self.cli_args.index_image_digest
         )
 
-        main_package = spdx.get_package(index_image, self.INDEX_ELEMENT_ID)
+        main_package = spdx.get_image_package(index_image, self.INDEX_ELEMENT_ID)
         main_relationship = spdx.get_root_package_relationship(self.INDEX_ELEMENT_ID)
         component_packages, component_relationships = self.get_child_packages(
             index_image

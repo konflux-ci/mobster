@@ -13,6 +13,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+import pydantic
+
 from mobster.error import SBOMError
 
 logger = logging.getLogger(__name__)
@@ -21,14 +23,15 @@ logger = logging.getLogger(__name__)
 async def run_async_subprocess(
     cmd: list[str], env: dict[str, str] | None = None, retry_times: int = 0
 ) -> tuple[int, bytes, bytes]:
-    """
-    Run command in subprocess asynchronously.
+    """Run command in subprocess asynchronously.
 
     Args:
-        cmd (list[str]): command to run in subprocess.
-        env (dict[str, str] | None): environ dict
-        retry_times (int): number of retries if the process ends with
-            non-zero return code
+        cmd: Command to run in subprocess.
+        env: Environment dictionary.
+        retry_times: Number of retries if the process ends with non-zero return code.
+
+    Returns:
+        tuple[int, bytes, bytes]: Return code, stdout, and stderr.
     """
     if retry_times < 0:
         raise ValueError("Retry count cannot be negative.")
@@ -66,7 +69,10 @@ async def get_image_manifest(reference: str) -> dict[str, Any]:
     repository.
 
     Args:
-        reference (str): full image reference (repository@sha256<sha>)
+        reference: Full image reference (repository@sha256<sha>).
+
+    Returns:
+        dict[str, Any]: Dictionary containing the manifest data.
     """
     logger.info("Fetching manifest for %s", reference)
 
@@ -77,7 +83,7 @@ async def get_image_manifest(reference: str) -> dict[str, Any]:
                 "manifest",
                 "fetch",
                 "--registry-config",
-                authfile,
+                str(authfile),
                 reference,
             ],
             retry_times=3,
@@ -88,19 +94,36 @@ async def get_image_manifest(reference: str) -> dict[str, Any]:
     return json.loads(stdout)  # type: ignore
 
 
+class AuthDetails(pydantic.BaseModel):
+    """Represents the authentication details for a registry."""
+
+    token: str = pydantic.Field(alias="auth", serialization_alias="auth")
+
+
+class DockerConfig(pydantic.BaseModel):
+    """Represents the top-level Docker configuration with authentication information."""
+
+    auths: dict[str, AuthDetails]
+
+
 @contextmanager
 def make_oci_auth_file(
     reference: str, auth: Path | None = None
-) -> Generator[str, Any, None]:
+) -> Generator[Path, Any, None]:
     """
     Gets path to a temporary file containing the docker config JSON for
-    <reference>.  Deletes the file after the with statement. If no path to the
-    docker config is provided, tries using ~/.docker/config.json . Ports in the
-    registry are NOT supported.
+    reference.
+
+    Deletes the file after the with statement. If no path to the docker config
+    is provided, tries using ~/.docker/config.json. Ports in the registry are
+    NOT supported.
 
     Args:
-        reference (str): Reference to an image in the form registry/repo@sha256-deadbeef
-        auth (Path | None): Existing docker config.json
+        reference: Reference to an image in the form registry/repo@sha256-deadbeef.
+        auth: Existing docker config.json path.
+
+    Yields:
+        Path: Path to temporary authentication file.
 
     Example:
         >>> with make_oci_auth_file(ref) as auth_path:
@@ -108,7 +131,7 @@ def make_oci_auth_file(
     """
     if auth is None:
         logger.debug("No auth path provided to make_oci_auth_file.")
-        auth = find_auth_file()
+        auth = _find_auth_file()
         if auth is None:
             raise ValueError("Could not find a valid OCI authentication file.")
 
@@ -122,48 +145,80 @@ def make_oci_auth_file(
 
     logger.debug("Looking for auth entry for %s in auth file %s", reference, auth)
 
-    repository, _ = reference.split("@", 1)
-    # Registry is up to the first slash
-    registry = repository.split("/", 1)[0]
-
     with open(auth, encoding="utf-8") as f:
-        config = json.load(f)
-    auths = config.get("auths", {})
+        config = DockerConfig.model_validate_json(f.read())
+
+    tempdir = tempfile.TemporaryDirectory()
+    try:
+        # the file has to be named "config.json" for cosign compatibility
+        new_config_path = Path(tempdir.name).joinpath("config.json")
+
+        with open(new_config_path, "w", encoding="utf-8") as new_config_fp:
+            subconfig = _get_auth_subconfig(config, reference)
+            new_config_fp.write(subconfig.model_dump_json(by_alias=True))
+
+        yield new_config_path
+    finally:
+        tempdir.cleanup()
+
+
+def _get_auth_subconfig(config: DockerConfig, reference: str) -> DockerConfig:
+    """
+    Create a docker config containing token authentication only for a specific
+    image reference.
+
+    Tries to match specific repository paths first.
+
+    Args:
+        config: The docker configuration containing authentication details.
+        reference: The image reference to match authentication for.
+
+    Returns:
+        DockerConfig: Docker configuration with authentication for the specific
+            reference.
+
+    Example:
+        >>> config = DockerConfig(
+                auths={
+                    "registry.redhat.io/": AuthDetails(token="another-token")
+                    "registry.redhat.io/specific-repo": AuthDetails(token="token"),
+                },
+            )
+        >>> _get_auth_subconfig(
+                config, "registry.redhat.io/specific-repo@sha256:deadbeef"
+            )
+        DockerConfig(
+            auths={
+                "registry.redhat.io/specific-repo": AuthDetails(token="token"),
+            }
+        )
+    """
+    repository, _ = reference.split("@", 1)
+    # registry is up to the first slash
+    registry = repository.split("/", 1)[0]
 
     current_ref = repository
 
-    tmpfile = None
-    try:
-        tmpfile = tempfile.NamedTemporaryFile(mode="w", delete=False)
-        while True:
-            token = auths.get(current_ref)
-            if token is not None:
-                json.dump({"auths": {registry: token}}, tmpfile)
-                tmpfile.close()
-                yield tmpfile.name
-                return
+    while True:
+        token = config.auths.get(current_ref)
+        if token is not None:
+            return DockerConfig(auths={registry: token})
 
-            if "/" not in current_ref:
-                break
-            current_ref = current_ref.rsplit("/", 1)[0]
+        if "/" not in current_ref:
+            break
+        current_ref = current_ref.rsplit("/", 1)[0]
 
-        json.dump({"auths": {}}, tmpfile)
-        tmpfile.close()
-        yield tmpfile.name
-    finally:
-        if tmpfile is not None:
-            # this also deletes the file
-            tmpfile.close()
+    return DockerConfig(auths={})
 
 
-def find_auth_file() -> Path | None:
-    """
-    Find an authentication file that can be used to access an OCI registry.
+def _find_auth_file() -> Path | None:
+    """Find an authentication file that can be used to access an OCI registry.
+
     Mimics the process that podman uses on login:
     https://docs.podman.io/en/v5.1.0/markdown/podman-login.1.html
 
     Returns:
-        Path | None: A path to the authentication file if it exists, or None
+        Path | None: A path to the authentication file if it exists, or None.
     """
     if "REGISTRY_AUTH_FILE" in os.environ:
         path = Path(os.environ["REGISTRY_AUTH_FILE"])

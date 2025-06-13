@@ -13,18 +13,34 @@ from spdx_tools.spdx.model.package import (
 )
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
+from spdx_tools.spdx.model.spdx_none import SpdxNone
 
 from mobster import get_mobster_version
 from mobster.artifact import Artifact
 from mobster.image import Image
 
 
-def get_creation_info(sbom_name: str) -> CreationInfo:
-    """
-    Create the creation information for the SPDX document.
+def get_root_package_relationship(spdx_id: str) -> Relationship:
+    """Get a relationship for the root package in relation to the SPDX document.
 
     Args:
-        index_image (Image): An OCI index image object.
+        spdx_id: An SPDX ID for the root package.
+
+    Returns:
+        Relationship: An object representing the relationship for the root package.
+    """
+    return Relationship(
+        spdx_element_id="SPDXRef-DOCUMENT",
+        relationship_type=RelationshipType.DESCRIBES,
+        related_spdx_element_id=spdx_id,
+    )
+
+
+def get_creation_info(sbom_name: str) -> CreationInfo:
+    """Create the creation information for the SPDX document.
+
+    Args:
+        sbom_name: The name for the SBOM document.
 
     Returns:
         CreationInfo: A creation information object for the SPDX document.
@@ -44,14 +60,16 @@ def get_creation_info(sbom_name: str) -> CreationInfo:
     )
 
 
-def get_package(image: Image, spdx_id: str, package_name: str | None = None) -> Package:
-    """
-    Transform the parsed image object into SPDX package object.
-
+def get_image_package(
+    image: Image, spdx_id: str, package_name: str | None = None
+) -> Package:
+    """Transform the parsed image object into SPDX package object.
 
     Args:
-        image (Image): A parsed image object.
-        spdx_id (str): An SPDX ID for the image.
+        image: A parsed image object.
+        spdx_id: An SPDX ID for the image.
+        package_name: An optional package name. The image name and architecture
+            will be used if not provided.
 
     Returns:
         Package: A package object representing the OCI image.
@@ -59,15 +77,11 @@ def get_package(image: Image, spdx_id: str, package_name: str | None = None) -> 
     if not package_name:
         package_name = image.name if not image.arch else f"{image.name}_{image.arch}"
 
-    package = Package(
-        spdx_id=spdx_id,
+    return get_package(
+        spdx_id,
         name=package_name,
         version=image.tag,
-        download_location=SpdxNoAssertion(),
-        supplier=Actor(ActorType.ORGANIZATION, "Red Hat"),
-        license_declared=SpdxNoAssertion(),
-        files_analyzed=False,
-        external_references=[
+        external_refs=[
             ExternalPackageRef(
                 category=ExternalPackageRefCategory.PACKAGE_MANAGER,
                 reference_type="purl",
@@ -82,27 +96,21 @@ def get_package(image: Image, spdx_id: str, package_name: str | None = None) -> 
         ],
     )
 
-    return package
-
 
 def get_package_from_artifact(artifact: Artifact) -> Package:
-    """
-    Transform the parsed artifact object into SPDX package object.
+    """Transform the parsed artifact object into SPDX package object.
 
     Args:
-        artifact (Artifact): A parsed artifact object.
+        artifact: A parsed artifact object.
 
     Returns:
         Package: A package object representing the artifact.
     """
-    package = Package(
+    return get_package(
         spdx_id=artifact.propose_spdx_id(),
         name=artifact.filename,
         download_location=artifact.source,
-        supplier=Actor(ActorType.ORGANIZATION, "Red Hat"),
-        license_declared=SpdxNoAssertion(),
-        files_analyzed=False,
-        external_references=[
+        external_refs=[
             ExternalPackageRef(
                 category=ExternalPackageRefCategory.PACKAGE_MANAGER,
                 reference_type="purl",
@@ -117,22 +125,41 @@ def get_package_from_artifact(artifact: Artifact) -> Package:
         ],
     )
 
-    return package
 
-
-def get_root_package_relationship(spdx_id: str) -> Relationship:
-    """
-    Get a relationship for the root package in relation to the SPDX document.
-    This relationship indicates that the document describes the root package.
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+def get_package(
+    spdx_id: str,
+    name: str,
+    external_refs: list[ExternalPackageRef],
+    checksums: list[Checksum],
+    version: str | None = None,
+    download_location: str | SpdxNoAssertion | SpdxNone | None = None,
+) -> Package:
+    """Create an SPDX package from input data.
 
     Args:
-        spdx_id (str): An SPDX ID for the root package.
+        spdx_id: An SPDX ID of the package.
+        name: Name field of the package.
+        external_refs: List of SPDX external references.
+        checksums: List of SPDX checksums.
+        version: Version field of the package.
+        download_location: Package download location. If not provided,
+            SpdxNoAssertion is used.
 
     Returns:
-        Relationship: An object representing the relationship for the root package.
+        Package: An SPDX package object.
     """
-    return Relationship(
-        spdx_element_id="SPDXRef-DOCUMENT",
-        relationship_type=RelationshipType.DESCRIBES,
-        related_spdx_element_id=spdx_id,
+    if download_location is None:
+        download_location = SpdxNoAssertion()
+
+    return Package(
+        spdx_id=spdx_id,
+        name=name,
+        version=version,
+        download_location=download_location,
+        supplier=Actor(ActorType.ORGANIZATION, "Red Hat"),
+        license_declared=SpdxNoAssertion(),
+        files_analyzed=False,
+        external_references=external_refs,
+        checksums=checksums,
     )

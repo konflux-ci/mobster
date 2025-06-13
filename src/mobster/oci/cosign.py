@@ -71,7 +71,7 @@ class CosignClient(Cosign):
             logger.debug("Fetching provenance for %s using '%s'", image, " ".join(cmd))
             code, stdout, stderr = await run_async_subprocess(
                 cmd,
-                env={"DOCKER_CONFIG": str(Path(authfile).parent)},
+                env={"DOCKER_CONFIG": str(authfile.parent)},
                 retry_times=3,
             )
 
@@ -100,7 +100,7 @@ class CosignClient(Cosign):
         with make_oci_auth_file(image.reference) as authfile:
             code, stdout, stderr = await run_async_subprocess(
                 ["cosign", "download", "sbom", image.reference],
-                env={"DOCKER_CONFIG": str(Path(authfile).parent)},
+                env={"DOCKER_CONFIG": str(authfile.parent)},
                 retry_times=3,
             )
 

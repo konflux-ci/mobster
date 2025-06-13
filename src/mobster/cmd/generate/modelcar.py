@@ -102,9 +102,9 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
             Any: A SPDX SBOM document object.
         """
         packages = [
-            spdx.get_package(modelcar, modelcar.propose_spdx_id()),
-            spdx.get_package(base, base.propose_spdx_id()),
-            spdx.get_package(model, model.propose_spdx_id()),
+            spdx.get_image_package(modelcar, modelcar.propose_spdx_id()),
+            spdx.get_image_package(base, base.propose_spdx_id()),
+            spdx.get_image_package(model, model.propose_spdx_id()),
         ]
         relationships = [
             spdx.get_root_package_relationship(
