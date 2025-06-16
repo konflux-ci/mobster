@@ -202,7 +202,7 @@ async def update_component_sboms(
         # Single arch image
         results = [await update_sbom(component, component.image, cosign, verify)]
 
-    ok = not all(results)
+    ok = all(results)
     return ok, list(filter(None, results))
 
 
