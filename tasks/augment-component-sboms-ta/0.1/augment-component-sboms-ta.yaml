@@ -145,7 +145,7 @@ spec:
           value: $(params.sourceDataArtifact)
 
     - name: augment-sboms
-      image: quay.io/konflux-ci/mobster:4009af6df442f68d34b7ad25450c9354023932fa6cf28b29f646476fd3f509ae
+      image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
       script: |
         #!/usr/bin/env bash
         set -eux
@@ -161,7 +161,7 @@ spec:
           --snapshot "$(params.dataDir)/$(params.snapshotSpec)"
 
     - name: upload-sboms-to-atlas
-      image: quay.io/konflux-ci/mobster:4009af6df442f68d34b7ad25450c9354023932fa6cf28b29f646476fd3f509ae
+      image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
           valueFrom:
@@ -201,7 +201,7 @@ spec:
           --from-dir $sbom_path
 
     - name: upload-sboms-to-s3
-      image: quay.io/konflux-ci/mobster:4009af6df442f68d34b7ad25450c9354023932fa6cf28b29f646476fd3f509ae
+      image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
       env:
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
