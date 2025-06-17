@@ -145,7 +145,8 @@ spec:
           value: $(params.sourceDataArtifact)
 
     - name: augment-sboms
-      image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
+      # image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
+      image: quay.io/mjediny/test:mobster
       script: |
         #!/usr/bin/env bash
         set -eux
@@ -161,7 +162,8 @@ spec:
           --snapshot "$(params.dataDir)/$(params.snapshotSpec)"
 
     - name: upload-sboms-to-atlas
-      image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
+      # image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
+      image: quay.io/mjediny/test:mobster
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
           valueFrom:
@@ -182,8 +184,8 @@ spec:
         set -eux
 
         required_vars=(
-          "MOBSTER_TPA_SSO_ACCOUNT",
-          "MOBSTER_TPA_SSO_TOKEN",
+          "MOBSTER_TPA_SSO_ACCOUNT"
+          "MOBSTER_TPA_SSO_TOKEN"
           "MOBSTER_TPA_SSO_TOKEN_URL"
         )
 
@@ -201,7 +203,8 @@ spec:
           --from-dir $sbom_path
 
     - name: upload-sboms-to-s3
-      image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
+      # image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
+      image: quay.io/mjediny/test:mobster
       env:
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
@@ -222,8 +225,8 @@ spec:
         set -eux
 
         required_vars=(
-          "AWS_ACCESS_KEY_ID",
-          "AWS_SECRET_ACCESS_KEY",
+          "AWS_ACCESS_KEY_ID"
+          "AWS_SECRET_ACCESS_KEY"
         )
 
         for var_name in "${required_vars[@]}"; do
