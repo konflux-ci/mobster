@@ -272,7 +272,7 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         """
         Update an SBOM for an image based on a component.
         """
-        if isinstance(component.image, IndexImage):
+        if isinstance(image, IndexImage):
             raise ValueError("CDX update SBOM does not support index images.")
 
         self._bump_version(sbom)
