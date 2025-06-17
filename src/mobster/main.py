@@ -24,6 +24,7 @@ async def run(args: Any) -> None:
 
     ok = await command.save()
     code = 0 if ok else 1
+    LOGGER.info("Exiting with code %s.", code)
     sys.exit(code)
 
 
