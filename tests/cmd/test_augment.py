@@ -452,3 +452,19 @@ def test_cdx_augment_metadata_tools_components_empty_metadata() -> None:
     assert "tools" in metadata
     assert "components" in metadata["tools"]
     assert len(metadata["tools"]["components"]) == 1
+
+
+def test_cdx_update_sbom_raises_error_for_index_image() -> None:
+    handler = CycloneDXVersion1()
+
+    index_image = IndexImage("quay.io/repo", "sha256:test", children=[])
+    component = Component(
+        "test",
+        image=Image("quay.io/repo", "sha256:other"),
+        tags=[],
+        repository="quay.io/repo",
+    )
+    with pytest.raises(
+        ValueError, match="CDX update SBOM does not support index images."
+    ):
+        handler.update_sbom(component, index_image, {})
