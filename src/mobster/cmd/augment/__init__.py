@@ -186,6 +186,10 @@ async def update_component_sboms(
         cosign (Cosign): implementation of the Cosign protocol
         verify (bool): True if the SBOM's digest should be verified via the
             provenance of the image
+
+    Returns:
+        Tuple where the first value specifies whether all SBOMs were augmented
+        successfully and the second value is the list of augmented SBOMs.
     """
     if isinstance(component.image, IndexImage):
         # If the image of a component is a multiarch image, we update the SBOMs
@@ -202,8 +206,8 @@ async def update_component_sboms(
         # Single arch image
         results = [await update_sbom(component, component.image, cosign, verify)]
 
-    ok = all(results)
-    return ok, list(filter(None, results))
+    status: bool = all(results)
+    return status, list(filter(None, results))
 
 
 async def update_sboms(
