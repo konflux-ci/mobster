@@ -7,10 +7,12 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 from urllib.parse import quote_plus
 
 from packageurl import PackageURL
+
+T = TypeVar("T")
 
 
 def try_parse_purl(s: str) -> PackageURL | None:
@@ -385,7 +387,7 @@ def _unique_key_syft(component: SBOMItem) -> str:
     return purl._replace(name=name, version=version, subpath=subpath).to_string()
 
 
-def get_merged_components[T](
+def get_merged_components(
     items_a: Iterable[T],
     items_b: Iterable[T],
     by_key: Callable[[T], Any],
@@ -396,7 +398,7 @@ def get_merged_components[T](
     return _dedupe(itertools.chain(items_a, items_b), by_key)
 
 
-def _dedupe[T](items: Iterable[T], by_key: Callable[[T], Any]) -> list[T]:
+def _dedupe(items: Iterable[T], by_key: Callable[[T], Any]) -> list[T]:
     """
     Removes duplicates from a collection of items based on a key function.
     """
