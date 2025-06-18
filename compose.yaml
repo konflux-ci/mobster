@@ -1,0 +1,24 @@
+services:
+  zot:
+    image: ghcr.io/project-zot/zot:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./zot.config.json:/etc/zot/config.json:ro
+      - zot-data:/tmp/zot
+    command: ["serve", "/etc/zot/config.json"]
+
+  mobster:
+    build:
+      context: .
+      dockerfile: Containerfile
+    depends_on:
+      - zot
+    environment:
+      - REGISTRY_URL=http://zot:8080
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+
+volumes:
+  zot-data:
