@@ -1,6 +1,7 @@
 """Upload command for the the Mobster application."""
 
 import asyncio
+import glob
 import logging
 import os
 import time
@@ -136,7 +137,7 @@ class TPAUploadCommand(Command):
             Directories themselves are excluded from the results.
         """
         return [
-            path
-            for path in dirpath.glob("**/*", recurse_symlinks=True)
-            if path.is_file()
+            Path(path)
+            for path in glob.glob(str(dirpath / "**" / "*"), recursive=True)
+            if Path(path).is_file()
         ]
