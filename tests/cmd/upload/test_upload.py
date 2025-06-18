@@ -43,13 +43,13 @@ def command_args() -> MagicMock:
 
 
 @pytest.mark.asyncio
-@patch("os.listdir")
+@patch("pathlib.Path.iterdir")
 @patch("mobster.cmd.upload.upload.TPAClient")
 @patch("mobster.cmd.upload.upload.OIDCClientCredentials")
 async def test_execute_upload_from_directory(
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
-    mock_listdir: MagicMock,
+    mock_iterdir: MagicMock,
     mock_env_vars: MagicMock,
     mock_tpa_client: MagicMock,
 ) -> None:
@@ -60,11 +60,11 @@ async def test_execute_upload_from_directory(
     )
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
 
-    file_list = ["file1.json", "file2.json"]
-    mock_listdir.return_value = file_list
+    file_list = list(map(Path, ["file1.json", "file2.json"]))
+    mock_iterdir.return_value = file_list
 
     args = MagicMock()
-    args.from_dir = "/test/dir"
+    args.from_dir = Path("/test/dir")
     args.file = None
     args.tpa_base_url = "https://test.tpa.url"
     args.workers = 2
@@ -103,7 +103,7 @@ async def test_execute_upload_single_file(
     # Create command with args
     args = MagicMock()
     args.from_dir = None
-    args.file = "/test/single_file.json"
+    args.file = Path("/test/single_file.json")
     args.tpa_base_url = "https://test.tpa.url"
     args.workers = 2
     command = TPAUploadCommand(args)
@@ -123,13 +123,13 @@ async def test_execute_upload_single_file(
 
 
 @pytest.mark.asyncio
-@patch("os.listdir")
+@patch("pathlib.Path.iterdir")
 @patch("mobster.cmd.upload.upload.TPAClient")
 @patch("mobster.cmd.upload.upload.OIDCClientCredentials")
 async def test_execute_upload_failure(
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
-    mock_listdir: MagicMock,
+    mock_iterdir: MagicMock,
     mock_env_vars: MagicMock,
 ) -> None:
     mock_tpa_client = AsyncMock(spec=TPAClient)
@@ -138,11 +138,11 @@ async def test_execute_upload_failure(
     mock_tpa_client_class.return_value = mock_tpa_client
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
 
-    file_list = ["file1.json", "file2.json"]
-    mock_listdir.return_value = file_list
+    file_list = list(map(Path, ["file1.json", "file2.json"]))
+    mock_iterdir.return_value = file_list
 
     args = MagicMock()
-    args.from_dir = "/test/dir"
+    args.from_dir = Path("/test/dir")
     args.file = None
     args.tpa_base_url = "https://test.tpa.url"
     args.workers = 1
@@ -158,13 +158,13 @@ async def test_execute_upload_failure(
 
 
 @pytest.mark.asyncio
-@patch("os.listdir")
+@patch("pathlib.Path.iterdir")
 @patch("mobster.cmd.upload.upload.TPAClient")
 @patch("mobster.cmd.upload.upload.OIDCClientCredentials")
 async def test_execute_upload_exception(
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
-    mock_listdir: MagicMock,
+    mock_iterdir: MagicMock,
     mock_env_vars: MagicMock,
 ) -> None:
     mock_tpa_client = AsyncMock(spec=TPAClient)
@@ -172,11 +172,11 @@ async def test_execute_upload_exception(
     mock_tpa_client_class.return_value = mock_tpa_client
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
 
-    file_list = ["file1.json"]
-    mock_listdir.return_value = file_list
+    file_list = [Path("file1.json")]
+    mock_iterdir.return_value = file_list
 
     args = MagicMock()
-    args.from_dir = "/test/dir"
+    args.from_dir = Path("/test/dir")
     args.file = None
     args.tpa_base_url = "https://test.tpa.url"
     args.workers = 1
@@ -191,7 +191,7 @@ async def test_execute_upload_exception(
 
 
 @pytest.mark.asyncio
-@patch("os.listdir")
+@patch("pathlib.Path.iterdir")
 @patch("mobster.cmd.upload.upload.TPAClient")
 @patch("mobster.cmd.upload.upload.OIDCClientCredentials")
 async def test_execute_upload_mixed_results(
@@ -209,11 +209,11 @@ async def test_execute_upload_mixed_results(
     mock_tpa_client_class.return_value = mock_tpa_client
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
 
-    file_list = ["file1.json", "file2.json"]
+    file_list = list(map(Path, ["file1.json", "file2.json"]))
     mock_listdir.return_value = file_list
 
     args = MagicMock()
-    args.from_dir = "/test/dir"
+    args.from_dir = Path("/test/dir")
     args.file = None
     args.tpa_base_url = "https://test.tpa.url"
     args.workers = 1

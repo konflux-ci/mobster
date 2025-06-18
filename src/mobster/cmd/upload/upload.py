@@ -35,7 +35,7 @@ class TPAUploadCommand(Command):
         )
         sbom_files = []
         if self.cli_args.from_dir:
-            sbom_files = os.listdir(self.cli_args.from_dir)
+            sbom_files = list(self.cli_args.from_dir.iterdir())
         elif self.cli_args.file:
             sbom_files = [self.cli_args.file]
 
