@@ -33,9 +33,9 @@ class TPAUploadCommand(Command):
             client_id=os.environ["MOBSTER_TPA_SSO_ACCOUNT"],
             client_secret=os.environ["MOBSTER_TPA_SSO_TOKEN"],
         )
-        sbom_files = []
+        sbom_files: list[Path] = []
         if self.cli_args.from_dir:
-            sbom_files = list(self.cli_args.from_dir.iterdir())
+            sbom_files = self.gather_sboms(self.cli_args.from_dir)
         elif self.cli_args.file:
             sbom_files = [self.cli_args.file]
 
@@ -45,7 +45,7 @@ class TPAUploadCommand(Command):
 
     @staticmethod
     async def upload_sbom_file(
-        sbom_file: str,
+        sbom_file: Path,
         auth: OIDCClientCredentials,
         tpa_url: str,
         semaphore: asyncio.Semaphore,
@@ -54,7 +54,7 @@ class TPAUploadCommand(Command):
         Upload a single SBOM file to TPA using HTTP client.
 
         Args:
-            sbom_file (str): Absolute path to the SBOM file to upload
+            sbom_file (Path): Absolute path to the SBOM file to upload
             auth (OIDCClientCredentials): Authentication object for the TPA API
             tpa_url (str): Base URL for the TPA API
             semaphore (asyncio.Semaphore): A semaphore to limit the number
@@ -88,7 +88,7 @@ class TPAUploadCommand(Command):
         self,
         auth: OIDCClientCredentials,
         tpa_url: str,
-        sbom_files: list[str],
+        sbom_files: list[Path],
         workers: int,
     ) -> None:
         """
@@ -97,7 +97,7 @@ class TPAUploadCommand(Command):
         Args:
             auth (OIDCClientCredentials): Authentication object for the TPA API
             tpa_url (str): Base URL for the TPA API
-            sbom_files (list[str]): List of SBOM file paths to upload
+            sbom_files (list[Path]): List of SBOM file paths to upload
             workers (int): Number of concurrent workers for uploading
         """
 
@@ -121,3 +121,22 @@ class TPAUploadCommand(Command):
         Save the command state.
         """
         return self.success
+
+    @staticmethod
+    def gather_sboms(dirpath: Path) -> list[Path]:
+        """
+        Recursively gather all files from a directory path.
+
+        Args:
+            dirpath: The directory path to search for files.
+
+        Returns:
+            A list of Path objects representing all files found recursively
+            within the given directory, including files in subdirectories.
+            Directories themselves are excluded from the results.
+        """
+        return [
+            path
+            for path in dirpath.glob("**/*", recurse_symlinks=True)
+            if path.is_file()
+        ]

@@ -43,13 +43,13 @@ def command_args() -> MagicMock:
 
 
 @pytest.mark.asyncio
-@patch("pathlib.Path.iterdir")
+@patch("mobster.cmd.upload.upload.TPAUploadCommand.gather_sboms")
 @patch("mobster.cmd.upload.upload.TPAClient")
 @patch("mobster.cmd.upload.upload.OIDCClientCredentials")
 async def test_execute_upload_from_directory(
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
-    mock_iterdir: MagicMock,
+    mock_gather_sboms: MagicMock,
     mock_env_vars: MagicMock,
     mock_tpa_client: MagicMock,
 ) -> None:
@@ -60,8 +60,8 @@ async def test_execute_upload_from_directory(
     )
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
 
-    file_list = list(map(Path, ["file1.json", "file2.json"]))
-    mock_iterdir.return_value = file_list
+    file_list = [Path("/test/dir/file1.json"), Path("/test/dir/file2.json")]
+    mock_gather_sboms.return_value = file_list
 
     args = MagicMock()
     args.from_dir = Path("/test/dir")
@@ -123,13 +123,13 @@ async def test_execute_upload_single_file(
 
 
 @pytest.mark.asyncio
-@patch("pathlib.Path.iterdir")
+@patch("mobster.cmd.upload.upload.TPAUploadCommand.gather_sboms")
 @patch("mobster.cmd.upload.upload.TPAClient")
 @patch("mobster.cmd.upload.upload.OIDCClientCredentials")
 async def test_execute_upload_failure(
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
-    mock_iterdir: MagicMock,
+    mock_gather_sboms: MagicMock,
     mock_env_vars: MagicMock,
 ) -> None:
     mock_tpa_client = AsyncMock(spec=TPAClient)
@@ -138,8 +138,8 @@ async def test_execute_upload_failure(
     mock_tpa_client_class.return_value = mock_tpa_client
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
 
-    file_list = list(map(Path, ["file1.json", "file2.json"]))
-    mock_iterdir.return_value = file_list
+    file_list = [Path("/test/dir/file1.json"), Path("/test/dir/file2.json")]
+    mock_gather_sboms.return_value = file_list
 
     args = MagicMock()
     args.from_dir = Path("/test/dir")
@@ -158,13 +158,13 @@ async def test_execute_upload_failure(
 
 
 @pytest.mark.asyncio
-@patch("pathlib.Path.iterdir")
+@patch("mobster.cmd.upload.upload.TPAUploadCommand.gather_sboms")
 @patch("mobster.cmd.upload.upload.TPAClient")
 @patch("mobster.cmd.upload.upload.OIDCClientCredentials")
 async def test_execute_upload_exception(
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
-    mock_iterdir: MagicMock,
+    mock_gather_sboms: MagicMock,
     mock_env_vars: MagicMock,
 ) -> None:
     mock_tpa_client = AsyncMock(spec=TPAClient)
@@ -172,8 +172,8 @@ async def test_execute_upload_exception(
     mock_tpa_client_class.return_value = mock_tpa_client
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
 
-    file_list = [Path("file1.json")]
-    mock_iterdir.return_value = file_list
+    file_list = [Path("/test/dir/file1.json")]
+    mock_gather_sboms.return_value = file_list
 
     args = MagicMock()
     args.from_dir = Path("/test/dir")
@@ -191,13 +191,13 @@ async def test_execute_upload_exception(
 
 
 @pytest.mark.asyncio
-@patch("pathlib.Path.iterdir")
+@patch("mobster.cmd.upload.upload.TPAUploadCommand.gather_sboms")
 @patch("mobster.cmd.upload.upload.TPAClient")
 @patch("mobster.cmd.upload.upload.OIDCClientCredentials")
 async def test_execute_upload_mixed_results(
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
-    mock_listdir: MagicMock,
+    mock_gather_sboms: MagicMock,
     mock_env_vars: MagicMock,
 ) -> None:
     mock_tpa_client = AsyncMock(spec=TPAClient)
@@ -209,8 +209,8 @@ async def test_execute_upload_mixed_results(
     mock_tpa_client_class.return_value = mock_tpa_client
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
 
-    file_list = list(map(Path, ["file1.json", "file2.json"]))
-    mock_listdir.return_value = file_list
+    file_list = [Path("/test/dir/file1.json"), Path("/test/dir/file2.json")]
+    mock_gather_sboms.return_value = file_list
 
     args = MagicMock()
     args.from_dir = Path("/test/dir")
@@ -226,3 +226,18 @@ async def test_execute_upload_mixed_results(
 
     # Verify the command's success flag is False since at least one upload failed
     assert command.success is False
+
+
+def test_gather_sboms(tmp_path: Path) -> None:
+    (tmp_path / "file1.json").touch()
+    (tmp_path / "file2.json").touch()
+    (tmp_path / "subdir").mkdir()
+    (tmp_path / "subdir" / "file3.json").touch()
+
+    result = TPAUploadCommand.gather_sboms(tmp_path)
+
+    assert len(result) == 3
+
+    result_names = {p.name for p in result}
+    expected_names = {"file1.json", "file2.json", "file3.json"}
+    assert result_names == expected_names
