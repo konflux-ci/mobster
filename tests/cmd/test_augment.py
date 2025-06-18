@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from base64 import b64encode
@@ -33,6 +34,7 @@ class AugmentArgs:
     output: Path
     verification_key: Path | None
     reference: str | None
+    concurrency: int = 1
 
 
 MakeAugmentCommand = Callable[[AugmentArgs, Snapshot | None], AugmentImageCommand]
@@ -271,7 +273,13 @@ class TestAugmentCommand:
 
         with patch("mobster.cmd.augment.update_sbom_in_situ") as mock_update:
             mock_update.side_effect = SBOMError
-            assert await update_sbom(component, img, fake_cosign, verify=False) is None
+            sem = asyncio.Semaphore(1)
+            assert (
+                await update_sbom(
+                    component, img, fake_cosign, verify=False, semaphore=sem
+                )
+                is None
+            )
 
 
 class FakeCosign(Cosign):
