@@ -460,3 +460,140 @@ def test_cdx_augment_metadata_tools_components_empty_metadata() -> None:
     assert "tools" in metadata
     assert "components" in metadata["tools"]
     assert len(metadata["tools"]["components"]) == 1
+
+
+class TestUpdateFormatSupport:
+    @pytest.fixture
+    def component(self) -> Component:
+        return Component(
+            name="test",
+            image=Image("quay.io/test", "sha256:abc123"),
+            tags=["latest"],
+            repository="registry.redhat.io/test",
+        )
+
+    @pytest.fixture
+    def index_component(self) -> Component:
+        return Component(
+            name="test",
+            image=IndexImage(
+                "quay.io/test",
+                "sha256:def456",
+                children=[Image("quay.io/test", "sha256:child123")],
+            ),
+            tags=["latest"],
+            repository="registry.redhat.io/test",
+        )
+
+    @pytest.fixture
+    def mock_cosign(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def semaphore(self) -> asyncio.Semaphore:
+        return asyncio.Semaphore(1)
+
+    @pytest.fixture
+    def setup_load_sbom(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> Callable[[SBOM], None]:
+        def _setup_load_sbom(test_sbom: SBOM) -> None:
+            monkeypatch.setattr(
+                "mobster.cmd.augment.load_sbom", lambda *_: awaitable(test_sbom)
+            )
+
+        return _setup_load_sbom
+
+    @pytest.mark.parametrize(
+        "version",
+        ["SPDX-2.0", "SPDX-2.1", "SPDX-2.2", "SPDX-2.2.1", "SPDX-2.2.2", "SPDX-2.3"],
+    )
+    @pytest.mark.asyncio
+    async def test_spdx_supported(
+        self,
+        component: Component,
+        mock_cosign: MagicMock,
+        semaphore: asyncio.Semaphore,
+        setup_load_sbom: Callable[[SBOM], None],
+        version: str,
+    ) -> None:
+        test_sbom = SBOM({"spdxVersion": version}, "digest", "ref")
+        setup_load_sbom(test_sbom)
+        with patch("mobster.cmd.augment.handlers.SPDXVersion2.update_sbom"):
+            result = await update_sbom(
+                component, component.image, mock_cosign, False, semaphore
+            )
+            assert result is not None
+
+    @pytest.mark.parametrize(
+        "version",
+        ["SPDX-2.0", "SPDX-2.1", "SPDX-2.2", "SPDX-2.2.1", "SPDX-2.2.2", "SPDX-2.3"],
+    )
+    @pytest.mark.asyncio
+    async def test_spdx_with_index_image(
+        self,
+        index_component: Component,
+        mock_cosign: MagicMock,
+        semaphore: asyncio.Semaphore,
+        setup_load_sbom: Callable[[SBOM], None],
+        version: str,
+    ) -> None:
+        test_sbom = SBOM({"spdxVersion": version}, "digest", "ref")
+        setup_load_sbom(test_sbom)
+        with patch("mobster.cmd.augment.handlers.SPDXVersion2.update_sbom"):
+            result = await update_sbom(
+                index_component, index_component.image, mock_cosign, False, semaphore
+            )
+            assert result is not None
+
+    @pytest.mark.parametrize("version", ["1.4", "1.5", "1.6"])
+    @pytest.mark.asyncio
+    async def test_cyclonedx_supported(
+        self,
+        component: Component,
+        mock_cosign: MagicMock,
+        semaphore: asyncio.Semaphore,
+        setup_load_sbom: Callable[[SBOM], None],
+        version: str,
+    ) -> None:
+        test_sbom = SBOM(
+            {"bomFormat": "CycloneDX", "specVersion": version}, "digest", "ref"
+        )
+        setup_load_sbom(test_sbom)
+        with patch("mobster.cmd.augment.handlers.CycloneDXVersion1.update_sbom"):
+            result = await update_sbom(
+                component, component.image, mock_cosign, False, semaphore
+            )
+            assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_cyclonedx_with_index_image_returns_none(
+        self,
+        index_component: Component,
+        mock_cosign: MagicMock,
+        semaphore: asyncio.Semaphore,
+        setup_load_sbom: Callable[[SBOM], None],
+    ) -> None:
+        test_sbom = SBOM(
+            {"bomFormat": "CycloneDX", "specVersion": "1.6"}, "digest", "ref"
+        )
+        setup_load_sbom(test_sbom)
+        result = await update_sbom(
+            index_component, index_component.image, mock_cosign, False, semaphore
+        )
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_unsupported_format_returns_none(
+        self,
+        component: Component,
+        mock_cosign: MagicMock,
+        semaphore: asyncio.Semaphore,
+        setup_load_sbom: Callable[[SBOM], None],
+    ) -> None:
+        test_sbom = SBOM({"unknown": "format"}, "digest", "ref")
+        setup_load_sbom(test_sbom)
+        result = await update_sbom(
+            component, component.image, mock_cosign, False, semaphore
+        )
+        assert result is None
