@@ -239,6 +239,7 @@ spec:
         sbom_path="$(params.dataDir)/component-sboms"
 
         aws s3 cp $sbom_path s3://$(params.retryS3Bucket)/ --recursive
+
     - name: create-trusted-artifact
       ref:
         resolver: "git"
