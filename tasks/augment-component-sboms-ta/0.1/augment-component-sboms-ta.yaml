@@ -156,7 +156,7 @@ spec:
 
         # todo: add --verification-key optionally, once work on release-time
         # SBOM in registry is done
-        mobster augment \
+        mobster --verbose augment \
           --output $sbom_path \
           oci-image \
           --snapshot "$(params.dataDir)/$(params.snapshotSpec)"
@@ -198,7 +198,7 @@ spec:
 
         sbom_path="$(params.dataDir)/component-sboms"
 
-        mobster upload tpa \
+        mobster --verbose upload tpa \
           --tpa-base-url $(params.atlasApiUrl) \
           --from-dir $sbom_path
 
