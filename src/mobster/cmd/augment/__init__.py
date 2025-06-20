@@ -44,8 +44,11 @@ class AugmentImageCommand(Command):
         snapshot = await make_snapshot(self.cli_args.snapshot, digest)
         verify = self.cli_args.verification_key is not None
         cosign = CosignClient(self.cli_args.verification_key)
+        concurrency_limit = self.cli_args.concurrency
 
-        self.sbom_update_ok, self.sboms = await update_sboms(snapshot, cosign, verify)
+        self.sbom_update_ok, self.sboms = await update_sboms(
+            snapshot, cosign, verify, concurrency_limit
+        )
 
     async def save(self) -> bool:
         """
@@ -146,35 +149,45 @@ def update_sbom_in_situ(component: Component, image: Image, sbom: SBOM) -> bool:
 
 
 async def update_sbom(
-    component: Component, image: Image, cosign: Cosign, verify: bool
+    component: Component,
+    image: Image,
+    cosign: Cosign,
+    verify: bool,
+    semaphore: asyncio.Semaphore,
 ) -> SBOM | None:
-    """
-    Get an augmented SBOM of an image in a repository. Determines format of the
-    SBOM and calls the correct handler or throws SBOMError if the format of the
-    SBOM is unsupported.
+    """Get an augmented SBOM of an image in a repository.
+
+    Determines format of the SBOM and calls the correct handler or throws
+    SBOMError if the format of the SBOM is unsupported.
 
     Args:
-        component (Component): The component the image belongs to.
-        image (Image): Object representing an image or an index
-            image being released.
+        component: The component the image belongs to.
+        image: Object representing an image or an index image being released.
+        cosign: Cosign client for verification.
+        verify: Whether to verify SBOM digest via image provenance.
+        semaphore: Concurrency control semaphore.
+
+    Returns:
+        An augmented SBOM if it can be enriched, None if enrichment fails.
     """
 
-    try:
-        sbom = await load_sbom(image, cosign, verify)
-        if not update_sbom_in_situ(component, image, sbom):
-            raise SBOMError(f"Unsupported SBOM format for image {image}.")
-        LOGGER.info("Successfully enriched SBOM for image %s", image)
-        return sbom
-    except Exception:  # pylint: disable=broad-except
-        # We catch all exceptions, because we're processing many SBOMs
-        # concurrently and an uncaught exception would halt all concurrently
-        # running updates.
-        LOGGER.exception("Failed to enrich SBOM for image %s.", image)
-        return None
+    async with semaphore:
+        try:
+            sbom = await load_sbom(image, cosign, verify)
+            if not update_sbom_in_situ(component, image, sbom):
+                raise SBOMError(f"Unsupported SBOM format for image {image}.")
+            LOGGER.info("Successfully enriched SBOM for image %s", image)
+            return sbom
+        except Exception:  # pylint: disable=broad-except
+            # We catch all exceptions, because we're processing many SBOMs
+            # concurrently and an uncaught exception would halt all concurrently
+            # running updates.
+            LOGGER.exception("Failed to enrich SBOM for image %s.", image)
+            return None
 
 
 async def update_component_sboms(
-    component: Component, cosign: Cosign, verify: bool
+    component: Component, cosign: Cosign, verify: bool, semaphore: asyncio.Semaphore
 ) -> tuple[bool, list[SBOM]]:
     """
     Update SBOMs for a component.
@@ -196,22 +209,26 @@ async def update_component_sboms(
         # for both the index image and the child single arch images.
         index = component.image
         update_tasks = [
-            update_sbom(component, index, cosign, verify),
+            update_sbom(component, index, cosign, verify, semaphore),
         ]
         for child in index.children:
-            update_tasks.append(update_sbom(component, child, cosign, verify))
+            update_tasks.append(
+                update_sbom(component, child, cosign, verify, semaphore)
+            )
 
         results = await asyncio.gather(*update_tasks)
     else:
         # Single arch image
-        results = [await update_sbom(component, component.image, cosign, verify)]
+        results = [
+            await update_sbom(component, component.image, cosign, verify, semaphore)
+        ]
 
     status: bool = all(results)
     return status, list(filter(None, results))
 
 
 async def update_sboms(
-    snapshot: Snapshot, cosign: Cosign, verify: bool
+    snapshot: Snapshot, cosign: Cosign, verify: bool, concurrency_limit: int
 ) -> tuple[bool, list[SBOM]]:
     """
     Update component SBOMs with release-time information based on a Snapshot.
@@ -221,10 +238,13 @@ async def update_sboms(
         cosign (Cosign): implementation of the Cosign protocol
         verify (bool): True if the SBOM's digest should be verified via the
             provenance of the image
+        concurrency_limit: concurrency limit for SBOM augmentation
     """
+    semaphore = asyncio.Semaphore(concurrency_limit)
+
     results = await asyncio.gather(
         *[
-            update_component_sboms(component, cosign, verify)
+            update_component_sboms(component, cosign, verify, semaphore)
             for component in snapshot.components
         ],
     )
