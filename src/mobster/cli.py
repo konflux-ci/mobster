@@ -302,6 +302,11 @@ def upload_tpa_parser(subparsers: Any) -> None:
         default=1,
         help="Number of workers to execute uploads in parallel",
     )
+    tpa_parser.add_argument(
+        "--report",
+        action="store_true",
+        help="Print upload report to stdout",
+    )
 
     # Create a mutually exclusive group and require one of the arguments
     source_group = tpa_parser.add_mutually_exclusive_group(required=True)
