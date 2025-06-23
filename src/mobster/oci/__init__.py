@@ -115,11 +115,11 @@ def make_oci_auth_file(
     reference.
 
     Deletes the file after the with statement. If no path to the docker config
-    is provided, tries using ~/.docker/config.json. Ports in the registry are
-    NOT supported.
+    is provided, tries using ~/.docker/config.json. Registry ports are now
+    supported.
 
     Args:
-        reference: Reference to an image in the form registry/repo@sha256-deadbeef.
+        reference: Reference to an image in the form registry[:port]/repo@sha256-X.
         auth: Existing docker config.json path.
 
     Yields:
@@ -137,11 +137,6 @@ def make_oci_auth_file(
 
     if not auth.is_file():
         raise ValueError(f"No auth config file at {auth}.")
-
-    if reference.count(":") > 1:
-        raise ValueError(
-            f"Multiple ':' symbols in {reference}. Registry ports are not supported."
-        )
 
     logger.debug("Looking for auth entry for %s in auth file %s", reference, auth)
 
@@ -167,7 +162,7 @@ def _get_auth_subconfig(config: DockerConfig, reference: str) -> DockerConfig:
     Create a docker config containing token authentication only for a specific
     image reference.
 
-    Tries to match specific repository paths first.
+    Tries to match specific repository paths first. Supports registry ports.
 
     Args:
         config: The docker configuration containing authentication details.
@@ -180,22 +175,24 @@ def _get_auth_subconfig(config: DockerConfig, reference: str) -> DockerConfig:
     Example:
         >>> config = DockerConfig(
                 auths={
-                    "registry.redhat.io/": AuthDetails(token="another-token")
-                    "registry.redhat.io/specific-repo": AuthDetails(token="token"),
+                    "registry.redhat.io:5000/": AuthDetails(token="another-token")
+                    "registry.redhat.io:5000/specific-repo": AuthDetails(token="token"),
                 },
             )
         >>> _get_auth_subconfig(
-                config, "registry.redhat.io/specific-repo@sha256:deadbeef"
+                config, "registry.redhat.io:5000/specific-repo@sha256:deadbeef"
             )
         DockerConfig(
             auths={
-                "registry.redhat.io/specific-repo": AuthDetails(token="token"),
+                "registry.redhat.io:5000/specific-repo": AuthDetails(token="token"),
             }
         )
     """
     repository, _ = reference.split("@", 1)
-    # registry is up to the first slash
-    registry = repository.split("/", 1)[0]
+    if "/" in repository:
+        registry = repository.split("/", 1)[0]
+    else:
+        registry = repository
 
     current_ref = repository
 
