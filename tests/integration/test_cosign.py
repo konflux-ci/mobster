@@ -12,6 +12,16 @@ from tests.integration.conftest import ReferrersTagOCIClient
 
 @pytest.fixture()
 def make_image(oci_client: ReferrersTagOCIClient) -> Any:
+    """
+    Create a fixture for making test images.
+
+    Args:
+        oci_client: The OCI client instance.
+
+    Returns:
+        callable: A function to create images.
+    """
+
     async def _make_image(name: str, tag: str) -> Image:
         return await oci_client.create_image(name, tag)
 
@@ -35,6 +45,12 @@ async def image_with_no_sbom(make_image: Any) -> Image:
 
 @pytest.mark.asyncio
 async def test_cosign_fetch_sbom(image_with_empty_sbom: Image) -> None:
+    """
+    Test fetching an SBOM from an image that has one.
+
+    Args:
+        image_with_empty_sbom: Image fixture with an empty SBOM.
+    """
     cosign = CosignClient(Path(""))
     sbom = await cosign.fetch_sbom(image_with_empty_sbom)
     assert sbom.doc == {}
@@ -42,6 +58,12 @@ async def test_cosign_fetch_sbom(image_with_empty_sbom: Image) -> None:
 
 @pytest.mark.asyncio
 async def test_cosign_fetch_sbom_no_sbom(image_with_no_sbom: Image) -> None:
+    """
+    Test fetching an SBOM from an image that has none.
+
+    Args:
+        image_with_no_sbom: Image fixture with no SBOM.
+    """
     cosign = CosignClient(Path(""))
     with pytest.raises(SBOMError):
         await cosign.fetch_sbom(image_with_no_sbom)
@@ -49,6 +71,9 @@ async def test_cosign_fetch_sbom_no_sbom(image_with_no_sbom: Image) -> None:
 
 @pytest.mark.asyncio
 async def test_cosign_fetch_sbom_no_image() -> None:
+    """
+    Test fetching an SBOM from a non-existent image.
+    """
     cosign = CosignClient(Path(""))
     image = Image(repository="no-repo", digest="sha256:deadbeef")
     with pytest.raises(SBOMError):
