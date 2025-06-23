@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -6,7 +7,7 @@ import pytest
 
 from mobster.cmd.upload.oidc import OIDCClientCredentials
 from mobster.cmd.upload.tpa import TPAClient
-from mobster.cmd.upload.upload import TPAUploadCommand
+from mobster.cmd.upload.upload import TPAUploadCommand, UploadReport
 
 
 @pytest.fixture
@@ -199,6 +200,7 @@ async def test_execute_upload_mixed_results(
     mock_tpa_client_class: MagicMock,
     mock_gather_sboms: MagicMock,
     mock_env_vars: MagicMock,
+    capsys: Any,
 ) -> None:
     mock_tpa_client = AsyncMock(spec=TPAClient)
     # First upload succeeds, second one fails
@@ -217,9 +219,19 @@ async def test_execute_upload_mixed_results(
     args.file = None
     args.tpa_base_url = "https://test.tpa.url"
     args.workers = 1
+    args.report = True
     command = TPAUploadCommand(args)
 
     await command.execute()
+
+    expected_report = UploadReport(
+        success=[Path("/test/dir/file1.json")],
+        failure=[Path("/test/dir/file2.json")],
+    )
+
+    out, _ = capsys.readouterr()
+    actual_report = UploadReport.model_validate_json(out)
+    assert actual_report == expected_report
 
     # Verify upload_sbom was called for each file
     assert mock_tpa_client.upload_sbom.call_count == len(file_list)

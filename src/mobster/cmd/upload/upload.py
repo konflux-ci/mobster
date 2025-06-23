@@ -8,11 +8,40 @@ import time
 from pathlib import Path
 from typing import Any
 
+import pydantic
+
 from mobster.cmd.base import Command
 from mobster.cmd.upload.oidc import OIDCClientCredentials
 from mobster.cmd.upload.tpa import TPAClient
 
 LOGGER = logging.getLogger(__name__)
+
+
+class UploadReport(pydantic.BaseModel):
+    """Upload report containing successful and failed uploads.
+
+    Attributes:
+        success: List of file paths that were successfully uploaded.
+        failure: List of file paths that failed to upload.
+    """
+
+    success: list[Path]
+    failure: list[Path]
+
+    @staticmethod
+    def build_report(results: list[tuple[Path, bool]]) -> "UploadReport":
+        """Build an upload report from upload results.
+
+        Args:
+            results: List of tuples containing file path and success status.
+
+        Returns:
+            UploadReport instance with successful and failed uploads categorized.
+        """
+        success = [path for path, ok in list(results) if ok]
+        failure = [path for path, ok in results if not ok]
+
+        return UploadReport(success=success, failure=failure)
 
 
 class TPAUploadCommand(Command):
@@ -42,7 +71,11 @@ class TPAUploadCommand(Command):
 
         workers = self.cli_args.workers if self.cli_args.from_dir else 1
 
-        await self.upload(auth, self.cli_args.tpa_base_url, sbom_files, workers)
+        report = await self.upload(
+            auth, self.cli_args.tpa_base_url, sbom_files, workers
+        )
+        if self.cli_args.report:
+            print(report.model_dump_json())
 
     @staticmethod
     async def upload_sbom_file(
@@ -67,17 +100,10 @@ class TPAUploadCommand(Command):
                 auth=auth,
             )
             LOGGER.info("Uploading %s to TPA", sbom_file)
-            sbom_filepath = Path(sbom_file)
-            filename = sbom_filepath.name
+            filename = sbom_file.name
+            start_time = time.time()
             try:
-                start_time = time.time()
-                response = await client.upload_sbom(sbom_filepath)
-                if response is None:
-                    LOGGER.error(
-                        "Failed to upload %s and took %s",
-                        filename,
-                        time.time() - start_time,
-                    )
+                await client.upload_sbom(sbom_file)
                 return True
             except Exception:  # pylint: disable=broad-except
                 LOGGER.exception(
@@ -91,7 +117,7 @@ class TPAUploadCommand(Command):
         tpa_url: str,
         sbom_files: list[Path],
         workers: int,
-    ) -> None:
+    ) -> UploadReport:
         """
         Upload SBOM files to TPA given a directory or a file.
 
@@ -113,9 +139,11 @@ class TPAUploadCommand(Command):
             for sbom_file in sbom_files
         ]
 
-        self.success = all(await asyncio.gather(*tasks))
+        results = await asyncio.gather(*tasks)
+        self.success = all(results)
 
         LOGGER.info("Upload complete")
+        return UploadReport.build_report(list(zip(sbom_files, results, strict=True)))
 
     async def save(self) -> bool:  # pragma: no cover
         """
