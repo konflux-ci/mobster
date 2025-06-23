@@ -15,17 +15,5 @@ services:
     ports:
       - "8080:8080"
 
-  mobster:
-    build:
-      context: .
-      dockerfile: Containerfile
-    depends_on:
-      - zot
-    environment:
-      - REGISTRY_URL=http://zot:8080
-    volumes:
-      - .:/workspace
-    working_dir: /workspace
-
 volumes:
   zot-data:
