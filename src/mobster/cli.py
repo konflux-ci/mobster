@@ -266,6 +266,12 @@ def generate_augment_oci_image_parser(subparsers: Any) -> None:
         type=Path,
         help="path to public key used to verify the image provenance",
     )
+    augment_oci_image_parser.add_argument(
+        "--concurrency",
+        type=parse_concurrency,
+        default=8,
+        help="concurrency limit for SBOM updates (non-zero integer)",
+    )
 
     augment_oci_image_parser.set_defaults(func=augment.AugmentImageCommand)
 
@@ -309,3 +315,23 @@ def upload_tpa_parser(subparsers: Any) -> None:
     source_group.add_argument("--file", type=Path, help="File to upload")
 
     tpa_parser.set_defaults(func=upload.TPAUploadCommand)
+
+
+def parse_concurrency(val: str) -> int:
+    """Parse and validate concurrency limit from command line argument.
+
+    Args:
+        val: String value from command line argument.
+
+    Returns:
+        Validated integer concurrency limit.
+
+    Raises:
+        argparse.ArgumentTypeError: If value is not a positive integer.
+    """
+    num = int(val)
+    if num < 1:
+        raise argparse.ArgumentTypeError(
+            "Concurrency limit must be a non-zero integer."
+        )
+    return num
