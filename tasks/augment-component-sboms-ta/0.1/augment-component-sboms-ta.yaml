@@ -197,10 +197,21 @@ spec:
         done
 
         sbom_path="$(params.dataDir)/component-sboms"
+        report_path="$(params.dataDir)/report.json"
 
         mobster --verbose upload tpa \
           --tpa-base-url $(params.atlasApiUrl) \
-          --from-dir $sbom_path
+          --from-dir "$sbom_path" > "$report_path"
+
+        failed_path="$(params.dataDir)/failed-sboms"
+
+        if [[ $? != 0 ]]; then
+          # Extract the paths of SBOMs that failed to push using jq (one path per line).
+          # Then use xargs to copy all the failed SBOM files to a directory, from
+          # which the upload-sboms-to-s3 step will push to S3.
+          jq '.failure[]' "$report_path" | \
+            xargs -I {} cp {} "$failed_path"
+        fi
 
     - name: upload-sboms-to-s3
       # image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
@@ -236,9 +247,9 @@ spec:
             fi
         done
 
-        sbom_path="$(params.dataDir)/component-sboms"
+        failed_path="$(params.dataDir)/failed-sboms"
 
-        aws s3 cp $sbom_path s3://$(params.retryS3Bucket)/ --recursive
+        aws s3 cp "$failed_path" s3://$(params.retryS3Bucket)/ --recursive
 
     - name: create-trusted-artifact
       ref:
