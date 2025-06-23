@@ -1,0 +1,22 @@
+FROM registry.access.redhat.com/ubi9/ubi:latest
+
+USER root
+
+RUN useradd --uid 1000 tpa && \
+    dnf install -y tar gzip && \
+    dnf clean all
+
+USER 1000
+
+WORKDIR /app
+
+RUN curl -L https://github.com/trustification/trustify/releases/download/v0.3.0-rc.3/trustd-pm-0.3.0-rc.3-x86_64-unknown-linux-gnu.tar.gz \
+    -o trustd-pm.tar.gz && \
+    tar -xzf trustd-pm.tar.gz && \
+    rm trustd-pm.tar.gz
+
+WORKDIR /app/trustd-pm-0.3.0-rc.3-x86_64-unknown-linux-gnu/
+
+ENV AUTH_DISABLED=true
+
+CMD ["./trustd-pm"]
