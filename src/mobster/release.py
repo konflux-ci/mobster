@@ -121,14 +121,23 @@ class ComponentModel(pdc.BaseModel):
     @classmethod
     def is_valid_digest_reference(cls, value: str) -> str:
         """
-        Validates that the digest reference is in the correct format. Does NOT
-        support references with a registry port.
+        Validates that the digest reference is in the correct format and
+        removes the repository part from the reference.
         """
-        if not re.match(r"^[^:]+@sha256:[0-9a-f]+$", value):
-            raise ValueError(f"{value} is not a valid digest reference.")
 
-        # strip repository
-        return value.split("@")[1]
+        pattern = re.compile(Image.ARTIFACT_PATTERN, re.VERBOSE | re.MULTILINE)
+        match = pattern.match(value)
+        if not match:
+            raise ValueError("Image reference does not match the RE.")
+
+        digest = match.group("digest")
+        if not isinstance(digest, str):
+            raise ValueError("No sha256 digest found in reference.")
+
+        if not digest.startswith("sha256:"):
+            raise ValueError("Only sha256 digests are supported")
+
+        return digest
 
 
 class SnapshotModel(pdc.BaseModel):

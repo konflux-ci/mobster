@@ -1,6 +1,15 @@
+import hashlib
+import random as rand
 from typing import Any
 
+import pytest
+
 from mobster import get_mobster_version
+
+
+@pytest.fixture()
+def random() -> None:
+    rand.seed(42)
 
 
 async def awaitable(obj: Any) -> Any:
@@ -70,3 +79,15 @@ def patch_bom_ref(document: Any, old: str, new: str) -> Any:
         if dependency["ref"] == old:
             dependency["ref"] = new
     return document
+
+
+def random_digest() -> str:
+    """
+    Generate a random SHA256 digest.
+
+    Returns:
+        str: A properly formatted SHA256 digest string (e.g., 'sha256:abc123...')
+    """
+    random_bytes = rand.randbytes(32)
+    digest_hash = hashlib.sha256(random_bytes).hexdigest()
+    return f"sha256:{digest_hash}"
