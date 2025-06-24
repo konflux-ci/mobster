@@ -14,6 +14,9 @@ class Command(ABC):
 
     @property
     def exit_code(self) -> int:
+        """
+        Get the command exit code.
+        """
         return self._exit_code
 
     @exit_code.setter

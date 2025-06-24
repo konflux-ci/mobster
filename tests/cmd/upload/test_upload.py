@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from mobster.cmd.upload.oidc import OIDCClientCredentials
+from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedException
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.cmd.upload.upload import TPAUploadCommand, UploadReport
 
@@ -253,3 +253,24 @@ def test_gather_sboms(tmp_path: Path) -> None:
     result_names = {p.name for p in result}
     expected_names = {"file1.json", "file2.json", "file3.json"}
     assert result_names == expected_names
+
+
+@pytest.mark.parametrize(
+    "results,expected_exit_code,description",
+    [
+        ([], 0, "empty results list"),
+        ([None, None], 0, "all successful uploads"),
+        ([RetryExhaustedException()], 2, "only retry exhausted exceptions"),
+        ([ValueError()], 1, "only non-transient exceptions"),
+        ([RetryExhaustedException(), ValueError()], 1, "mixed exception types"),
+    ],
+)
+def test_set_exit_code(
+    results: list[BaseException | None], expected_exit_code: int, description: str
+) -> None:
+    """
+    Test set_exit_code function with various result combinations.
+    """
+    command = TPAUploadCommand(MagicMock())
+    command.set_exit_code(results)
+    assert command.exit_code == expected_exit_code

@@ -95,7 +95,6 @@ class TestAugmentCommand:
         args.verification_key = Path("key.pub")
 
         cmd = make_augment_command(args, None)
-        cmd.sbom_update_ok = True
         cmd.sboms = [
             SBOM({}, "", "quay.io/repo@sha256:aaaaaaaa"),
             SBOM({}, "", "quay.io/repo@sha256:bbbbbbbb"),

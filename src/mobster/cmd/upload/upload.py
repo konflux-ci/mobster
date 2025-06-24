@@ -29,7 +29,9 @@ class UploadReport(pydantic.BaseModel):
     failure: list[Path]
 
     @staticmethod
-    def build_report(results: list[tuple[Path, bool]]) -> "UploadReport":
+    def build_report(
+        results: list[tuple[Path, BaseException | None]],
+    ) -> "UploadReport":
         """Build an upload report from upload results.
 
         Args:
@@ -38,8 +40,10 @@ class UploadReport(pydantic.BaseModel):
         Returns:
             UploadReport instance with successful and failed uploads categorized.
         """
-        success = [path for path, ok in list(results) if ok]
-        failure = [path for path, ok in results if not ok]
+        success = [path for path, result in results if result is None]
+        failure = [
+            path for path, result in results if isinstance(result, BaseException)
+        ]
 
         return UploadReport(success=success, failure=failure)
 
@@ -48,9 +52,6 @@ class TPAUploadCommand(Command):
     """
     Command to upload a file to the TPA.
     """
-
-    def __init__(self, cli_args: Any, *args: Any, **kwargs: Any):
-        super().__init__(cli_args, *args, **kwargs)
 
     async def execute(self) -> Any:
         """
@@ -82,7 +83,7 @@ class TPAUploadCommand(Command):
         auth: OIDCClientCredentials,
         tpa_url: str,
         semaphore: asyncio.Semaphore,
-    ) -> bool:
+    ) -> None:
         """
         Upload a single SBOM file to TPA using HTTP client.
 
@@ -103,14 +104,11 @@ class TPAUploadCommand(Command):
             start_time = time.time()
             try:
                 await client.upload_sbom(sbom_file)
-                return True
-            except RetryExhaustedException:
-                pass
             except Exception:  # pylint: disable=broad-except
                 LOGGER.exception(
                     "Error uploading %s and took %s", filename, time.time() - start_time
                 )
-                return False
+                raise
 
     async def upload(
         self,
@@ -140,18 +138,36 @@ class TPAUploadCommand(Command):
             for sbom_file in sbom_files
         ]
 
-        results = await asyncio.gather(*tasks)
-        if not all(results):
-            self.exit_code = 1
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        self.set_exit_code(results)
 
         LOGGER.info("Upload complete")
         return UploadReport.build_report(list(zip(sbom_files, results, strict=True)))
+
+    def set_exit_code(self, results: list[BaseException | None]) -> None:
+        """
+        Set the exit code based on the upload results. If all exceptions found
+        are RetryExhaustedException, the exit code is 2. If at least one
+        exception is not the RetryExhaustedException, the exit code is 1.
+
+        Args:
+            results: List of results from upload operations, either None for success
+                or BaseException for failure.
+        """
+        non_transient_error = False
+        for res in results:
+            if isinstance(res, RetryExhaustedException):
+                self.exit_code = 2
+            elif isinstance(res, BaseException):
+                non_transient_error = True
+
+        if non_transient_error:
+            self.exit_code = 1
 
     async def save(self) -> None:  # pragma: no cover
         """
         Save the command state.
         """
-        pass
 
     @staticmethod
     def gather_sboms(dirpath: Path) -> list[Path]:
