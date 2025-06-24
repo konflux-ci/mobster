@@ -38,8 +38,12 @@ RUN .venv/bin/pip install awscli==1.40.33
 FROM registry.access.redhat.com/ubi9/python-312@sha256:2970a99fed0b2bc9597e6a69fb555d3ede9669007e3d113c725ef6909a53e727
 
 LABEL name="mobster" \
-      description="A tool for generating and managing Software Bill of Materials (SBOM)" \
-      maintainers="The Collective team"
+    description="A tool for generating and managing Software Bill of Materials (SBOM)" \
+    maintainers="The Collective team"
+
+# x-release-please-start-version
+LABEL version="0.3.0"
+# x-release-please-end
 
 # Set the working directory in the container
 WORKDIR /app
