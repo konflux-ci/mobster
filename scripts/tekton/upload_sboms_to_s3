@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -eux
+
+data_dir="$1"
+retry_s3_bucket="$2"
+
+required_vars=(
+  "AWS_ACCESS_KEY_ID"
+  "AWS_SECRET_ACCESS_KEY"
+)
+
+for var_name in "${required_vars[@]}"; do
+    if [ -z "${!var_name}" ]; then
+        >&2 echo "Environment variable '$var_name' is not defined or is empty. Skipping S3 upload."
+        exit 0
+    fi
+done
+
+failed_path="${data_dir}/failed-sboms"
+
+aws s3 cp "$failed_path" s3://${retry_s3_bucket}/ --recursive

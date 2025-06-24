@@ -149,17 +149,7 @@ spec:
       image: quay.io/mjediny/test:mobster
       script: |
         #!/usr/bin/env bash
-        set -eux
-
-        sbom_path="$(params.dataDir)/component-sboms"
-        mkdir -p "$sbom_path"
-
-        # todo: add --verification-key optionally, once work on release-time
-        # SBOM in registry is done
-        mobster --verbose augment \
-          --output $sbom_path \
-          oci-image \
-          --snapshot "$(params.dataDir)/$(params.snapshotSpec)"
+        augment_sboms "$(params.dataDir)" "$(params.snapshotSpec)"
 
     - name: upload-sboms-to-atlas
       # image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
@@ -181,37 +171,7 @@ spec:
           value: $(params.ssoTokenUrl)
       script: |
         #!/usr/bin/env bash
-        set -eux
-
-        required_vars=(
-          "MOBSTER_TPA_SSO_ACCOUNT"
-          "MOBSTER_TPA_SSO_TOKEN"
-          "MOBSTER_TPA_SSO_TOKEN_URL"
-        )
-
-        for var_name in "${required_vars[@]}"; do
-            if [ -z "${!var_name}" ]; then
-                >&2 echo "Environment variable '$var_name' is not defined or is empty. Skipping TPA upload."
-                exit 0
-            fi
-        done
-
-        sbom_path="$(params.dataDir)/component-sboms"
-        report_path="$(params.dataDir)/report.json"
-
-        mobster --verbose upload tpa \
-          --tpa-base-url $(params.atlasApiUrl) \
-          --from-dir "$sbom_path" > "$report_path"
-
-        failed_path="$(params.dataDir)/failed-sboms"
-
-        if [[ $? != 0 ]]; then
-          # Extract the paths of SBOMs that failed to push using jq (one path per line).
-          # Then use xargs to copy all the failed SBOM files to a directory, from
-          # which the upload-sboms-to-s3 step will push to S3.
-          jq '.failure[]' "$report_path" | \
-            xargs -I {} cp {} "$failed_path"
-        fi
+        upload_sboms_to_atlas "$(params.dataDir)" "$(params.atlasApiUrl)"
 
     - name: upload-sboms-to-s3
       # image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
@@ -233,23 +193,7 @@ spec:
           value: "us-east-1"
       script: |
         #!/usr/bin/env bash
-        set -eux
-
-        required_vars=(
-          "AWS_ACCESS_KEY_ID"
-          "AWS_SECRET_ACCESS_KEY"
-        )
-
-        for var_name in "${required_vars[@]}"; do
-            if [ -z "${!var_name}" ]; then
-                >&2 echo "Environment variable '$var_name' is not defined or is empty. Skipping S3 upload."
-                exit 0
-            fi
-        done
-
-        failed_path="$(params.dataDir)/failed-sboms"
-
-        aws s3 cp "$failed_path" s3://$(params.retryS3Bucket)/ --recursive
+        upload_sboms_to_s3 "$(params.dataDir)" "$(params.retryS3Bucket)"
 
     - name: create-trusted-artifact
       ref:

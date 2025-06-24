@@ -27,6 +27,9 @@ RUN poetry install --no-root --without dev
 # Copy the application code into the container
 COPY src/mobster /app/src/mobster
 
+# Copy scripts used in tekton tasks
+COPY scripts/tekton /app/bin
+
 # Install the package
 RUN poetry install --without dev
 
@@ -52,8 +55,9 @@ COPY --from=oras /usr/bin/oras /usr/bin/oras
 COPY --from=cosign /usr/local/bin/cosign /usr/bin/cosign
 
 ENV PATH=/app/.venv/bin:$PATH
+ENV PATH=/app/bin:$PATH
 
 USER 1001
 
 # Set the command to run your application
-CMD [".venv/bin/mobster" ]
+CMD [".venv/bin/mobster"]

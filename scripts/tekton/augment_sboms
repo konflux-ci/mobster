@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -eux
+
+data_dir="$1"
+snapshot_spec="$2"
+
+sbom_path="${data_dir}/component-sboms"
+mkdir -p "$sbom_path"
+
+# todo: add --verification-key optionally, once work on release-time
+# SBOM in registry is done
+mobster --verbose augment \
+  --output $sbom_path \
+  oci-image \
+  --snapshot "${data_dir}/${snapshot_spec}"
