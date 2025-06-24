@@ -1,8 +1,37 @@
 #!/usr/bin/env bash
 set -ux
 
-data_dir="$1"
-atlas_api_url="$2"
+OPTS=$(getopt -o '' --long data-dir:,atlas-api-url: -- "$@")
+eval set -- "$OPTS"
+
+data_dir=""
+atlas_api_url=""
+
+while true; do
+    case "$1" in
+        --data-dir)
+            data_dir="$2"
+            shift 2
+            ;;
+        --atlas-api-url)
+            atlas_api_url="$2"
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Invalid option: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -z "$data_dir" || -z "$atlas_api_url" ]]; then
+    echo "Error: Both --data-dir and --atlas-api-url are required" >&2
+    exit 1
+fi
 
 required_vars=(
   "MOBSTER_TPA_SSO_ACCOUNT"

@@ -1,8 +1,37 @@
 #!/usr/bin/env bash
 set -eux
 
-data_dir="$1"
-retry_s3_bucket="$2"
+OPTS=$(getopt -o '' --long data-dir:,retry-s3-bucket: -- "$@")
+eval set -- "$OPTS"
+
+data_dir=""
+retry_s3_bucket=""
+
+while true; do
+    case "$1" in
+        --data-dir)
+            data_dir="$2"
+            shift 2
+            ;;
+        --retry-s3-bucket)
+            retry_s3_bucket="$2"
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Invalid option: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -z "$data_dir" || -z "$retry_s3_bucket" ]]; then
+    echo "Error: Both --data-dir and --retry-s3-bucket are required" >&2
+    exit 1
+fi
 
 required_vars=(
   "AWS_ACCESS_KEY_ID"
