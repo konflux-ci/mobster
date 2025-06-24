@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.4.0](https://github.com/konflux-ci/mobster/compare/v0.3.0...v0.4.0) (2025-06-24)
+
+
+### Features
+
+* add CLI arg for upload report ([e1deaf4](https://github.com/konflux-ci/mobster/commit/e1deaf4f3427bab69fdd2d27ecb891f590dfe373))
+* Add version label to the Containerfile ([8ce1c4e](https://github.com/konflux-ci/mobster/commit/8ce1c4e9fdcf55cc580a9591fb6e20e9aa5e0484))
+* Add version label to the Containerfile ([b0c82af](https://github.com/konflux-ci/mobster/commit/b0c82af6669edef22d1c4d94623b7014be09df5c))
+* **ISV-5785:** add CLI arg for upload report ([e636c76](https://github.com/konflux-ci/mobster/commit/e636c76924b56cad364713666be65032ba291224))
+* **ISV-5860:** implement generate product cmd ([43d498a](https://github.com/konflux-ci/mobster/commit/43d498a8d7908458527018cb1784f79fd6e3832d))
+* **ISV-5875:** install AWS cli in mobster image ([a341a17](https://github.com/konflux-ci/mobster/commit/a341a1792d18bffe37d6d0f0c1010f3b176c4012))
+* **ISV-5875:** install AWS cli in mobster image ([156aeea](https://github.com/konflux-ci/mobster/commit/156aeead66a03f5e8dfb313c537ffddc5581eea7))
+* **ISV-6033:** limit concurrency in SBOM augmentation ([f34f457](https://github.com/konflux-ci/mobster/commit/f34f45797827c1549221134f60594974a4db5f3a))
+* **ISV-6033:** limit concurrency in SBOM augmentation ([b64abb7](https://github.com/konflux-ci/mobster/commit/b64abb703f7b05649c1e45b1103cd648b29adc23))
+* support symlinks in TPA upload ([bd71dc4](https://github.com/konflux-ci/mobster/commit/bd71dc4bcb86f69c462d1db88a81e2d7e05e538a))
+
+
+### Bug Fixes
+
+* Correct number of workers for TPA upload ([6092bd3](https://github.com/konflux-ci/mobster/commit/6092bd3059ee114c4c923d1baad57b69b89ca501))
+* Correct number of workers for TPA upload ([bf74bf3](https://github.com/konflux-ci/mobster/commit/bf74bf3da8515312afe287d4cef1436aa1e211a0))
+* exit with correct code on sbom augment ([ad7301f](https://github.com/konflux-ci/mobster/commit/ad7301fa8d01c7e58e3cdf44db8e92384f328d6e))
+* exit with correct code on sbom augment ([70d45b5](https://github.com/konflux-ci/mobster/commit/70d45b5f106f4f751c4bc3420212c01d3a7b8f08))
+* find SBOMs recursively ([27cad8d](https://github.com/konflux-ci/mobster/commit/27cad8de44704efa53a168b1a008d68fdea5eb7d))
+* make status handling more explicit ([794d0c3](https://github.com/konflux-ci/mobster/commit/794d0c354a9055bc1777d3bcaf60a8bba9b1d21a))
+* use directory path as prefix in upload ([d738aef](https://github.com/konflux-ci/mobster/commit/d738aefef86e284a4a51070b6d7ca52887589bae))
+* use directory path as prefix in upload ([d3d5382](https://github.com/konflux-ci/mobster/commit/d3d53823db85e66865bdc0f4484eae7023f7771b))
+* use old TypeVar syntax in merge module ([277a9e3](https://github.com/konflux-ci/mobster/commit/277a9e35678e19de054f6bb885891cdf97b027e5))
+
+
+### Documentation
+
+* **ISV-5860:** add docstring to save method ([816ea07](https://github.com/konflux-ci/mobster/commit/816ea07d16ed41af5398d793e4552fd03ed003e7))
+* **ISV-5860:** add google style docstrings ([59688ac](https://github.com/konflux-ci/mobster/commit/59688ac6ad3f6e27318289edaf61f5c743dffde1))
+* **ISV-5860:** fixup docstrings ([d87efce](https://github.com/konflux-ci/mobster/commit/d87efcea7ce70bb3f7941f491e6fe027429b1cc8))
+
 ## [0.3.0](https://github.com/konflux-ci/mobster/compare/v0.2.1...v0.3.0) (2025-06-10)
 
 

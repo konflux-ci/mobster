@@ -42,7 +42,7 @@ LABEL name="mobster" \
     maintainers="The Collective team"
 
 # x-release-please-start-version
-LABEL version="0.3.0"
+LABEL version="0.4.0"
 # x-release-please-end
 
 # Set the working directory in the container
