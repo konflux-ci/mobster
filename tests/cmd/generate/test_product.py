@@ -280,12 +280,12 @@ class TestGenerateProductCommand:
                 file_name = generate_product_command_args.output
                 out = Path(dir).joinpath(file_name)
                 generate_product_command.cli_args.output = out
-                assert await generate_product_command.save()
+                await generate_product_command.save()
                 with open(out, encoding="utf-8") as fp:
                     assert json.load(fp) == json.loads(minimal_spdx_document_json)
         else:
             # stdout
-            assert await generate_product_command.save()
+            await generate_product_command.save()
             out, _ = capsys.readouterr()
             assert json.loads(out) == json.loads(minimal_spdx_document_json)
 

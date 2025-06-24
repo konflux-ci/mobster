@@ -6,6 +6,7 @@ import sys
 from typing import Any
 
 from mobster import cli
+from mobster.cmd.base import Command
 from mobster.log import setup_logging
 
 LOGGER = logging.getLogger(__name__)
@@ -19,13 +20,11 @@ async def run(args: Any) -> None:
         args: The command line arguments.
 
     """
-    command = args.func(args)
+    command: Command = args.func(args)
     await command.execute()
-
-    ok = await command.save()
-    code = 0 if ok else 1
-    LOGGER.info("Exiting with code %s.", code)
-    sys.exit(code)
+    await command.save()
+    LOGGER.info("Exiting with code %s.", command.exit_code)
+    sys.exit(command.exit_code)
 
 
 def main() -> None:

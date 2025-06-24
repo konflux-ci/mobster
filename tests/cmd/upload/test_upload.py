@@ -81,8 +81,8 @@ async def test_execute_upload_from_directory(
     # Verify upload_sbom was called for each file
     assert mock_tpa_client.upload_sbom.call_count == len(file_list)
 
-    # Verify the command's success flag is True since all uploads succeeded
-    assert command.success is True
+    # Verify the command's exit_code is 0 since all uploads succeeded
+    assert command.exit_code == 0
 
 
 @pytest.mark.asyncio
@@ -119,8 +119,8 @@ async def test_execute_upload_single_file(
     # Verify upload_sbom was called once with the correct file
     mock_tpa_client.upload_sbom.assert_called_once_with(Path("/test/single_file.json"))
 
-    # Verify the command's success flag is True
-    assert command.success is True
+    # Verify the command's exit_code is 0 since upload succeeded
+    assert command.exit_code == 0
 
 
 @pytest.mark.asyncio
@@ -154,8 +154,8 @@ async def test_execute_upload_failure(
     # Verify upload_sbom was called for each file
     assert mock_tpa_client.upload_sbom.call_count == len(file_list)
 
-    # Verify the command's success flag is False since all uploads failed
-    assert command.success is False
+    # Verify the command's exit_code is 1 since all uploads failed
+    assert command.exit_code == 1
 
 
 @pytest.mark.asyncio
@@ -187,8 +187,8 @@ async def test_execute_upload_exception(
 
     mock_tpa_client.upload_sbom.assert_called_once()
 
-    # Verify the command's success flag is False
-    assert command.success is False
+    # Verify the command's exit_code is 1 since upload failed
+    assert command.exit_code == 1
 
 
 @pytest.mark.asyncio
@@ -236,8 +236,8 @@ async def test_execute_upload_mixed_results(
     # Verify upload_sbom was called for each file
     assert mock_tpa_client.upload_sbom.call_count == len(file_list)
 
-    # Verify the command's success flag is False since at least one upload failed
-    assert command.success is False
+    # Verify the command's exit_code is 1 since at least one upload failed
+    assert command.exit_code == 1
 
 
 def test_gather_sboms(tmp_path: Path) -> None:

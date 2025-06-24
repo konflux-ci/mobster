@@ -109,7 +109,7 @@ class TestAugmentCommand:
         augment_command_save: AugmentImageCommand,
     ) -> None:
         with patch("mobster.cmd.augment.write_sbom") as mock_write_sbom:
-            assert await augment_command_save.save()
+            await augment_command_save.save()
             mock_write_sbom.assert_awaited()
 
     @pytest.mark.asyncio
@@ -118,7 +118,8 @@ class TestAugmentCommand:
     ) -> None:
         with patch("mobster.cmd.augment.write_sbom") as mock_write_sbom:
             mock_write_sbom.side_effect = ValueError
-            assert not await augment_command_save.save()
+            await augment_command_save.save()
+            assert augment_command_save.exit_code == 1
             mock_write_sbom.assert_awaited()
 
     @pytest.mark.asyncio

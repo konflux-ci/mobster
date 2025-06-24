@@ -11,7 +11,7 @@ from typing import Any
 import pydantic
 
 from mobster.cmd.base import Command
-from mobster.cmd.upload.oidc import OIDCClientCredentials
+from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedException
 from mobster.cmd.upload.tpa import TPAClient
 
 LOGGER = logging.getLogger(__name__)
@@ -51,7 +51,6 @@ class TPAUploadCommand(Command):
 
     def __init__(self, cli_args: Any, *args: Any, **kwargs: Any):
         super().__init__(cli_args, *args, **kwargs)
-        self.success = False
 
     async def execute(self) -> Any:
         """
@@ -105,6 +104,8 @@ class TPAUploadCommand(Command):
             try:
                 await client.upload_sbom(sbom_file)
                 return True
+            except RetryExhaustedException:
+                pass
             except Exception:  # pylint: disable=broad-except
                 LOGGER.exception(
                     "Error uploading %s and took %s", filename, time.time() - start_time
@@ -140,16 +141,17 @@ class TPAUploadCommand(Command):
         ]
 
         results = await asyncio.gather(*tasks)
-        self.success = all(results)
+        if not all(results):
+            self.exit_code = 1
 
         LOGGER.info("Upload complete")
         return UploadReport.build_report(list(zip(sbom_files, results, strict=True)))
 
-    async def save(self) -> bool:  # pragma: no cover
+    async def save(self) -> None:  # pragma: no cover
         """
         Save the command state.
         """
-        return self.success
+        pass
 
     @staticmethod
     def gather_sboms(dirpath: Path) -> list[Path]:
