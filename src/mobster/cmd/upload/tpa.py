@@ -50,3 +50,8 @@ class TPAClient(OIDCClientCredentialsClient):
     async def delete_sbom(self, sbom_id: int) -> None:
         """Delete sbom"""
         raise NotImplementedError()
+
+    async def download_sbom(self, sbom_id: str, path: Path) -> None:
+        """Download sbom"""
+        # https://www.python-httpx.org/quickstart/#streaming-responses
+        raise NotImplementedError()
