@@ -3,11 +3,13 @@ TPA API client
 """
 
 import logging
+from collections.abc import Generator
 from pathlib import Path
 
 import aiofiles
 import httpx
 
+from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.oidc import OIDCClientCredentialsClient
 
 LOGGER = logging.getLogger(__name__)
@@ -38,3 +40,13 @@ class TPAClient(OIDCClientCredentialsClient):
                 headers=headers,
             )
             return response
+
+    async def list_sboms(
+        self, query: str, sort: str
+    ) -> Generator[SbomSummary, None, None]:
+        """List sboms"""
+        raise NotImplementedError()
+
+    async def delete_sbom(self, sbom_id: int) -> None:
+        """Delete sbom"""
+        raise NotImplementedError()
