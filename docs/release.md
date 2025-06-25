@@ -15,23 +15,24 @@ Because of that the release process is done manually using the
 bump the version in the `pyproject.toml` file.
 
 ### Release steps:
-1. Pull the latest version from the repository. `git pull upstream main`
+1. Pull the latest version from the repository. `git pull upstream main --tags`
 2. Install the [release-please](https://github.com/googleapis/release-please/blob/main/docs/cli.md#running-release-please-cli) CLI tool if not already installed
-3. Run the release-please command to generate the release notes and bump the version:
+3. Export the `GITHUB_TOKEN` environment variable with a personal access token
+   that has `repo` scope. This token is used to authenticate with GitHub API.
    ```bash
-   release-please release-pr \
-   --token=$GITHUB_TOKEN \ # personal access token with repo scope
-   --repo-url=https://github.com/konflux-ci/mobster
+   export GITHUB_TOKEN=<your_personal_access_token>
    ```
-4. Review the generated pull request and merge it into the main branch.
-5. After the pull request is merged, tag the commit with the version number:
-   ```bash
-      git pull upstream main
-      git tag vX.Y.Z
-      git push upstream vX.Y.Z
-   ```
-6. Create a new release on GitHub with the tag `vX.Y.Z`. The release notes will
-   be automatically generated based on commit diff.
+4. Run `make open-release-pr` to generate the release pull request.
+   1. For a dry-run, you can use `make open-release-pr-dry-run` to see what changes
+      would be made without actually creating the pull request.
+5. Review the generated pull request and merge it into the main branch.
+6. After the pull request is merged, run the following commands to create a new Github
+   release and tag the commit: `make github-release` (or `make github-release-dry-run` for a dry-run).
+   1. This command will create a new tag in the format `vX.Y.Z`
+   2. It will also push the tag to the remote repository
+   3. It creates a new Github release with auto-generated release notes
+   4. It triggers a [PyPi release](#release-to-pypi)
+
 
 ## Release to PyPI
 A github action is used to release the Python package to PyPI. The action is
