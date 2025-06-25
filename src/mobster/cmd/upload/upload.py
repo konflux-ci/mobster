@@ -5,6 +5,7 @@ import glob
 import logging
 import os
 import time
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,15 @@ from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedExcepti
 from mobster.cmd.upload.tpa import TPAClient
 
 LOGGER = logging.getLogger(__name__)
+
+
+class UploadExitCode(Enum):
+    """
+    Enumeration of possible exit codes from the upload command.
+    """
+
+    ERROR = 1
+    TRANSIENT_ERROR = 2
 
 
 class UploadReport(pydantic.BaseModel):
@@ -35,7 +45,8 @@ class UploadReport(pydantic.BaseModel):
         """Build an upload report from upload results.
 
         Args:
-            results: List of tuples containing file path and success status.
+            results: List of tuples containing file path and either an
+                exception (failure) or None (success).
 
         Returns:
             UploadReport instance with successful and failed uploads categorized.
@@ -147,8 +158,9 @@ class TPAUploadCommand(Command):
     def set_exit_code(self, results: list[BaseException | None]) -> None:
         """
         Set the exit code based on the upload results. If all exceptions found
-        are RetryExhaustedException, the exit code is 2. If at least one
-        exception is not the RetryExhaustedException, the exit code is 1.
+        are RetryExhaustedException, the exit code is
+        UploadExitCode.TransientError. If at least one exception is not the
+        RetryExhaustedException, the exit code is UploadExitCode.Error.
 
         Args:
             results: List of results from upload operations, either None for success
@@ -157,12 +169,12 @@ class TPAUploadCommand(Command):
         non_transient_error = False
         for res in results:
             if isinstance(res, RetryExhaustedException):
-                self.exit_code = 2
+                self.exit_code = UploadExitCode.TRANSIENT_ERROR.value
             elif isinstance(res, BaseException):
                 non_transient_error = True
 
         if non_transient_error:
-            self.exit_code = 1
+            self.exit_code = UploadExitCode.ERROR.value
 
     async def save(self) -> None:  # pragma: no cover
         """

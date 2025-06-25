@@ -7,7 +7,7 @@ import pytest
 
 from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedException
 from mobster.cmd.upload.tpa import TPAClient
-from mobster.cmd.upload.upload import TPAUploadCommand, UploadReport
+from mobster.cmd.upload.upload import TPAUploadCommand, UploadExitCode, UploadReport
 
 
 @pytest.fixture
@@ -155,7 +155,7 @@ async def test_execute_upload_failure(
     assert mock_tpa_client.upload_sbom.call_count == len(file_list)
 
     # Verify the command's exit_code is 1 since all uploads failed
-    assert command.exit_code == 1
+    assert command.exit_code == UploadExitCode.ERROR.value
 
 
 @pytest.mark.asyncio
@@ -188,7 +188,7 @@ async def test_execute_upload_exception(
     mock_tpa_client.upload_sbom.assert_called_once()
 
     # Verify the command's exit_code is 1 since upload failed
-    assert command.exit_code == 1
+    assert command.exit_code == UploadExitCode.ERROR.value
 
 
 @pytest.mark.asyncio
@@ -237,7 +237,7 @@ async def test_execute_upload_mixed_results(
     assert mock_tpa_client.upload_sbom.call_count == len(file_list)
 
     # Verify the command's exit_code is 1 since at least one upload failed
-    assert command.exit_code == 1
+    assert command.exit_code == UploadExitCode.ERROR.value
 
 
 def test_gather_sboms(tmp_path: Path) -> None:
@@ -260,9 +260,17 @@ def test_gather_sboms(tmp_path: Path) -> None:
     [
         ([], 0, "empty results list"),
         ([None, None], 0, "all successful uploads"),
-        ([RetryExhaustedException()], 2, "only retry exhausted exceptions"),
-        ([ValueError()], 1, "only non-transient exceptions"),
-        ([RetryExhaustedException(), ValueError()], 1, "mixed exception types"),
+        (
+            [RetryExhaustedException()],
+            UploadExitCode.TRANSIENT_ERROR.value,
+            "only retry exhausted exceptions",
+        ),
+        ([ValueError()], UploadExitCode.ERROR.value, "only non-transient exceptions"),
+        (
+            [RetryExhaustedException(), ValueError()],
+            UploadExitCode.ERROR.value,
+            "mixed exception types",
+        ),
     ],
 )
 def test_set_exit_code(
