@@ -4,13 +4,12 @@ enrichment.
 """
 
 import asyncio
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
 import pydantic as pdc
 
-from mobster.image import Image
+from mobster.image import ARTIFACT_PATTERN, Image
 
 
 @dataclass
@@ -124,16 +123,11 @@ class ComponentModel(pdc.BaseModel):
         Validates that the digest reference is in the correct format and
         removes the repository part from the reference.
         """
-
-        pattern = re.compile(Image.ARTIFACT_PATTERN, re.VERBOSE | re.MULTILINE)
-        match = pattern.match(value)
+        match = ARTIFACT_PATTERN.match(value)
         if not match:
             raise ValueError("Image reference does not match the RE.")
 
         digest = match.group("digest")
-        if not isinstance(digest, str):
-            raise ValueError("No sha256 digest found in reference.")
-
         if not digest.startswith("sha256:"):
             raise ValueError("Only sha256 digests are supported")
 

@@ -122,6 +122,32 @@ class TestAugmentCommand:
             mock_write_sbom.assert_awaited()
 
     @pytest.mark.asyncio
+    async def test_augment_execute_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """
+        Test that the exit code is set to 1 if SBOM update fails.
+        """
+        args = AugmentArgs(
+            snapshot=Path(""),
+            output=Path("output"),
+            verification_key=Path("key"),
+            reference="",
+        )
+        cmd = AugmentImageCommand(cli_args=args)
+
+        monkeypatch.setattr(
+            "mobster.cmd.augment.make_snapshot", lambda _, __: awaitable(None)
+        )
+
+        with patch(
+            "mobster.cmd.augment.update_sboms",
+        ) as fake_update_sboms:
+            fake_update_sboms.return_value = (False, [])
+            await cmd.execute()
+            assert cmd.exit_code == 1
+
+    @pytest.mark.asyncio
     async def test_augment_execute_singlearch(
         self,
         make_augment_command: MakeAugmentCommand,

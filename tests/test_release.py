@@ -203,7 +203,11 @@ async def test_make_snapshot_specific(
             "sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
         ),
         pytest.param(
-            "quay.io/org/repo@sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
+            "quay.io/namespace/repo@sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
+            "sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
+        ),
+        pytest.param(
+            "localhost:8000/repo@sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
             "sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
         ),
     ],
@@ -217,6 +221,9 @@ def test_is_valid_digest_reference_valid(reference: str, expected_digest: str) -
     [
         pytest.param(
             "quay.io/repo@sha128:f1d71ba64b07ce65b60967c6ed0b2c62",
+        ),
+        pytest.param(
+            "quay.io/repo@sha512:f1d71ba64b07ce65b60967c6ed0b2c62",
         ),
         pytest.param(
             "quay.io/repo:latest",
