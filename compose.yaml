@@ -1,3 +1,4 @@
+---
 services:
   zot:
     image: ghcr.io/project-zot/zot:latest

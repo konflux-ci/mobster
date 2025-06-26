@@ -9,11 +9,7 @@ def test_upload_tpa_file_integration() -> None:
     sbom_file = TESTDATA_PATH / "index_manifest_sbom.spdx.json"
 
     test_env = os.environ.copy()
-    # test_env.update({
-    #    "MOBSTER_TPA_SSO_TOKEN_URL": "https://test.token.url",
-    #    "MOBSTER_TPA_SSO_ACCOUNT": "test-account",
-    #    "MOBSTER_TPA_SSO_TOKEN": "test-token"
-    # })
+    test_env.update({"MOBSTER_TPA_AUTH_DISABLE": "true"})
 
     result = subprocess.run(
         [

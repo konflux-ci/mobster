@@ -86,6 +86,13 @@ class TPAUploadCommand(Command):
 
     @staticmethod
     def get_oidc_auth() -> OIDCClientCredentials | None:
+        """
+        Get OIDC client credentials from environment variables.
+
+        Returns:
+            OIDCClientCredentials: Client credentials if auth is enabled.
+            None: If MOBSTER_TPA_AUTH_DISABLE is set to "true".
+        """
         if os.environ.get("MOBSTER_TPA_AUTH_DISABLE", "false").lower() == "true":
             return None
 
