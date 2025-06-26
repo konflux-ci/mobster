@@ -115,8 +115,7 @@ def make_oci_auth_file(
     reference.
 
     Deletes the file after the with statement. If no path to the docker config
-    is provided, tries using ~/.docker/config.json. Ports in the registry are
-    NOT supported.
+    is provided, tries using ~/.docker/config.json.
 
     Args:
         reference: Reference to an image in the form registry/repo@sha256-deadbeef.
@@ -137,11 +136,6 @@ def make_oci_auth_file(
 
     if not auth.is_file():
         raise ValueError(f"No auth config file at {auth}.")
-
-    if reference.count(":") > 1:
-        raise ValueError(
-            f"Multiple ':' symbols in {reference}. Registry ports are not supported."
-        )
 
     logger.debug("Looking for auth entry for %s in auth file %s", reference, auth)
 
