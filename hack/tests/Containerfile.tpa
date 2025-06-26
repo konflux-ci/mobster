@@ -1,21 +1,23 @@
 FROM registry.access.redhat.com/ubi9/ubi:latest
 
+ARG TRUSTD_VERSION=0.2.1
+
 USER root
 
 RUN useradd --uid 1000 tpa && \
     dnf install -y tar gzip && \
     dnf clean all
 
-USER 1000
+USER tpa
 
 WORKDIR /app
 
-RUN curl -L https://github.com/trustification/trustify/releases/download/v0.3.0-rc.3/trustd-pm-0.3.0-rc.3-x86_64-unknown-linux-gnu.tar.gz \
+RUN curl -L https://github.com/trustification/trustify/releases/download/v${TRUSTD_VERSION}/trustd-pm-${TRUSTD_VERSION}-x86_64-unknown-linux-gnu.tar.gz \
     -o trustd-pm.tar.gz && \
     tar -xzf trustd-pm.tar.gz && \
     rm trustd-pm.tar.gz
 
-WORKDIR /app/trustd-pm-0.3.0-rc.3-x86_64-unknown-linux-gnu/
+WORKDIR /app/trustd-pm-${TRUSTD_VERSION}-x86_64-unknown-linux-gnu/
 
 ENV AUTH_DISABLED=true
 ENV HTTP_SERVER_BIND_ADDR=::

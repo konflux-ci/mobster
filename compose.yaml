@@ -5,14 +5,14 @@ services:
     ports:
       - "9000:8080"
     volumes:
-      - ./zot.config.json:/etc/zot/config.json:ro
+      - ./hack/tests/zot.config.json:/etc/zot/config.json:ro
       - zot-data:/tmp/zot
     command: ["serve", "/etc/zot/config.json"]
 
   tpa:
     build:
       context: .
-      dockerfile: hack/Containerfile.tpa
+      dockerfile: hack/tests/Containerfile.tpa
     ports:
       - "8080:8080"
 
