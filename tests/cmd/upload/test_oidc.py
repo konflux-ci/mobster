@@ -272,3 +272,23 @@ async def test_post() -> None:
             headers={"header": "test"},
             params=None,
         )
+
+
+@pytest.mark.asyncio
+async def test__fetch_token_disabled_auth() -> None:
+    """
+    Test that _fetch_token() returns early when auth is None.
+    """
+    client = oidc.OIDCClientCredentialsClient("https://api.example.com", auth=None)
+    await client._fetch_token()  # Should not raise any exception
+
+
+@pytest.mark.asyncio
+async def test__ensure_valid_token_disabled_auth() -> None:
+    """
+    Test that _ensure_valid_token() returns early when auth is None.
+    """
+    client = oidc.OIDCClientCredentialsClient("https://api.example.com", auth=None)
+
+    # Should not raise any exception
+    await client._ensure_valid_token(None)  # type: ignore
