@@ -16,17 +16,20 @@ data_dir="."
 snapshot_spec="snapshot.json"
 atlas_api_url="http://localhost:8080"
 retry_s3_bucket="mpp-e1-preprod-sbom-29093454-2ea7-4fd0-b4cf-dc69a7529ee0"
+sbom_path="component-sboms"
 
 repo_root="$(git rev-parse --show-toplevel)"
 export PATH="$(repo_root)/scripts/tekton/:$PATH"
 
 augment_sboms \
     --data-dir "$data_dir" \
-    --snapshot-spec "$snapshot_spec"
+    --snapshot-spec "$snapshot_spec" \
+    --sbom-path "$sbom_path"
 
 upload_sboms_to_atlas \
     --data-dir "$data_dir" \
-    --atlas-api-url "$atlas_api_url"
+    --atlas-api-url "$atlas_api_url" \
+    --sbom-path "$sbom_path"
 
 upload_sboms_to_s3 \
     --data-dir "$data_dir" \

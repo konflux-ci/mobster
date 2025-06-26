@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-set -ux -o pipefail
+set -ux
 
-OPTS=$(getopt -o '' --long data-dir:,atlas-api-url: -- "$@")
+OPTS=$(getopt -o '' --long data-dir:,atlas-api-url:,sbom-path: -- "$@")
 eval set -- "$OPTS"
 
 data_dir=""
 atlas_api_url=""
+sbom_path=""
 
 while true; do
     case "$1" in
@@ -15,6 +16,10 @@ while true; do
             ;;
         --atlas-api-url)
             atlas_api_url="$2"
+            shift 2
+            ;;
+        --sbom-path)
+            sbom_path="$2"
             shift 2
             ;;
         --)
@@ -28,8 +33,8 @@ while true; do
     esac
 done
 
-if [[ -z "$data_dir" || -z "$atlas_api_url" ]]; then
-    echo "Error: Both --data-dir and --atlas-api-url are required" >&2
+if [[ -z "$data_dir" || -z "$atlas_api_url" || -z "$sbom_path" ]]; then
+    echo "Error: --data-dir, --atlas-api-url and --sbom-path are required" >&2
     exit 1
 fi
 
@@ -39,14 +44,16 @@ required_vars=(
   "MOBSTER_TPA_SSO_TOKEN_URL"
 )
 
+set +x
 for var_name in "${required_vars[@]}"; do
     if [ -z "${!var_name}" ]; then
         >&2 echo "Environment variable '$var_name' is not defined or is empty. Skipping TPA upload."
         exit 0
     fi
 done
+set -x
 
-sbom_path="${data_dir}/component-sboms"
+sbom_path="${data_dir}/${sbom_path}"
 report_path="${data_dir}/report.json"
 failed_path="${data_dir}/failed-sboms"
 mkdir -p "$failed_path"

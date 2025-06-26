@@ -5,7 +5,7 @@ kind: Task
 metadata:
   name: augment-component-sboms-ta
   labels:
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.1.1"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: sbom
@@ -48,11 +48,11 @@ spec:
 
     - name: taskGitUrl
       type: string
-      description: The url to the git repo where the trusted artifact stepactions to be used are stored
+      description: The url to the git repo where the TA stepactions to be used are stored
 
     - name: taskGitRevision
       type: string
-      description: The revision in the taskGitUrl repo to be used for trusted artifact stepactions
+      description: The revision in the taskGitUrl repo to be used for TA stepactions
 
     - name: snapshotSpec
       type: string
@@ -151,7 +151,8 @@ spec:
         set -eux
         augment_sboms \
           --data-dir "$(params.dataDir)" \
-          --snapshot-spec "$(params.snapshotSpec)"
+          --snapshot-spec "$(params.snapshotSpec)" \
+          --sbom-path "component-sboms"
 
     - name: upload-sboms-to-atlas
       image: quay.io/konflux-ci/mobster:ed4ae93fadd870a17ed981ce8a754b1d178e8007
@@ -175,7 +176,8 @@ spec:
         set -eux
         upload_sboms_to_atlas \
           --data-dir "$(params.dataDir)" \
-          --atlas-api-url "$(params.atlasApiUrl)"
+          --atlas-api-url "$(params.atlasApiUrl)" \
+          --sbom-path "component-sboms"
 
     - name: upload-sboms-to-s3
       image: quay.io/konflux-ci/mobster:ed4ae93fadd870a17ed981ce8a754b1d178e8007
