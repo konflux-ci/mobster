@@ -53,6 +53,21 @@ The project uses Pytest for testing. You can use the following commands to run t
 - `tox -e test -- -v`: Run all tests with verbose output
 - `tox -e test -- -k <test_name>`: Run a specific test (e.g. `tox -e test -- -k test_example` to run the test named `test_example`)
 
+## Integration Tests
+
+The integration tests require external services to be running. These services
+are provided locally via Docker Compose.
+
+1. **Start the test services:**
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Run the integration tests:**
+   ```bash
+   tox -e test-integration
+   ```
+
 ## Building the container image
 
 The project contains a Containerfile that can be used to build a container image. You can use the following command to build the image:
