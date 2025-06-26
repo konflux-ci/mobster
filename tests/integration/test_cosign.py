@@ -12,7 +12,7 @@ from tests.integration.oci_client import ReferrersTagOCIClient
 @pytest_asyncio.fixture()
 async def image_with_empty_sbom(oci_client: ReferrersTagOCIClient) -> Image:
     sbom = b"{}"
-    image = await oci_client.create_image("emtpy-sbom", "tag")
+    image = await oci_client.create_image("empty-sbom", "tag")
     await oci_client.attach_sbom(image, "spdx", sbom)
     return image
 
