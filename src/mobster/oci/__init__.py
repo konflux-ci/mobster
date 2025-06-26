@@ -162,7 +162,7 @@ def _get_auth_subconfig(config: DockerConfig, reference: str) -> DockerConfig:
     Create a docker config containing token authentication only for a specific
     image reference.
 
-    Tries to match specific repository paths first. Supports registry ports.
+    Tries to match specific repository paths first.
 
     Args:
         config: The docker configuration containing authentication details.
@@ -189,10 +189,8 @@ def _get_auth_subconfig(config: DockerConfig, reference: str) -> DockerConfig:
         )
     """
     repository, _ = reference.split("@", 1)
-    if "/" in repository:
-        registry = repository.split("/", 1)[0]
-    else:
-        registry = repository
+    # registry is up to the first slash
+    registry = repository.split("/", 1)[0]
 
     current_ref = repository
 
