@@ -100,12 +100,15 @@ class ReferrersTagOCIClient:
             )
         ]
 
+        # the config is not used in any way but must be specified to conform
+        # with spec
         config_digest = await self._push_blob(image.name, b"")
         await self._push_manifest(image.name, derived_tag, config_digest, layers)
 
     async def _push_blob(self, name: str, blob: bytes) -> str:
         """
         Push a blob to the registry.
+        https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pushing-blobs
 
         Args:
             name: The repository name.
@@ -142,6 +145,7 @@ class ReferrersTagOCIClient:
     ) -> str:
         """
         Push a manifest to the registry.
+        https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pushing-blobs
 
         Args:
             name: The repository name.
