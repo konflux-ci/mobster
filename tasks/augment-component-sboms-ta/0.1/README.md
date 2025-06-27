@@ -12,8 +12,8 @@ Update component-level SBOMs with release-time information, optionally upload th
 | `orasOptions`             | string | `""`                        | oras options to pass to Trusted Artifacts calls                                                                                     |
 | `sourceDataArtifact`      | string | `""`                        | Location of trusted artifacts to be used to populate data directory                                                                 |
 | `dataDir`                 | string | `$(workspaces.data.path)`   | The location where data will be stored                                                                                              |
-| `taskGitUrl`              | string |                             | The url to the git repo where the TA stepactions to be used are stored                                                              |
-| `taskGitRevision`         | string |                             | The revision in the taskGitUrl repo to be used for TA stepactions                                                                   |
+| `taskGitUrl`              | string |                             | The url to the git repo where the trusted artifact stepactions to be used are stored                                                |
+| `taskGitRevision`         | string |                             | The revision in the taskGitUrl repo to be used for trusted artifact stepactions                                                     |
 | `snapshotSpec`            | string |                             | Path to the mapped snapshot spec.                                                                                                   |
 | `atlasSecretName`         | string |                             | The name of the K8s secret containing the 'sso_account' and 'sso_token' keys used for Atlas OIDC authentication.                    |
 | `retryAWSSecretName`      | string |                             | The name of the K8s secret containing the 'atlas-aws-access-key-id' and 'atlas-aws-secret-access-key' keys used for AWS S3 access.  |
