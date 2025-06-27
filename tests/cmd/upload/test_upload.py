@@ -255,6 +255,11 @@ def test_gather_sboms(tmp_path: Path) -> None:
     assert result_names == expected_names
 
 
+def test_gather_sboms_nonexistent() -> None:
+    with pytest.raises(FileNotFoundError):
+        TPAUploadCommand.gather_sboms(Path("/nonexistent"))
+
+
 @pytest.mark.parametrize(
     "results,expected_exit_code,description",
     [

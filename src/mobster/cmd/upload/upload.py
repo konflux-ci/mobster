@@ -193,7 +193,13 @@ class TPAUploadCommand(Command):
             A list of Path objects representing all files found recursively
             within the given directory, including files in subdirectories.
             Directories themselves are excluded from the results.
+
+        Raises:
+            FileNotFoundError: If the supplied directory doesn't exist
         """
+        if not dirpath.exists():
+            raise FileNotFoundError(f"The directory {dirpath} doesn't exist.")
+
         return [
             Path(path)
             for path in glob.glob(str(dirpath / "**" / "*"), recursive=True)

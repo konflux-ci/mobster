@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -ux
+set -ux -o pipefail
 
 OPTS=$(getopt -o '' --long data-dir:,atlas-api-url: -- "$@")
 eval set -- "$OPTS"
@@ -50,6 +50,10 @@ sbom_path="${data_dir}/component-sboms"
 report_path="${data_dir}/report.json"
 failed_path="${data_dir}/failed-sboms"
 mkdir -p "$failed_path"
+
+if [[ $(find "$sbom_path" -type f | wc -l) -eq 0 ]]; then
+    >&2 echo "Error: no SBOMs to upload found."
+fi
 
 mobster --verbose upload tpa \
   --tpa-base-url "$atlas_api_url" \
