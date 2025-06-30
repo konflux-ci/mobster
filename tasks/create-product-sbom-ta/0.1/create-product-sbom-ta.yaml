@@ -157,6 +157,7 @@ spec:
         create_product_sbom \
           --data-dir "$(params.dataDir)" \
           --snapshot-spec "$(params.snapshotSpec)" \
+          --release-data "$(params.releaseData)" \
           --sbom-path "product-sbom"
 
     - name: upload-sboms-to-atlas
