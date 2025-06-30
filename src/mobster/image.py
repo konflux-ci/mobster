@@ -9,6 +9,24 @@ from packageurl import PackageURL
 from mobster.error import SBOMError
 from mobster.oci import get_image_manifest
 
+# Regular expression to validate OCI image references with digest
+# credit to https://regex101.com/r/nmsdpa/1)
+ARTIFACT_PATTERN = re.compile(
+    r"""
+    ^
+    (?P<repository>
+      (?:(?P<domain>(?:(?:[\w-]+(?:\.[\w-]+)+)(?::\d+)?)|[\w]+:\d+)/)
+      (?P<name>[a-z0-9_.-]+(?:/[a-z0-9_.-]+)*)
+    )
+    (?::(?P<tag>[\w][\w.-]{0,127}))?
+    (?:@(?P<digest>
+      (?P<digest_alg>[A-Za-z][A-Za-z0-9]*)(?:[+.-_][A-Za-z][A-Za-z0-9]*)*:
+      (?P<digest_hash>[0-9a-fA-F]{32,})))
+    $
+    """,
+    re.VERBOSE | re.MULTILINE,
+)
+
 
 @dataclass
 class Image:  # pylint: disable=too-many-instance-attributes
@@ -28,21 +46,6 @@ class Image:  # pylint: disable=too-many-instance-attributes
     arch: str | None = None
     domain: str | None = None
     digest_alg: str | None = None
-
-    # Regular expression to validate OCI image references with digest
-    # credit to https://regex101.com/r/nmSDPA/1)
-    ARTIFACT_PATTERN = r"""
-    ^
-    (?P<repository>
-      (?:(?P<domain>(?:(?:[\w-]+(?:\.[\w-]+)+)(?::\d+)?)|[\w]+:\d+)/)
-      (?P<name>[a-z0-9_.-]+(?:/[a-z0-9_.-]+)*)
-    )
-    (?::(?P<tag>[\w][\w.-]{0,127}))?
-    (?:@(?P<digest>
-      (?P<digest_alg>[A-Za-z][A-Za-z0-9]*)(?:[+.-_][A-Za-z][A-Za-z0-9]*)*:
-      (?P<digest_hash>[0-9a-fA-F]{32,})))
-    $
-    """
 
     @staticmethod
     def from_image_index_url_and_digest(
@@ -84,9 +87,7 @@ class Image:  # pylint: disable=too-many-instance-attributes
             OCI_Artifact: An instance of the Image class representing the artifact
             reference
         """
-
-        pattern = re.compile(Image.ARTIFACT_PATTERN, re.VERBOSE | re.MULTILINE)
-        match = pattern.match(oci_reference)
+        match = ARTIFACT_PATTERN.match(oci_reference)
         if not match:
             raise ValueError(f"Invalid OCI artifact reference format: {oci_reference}")
         full_name = match.group("name")

@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from mobster.cmd.upload.oidc import OIDCClientCredentials
+from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedException
 from mobster.cmd.upload.tpa import TPAClient
-from mobster.cmd.upload.upload import TPAUploadCommand, UploadReport
+from mobster.cmd.upload.upload import TPAUploadCommand, UploadExitCode, UploadReport
 
 
 @pytest.fixture
@@ -81,8 +81,8 @@ async def test_execute_upload_from_directory(
     # Verify upload_sbom was called for each file
     assert mock_tpa_client.upload_sbom.call_count == len(file_list)
 
-    # Verify the command's success flag is True since all uploads succeeded
-    assert command.success is True
+    # Verify the command's exit_code is 0 since all uploads succeeded
+    assert command.exit_code == 0
 
 
 @pytest.mark.asyncio
@@ -119,8 +119,8 @@ async def test_execute_upload_single_file(
     # Verify upload_sbom was called once with the correct file
     mock_tpa_client.upload_sbom.assert_called_once_with(Path("/test/single_file.json"))
 
-    # Verify the command's success flag is True
-    assert command.success is True
+    # Verify the command's exit_code is 0 since upload succeeded
+    assert command.exit_code == 0
 
 
 @pytest.mark.asyncio
@@ -154,8 +154,8 @@ async def test_execute_upload_failure(
     # Verify upload_sbom was called for each file
     assert mock_tpa_client.upload_sbom.call_count == len(file_list)
 
-    # Verify the command's success flag is False since all uploads failed
-    assert command.success is False
+    # Verify the command's exit_code is 1 since all uploads failed
+    assert command.exit_code == UploadExitCode.ERROR.value
 
 
 @pytest.mark.asyncio
@@ -187,8 +187,8 @@ async def test_execute_upload_exception(
 
     mock_tpa_client.upload_sbom.assert_called_once()
 
-    # Verify the command's success flag is False
-    assert command.success is False
+    # Verify the command's exit_code is 1 since upload failed
+    assert command.exit_code == UploadExitCode.ERROR.value
 
 
 @pytest.mark.asyncio
@@ -236,8 +236,8 @@ async def test_execute_upload_mixed_results(
     # Verify upload_sbom was called for each file
     assert mock_tpa_client.upload_sbom.call_count == len(file_list)
 
-    # Verify the command's success flag is False since at least one upload failed
-    assert command.success is False
+    # Verify the command's exit_code is 1 since at least one upload failed
+    assert command.exit_code == UploadExitCode.ERROR.value
 
 
 def test_gather_sboms(tmp_path: Path) -> None:
@@ -253,3 +253,37 @@ def test_gather_sboms(tmp_path: Path) -> None:
     result_names = {p.name for p in result}
     expected_names = {"file1.json", "file2.json", "file3.json"}
     assert result_names == expected_names
+
+
+def test_gather_sboms_nonexistent() -> None:
+    with pytest.raises(FileNotFoundError):
+        TPAUploadCommand.gather_sboms(Path("/nonexistent"))
+
+
+@pytest.mark.parametrize(
+    "results,expected_exit_code,description",
+    [
+        ([], 0, "empty results list"),
+        ([None, None], 0, "all successful uploads"),
+        (
+            [RetryExhaustedException()],
+            UploadExitCode.TRANSIENT_ERROR.value,
+            "only retry exhausted exceptions",
+        ),
+        ([ValueError()], UploadExitCode.ERROR.value, "only non-transient exceptions"),
+        (
+            [RetryExhaustedException(), ValueError()],
+            UploadExitCode.ERROR.value,
+            "mixed exception types",
+        ),
+    ],
+)
+def test_set_exit_code(
+    results: list[BaseException | None], expected_exit_code: int, description: str
+) -> None:
+    """
+    Test set_exit_code function with various result combinations.
+    """
+    command = TPAUploadCommand(MagicMock())
+    command.set_exit_code(results)
+    assert command.exit_code == expected_exit_code

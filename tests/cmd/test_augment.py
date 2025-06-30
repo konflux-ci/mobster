@@ -95,7 +95,6 @@ class TestAugmentCommand:
         args.verification_key = Path("key.pub")
 
         cmd = make_augment_command(args, None)
-        cmd.sbom_update_ok = True
         cmd.sboms = [
             SBOM({}, "", "quay.io/repo@sha256:aaaaaaaa"),
             SBOM({}, "", "quay.io/repo@sha256:bbbbbbbb"),
@@ -109,7 +108,7 @@ class TestAugmentCommand:
         augment_command_save: AugmentImageCommand,
     ) -> None:
         with patch("mobster.cmd.augment.write_sbom") as mock_write_sbom:
-            assert await augment_command_save.save()
+            await augment_command_save.save()
             mock_write_sbom.assert_awaited()
 
     @pytest.mark.asyncio
@@ -118,8 +117,35 @@ class TestAugmentCommand:
     ) -> None:
         with patch("mobster.cmd.augment.write_sbom") as mock_write_sbom:
             mock_write_sbom.side_effect = ValueError
-            assert not await augment_command_save.save()
+            await augment_command_save.save()
+            assert augment_command_save.exit_code == 1
             mock_write_sbom.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_augment_execute_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """
+        Test that the exit code is set to 1 if SBOM update fails.
+        """
+        args = AugmentArgs(
+            snapshot=Path(""),
+            output=Path("output"),
+            verification_key=Path("key"),
+            reference="",
+        )
+        cmd = AugmentImageCommand(cli_args=args)
+
+        monkeypatch.setattr(
+            "mobster.cmd.augment.make_snapshot", lambda _, __: awaitable(None)
+        )
+
+        with patch(
+            "mobster.cmd.augment.update_sboms",
+        ) as fake_update_sboms:
+            fake_update_sboms.return_value = (False, [])
+            await cmd.execute()
+            assert cmd.exit_code == 1
 
     @pytest.mark.asyncio
     async def test_augment_execute_singlearch(
@@ -453,15 +479,6 @@ def test_get_purl_digest(purl_str: str, expected: str | BaseException) -> None:
             get_purl_digest(purl_str)
 
 
-def test_cdx_augment_metadata_tools_components_empty_metadata() -> None:
-    metadata: dict[str, Any] = {}
-    CycloneDXVersion1()._augment_metadata_tools_components(metadata)
-
-    assert "tools" in metadata
-    assert "components" in metadata["tools"]
-    assert len(metadata["tools"]["components"]) == 1
-
-
 class TestUpdateFormatSupport:
     @pytest.fixture
     def component(self) -> Component:
@@ -597,3 +614,28 @@ class TestUpdateFormatSupport:
             component, component.image, mock_cosign, False, semaphore
         )
         assert result is None
+
+
+def test_cdx_augment_metadata_tools_components_empty_metadata() -> None:
+    metadata: dict[str, Any] = {}
+    CycloneDXVersion1()._augment_metadata_tools_components(metadata)
+
+    assert "tools" in metadata
+    assert "components" in metadata["tools"]
+    assert len(metadata["tools"]["components"]) == 1
+
+
+def test_cdx_update_sbom_raises_error_for_index_image() -> None:
+    handler = CycloneDXVersion1()
+
+    index_image = IndexImage("quay.io/repo", "sha256:test", children=[])
+    component = Component(
+        "test",
+        image=Image("quay.io/repo", "sha256:other"),
+        tags=[],
+        repository="quay.io/repo",
+    )
+    with pytest.raises(
+        ValueError, match="CDX update SBOM does not support index images."
+    ):
+        handler.update_sbom(component, index_image, {})

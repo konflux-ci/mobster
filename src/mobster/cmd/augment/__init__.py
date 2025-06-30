@@ -30,7 +30,6 @@ class AugmentImageCommand(Command):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.sbom_update_ok = True
         self.sboms: list[SBOM] = []
 
     async def execute(self) -> Any:
@@ -46,16 +45,13 @@ class AugmentImageCommand(Command):
         cosign = CosignClient(self.cli_args.verification_key)
         concurrency_limit = self.cli_args.concurrency
 
-        self.sbom_update_ok, self.sboms = await update_sboms(
-            snapshot, cosign, verify, concurrency_limit
-        )
+        ok, self.sboms = await update_sboms(snapshot, cosign, verify, concurrency_limit)
+        if not ok:
+            self.exit_code = 1
 
-    async def save(self) -> bool:
+    async def save(self) -> None:
         """
         Write all updated sboms to the output.
-
-        Returns:
-            bool: True if all SBOMs updated and were written successfully
         """
         destination = Path(self.cli_args.output)
 
@@ -64,14 +60,11 @@ class AugmentImageCommand(Command):
             for sbom in self.sboms
         ]
 
-        ok = True
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for sbom, res in zip(self.sboms, results, strict=False):
             if isinstance(res, BaseException):
-                ok = False
+                self.exit_code = 1
                 LOGGER.error("Error while writing SBOM %s: %s", sbom.reference, res)
-
-        return ok and self.sbom_update_ok
 
 
 async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:

@@ -132,7 +132,7 @@ class GenerateOciIndexCommand(GenerateCommand):
         self._content = document
         return self.content
 
-    async def save(self) -> bool:
+    async def save(self) -> None:
         """
         Convert SPDX document to JSON and save it to a file.
         """
@@ -143,4 +143,3 @@ class GenerateOciIndexCommand(GenerateCommand):
                 str(self.cli_args.output),
                 validate=True,
             )
-        return True

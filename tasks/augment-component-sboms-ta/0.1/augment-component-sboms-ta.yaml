@@ -1,0 +1,239 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+
+metadata:
+  name: augment-component-sboms-ta
+  labels:
+    app.kubernetes.io/version: "0.1.0"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: sbom
+
+spec:
+  description: >-
+    Update component-level SBOMs with release-time information, optionally
+    upload them to Atlas and S3.
+  params:
+    - name: ociStorage
+      description: The OCI repository where the Trusted Artifacts are stored.
+      type: string
+      default: "empty"
+
+    - name: ociArtifactExpiresAfter
+      description: Expiration date for the trusted artifacts created in the
+        OCI repository. An empty string means the artifacts do not expire.
+      type: string
+      default: "1d"
+
+    - name: trustedArtifactsDebug
+      description: Flag to enable debug logging in trusted artifacts. Set to a non-empty string to enable.
+      type: string
+      default: ""
+
+    - name: orasOptions
+      description: oras options to pass to Trusted Artifacts calls
+      type: string
+      default: ""
+
+    - name: sourceDataArtifact
+      type: string
+      description: Location of trusted artifacts to be used to populate data directory
+      default: ""
+
+    - name: dataDir
+      description: The location where data will be stored
+      type: string
+      default: $(workspaces.data.path)
+
+    - name: taskGitUrl
+      type: string
+      description: The url to the git repo where the trusted artifact stepactions to be used are stored
+
+    - name: taskGitRevision
+      type: string
+      description: The revision in the taskGitUrl repo to be used for trusted artifact stepactions
+
+    - name: snapshotSpec
+      type: string
+      description: Path to the mapped snapshot spec.
+
+    - name: atlasSecretName
+      type: string
+      description: >
+        The name of the K8s secret containing the 'sso_account' and 'sso_token'
+        keys used for Atlas OIDC authentication.
+
+    - name: retryAWSSecretName
+      type: string
+      description: >
+        The name of the K8s secret containing the 'atlas-aws-access-key-id' and
+        'atlas-aws-secret-access-key' keys used for AWS S3 access.
+
+    - name: retryS3Bucket
+      type: string
+      default: ""
+      description: >
+        The name of the S3 bucket used to store data for the retry mechanism.
+
+    - name: atlasApiUrl
+      type: string
+      default: ""
+      description: URL of the Atlas API host.
+
+    - name: ssoTokenUrl
+      description: URL of the SSO token issuer.
+      default: ""
+      type: string
+
+  workspaces:
+    - name: data
+      description: Used as a working directory.
+
+  results:
+    - description: Produced trusted data artifact
+      name: sourceDataArtifact
+      type: string
+
+  volumes:
+    - name: workdir
+      emptyDir: {}
+
+  stepTemplate:
+    volumeMounts:
+      - mountPath: /var/workdir
+        name: workdir
+    env:
+      - name: IMAGE_EXPIRES_AFTER
+        value: $(params.ociArtifactExpiresAfter)
+      - name: "ORAS_OPTIONS"
+        value: "$(params.orasOptions)"
+      - name: "DEBUG"
+        value: "$(params.trustedArtifactsDebug)"
+
+  steps:
+    - name: skip-trusted-artifact-operations
+      ref:
+        resolver: "git"
+        params:
+          - name: url
+            value: $(params.taskGitUrl)
+          - name: revision
+            value: $(params.taskGitRevision)
+          - name: pathInRepo
+            value: stepactions/skip-trusted-artifact-operations/skip-trusted-artifact-operations.yaml
+      params:
+        - name: ociStorage
+          value: $(params.ociStorage)
+        - name: workDir
+          value: $(params.dataDir)
+
+    - name: use-trusted-artifact
+      ref:
+        resolver: "git"
+        params:
+          - name: url
+            value: $(params.taskGitUrl)
+          - name: revision
+            value: $(params.taskGitRevision)
+          - name: pathInRepo
+            value: stepactions/use-trusted-artifact/use-trusted-artifact.yaml
+      params:
+        - name: workDir
+          value: $(params.dataDir)
+        - name: sourceDataArtifact
+          value: $(params.sourceDataArtifact)
+
+    - name: augment-sboms
+      # image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
+      image: quay.io/mjediny/test:mobster
+      script: |
+        #!/usr/bin/env bash
+        set -eux
+        augment_sboms \
+          --data-dir "$(params.dataDir)" \
+          --snapshot-spec "$(params.snapshotSpec)"
+
+    - name: upload-sboms-to-atlas
+      # image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
+      image: quay.io/mjediny/test:mobster
+      env:
+        - name: MOBSTER_TPA_SSO_ACCOUNT
+          valueFrom:
+            secretKeyRef:
+              name: $(params.atlasSecretName)
+              key: sso_account
+              optional: true
+        - name: MOBSTER_TPA_SSO_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: $(params.atlasSecretName)
+              key: sso_token
+              optional: true
+        - name: MOBSTER_TPA_SSO_TOKEN_URL
+          value: $(params.ssoTokenUrl)
+      script: |
+        #!/usr/bin/env bash
+        set -eux
+        upload_sboms_to_atlas \
+          --data-dir "$(params.dataDir)" \
+          --atlas-api-url "$(params.atlasApiUrl)"
+
+    - name: upload-sboms-to-s3
+      # image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
+      image: quay.io/mjediny/test:mobster
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: $(params.retryAWSSecretName)
+              key: atlas-aws-access-key-id
+              optional: true
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: $(params.retryAWSSecretName)
+              key: atlas-aws-secret-access-key
+              optional: true
+        - name: AWS_DEFAULT_REGION
+          value: "us-east-1"
+      script: |
+        #!/usr/bin/env bash
+        set -eux
+        upload_sboms_to_s3 \
+          --data-dir "$(params.dataDir)" \
+          --retry-s3-bucket "$(params.retryS3Bucket)"
+
+    - name: create-trusted-artifact
+      ref:
+        resolver: "git"
+        params:
+          - name: url
+            value: "$(params.taskGitUrl)"
+          - name: revision
+            value: "$(params.taskGitRevision)"
+          - name: pathInRepo
+            value: stepactions/create-trusted-artifact/create-trusted-artifact.yaml
+      params:
+        - name: ociStorage
+          value: $(params.ociStorage)
+        - name: workDir
+          value: $(params.dataDir)
+        - name: sourceDataArtifact
+          value: $(results.sourceDataArtifact.path)
+
+    - name: patch-source-data-artifact-result
+      ref:
+        resolver: "git"
+        params:
+          - name: url
+            value: $(params.taskGitUrl)
+          - name: revision
+            value: $(params.taskGitRevision)
+          - name: pathInRepo
+            value: stepactions/patch-source-data-artifact-result/patch-source-data-artifact-result.yaml
+      params:
+        - name: ociStorage
+          value: $(params.ociStorage)
+        - name: sourceDataArtifact
+          value: $(results.sourceDataArtifact.path)

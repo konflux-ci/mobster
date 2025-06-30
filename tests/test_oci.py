@@ -218,6 +218,19 @@ class TestMakeOciAuth:
                 id="success",
             ),
             pytest.param(
+                "localhost:8080/test@sha256:deadbeef",
+                json.dumps(
+                    {
+                        "auths": {
+                            "localhost:8080": {"auth": "token"},
+                            "docker.io": {"auth": "token"},
+                        }
+                    }
+                ),
+                {"auths": {"localhost:8080": {"auth": "token"}}},
+                id="success-port",
+            ),
+            pytest.param(
                 "registry.redhat.io/test@sha256:deadbeef",
                 json.dumps(
                     {
@@ -258,13 +271,6 @@ class TestMakeOciAuth:
         monkeypatch.setattr("mobster.oci._find_auth_file", lambda: None)
         with pytest.raises(ValueError):
             with make_oci_auth_file("") as _:
-                pass
-
-    @pytest.mark.asyncio
-    async def test_make_oci_auth_file_registry_port(self) -> None:
-        reference = "registry.redhat.io:5000/test@sha256:deadbeef"
-        with pytest.raises(ValueError):
-            with make_oci_auth_file(reference) as _:
                 pass
 
     @pytest.mark.parametrize(

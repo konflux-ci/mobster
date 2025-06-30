@@ -5,16 +5,26 @@ import glob
 import logging
 import os
 import time
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
 import pydantic
 
 from mobster.cmd.base import Command
-from mobster.cmd.upload.oidc import OIDCClientCredentials
+from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedException
 from mobster.cmd.upload.tpa import TPAClient
 
 LOGGER = logging.getLogger(__name__)
+
+
+class UploadExitCode(Enum):
+    """
+    Enumeration of possible exit codes from the upload command.
+    """
+
+    ERROR = 1
+    TRANSIENT_ERROR = 2
 
 
 class UploadReport(pydantic.BaseModel):
@@ -29,17 +39,22 @@ class UploadReport(pydantic.BaseModel):
     failure: list[Path]
 
     @staticmethod
-    def build_report(results: list[tuple[Path, bool]]) -> "UploadReport":
+    def build_report(
+        results: list[tuple[Path, BaseException | None]],
+    ) -> "UploadReport":
         """Build an upload report from upload results.
 
         Args:
-            results: List of tuples containing file path and success status.
+            results: List of tuples containing file path and either an
+                exception (failure) or None (success).
 
         Returns:
             UploadReport instance with successful and failed uploads categorized.
         """
-        success = [path for path, ok in list(results) if ok]
-        failure = [path for path, ok in results if not ok]
+        success = [path for path, result in results if result is None]
+        failure = [
+            path for path, result in results if isinstance(result, BaseException)
+        ]
 
         return UploadReport(success=success, failure=failure)
 
@@ -48,10 +63,6 @@ class TPAUploadCommand(Command):
     """
     Command to upload a file to the TPA.
     """
-
-    def __init__(self, cli_args: Any, *args: Any, **kwargs: Any):
-        super().__init__(cli_args, *args, **kwargs)
-        self.success = False
 
     async def execute(self) -> Any:
         """
@@ -83,7 +94,7 @@ class TPAUploadCommand(Command):
         auth: OIDCClientCredentials,
         tpa_url: str,
         semaphore: asyncio.Semaphore,
-    ) -> bool:
+    ) -> None:
         """
         Upload a single SBOM file to TPA using HTTP client.
 
@@ -104,12 +115,11 @@ class TPAUploadCommand(Command):
             start_time = time.time()
             try:
                 await client.upload_sbom(sbom_file)
-                return True
             except Exception:  # pylint: disable=broad-except
                 LOGGER.exception(
                     "Error uploading %s and took %s", filename, time.time() - start_time
                 )
-                return False
+                raise
 
     async def upload(
         self,
@@ -139,17 +149,37 @@ class TPAUploadCommand(Command):
             for sbom_file in sbom_files
         ]
 
-        results = await asyncio.gather(*tasks)
-        self.success = all(results)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        self.set_exit_code(results)
 
         LOGGER.info("Upload complete")
         return UploadReport.build_report(list(zip(sbom_files, results, strict=True)))
 
-    async def save(self) -> bool:  # pragma: no cover
+    def set_exit_code(self, results: list[BaseException | None]) -> None:
+        """
+        Set the exit code based on the upload results. If all exceptions found
+        are RetryExhaustedException, the exit code is
+        UploadExitCode.TransientError. If at least one exception is not the
+        RetryExhaustedException, the exit code is UploadExitCode.Error.
+
+        Args:
+            results: List of results from upload operations, either None for success
+                or BaseException for failure.
+        """
+        non_transient_error = False
+        for res in results:
+            if isinstance(res, RetryExhaustedException):
+                self.exit_code = UploadExitCode.TRANSIENT_ERROR.value
+            elif isinstance(res, BaseException):
+                non_transient_error = True
+
+        if non_transient_error:
+            self.exit_code = UploadExitCode.ERROR.value
+
+    async def save(self) -> None:  # pragma: no cover
         """
         Save the command state.
         """
-        return self.success
 
     @staticmethod
     def gather_sboms(dirpath: Path) -> list[Path]:
@@ -163,7 +193,13 @@ class TPAUploadCommand(Command):
             A list of Path objects representing all files found recursively
             within the given directory, including files in subdirectories.
             Directories themselves are excluded from the results.
+
+        Raises:
+            FileNotFoundError: If the supplied directory doesn't exist
         """
+        if not dirpath.exists():
+            raise FileNotFoundError(f"The directory {dirpath} doesn't exist.")
+
         return [
             Path(path)
             for path in glob.glob(str(dirpath / "**" / "*"), recursive=True)

@@ -28,7 +28,7 @@ class GenerateCommand(Command, ABC):
         """
         return self._content
 
-    async def save(self) -> bool:
+    async def save(self) -> None:
         """
         Save the SBOM document to a file if the output argument is provided.
         """
@@ -36,7 +36,6 @@ class GenerateCommand(Command, ABC):
             LOGGER.debug("Saving SBOM document to '%s'", self.cli_args.output)
             with open(self.cli_args.output, "w", encoding="utf8") as output_file:
                 json.dump(self.content, output_file, indent=2)
-        return True
 
 
 class GenerateCommandWithOutputTypeSelector(GenerateCommand, ABC):
@@ -46,7 +45,7 @@ class GenerateCommandWithOutputTypeSelector(GenerateCommand, ABC):
     different SBOM formats (CycloneDX, SPDX, etc.).
     """
 
-    async def save(self) -> bool:
+    async def save(self) -> None:
         """
         Convert document to JSON and save it to a file.
         """
@@ -62,4 +61,3 @@ class GenerateCommandWithOutputTypeSelector(GenerateCommand, ABC):
                     str(self.cli_args.output),
                     validate=True,
                 )
-        return True

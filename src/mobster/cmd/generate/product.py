@@ -55,7 +55,7 @@ class GenerateProductCommand(GenerateCommand):
         self.document = create_sbom(self.release_notes, snapshot)
         LOGGER.info("Successfully created product-level SBOM.")
 
-    async def save(self) -> bool:
+    async def save(self) -> None:
         """
         Save the current generated SBOM document to a file or stdout.
         """
@@ -69,8 +69,6 @@ class GenerateProductCommand(GenerateCommand):
         else:
             LOGGER.info("Outputting SBOM to stdout.")
             await self._save_stdout(self.document)
-
-        return True
 
     async def _save_stdout(self, document: Document) -> None:
         """Validate and print the passed SPDX document to stdout.

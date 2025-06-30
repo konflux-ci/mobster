@@ -7,6 +7,7 @@ import pytest
 
 from mobster.image import Image, IndexImage
 from mobster.release import Component, ComponentModel, Snapshot, make_snapshot
+from tests.conftest import random_digest
 
 
 @pytest.mark.asyncio
@@ -23,19 +24,24 @@ from mobster.release import Component, ComponentModel, Snapshot, make_snapshot
     ],
 )
 async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
+    digest1 = random_digest()
+    digest2 = random_digest()
+    child_digest1 = random_digest()
+    child_digest2 = random_digest()
+
     snapshot_raw = json.dumps(
         {
             "components": [
                 {
                     "name": "comp-1",
-                    "containerImage": "quay.io/repo1@sha256:deadbeef",
+                    "containerImage": f"quay.io/repo1@{digest1}",
                     "rh-registry-repo": "registry.redhat.io/repo1",
                     "repository": "quay.io/repo1",
                     "tags": ["1.0"],
                 },
                 {
                     "name": "comp-2",
-                    "containerImage": "quay.io/repo2@sha256:ffffffff",
+                    "containerImage": f"quay.io/repo2@{digest2}",
                     "rh-registry-repo": "registry.redhat.io/repo2",
                     "repository": "quay.io/repo2",
                     "tags": ["2.0", "latest"],
@@ -50,8 +56,8 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                 name="comp-1",
                 image=IndexImage(
                     "quay.io/repo1",
-                    "sha256:deadbeef",
-                    children=[Image("quay.io/repo1", "sha256:aaaaffff")],
+                    digest1,
+                    children=[Image("quay.io/repo1", child_digest1)],
                 ),
                 tags=["1.0"],
                 repository="registry.redhat.io/repo1",
@@ -60,8 +66,8 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                 name="comp-2",
                 image=IndexImage(
                     "quay.io/repo2",
-                    "sha256:ffffffff",
-                    children=[Image("quay.io/repo2", "sha256:bbbbffff")],
+                    digest2,
+                    children=[Image("quay.io/repo2", child_digest2)],
                 ),
                 tags=["2.0", "latest"],
                 repository="registry.redhat.io/repo2",
@@ -71,17 +77,14 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
 
     def fake_get_image_manifest(reference: str) -> dict[str, Any]:
         if "quay.io/repo1" in reference:
-            child_digest = "sha256:aaaaffff"
-
             return {
                 **index_manifest,
-                "manifests": [{"digest": child_digest}],
+                "manifests": [{"digest": child_digest1}],
             }
 
-        child_digest = "sha256:bbbbffff"
         return {
             **index_manifest,
-            "manifests": [{"digest": child_digest}],
+            "manifests": [{"digest": child_digest2}],
         }
 
     with patch("mobster.image.get_image_manifest", side_effect=fake_get_image_manifest):
@@ -106,26 +109,37 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
 @pytest.mark.parametrize(
     ["specific_digest"],
     [
-        pytest.param("sha256:deadbeef"),
+        pytest.param(
+            "sha256:e2801b239ed5708c62b70968d2589d84fffbba45a3e553ded40968440950eff3"
+        ),
         pytest.param(None),
     ],
 )
 async def test_make_snapshot_specific(
     specific_digest: str | None, index_manifest: dict[str, str]
 ) -> None:
+    if specific_digest is not None:
+        digest1 = specific_digest
+    else:
+        digest1 = random_digest()
+
+    digest2 = random_digest()
+    child_digest1 = random_digest()
+    child_digest2 = random_digest()
+
     snapshot_raw = json.dumps(
         {
             "components": [
                 {
                     "name": "comp-1",
-                    "containerImage": "quay.io/repo1@sha256:deadbeef",
+                    "containerImage": f"quay.io/repo1@{digest1}",
                     "rh-registry-repo": "registry.redhat.io/repo1",
                     "repository": "quay.io/repo1",
                     "tags": ["1.0"],
                 },
                 {
                     "name": "comp-2",
-                    "containerImage": "quay.io/repo2@sha256:ffffffff",
+                    "containerImage": f"quay.io/repo2@{digest2}",
                     "rh-registry-repo": "registry.redhat.io/repo2",
                     "repository": "quay.io/repo2",
                     "tags": ["2.0", "latest"],
@@ -140,8 +154,8 @@ async def test_make_snapshot_specific(
                 name="comp-1",
                 image=IndexImage(
                     "quay.io/repo1",
-                    "sha256:deadbeef",
-                    children=[Image("quay.io/repo1", "sha256:aaaaffff")],
+                    digest1,
+                    children=[Image("quay.io/repo1", child_digest1)],
                 ),
                 tags=["1.0"],
                 repository="registry.redhat.io/repo1",
@@ -155,8 +169,8 @@ async def test_make_snapshot_specific(
                 name="comp-2",
                 image=IndexImage(
                     "quay.io/repo2",
-                    "sha256:ffffffff",
-                    children=[Image("quay.io/repo2", "sha256:bbbbffff")],
+                    digest2,
+                    children=[Image("quay.io/repo2", child_digest2)],
                 ),
                 tags=["2.0", "latest"],
                 repository="registry.redhat.io/repo2",
@@ -165,17 +179,14 @@ async def test_make_snapshot_specific(
 
     def fake_get_image_manifest(reference: str) -> dict[str, Any]:
         if "quay.io/repo1" in reference:
-            child_digest = "sha256:aaaaffff"
-
             return {
                 **index_manifest,
-                "manifests": [{"digest": child_digest}],
+                "manifests": [{"digest": child_digest1}],
             }
 
-        child_digest = "sha256:bbbbffff"
         return {
             **index_manifest,
-            "manifests": [{"digest": child_digest}],
+            "manifests": [{"digest": child_digest2}],
         }
 
     with patch("mobster.image.get_image_manifest", side_effect=fake_get_image_manifest):
@@ -192,7 +203,11 @@ async def test_make_snapshot_specific(
             "sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
         ),
         pytest.param(
-            "quay.io/org/repo@sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
+            "quay.io/namespace/repo@sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
+            "sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
+        ),
+        pytest.param(
+            "localhost:8000/repo@sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
             "sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
         ),
     ],
@@ -205,10 +220,10 @@ def test_is_valid_digest_reference_valid(reference: str, expected_digest: str) -
     ["reference"],
     [
         pytest.param(
-            "quay.io/repo:5000@sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
+            "quay.io/repo@sha128:f1d71ba64b07ce65b60967c6ed0b2c62",
         ),
         pytest.param(
-            "quay.io/repo@sha128:f1d71ba64b07ce65b60967c6ed0b2c62",
+            "quay.io/repo@sha512:f1d71ba64b07ce65b60967c6ed0b2c62",
         ),
         pytest.param(
             "quay.io/repo:latest",

@@ -22,6 +22,12 @@ class OIDCAuthenticationError(Exception):
     """
 
 
+class RetryExhaustedException(Exception):
+    """
+    Raised when all the retries on transient errors are exhausted
+    """
+
+
 @dataclass
 class OIDCClientCredentials:
     """
@@ -165,6 +171,8 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         Raises:
             httpx.RequestError: If the request failed
             httpx.HTTPStatusError: If the server returned an unexpected status code
+            RetryExhaustedException: If even after retries, the request fails with
+                transient error
         """
         effective_url = urljoin(self._base_url, url)
         LOGGER.debug("HTTP %s %s", method, effective_url)
@@ -207,7 +215,7 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
                     LOGGER.exception("HTTP %s request failed: %s", method, exc)
                     raise
 
-            raise RuntimeError(
+            raise RetryExhaustedException(
                 f"Retries exhausted for HTTP {method} request for {effective_url}"
             )
 

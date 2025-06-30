@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -ux -o pipefail
+
+OPTS=$(getopt -o '' --long data-dir:,atlas-api-url: -- "$@")
+eval set -- "$OPTS"
+
+data_dir=""
+atlas_api_url=""
+
+while true; do
+    case "$1" in
+        --data-dir)
+            data_dir="$2"
+            shift 2
+            ;;
+        --atlas-api-url)
+            atlas_api_url="$2"
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Invalid option: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -z "$data_dir" || -z "$atlas_api_url" ]]; then
+    echo "Error: Both --data-dir and --atlas-api-url are required" >&2
+    exit 1
+fi
+
+required_vars=(
+  "MOBSTER_TPA_SSO_ACCOUNT"
+  "MOBSTER_TPA_SSO_TOKEN"
+  "MOBSTER_TPA_SSO_TOKEN_URL"
+)
+
+for var_name in "${required_vars[@]}"; do
+    if [ -z "${!var_name}" ]; then
+        >&2 echo "Environment variable '$var_name' is not defined or is empty. Skipping TPA upload."
+        exit 0
+    fi
+done
+
+sbom_path="${data_dir}/component-sboms"
+report_path="${data_dir}/report.json"
+failed_path="${data_dir}/failed-sboms"
+mkdir -p "$failed_path"
+
+if [[ $(find "$sbom_path" -type f | wc -l) -eq 0 ]]; then
+    >&2 echo "Error: no SBOMs to upload found."
+fi
+
+mobster --verbose upload tpa \
+  --tpa-base-url "$atlas_api_url" \
+  --from-dir "$sbom_path" > "$report_path"
+
+upload_exit_code=$?
+
+if [[ $upload_exit_code -eq 2 ]]; then
+  # Exit code 2 indicates that the script failed with transient errors.
+  # Extract the paths of SBOMs that failed to push using jq (one path per line).
+  # Then use xargs to copy all the failed SBOM files to a directory, from
+  # which the upload-sboms-to-s3 step will push to S3.
+  jq '.failure[]' "$report_path" | \
+    xargs -I {} cp {} "$failed_path"
+elif [[ $upload_exit_code -ne 0 ]]; then
+  exit $upload_exit_code
+fi

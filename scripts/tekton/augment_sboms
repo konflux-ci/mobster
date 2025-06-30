@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -eux
+
+OPTS=$(getopt -o '' --long data-dir:,snapshot-spec: -- "$@")
+eval set -- "$OPTS"
+
+data_dir=""
+snapshot_spec=""
+
+while true; do
+    case "$1" in
+        --data-dir)
+            data_dir="$2"
+            shift 2
+            ;;
+        --snapshot-spec)
+            snapshot_spec="$2"
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Invalid option: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -z "$data_dir" || -z "$snapshot_spec" ]]; then
+    echo "Error: Both --data-dir and --snapshot-spec are required" >&2
+    exit 1
+fi
+
+sbom_path="${data_dir}/component-sboms"
+mkdir -p "$sbom_path"
+
+# todo: add --verification-key optionally, once work on release-time
+# SBOM in registry is done
+mobster --verbose augment \
+  --output $sbom_path \
+  oci-image \
+  --snapshot "${data_dir}/${snapshot_spec}"

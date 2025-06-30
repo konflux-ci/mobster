@@ -5,6 +5,7 @@ import httpx
 import pytest
 
 from mobster.cmd.upload import oidc
+from mobster.cmd.upload.oidc import RetryExhaustedException
 
 AUTHORIZATION_HEADER = {"Authorization": "Bearer asdfghjkl"}
 
@@ -170,7 +171,7 @@ async def test__request_fail_with_retry_on_status(
             headers=AUTHORIZATION_HEADER,
             status_code=500,
         )
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RetryExhaustedException):
         await client._request(
             "put",
             "hello",
@@ -194,7 +195,7 @@ async def test__request_fail_on_request(
     client = _get_valid_client()
     mock_httpx_request.side_effect = httpx.RequestError("Request failed")
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RetryExhaustedException):
         await client._request(
             "post",
             "hello",
