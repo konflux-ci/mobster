@@ -48,11 +48,11 @@ spec:
 
     - name: taskGitUrl
       type: string
-      description: The url to the git repo where the TA stepactions to be used are stored
+      description: The url to the git repo where the trusted artifact stepactions to be used are stored
 
     - name: taskGitRevision
       type: string
-      description: The revision in the taskGitUrl repo to be used for TA stepactions
+      description: The revision in the taskGitUrl repo to be used for trusted artifact stepactions
 
     - name: snapshotSpec
       type: string
