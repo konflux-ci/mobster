@@ -180,7 +180,6 @@ class TPAUploadCommand(Command):
         """
         Save the command state.
         """
-        pass
 
     @staticmethod
     def gather_sboms(dirpath: Path) -> list[Path]:
