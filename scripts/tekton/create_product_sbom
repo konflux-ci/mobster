@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -eux
 
-OPTS=$(getopt -o '' --long data-dir:,snapshot-spec:,sbom-path: -- "$@")
+OPTS=$(getopt -o '' --long data-dir:,snapshot-spec:,release-data:,sbom-path: -- "$@")
 eval set -- "$OPTS"
 
 data_dir=""
 snapshot_spec=""
+release_data=""
 sbom_path=""
 
 while true; do
@@ -16,6 +17,10 @@ while true; do
             ;;
         --snapshot-spec)
             snapshot_spec="$2"
+            shift 2
+            ;;
+        --release-data)
+            release_data="$2"
             shift 2
             ;;
         --sbom-path)
@@ -35,18 +40,18 @@ done
 
 if [[ -z "$data_dir" || \
       -z "$snapshot_spec" || \
+      -z "$release_data" || \
       -z "$sbom_path"
 ]]; then
-    echo "Error: Both --data-dir and --snapshot-spec are required" >&2
+    echo "Error: missing required args" >&2
     exit 1
 fi
 
-output_path="${data_dir}/${sbom_path}"
-mkdir -p "$output_path"
+output_dir="${data_dir}/${sbom_path}/"
+mkdir -p "$output_dir"
 
-# todo: add --verification-key optionally, once work on release-time
-# SBOM in registry is done
-mobster --verbose augment \
-  --output "$output_path" \
-  oci-image \
-  --snapshot "${data_dir}/${snapshot_spec}"
+mobster --verbose generate \
+  --output ${output_dir}/sbom.json \
+  product \
+  --snapshot "${data_dir}/${snapshot_spec}" \
+  --release-data "${data_dir}/${release_data}"

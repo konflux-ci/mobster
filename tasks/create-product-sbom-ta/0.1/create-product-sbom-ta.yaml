@@ -3,17 +3,17 @@ apiVersion: tekton.dev/v1
 kind: Task
 
 metadata:
-  name: augment-component-sboms-ta
+  name: create-product-sbom-ta
   labels:
-    app.kubernetes.io/version: "0.1.1"
+    app.kubernetes.io/version: "0.1.0"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: sbom
 
 spec:
   description: >-
-    Update component-level SBOMs with release-time information, optionally
-    upload them to Atlas and S3.
+    Create product-level SBOM from release-time information and upload it to
+    Atlas and S3.
   params:
     - name: ociStorage
       description: The OCI repository where the Trusted Artifacts are stored.
@@ -56,7 +56,11 @@ spec:
 
     - name: snapshotSpec
       type: string
-      description: Path to the mapped snapshot spec.
+      description: Path to the mapped snapshot spec in the dataDir.
+
+    - name: releaseData
+      type: string
+      description: Path to the merged data file from collect-data in the dataDir.
 
     - name: atlasSecretName
       type: string
@@ -144,18 +148,21 @@ spec:
         - name: sourceDataArtifact
           value: $(params.sourceDataArtifact)
 
-    - name: augment-sboms
-      image: quay.io/konflux-ci/mobster:ed4ae93fadd870a17ed981ce8a754b1d178e8007
+    - name: create-product-sbom
+      # image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
+      image: quay.io/mjediny/test:mobster
       script: |
         #!/usr/bin/env bash
         set -eux
-        augment_sboms \
+        create_product_sbom \
           --data-dir "$(params.dataDir)" \
           --snapshot-spec "$(params.snapshotSpec)" \
-          --sbom-path "component-sboms"
+          --release-data "$(params.releaseData)" \
+          --sbom-path "product-sbom"
 
     - name: upload-sboms-to-atlas
-      image: quay.io/konflux-ci/mobster:ed4ae93fadd870a17ed981ce8a754b1d178e8007
+      # image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
+      image: quay.io/mjediny/test:mobster
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
           valueFrom:
@@ -177,10 +184,11 @@ spec:
         upload_sboms_to_atlas \
           --data-dir "$(params.dataDir)" \
           --atlas-api-url "$(params.atlasApiUrl)" \
-          --sbom-path "component-sboms"
+          --sbom-path "product-sbom"
 
     - name: upload-sboms-to-s3
-      image: quay.io/konflux-ci/mobster:ed4ae93fadd870a17ed981ce8a754b1d178e8007
+      # image: quay.io/konflux-ci/mobster:43d498a8d7908458527018cb1784f79fd6e3832d
+      image: quay.io/mjediny/test:mobster
       env:
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
