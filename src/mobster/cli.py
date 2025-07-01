@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from mobster.cmd import augment
+from mobster.cmd.delete import delete_tpa
+from mobster.cmd.download import download_tpa
 from mobster.cmd.generate import modelcar, oci_artifact, oci_image, oci_index, product
 from mobster.cmd.upload import upload
 
@@ -27,6 +29,10 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     augment_command_parser(subparsers)
     # Upload command
     upload_command_parser(subparsers)
+    # Download command
+    download_command_parser(subparsers)
+    # Delete command
+    delete_command_parser(subparsers)
 
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output.")
 
@@ -340,3 +346,87 @@ def parse_concurrency(val: str) -> int:
             "Concurrency limit must be a non-zero integer."
         )
     return num
+
+
+def download_command_parser(subparsers: Any) -> None:
+    """
+    A parser for downloading SBOMs documents.
+
+    """
+    download_parser = subparsers.add_parser(
+        "download", help="Download an SBOM document from TPA server"
+    )
+    download_subparser = download_parser.add_subparsers(
+        dest="destination", required=True
+    )
+    download_tpa_parser(download_subparser)
+
+
+def download_tpa_parser(subparsers: Any) -> None:
+    """
+    A parser for downloading SBOMs from TPA.
+    """
+    tpa_parser = subparsers.add_parser(
+        "tpa", help="Download an SBOM document from TPA v2 server"
+    )
+
+    tpa_parser.add_argument(
+        "--tpa-base-url",
+        type=str,
+        required=True,
+        help="URL of the TPA server",
+    )
+    tpa_parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="A directory to save the downloaded SBOM file(s)",
+    )
+
+    # Create a mutually exclusive group and require one of the arguments
+    source_group = tpa_parser.add_mutually_exclusive_group(required=True)
+    source_group.add_argument("--query", type=Path, help="A query to identify SBOMs")
+    source_group.add_argument("--uuid", type=Path, help="SBOM UUID to download")
+
+    tpa_parser.set_defaults(func=download_tpa.TPADownloadCommand)
+
+
+def delete_command_parser(subparsers: Any) -> None:
+    """
+    A parser for downloading SBOMs documents.
+
+    """
+    delete_parser = subparsers.add_parser(
+        "delete", help="Delete an SBOM document from a remote location"
+    )
+    delete_subparser = delete_parser.add_subparsers(dest="destination", required=True)
+    delete_tpa_parser(delete_subparser)
+
+
+def delete_tpa_parser(subparsers: Any) -> None:
+    """
+    A parser for deleteing SBOMs from TPA.
+    """
+    tpa_parser = subparsers.add_parser(
+        "tpa", help="Delete an SBOM document from TPA v2 server"
+    )
+
+    tpa_parser.add_argument(
+        "--tpa-base-url",
+        type=str,
+        required=True,
+        help="URL of the TPA server",
+    )
+
+    tpa_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Perform a dry run without actually deleting SBOMs",
+    )
+
+    # Create a mutually exclusive group and require one of the arguments
+    source_group = tpa_parser.add_mutually_exclusive_group(required=True)
+    source_group.add_argument("--query", type=Path, help="A query to identify SBOMs")
+    source_group.add_argument("--uuid", type=Path, help="SBOM UUID to download")
+
+    tpa_parser.set_defaults(func=delete_tpa.TPADeleteCommand)
