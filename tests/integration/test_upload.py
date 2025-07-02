@@ -1,16 +1,25 @@
-import os
 import subprocess
+import time
 from pathlib import Path
+
+import pytest
+
+from mobster.cmd.upload.tpa import TPAClient
+from tests.integration.utils import prepare_input_sbom
 
 TESTDATA_PATH = Path(__file__).parent.parent / "data"
 
 
-def test_upload_tpa_file_integration(tpa_base_url: str) -> None:
+@pytest.mark.asyncio
+async def test_upload_tpa_file_integration(
+    tpa_base_url: str, tpa_client: TPAClient, tmp_path: Path
+) -> None:
     sbom_file = TESTDATA_PATH / "index_manifest_sbom.spdx.json"
 
-    test_env = os.environ.copy()
-    test_env.update({"MOBSTER_TPA_AUTH_DISABLE": "true"})
-
+    temporary_sbom_name = f"sbom-to-download-{time.time()}"
+    test_sbom_path, _ = prepare_input_sbom(
+        sbom_file, tmp_path, "sbom.json", temporary_sbom_name
+    )
     result = subprocess.run(
         [
             "mobster",
@@ -19,11 +28,18 @@ def test_upload_tpa_file_integration(tpa_base_url: str) -> None:
             "--tpa-base-url",
             tpa_base_url,
             "--file",
-            str(sbom_file),
+            str(test_sbom_path),
         ],
         capture_output=True,
-        text=True,
-        env=test_env,
     )
 
-    assert result.returncode == 0, f"Command failed with stderr: {result.stderr}"
+    assert result.returncode == 0, (
+        f"Command failed with stderr: {result.stderr.decode()}"
+    )
+    tpa_client.list_sboms(query=f"name={temporary_sbom_name}", sort="ingested")
+    sboms = tpa_client.list_sboms(query="", sort="ingested")
+    all_sboms = [sbom async for sbom in sboms]
+    assert len(all_sboms) > 0, "No SBOMs found in TPA after upload"
+    assert any(sbom.name == temporary_sbom_name for sbom in all_sboms), (
+        f"Uploaded SBOM with name {temporary_sbom_name} not found in TPA"
+    )

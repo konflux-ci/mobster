@@ -5,6 +5,7 @@ OIDC client wrapped around httpx
 import logging
 import time
 from asyncio import sleep
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from threading import Lock
 from typing import Any
@@ -226,6 +227,29 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
                 f"Retries exhausted for HTTP {method} request for {effective_url}"
             )
 
+    async def get(
+        self,
+        url: str,
+        headers: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        """
+        Issue a JSON GET request
+
+        Args:
+            url (str): endpoint to call
+            headers(dict[str, Any] | None): headers to add to the request.
+            Defaults to None.
+            params (dict[str, Any] | None, optional): Parameters to add to the request.
+            Defaults to None.
+
+        Returns:
+            Any: JSON response from PUT request
+        """
+        response = await self._request("get", url, headers=headers, params=params)
+        response.raise_for_status()
+        return response
+
     async def put(
         self, url: str, content: Any, headers: Any = None, params: Any = None
     ) -> httpx.Response:
@@ -235,8 +259,10 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         Args:
             url (str): endpoint to call
             content (Any): data to send in request body
-            headers(Any): headers to add to the request. Defaults to None.
-            params (Any, optional): Parameters to add to the request. Defaults to None.
+            headers(dict[str, Any] | None): headers to add to the request.
+            Defaults to None.
+            params (dict[str, Any] | None, optional): Parameters to add to the request.
+            Defaults to None.
 
         Returns:
             Any: JSON response from PUT request
@@ -248,7 +274,11 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         return response
 
     async def post(
-        self, url: str, content: Any, headers: Any = None, params: Any = None
+        self,
+        url: str,
+        content: Any,
+        headers: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
     ) -> httpx.Response:
         """
         Issue a JSON POST request
@@ -256,8 +286,10 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         Args:
             url (str): endpoint to call
             content (Any): data to send in request body
-            headers(Any): headers to add to the request. Defaults to None.
-            params (Any, optional): Parameters to add to the request. Defaults to None.
+            headers(dict[str, Any] | None): headers to add to the request.
+            Defaults to None.
+            params (dict[str, Any] | None, optional): Parameters to add to the request.
+            Defaults to None.
 
         Returns:
             Any: JSON response from POST request
@@ -267,3 +299,64 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         )
         response.raise_for_status()
         return response
+
+    async def delete(
+        self,
+        url: str,
+        headers: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        """
+        Issue a JSON POST request
+
+        Args:
+            url (str): endpoint to call
+            headers(dict[str, Any] | None): headers to add to the request.
+            Defaults to None.
+            params (dict[str, Any] | None, optional): Parameters to add to the request.
+            Defaults to None.
+
+        Returns:
+            Any: JSON response from POST request
+        """
+        response = await self._request("delete", url, headers=headers, params=params)
+        response.raise_for_status()
+        return response
+
+    async def stream(
+        self,
+        method: str,
+        url: str,
+        headers: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[
+        bytes,
+        None,
+    ]:
+        """
+        Create a streaming response that yields byte chunks directly
+
+        Args:
+            method (str): HTTP method (GET, POST, ...)
+            url (str): endpoint to call
+            headers(dict[str, Any] | None): headers to add to the request.
+            Defaults to None.
+            params (dict[str, Any] | None, optional): Parameters to add to the request.
+            Defaults to None.
+
+        Yields:
+            bytes: Chunks of response data
+        """
+        effective_url = urljoin(self._base_url, url)
+        LOGGER.debug("HTTP %s %s (streaming)", method, effective_url)
+
+        client = httpx.AsyncClient(proxy=self._proxies, timeout=60)
+        if headers:
+            client.headers.update(headers)
+
+        await self._ensure_valid_token(client)
+
+        async with client.stream(method, effective_url, params=params) as response:
+            response.raise_for_status()
+            async for chunk in response.aiter_bytes():
+                yield chunk

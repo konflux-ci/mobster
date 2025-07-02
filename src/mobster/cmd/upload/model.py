@@ -30,7 +30,9 @@ class SbomSummary(BaseModel):
         ..., description="The number of packages this SBOM has"
     )
     published: datetime | None
-    suppliers: list[str] = Field(..., description="Suppliers of the SBOMs content")
+    suppliers: list[str] | None = Field(
+        default=None, description="Suppliers of the SBOMs content"
+    )
 
 
 class PaginatedSbomSummaryResult(BaseModel):
