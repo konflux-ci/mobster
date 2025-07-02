@@ -116,9 +116,10 @@ def make_oci_auth_file(
 
     Deletes the file after the with statement. If no path to the docker config
     is provided, tries using ~/.docker/config.json.
+    is provided, tries using ~/.docker/config.json.
 
     Args:
-        reference: Reference to an image in the form registry/repo@sha256-deadbeef.
+        reference: Reference to an image in the form registry[:port]/repo@sha256-X.
         auth: Existing docker config.json path.
 
     Yields:
@@ -174,16 +175,16 @@ def _get_auth_subconfig(config: DockerConfig, reference: str) -> DockerConfig:
     Example:
         >>> config = DockerConfig(
                 auths={
-                    "registry.redhat.io/": AuthDetails(token="another-token")
-                    "registry.redhat.io/specific-repo": AuthDetails(token="token"),
+                    "registry.redhat.io:5000/": AuthDetails(token="another-token")
+                    "registry.redhat.io:5000/specific-repo": AuthDetails(token="token"),
                 },
             )
         >>> _get_auth_subconfig(
-                config, "registry.redhat.io/specific-repo@sha256:deadbeef"
+                config, "registry.redhat.io:5000/specific-repo@sha256:deadbeef"
             )
         DockerConfig(
             auths={
-                "registry.redhat.io/specific-repo": AuthDetails(token="token"),
+                "registry.redhat.io:5000/specific-repo": AuthDetails(token="token"),
             }
         )
     """

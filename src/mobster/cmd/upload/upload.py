@@ -69,11 +69,7 @@ class TPAUploadCommand(Command):
         Execute the command to upload a file(s) to the TPA.
         """
 
-        auth = OIDCClientCredentials(
-            token_url=os.environ["MOBSTER_TPA_SSO_TOKEN_URL"],
-            client_id=os.environ["MOBSTER_TPA_SSO_ACCOUNT"],
-            client_secret=os.environ["MOBSTER_TPA_SSO_TOKEN"],
-        )
+        auth = TPAUploadCommand.get_oidc_auth()
         sbom_files: list[Path] = []
         if self.cli_args.from_dir:
             sbom_files = self.gather_sboms(self.cli_args.from_dir)
@@ -89,9 +85,27 @@ class TPAUploadCommand(Command):
             print(report.model_dump_json())
 
     @staticmethod
+    def get_oidc_auth() -> OIDCClientCredentials | None:
+        """
+        Get OIDC client credentials from environment variables.
+
+        Returns:
+            OIDCClientCredentials: Client credentials if auth is enabled.
+            None: If MOBSTER_TPA_AUTH_DISABLE is set to "true".
+        """
+        if os.environ.get("MOBSTER_TPA_AUTH_DISABLE", "false").lower() == "true":
+            return None
+
+        return OIDCClientCredentials(
+            token_url=os.environ["MOBSTER_TPA_SSO_TOKEN_URL"],
+            client_id=os.environ["MOBSTER_TPA_SSO_ACCOUNT"],
+            client_secret=os.environ["MOBSTER_TPA_SSO_TOKEN"],
+        )
+
+    @staticmethod
     async def upload_sbom_file(
         sbom_file: Path,
-        auth: OIDCClientCredentials,
+        auth: OIDCClientCredentials | None,
         tpa_url: str,
         semaphore: asyncio.Semaphore,
     ) -> None:
@@ -123,7 +137,7 @@ class TPAUploadCommand(Command):
 
     async def upload(
         self,
-        auth: OIDCClientCredentials,
+        auth: OIDCClientCredentials | None,
         tpa_url: str,
         sbom_files: list[Path],
         workers: int,
@@ -132,7 +146,7 @@ class TPAUploadCommand(Command):
         Upload SBOM files to TPA given a directory or a file.
 
         Args:
-            auth (OIDCClientCredentials): Authentication object for the TPA API
+            auth (OIDCClientCredentials | None): Authentication object for the TPA API
             tpa_url (str): Base URL for the TPA API
             sbom_files (list[Path]): List of SBOM file paths to upload
             workers (int): Number of concurrent workers for uploading

@@ -287,3 +287,28 @@ def test_set_exit_code(
     command = TPAUploadCommand(MagicMock())
     command.set_exit_code(results)
     assert command.exit_code == expected_exit_code
+
+
+def test_get_oidc_auth_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Test get_oidc_auth() returns None when MOBSTER_TPA_AUTH_DISABLE is true.
+    """
+    monkeypatch.setenv("MOBSTER_TPA_AUTH_DISABLE", "true")
+    assert TPAUploadCommand.get_oidc_auth() is None
+
+
+def test_get_oidc_auth_enabled_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Test get_oidc_auth() creates OIDCClientCredentials when
+    MOBSTER_TPA_AUTH_DISABLE is false.
+    """
+    monkeypatch.setenv("MOBSTER_TPA_AUTH_DISABLE", "false")
+    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN_URL", "https://test.token.url")
+    monkeypatch.setenv("MOBSTER_TPA_SSO_ACCOUNT", "test-account")
+    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN", "test-token")
+
+    result = TPAUploadCommand.get_oidc_auth()
+    assert result is not None
+    assert result.token_url == "https://test.token.url"
+    assert result.client_id == "test-account"
+    assert result.client_secret == "test-token"

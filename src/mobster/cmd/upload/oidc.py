@@ -58,7 +58,7 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
     def __init__(
         self,
         base_url: str,
-        auth: OIDCClientCredentials,
+        auth: OIDCClientCredentials | None,
         proxy: str | None = None,
     ):
         """
@@ -66,7 +66,8 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
 
         Args:
             base_url (str): Base url for the API server
-            auth (OIDCClientCredentials): Authentication info
+            auth (OIDCClientCredentials | None): Authentication info. "None"
+                disables authentication.
             proxy (Optional[str]): Proxy to use to talk to the API server
                 Defaults to None, which means no proxy.
         """
@@ -96,6 +97,9 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         Raises:
             OIDCAuthenticationError: If the token renewal failed
         """
+        if self._auth is None:
+            return
+
         # See https://www.oauth.com/oauth2-servers/access-tokens/client-credentials/
         # and https://www.ietf.org/rfc/rfc6749.txt section 4.4 and 2.3.1
         LOGGER.debug("Fetching new token from %s", self._auth.token_url)
@@ -132,6 +136,9 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         Always store the token in client header to ensure
         all active clients use valid token
         """
+        if self._auth is None:
+            return
+
         with self._token_mutex:
             if self._token_expired():
                 await self._fetch_token()

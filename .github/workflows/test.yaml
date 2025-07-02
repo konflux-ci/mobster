@@ -33,7 +33,7 @@ jobs:
 
       - name: Run Tests
         run: |
-            poetry run tox
+            poetry run tox run --skip-env test-integration
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5

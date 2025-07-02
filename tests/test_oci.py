@@ -273,6 +273,62 @@ class TestMakeOciAuth:
             with make_oci_auth_file("") as _:
                 pass
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ["reference", "auth", "expected"],
+        [
+            pytest.param(
+                "registry.redhat.io:5000/test@sha256:deadbeef",
+                json.dumps(
+                    {
+                        "auths": {
+                            "registry.redhat.io:5000": {"auth": "token"},
+                        }
+                    }
+                ),
+                {"auths": {"registry.redhat.io:5000": {"auth": "token"}}},
+                id="registry-with-port",
+            ),
+            pytest.param(
+                "localhost:5000/test@sha256:deadbeef",
+                json.dumps(
+                    {
+                        "auths": {
+                            "localhost:5000": {"auth": "token"},
+                        }
+                    }
+                ),
+                {"auths": {"localhost:5000": {"auth": "token"}}},
+                id="localhost-with-port",
+            ),
+            pytest.param(
+                "registry.redhat.io:5000/namespace/test@sha256:deadbeef",
+                json.dumps(
+                    {
+                        "auths": {
+                            "registry.redhat.io:5000/namespace": {"auth": "token"},
+                        }
+                    }
+                ),
+                {"auths": {"registry.redhat.io:5000": {"auth": "token"}}},
+                id="registry-with-port-and-namespace",
+            ),
+        ],
+    )
+    async def test_make_oci_auth_file_registry_port(
+        self, reference: str, auth: str, expected: dict[str, Any]
+    ) -> None:
+        with tempfile.NamedTemporaryFile("+w") as tmpf:
+            tmpf.write(auth)
+            tmpf.flush()
+
+            with make_oci_auth_file(reference, auth=Path(tmpf.name)) as new_auth_path:
+                assert new_auth_path.name == "config.json"
+                with open(new_auth_path) as fp:
+                    new_auth = json.load(fp)
+
+        assert new_auth == expected
+
     @pytest.mark.parametrize(
         ["linux", "env", "path_mapping", "expected"],
         [
