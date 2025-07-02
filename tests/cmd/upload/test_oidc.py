@@ -294,6 +294,7 @@ async def test__ensure_valid_token_disabled_auth() -> None:
     await client._ensure_valid_token(None)  # type: ignore
 
 
+@pytest.mark.asyncio
 async def test_get() -> None:
     client = _get_valid_client()
 

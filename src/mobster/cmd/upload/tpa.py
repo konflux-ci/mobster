@@ -127,11 +127,13 @@ def get_tpa_default_client(
     Returns:
         TPAClient: An instance of TPAClient.
     """
-    auth = OIDCClientCredentials(
-        token_url=os.environ["MOBSTER_TPA_SSO_TOKEN_URL"],
-        client_id=os.environ["MOBSTER_TPA_SSO_ACCOUNT"],
-        client_secret=os.environ["MOBSTER_TPA_SSO_TOKEN"],
-    )
+    auth = None
+    if os.environ.get("MOBSTER_TPA_AUTH_DISABLE", "false").lower() != "true":
+        auth = OIDCClientCredentials(
+            token_url=os.environ["MOBSTER_TPA_SSO_TOKEN_URL"],
+            client_id=os.environ["MOBSTER_TPA_SSO_ACCOUNT"],
+            client_secret=os.environ["MOBSTER_TPA_SSO_TOKEN"],
+        )
     tpa_client = TPAClient(
         base_url=base_url,
         auth=auth,
