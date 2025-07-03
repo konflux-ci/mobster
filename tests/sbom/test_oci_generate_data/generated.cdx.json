@@ -1,0 +1,5821 @@
+{
+  "components": [
+    {
+      "bom-ref": "af63bd4c8601b7f1",
+      "name": ".",
+      "type": "file"
+    },
+    {
+      "bom-ref": "BomRef.809102356021671.6887464804280965",
+      "name": "@types/prop-types",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/%40types/prop-types@15.7.5",
+      "type": "library",
+      "version": "15.7.5"
+    },
+    {
+      "bom-ref": "BomRef.5122008439805494.4051696518135134",
+      "name": "@types/react",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/%40types/react@18.0.35",
+      "type": "library",
+      "version": "18.0.35"
+    },
+    {
+      "bom-ref": "BomRef.3453216115471418.9507987239834482",
+      "name": "@types/react-dom",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/%40types/react-dom@18.0.11",
+      "type": "library",
+      "version": "18.0.11"
+    },
+    {
+      "bom-ref": "BomRef.9304679340896232.6764138187289573",
+      "name": "@types/scheduler",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/%40types/scheduler@0.16.3",
+      "type": "library",
+      "version": "0.16.3"
+    },
+    {
+      "bom-ref": "BomRef.7554877390498772.848305872293883",
+      "name": "abbrev",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/abbrev@2.0.0",
+      "type": "library",
+      "version": "2.0.0"
+    },
+    {
+      "bom-ref": "BomRef.8545606786324806.8323914468875238",
+      "name": "accepts",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/accepts@1.3.8",
+      "type": "library",
+      "version": "1.3.8"
+    },
+    {
+      "bom-ref": "BomRef.40962043920809066.733895041509303",
+      "name": "array-flatten",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/array-flatten@1.1.1",
+      "type": "library",
+      "version": "1.1.1"
+    },
+    {
+      "bom-ref": "BomRef.35106148838793905.373704091123782",
+      "name": "bar",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/bar@1.0.0?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd#bar",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&upstream=basesystem-11-13.el9.src.rpm&distro=rhel-9.5&package-id=fcabd006cb3bfe7d",
+      "cpe": "cpe:2.3:a:basesystem:basesystem:11-13.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "Public Domain"
+          }
+        }
+      ],
+      "name": "basesystem",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:basesystem:11-13.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "13.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "0"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "basesystem-11-13.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&distro=rhel-9.5&upstream=basesystem-11-13.el9.src.rpm",
+      "type": "library",
+      "version": "11-13.el9"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&upstream=bash-5.1.8-9.el9.src.rpm&distro=rhel-9.5&package-id=a6062d7253817d9d",
+      "cpe": "cpe:2.3:a:redhat:bash:5.1.8-9.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "GPLv3+"
+          }
+        }
+      ],
+      "name": "bash",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:bash:bash:5.1.8-9.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "9.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "7738778"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "bash-5.1.8-9.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&distro=rhel-9.5&upstream=bash-5.1.8-9.el9.src.rpm",
+      "type": "library",
+      "version": "5.1.8-9.el9"
+    },
+    {
+      "bom-ref": "BomRef.4206853775596542.29581318653904876",
+      "name": "bitbucket-cachi2-npm-without-deps",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/bitbucket-cachi2-npm-without-deps@1.0.0?vcs_url=git%2Bssh://git%40bitbucket.org/cachi-testing/cachi2-without-deps.git%409e164b97043a2d91bbeb992f6cc68a3d1015086a",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "bom-ref": "BomRef.028297978302258553.7832873070703246",
+      "name": "bitbucket-cachi2-npm-without-deps-second",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/bitbucket-cachi2-npm-without-deps-second@2.0.0?vcs_url=git%2Bssh://git%40bitbucket.org/cachi-testing/cachi2-without-deps-second.git%4009992d418fc44a2895b7a9ff27c4e32d6f74a982",
+      "type": "library",
+      "version": "2.0.0"
+    },
+    {
+      "bom-ref": "BomRef.5526818965704962.8413387998935941",
+      "name": "body-parser",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/body-parser@1.20.1",
+      "type": "library",
+      "version": "1.20.1"
+    },
+    {
+      "bom-ref": "BomRef.003450633426899774.8722711807972725",
+      "name": "bufio",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/bufio?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.05446848551662198.10947204109719488",
+      "name": "bytes",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/bytes@3.1.2",
+      "type": "library",
+      "version": "3.1.2"
+    },
+    {
+      "bom-ref": "BomRef.39329038840550645.37527066660513764",
+      "name": "bytes",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/bytes?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6606991463374952.3884202067678123",
+      "name": "cachito-npm-without-deps",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/cachito-npm-without-deps@1.0.0?checksum=sha512:43e71f90ad5f9eb349ab18a283f8954994def373962ddc61b866bdea4d48249e67913c6b84dca1e8c519e981ca1fcc62b438292104a88ee9ed72db76a41efede&download_url=https://github.com/cachito-testing/cachito-npm-without-deps/raw/tarball/cachito-npm-without-deps-1.0.0.tgz",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "bom-ref": "BomRef.7349445002451966.9565699097869057",
+      "name": "call-bind",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/call-bind@1.0.2",
+      "type": "library",
+      "version": "1.0.2"
+    },
+    {
+      "bom-ref": "BomRef.06374925676346654.679358509695565",
+      "name": "certifi",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/certifi@2022.12.7",
+      "type": "library",
+      "version": "2022.12.7"
+    },
+    {
+      "bom-ref": "BomRef.6419960710176923.3400122164123578",
+      "name": "charset-normalizer",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/charset-normalizer@3.0.1",
+      "type": "library",
+      "version": "3.0.1"
+    },
+    {
+      "bom-ref": "BomRef.7637095508284685.2160680897125773",
+      "name": "classnames",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/classnames@2.3.2",
+      "type": "library",
+      "version": "2.3.2"
+    },
+    {
+      "bom-ref": "BomRef.21380452849359988.7904847135418358",
+      "name": "colors",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/colors@1.4.0",
+      "type": "library",
+      "version": "1.4.0"
+    },
+    {
+      "bom-ref": "BomRef.29154250158932415.042554942514770766",
+      "name": "compress/flate",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/compress/flate?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7674131159600668.13852230221055095",
+      "name": "compress/gzip",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/compress/gzip?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7881723933468381.6994254257225607",
+      "name": "container/list",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/container/list?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.2902496627713952.9229218230987511",
+      "name": "content-disposition",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/content-disposition@0.5.4",
+      "type": "library",
+      "version": "0.5.4"
+    },
+    {
+      "bom-ref": "BomRef.550802196043805.5375862720729448",
+      "name": "content-type",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/content-type@1.0.5",
+      "type": "library",
+      "version": "1.0.5"
+    },
+    {
+      "bom-ref": "BomRef.5527901945673972.5059939781453984",
+      "name": "context",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/context?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.42005694400308835.9341630171863887",
+      "name": "cookie",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/cookie@0.5.0",
+      "type": "library",
+      "version": "0.5.0"
+    },
+    {
+      "bom-ref": "BomRef.12540806723994657.19737042528815896",
+      "name": "cookie-signature",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/cookie-signature@1.0.6",
+      "type": "library",
+      "version": "1.0.6"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&upstream=coreutils-8.32-36.el9.src.rpm&distro=rhel-9.5&package-id=bc07797a46d14a80",
+      "cpe": "cpe:2.3:a:coreutils-single:coreutils-single:8.32-36.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "GPLv3+"
+          }
+        }
+      ],
+      "name": "coreutils-single",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:coreutils-single:coreutils_single:8.32-36.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:coreutils:coreutils-single:8.32-36.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:coreutils:coreutils_single:8.32-36.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:coreutils_single:coreutils-single:8.32-36.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:coreutils_single:coreutils_single:8.32-36.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:coreutils-single:8.32-36.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:coreutils_single:8.32-36.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "36.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "1403137"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "coreutils-8.32-36.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&distro=rhel-9.5&upstream=coreutils-8.32-36.el9.src.rpm",
+      "type": "library",
+      "version": "8.32-36.el9"
+    },
+    {
+      "bom-ref": "BomRef.31657231742936365.6049774069908135",
+      "name": "crypto",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.09615359218267217.10371108278078278",
+      "name": "crypto/aes",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/aes?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.14851797957951052.189978025369671",
+      "name": "crypto/cipher",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/cipher?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.3151870638815406.3538866357922428",
+      "name": "crypto/des",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/des?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6520430624646295.9299626884952782",
+      "name": "crypto/dsa",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/dsa?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9399970315957704.8519980465097935",
+      "name": "crypto/ecdh",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/ecdh?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.38290123861388325.08336389921105536",
+      "name": "crypto/ecdsa",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/ecdsa?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6052390048331043.8544171803310852",
+      "name": "crypto/ed25519",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/ed25519?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.862622545007315.8657403076403534",
+      "name": "crypto/elliptic",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/elliptic?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.5103141879966183.5887440400262304",
+      "name": "crypto/hmac",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/hmac?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7922183591465937.6317152785233452",
+      "name": "crypto/internal/alias",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/alias?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.12441059073204264.7051253589794422",
+      "name": "crypto/internal/bigmod",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/bigmod?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.4035088807749323.9627750221421654",
+      "name": "crypto/internal/boring",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/boring?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6627726649757268.37088507897726386",
+      "name": "crypto/internal/boring/bbig",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/boring/bbig?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.3555255284587945.49913140248431564",
+      "name": "crypto/internal/boring/sig",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/boring/sig?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9319912664113562.029604089410826817",
+      "name": "crypto/internal/edwards25519",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/edwards25519?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.979066489405629.6012431463719327",
+      "name": "crypto/internal/edwards25519/field",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/edwards25519/field?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.2739369858341216.7192539669282908",
+      "name": "crypto/internal/nistec",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/nistec?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.11555810089757446.796201513132884",
+      "name": "crypto/internal/nistec/fiat",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/nistec/fiat?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6432358700512222.4988372847581112",
+      "name": "crypto/internal/randutil",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/internal/randutil?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7557299240505801.3817745669208139",
+      "name": "crypto/md5",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/md5?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6125779735525035.011706573467153869",
+      "name": "crypto/rand",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/rand?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7306746019243922.011221974670032164",
+      "name": "crypto/rc4",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/rc4?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.3388017107319805.49458368199896363",
+      "name": "crypto/rsa",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/rsa?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.22598501978112018.23591761405972678",
+      "name": "crypto/sha1",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/sha1?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7653581428415992.7805935673799831",
+      "name": "crypto/sha256",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/sha256?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.058758586083576536.21708290220186055",
+      "name": "crypto/sha512",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/sha512?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7462046151200002.35032224798170897",
+      "name": "crypto/subtle",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/subtle?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.745789872640885.966579943027633",
+      "name": "crypto/tls",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/tls?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9534446437835897.8996742278466843",
+      "name": "crypto/x509",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/x509?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.12371143326705747.09144138085666009",
+      "name": "crypto/x509/pkix",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/crypto/x509/pkix?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.5274621675412949.9582669322741868",
+      "name": "csstype",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/csstype@3.1.2",
+      "type": "library",
+      "version": "3.1.2"
+    },
+    {
+      "bom-ref": "BomRef.5725986722176675.9091868984189176",
+      "name": "dateformat",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/dateformat@5.0.3",
+      "type": "library",
+      "version": "5.0.3"
+    },
+    {
+      "bom-ref": "BomRef.6621671687339108.14220260210158242",
+      "name": "debug",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/debug@2.6.9",
+      "type": "library",
+      "version": "2.6.9"
+    },
+    {
+      "bom-ref": "BomRef.8458248812911648.7988685017372196",
+      "name": "depd",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/depd@2.0.0",
+      "type": "library",
+      "version": "2.0.0"
+    },
+    {
+      "bom-ref": "BomRef.04481429162741013.9958641221347979",
+      "name": "destroy",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/destroy@1.2.0",
+      "type": "library",
+      "version": "1.2.0"
+    },
+    {
+      "bom-ref": "BomRef.6460175643435458.1150329814511366",
+      "name": "dockerfile-parse",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/dockerfile-parse?checksum=sha256:36e4469abb0d96b0e3cd656284d5016e8a674cd57b8ebe5af64786fe63b8184d&download_url=https://github.com/containerbuildsystem/dockerfile-parse/archive/refs/tags/2.0.0.tar.gz",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6658838546984214.00425436656367062",
+      "name": "ee-first",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/ee-first@1.1.1",
+      "type": "library",
+      "version": "1.1.1"
+    },
+    {
+      "bom-ref": "BomRef.9151924530743406.7362356175523002",
+      "name": "eggs",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/eggs@1.0.0?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd#eggs-packages/eggs",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "bom-ref": "BomRef.07058466409230091.25543298627712274",
+      "name": "embed",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/embed?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.032103767245282966.4164064624704865",
+      "name": "encodeurl",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/encodeurl@1.0.2",
+      "type": "library",
+      "version": "1.0.2"
+    },
+    {
+      "bom-ref": "BomRef.04049298081789787.1757345306318968",
+      "name": "encoding",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9284079885943181.6170946542644618",
+      "name": "encoding/asn1",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/asn1?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.09983966672774025.01649997957273963",
+      "name": "encoding/base64",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/base64?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.8415939689689814.4230266896368583",
+      "name": "encoding/binary",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/binary?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.5675192806740433.163526559210449",
+      "name": "encoding/hex",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/hex?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.02377342438557284.5689979125482832",
+      "name": "encoding/json",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/json?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9385946389546954.8836372797107693",
+      "name": "encoding/pem",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/pem?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.07773003546906365.3303654516055473",
+      "name": "encoding/xml",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/encoding/xml?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9319130219891477.8418143752432377",
+      "name": "errors",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/errors?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.8732346300610329.8336689083519058",
+      "name": "escape-html",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/escape-html@1.0.3",
+      "type": "library",
+      "version": "1.0.3"
+    },
+    {
+      "bom-ref": "BomRef.020011233549694696.03377272554902011",
+      "name": "etag",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/etag@1.8.1",
+      "type": "library",
+      "version": "1.8.1"
+    },
+    {
+      "bom-ref": "BomRef.8670662054740312.8644869767096209",
+      "name": "express",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/express@4.18.2",
+      "type": "library",
+      "version": "4.18.2"
+    },
+    {
+      "bom-ref": "BomRef.38473480858153797.35547012676483136",
+      "name": "fecha",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/fecha@4.2.3?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd#fecha-4.2.3.tgz",
+      "type": "library",
+      "version": "4.2.3"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&upstream=filesystem-3.16-5.el9.src.rpm&distro=rhel-9.5&package-id=5423c4a724c69dca",
+      "cpe": "cpe:2.3:a:filesystem:filesystem:3.16-5.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "Public Domain"
+          }
+        }
+      ],
+      "name": "filesystem",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:filesystem:3.16-5.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "5.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "106"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "filesystem-3.16-5.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&distro=rhel-9.5&upstream=filesystem-3.16-5.el9.src.rpm",
+      "type": "library",
+      "version": "3.16-5.el9"
+    },
+    {
+      "bom-ref": "BomRef.4256645842256752.34187721605080024",
+      "name": "finalhandler",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/finalhandler@1.2.0",
+      "type": "library",
+      "version": "1.2.0"
+    },
+    {
+      "bom-ref": "BomRef.6654828619893027.6601848712762003",
+      "name": "flit-core",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/flit-core@3.8.0",
+      "type": "library",
+      "version": "3.8.0"
+    },
+    {
+      "bom-ref": "BomRef.5934199755577617.5497598957208174",
+      "name": "fmt",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/fmt?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.028888417137881484.2069989618531748",
+      "name": "foo",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/foo@1.0.0?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd#foo",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "bom-ref": "BomRef.27696604831989236.7058271650076491",
+      "name": "forwarded",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/forwarded@0.2.0",
+      "type": "library",
+      "version": "0.2.0"
+    },
+    {
+      "bom-ref": "BomRef.048441511057303654.5591860899096663",
+      "name": "fresh",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/fresh@0.5.2",
+      "type": "library",
+      "version": "0.5.2"
+    },
+    {
+      "bom-ref": "BomRef.9611854019740929.9543990080289865",
+      "name": "function-bind",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/function-bind@1.1.1",
+      "type": "library",
+      "version": "1.1.1"
+    },
+    {
+      "bom-ref": "BomRef.09927504879570526.7491504709760971",
+      "name": "get-intrinsic",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/get-intrinsic@1.2.0",
+      "type": "library",
+      "version": "1.2.0"
+    },
+    {
+      "bom-ref": "BomRef.870585967532795.13000811536018286",
+      "name": "github.com/Azure/go-ansiterm",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/Azure/go-ansiterm@v0.0.0-20210617225240-d185dfc1b5a1?type=module",
+      "type": "library",
+      "version": "v0.0.0-20210617225240-d185dfc1b5a1"
+    },
+    {
+      "bom-ref": "BomRef.48980563382478426.4314859077591937",
+      "name": "github.com/Masterminds/semver",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/Masterminds/semver@v1.4.2?type=module",
+      "type": "library",
+      "version": "v1.4.2"
+    },
+    {
+      "bom-ref": "BomRef.13856082530829272.20296699181784328",
+      "name": "github.com/Masterminds/semver",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/Masterminds/semver@v1.4.2?type=package",
+      "type": "library",
+      "version": "v1.4.2"
+    },
+    {
+      "bom-ref": "BomRef.786048265748853.29200637128643203",
+      "name": "github.com/Microsoft/go-winio",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/Microsoft/go-winio@v0.6.0?type=module",
+      "type": "library",
+      "version": "v0.6.0"
+    },
+    {
+      "bom-ref": "BomRef.4067811287261789.510572056594271",
+      "name": "github.com/cachito-testing/gomod-pandemonium",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium@v0.1.0?type=module",
+      "type": "library",
+      "version": "v0.1.0"
+    },
+    {
+      "bom-ref": "BomRef.3868677377277856.8951307731624462",
+      "name": "github.com/cachito-testing/gomod-pandemonium",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium@v0.1.0?type=package",
+      "type": "library",
+      "version": "v0.1.0"
+    },
+    {
+      "bom-ref": "BomRef.667481187428825.7222402985479601",
+      "name": "github.com/cachito-testing/gomod-pandemonium/terminaltor",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium/terminaltor@v1.0.0?type=module",
+      "type": "library",
+      "version": "v1.0.0"
+    },
+    {
+      "bom-ref": "BomRef.6787521633383568.08351151910903964",
+      "name": "github.com/cachito-testing/gomod-pandemonium/terminaltor",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium/terminaltor@v1.0.0?type=package",
+      "type": "library",
+      "version": "v1.0.0"
+    },
+    {
+      "bom-ref": "BomRef.781812517195818.3920241029690503",
+      "name": "github.com/cachito-testing/gomod-pandemonium/weird",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium/weird@v0.0.0-20230417073518-0c6890c3280a?type=module",
+      "type": "library",
+      "version": "v0.0.0-20230417073518-0c6890c3280a"
+    },
+    {
+      "bom-ref": "BomRef.5601709823689373.5658368083985696",
+      "name": "github.com/cachito-testing/gomod-pandemonium/weird",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium/weird@v0.0.0-20230417073518-0c6890c3280a?type=package",
+      "type": "library",
+      "version": "v0.0.0-20230417073518-0c6890c3280a"
+    },
+    {
+      "bom-ref": "BomRef.5018018399525078.003942453591359474",
+      "name": "github.com/cachito-testing/gomod-pandemonium/where-was-i-built",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/gomod-pandemonium/where-was-i-built@v0.1.0?type=package",
+      "type": "library",
+      "version": "v0.1.0"
+    },
+    {
+      "bom-ref": "BomRef.49944954101708794.08700118417931713",
+      "name": "github.com/cachito-testing/retrodep/v2",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/retrodep/v2@v2.1.1?type=module",
+      "type": "library",
+      "version": "v2.1.1"
+    },
+    {
+      "bom-ref": "BomRef.4308198717875784.49950812472460626",
+      "name": "github.com/cachito-testing/retrodep/v2/retrodep",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/retrodep/v2/retrodep@v2.1.1?type=package",
+      "type": "library",
+      "version": "v2.1.1"
+    },
+    {
+      "bom-ref": "BomRef.808599373314762.16122218660229937",
+      "name": "github.com/cachito-testing/retrodep/v2/retrodep/glide",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/cachito-testing/retrodep/v2/retrodep/glide@v2.1.1?type=package",
+      "type": "library",
+      "version": "v2.1.1"
+    },
+    {
+      "bom-ref": "BomRef.5733072346637742.9509005662631009",
+      "name": "github.com/go-logr/logr",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/go-logr/logr@v1.2.3?type=module",
+      "type": "library",
+      "version": "v1.2.3"
+    },
+    {
+      "bom-ref": "BomRef.04578313365502085.9308538363617643",
+      "name": "github.com/go-task/slim-sprig",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/go-task/slim-sprig@v0.0.0-20230315185526-52ccab3ef572?type=module",
+      "type": "library",
+      "version": "v0.0.0-20230315185526-52ccab3ef572"
+    },
+    {
+      "bom-ref": "BomRef.05838749943629706.8030794959398331",
+      "name": "github.com/google/go-cmp",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/google/go-cmp@v0.5.9?type=module",
+      "type": "library",
+      "version": "v0.5.9"
+    },
+    {
+      "bom-ref": "BomRef.7001879481268215.8425002658078171",
+      "name": "github.com/google/pprof",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/google/pprof@v0.0.0-20210407192527-94a9f03dee38?type=module",
+      "type": "library",
+      "version": "v0.0.0-20210407192527-94a9f03dee38"
+    },
+    {
+      "bom-ref": "BomRef.27710122064764653.9907700707956745",
+      "name": "github.com/moby/term",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/moby/term@v0.0.0-20221205130635-1aeaba878587?type=module",
+      "type": "library",
+      "version": "v0.0.0-20221205130635-1aeaba878587"
+    },
+    {
+      "bom-ref": "BomRef.42384375772215444.5151686245640122",
+      "name": "github.com/moby/term",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/moby/term@v0.0.0-20221205130635-1aeaba878587?type=package",
+      "type": "library",
+      "version": "v0.0.0-20221205130635-1aeaba878587"
+    },
+    {
+      "bom-ref": "BomRef.7638253696686851.8947189267545205",
+      "name": "github.com/onsi/ginkgo/v2",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/onsi/ginkgo/v2@v2.9.2?type=module",
+      "type": "library",
+      "version": "v2.9.2"
+    },
+    {
+      "bom-ref": "BomRef.08443521000223642.8434372554396118",
+      "name": "github.com/onsi/gomega",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/onsi/gomega@v1.27.4?type=module",
+      "type": "library",
+      "version": "v1.27.4"
+    },
+    {
+      "bom-ref": "BomRef.2534394342372849.9941684736745087",
+      "name": "github.com/op/go-logging",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/op/go-logging@v0.0.0-20160315200505-970db520ece7?type=module",
+      "type": "library",
+      "version": "v0.0.0-20160315200505-970db520ece7"
+    },
+    {
+      "bom-ref": "BomRef.3033924528589538.3249394876531908",
+      "name": "github.com/op/go-logging",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/op/go-logging@v0.0.0-20160315200505-970db520ece7?type=package",
+      "type": "library",
+      "version": "v0.0.0-20160315200505-970db520ece7"
+    },
+    {
+      "bom-ref": "BomRef.548829449391157.2156998509180451",
+      "name": "github.com/pkg/errors",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/pkg/errors@v0.8.1?type=module",
+      "type": "library",
+      "version": "v0.8.1"
+    },
+    {
+      "bom-ref": "BomRef.5910129723492628.600288143396226",
+      "name": "github.com/pkg/errors",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/github.com/pkg/errors@v0.8.1?type=package",
+      "type": "library",
+      "version": "v0.8.1"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&upstream=glibc-2.34-125.el9_5.1.src.rpm&distro=rhel-9.5&package-id=ab6bbd6d165109d2",
+      "cpe": "cpe:2.3:a:redhat:glibc:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL"
+          }
+        }
+      ],
+      "name": "glibc",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc:glibc:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "125.el9_5.1"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "6430227"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "glibc-2.34-125.el9_5.1.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm",
+      "type": "library",
+      "version": "2.34-125.el9_5.1"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/glibc-common@2.34-125.el9_5.1?arch=x86_64&upstream=glibc-2.34-125.el9_5.1.src.rpm&distro=rhel-9.5&package-id=5d2e03b4ae3e405b",
+      "cpe": "cpe:2.3:a:glibc-common:glibc-common:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL"
+          }
+        }
+      ],
+      "name": "glibc-common",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc-common:glibc_common:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc:glibc-common:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc:glibc_common:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc_common:glibc-common:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc_common:glibc_common:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:glibc-common:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:glibc_common:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "125.el9_5.1"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "1083649"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "glibc-2.34-125.el9_5.1.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/glibc-common@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm",
+      "type": "library",
+      "version": "2.34-125.el9_5.1"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/glibc-minimal-langpack@2.34-125.el9_5.1?arch=x86_64&upstream=glibc-2.34-125.el9_5.1.src.rpm&distro=rhel-9.5&package-id=d35bdd9cfa0b8d62",
+      "cpe": "cpe:2.3:a:glibc-minimal-langpack:glibc-minimal-langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL"
+          }
+        }
+      ],
+      "name": "glibc-minimal-langpack",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc-minimal-langpack:glibc_minimal_langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc-minimal:glibc-minimal-langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc-minimal:glibc_minimal_langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc:glibc-minimal-langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc:glibc_minimal_langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc_minimal:glibc-minimal-langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc_minimal:glibc_minimal_langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc_minimal_langpack:glibc-minimal-langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:glibc_minimal_langpack:glibc_minimal_langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:glibc-minimal-langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:glibc_minimal_langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "125.el9_5.1"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "0"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "glibc-2.34-125.el9_5.1.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/glibc-minimal-langpack@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm",
+      "type": "library",
+      "version": "2.34-125.el9_5.1"
+    },
+    {
+      "bom-ref": "BomRef.9266284741626983.33593967407510916",
+      "name": "go/ast",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/ast?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9941262965205486.9159418995641276",
+      "name": "go/build",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/build?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.24528095597168187.7094485215961579",
+      "name": "go/build/constraint",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/build/constraint?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.1378091621805384.6384941716951754",
+      "name": "go/doc",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/doc?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.5392945154633536.9510198590104554",
+      "name": "go/doc/comment",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/doc/comment?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.32476792152523415.6474109819576768",
+      "name": "go/internal/typeparams",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/internal/typeparams?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6740042471750934.7076454844581853",
+      "name": "go/parser",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/parser?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7468933347282185.709925867139154",
+      "name": "go/scanner",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/scanner?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9692796836784988.9894552690116083",
+      "name": "go/token",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/go/token?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.20646640307187913.23502577418297488",
+      "name": "golang.org/x/mod",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/mod@v0.9.0?type=module",
+      "type": "library",
+      "version": "v0.9.0"
+    },
+    {
+      "bom-ref": "BomRef.4874183943223017.6653272391893946",
+      "name": "golang.org/x/net",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/net@v0.8.0?type=module",
+      "type": "library",
+      "version": "v0.8.0"
+    },
+    {
+      "bom-ref": "BomRef.058290880422725344.32318414324892886",
+      "name": "golang.org/x/sys",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/sys@v0.6.0?type=module",
+      "type": "library",
+      "version": "v0.6.0"
+    },
+    {
+      "bom-ref": "BomRef.5317694199168302.035930696381607174",
+      "name": "golang.org/x/sys/execabs",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/sys/execabs@v0.6.0?type=package",
+      "type": "library",
+      "version": "v0.6.0"
+    },
+    {
+      "bom-ref": "BomRef.7134705722488598.523833114031946",
+      "name": "golang.org/x/sys/unix",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/sys/unix@v0.6.0?type=package",
+      "type": "library",
+      "version": "v0.6.0"
+    },
+    {
+      "bom-ref": "BomRef.10831936570760548.6922927251615545",
+      "name": "golang.org/x/text",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/text@v0.8.0?type=module",
+      "type": "library",
+      "version": "v0.8.0"
+    },
+    {
+      "bom-ref": "BomRef.6116799100643706.7526528454580886",
+      "name": "golang.org/x/tools",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/tools@v0.7.0?type=module",
+      "type": "library",
+      "version": "v0.7.0"
+    },
+    {
+      "bom-ref": "BomRef.1569646688599522.9542521069754993",
+      "name": "golang.org/x/tools/go/vcs",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/golang.org/x/tools/go/vcs@v0.7.0?type=package",
+      "type": "library",
+      "version": "v0.7.0"
+    },
+    {
+      "bom-ref": "BomRef.23471945898643864.24426529531420715",
+      "name": "gopkg.in/yaml.v2",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/gopkg.in/yaml.v2@v2.2.2?type=module",
+      "type": "library",
+      "version": "v2.2.2"
+    },
+    {
+      "bom-ref": "BomRef.46747602704226465.494412850306159",
+      "name": "gopkg.in/yaml.v2",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/gopkg.in/yaml.v2@v2.2.2?type=package",
+      "type": "library",
+      "version": "v2.2.2"
+    },
+    {
+      "bom-ref": "BomRef.036951683061605456.2176136338715282",
+      "name": "gopkg.in/yaml.v3",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/gopkg.in/yaml.v3@v3.0.1?type=module",
+      "type": "library",
+      "version": "v3.0.1"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/gpg-pubkey@5a6340b3-6229229e?distro=rhel-9.5&package-id=6a4614b48b443e33",
+      "cpe": "cpe:2.3:a:gpg-pubkey:gpg-pubkey:5a6340b3-6229229e:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "pubkey"
+          }
+        }
+      ],
+      "name": "gpg-pubkey",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gpg-pubkey:gpg_pubkey:5a6340b3-6229229e:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gpg:gpg-pubkey:5a6340b3-6229229e:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gpg:gpg_pubkey:5a6340b3-6229229e:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gpg_pubkey:gpg-pubkey:5a6340b3-6229229e:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gpg_pubkey:gpg_pubkey:5a6340b3-6229229e:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "6229229e"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "0"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "purl": "pkg:rpm/rhel/gpg-pubkey@5a6340b3-6229229e?distro=rhel-9.5",
+      "type": "library",
+      "version": "5a6340b3-6229229e"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/gpg-pubkey@fd431d51-4ae0493b?distro=rhel-9.5&package-id=0b9edfc7dd36b25d",
+      "cpe": "cpe:2.3:a:gpg-pubkey:gpg-pubkey:fd431d51-4ae0493b:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "pubkey"
+          }
+        }
+      ],
+      "name": "gpg-pubkey",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gpg-pubkey:gpg_pubkey:fd431d51-4ae0493b:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gpg:gpg-pubkey:fd431d51-4ae0493b:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gpg:gpg_pubkey:fd431d51-4ae0493b:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gpg_pubkey:gpg-pubkey:fd431d51-4ae0493b:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gpg_pubkey:gpg_pubkey:fd431d51-4ae0493b:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "4ae0493b"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "0"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "purl": "pkg:rpm/rhel/gpg-pubkey@fd431d51-4ae0493b?distro=rhel-9.5",
+      "type": "library",
+      "version": "fd431d51-4ae0493b"
+    },
+    {
+      "bom-ref": "BomRef.18538174095329352.22997923702868583",
+      "name": "has",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/has@1.0.3",
+      "type": "library",
+      "version": "1.0.3"
+    },
+    {
+      "bom-ref": "BomRef.6462236166339065.09047422134031147",
+      "name": "has-symbols",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/has-symbols@1.0.3",
+      "type": "library",
+      "version": "1.0.3"
+    },
+    {
+      "bom-ref": "BomRef.44483914294566196.9110990993967099",
+      "name": "hash",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/hash?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.06685653815821424.5525725710240488",
+      "name": "hash/crc32",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/hash/crc32?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6842290222818962.9336993483355487",
+      "name": "http-errors",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/http-errors@2.0.0",
+      "type": "library",
+      "version": "2.0.0"
+    },
+    {
+      "bom-ref": "BomRef.06281524358870105.3616337405855078",
+      "name": "iconv-lite",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/iconv-lite@0.4.24",
+      "type": "library",
+      "version": "0.4.24"
+    },
+    {
+      "bom-ref": "BomRef.0026813350694369076.21675420539843615",
+      "name": "idna",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/idna@3.4",
+      "type": "library",
+      "version": "3.4"
+    },
+    {
+      "bom-ref": "BomRef.6738771617171199.8938119935640231",
+      "name": "inherits",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/inherits@2.0.4",
+      "type": "library",
+      "version": "2.0.4"
+    },
+    {
+      "bom-ref": "BomRef.5768743499344227.2939327301959921",
+      "name": "internal/abi",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/abi?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9128216199514966.3666240298382122",
+      "name": "internal/buildcfg",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/buildcfg?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6345720511990487.8773417106137817",
+      "name": "internal/bytealg",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/bytealg?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.16500693219929852.9400993347256686",
+      "name": "internal/coverage/rtcov",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/coverage/rtcov?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.05212285652578663.061569161540516615",
+      "name": "internal/cpu",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/cpu?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.8974965851441566.8556469152751819",
+      "name": "internal/fmtsort",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/fmtsort?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.33138178788757.38742690232594057",
+      "name": "internal/goarch",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/goarch?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.1825037463787582.08289263776098699",
+      "name": "internal/godebug",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/godebug?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.2345259428800044.47323487328131275",
+      "name": "internal/goexperiment",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/goexperiment?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.4113894977190411.3358589736979112",
+      "name": "internal/goos",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/goos?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.31664804592617424.2589586215897859",
+      "name": "internal/goroot",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/goroot?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.97930867322915.18006604480256339",
+      "name": "internal/goversion",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/goversion?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.28688256490844954.10009358942308855",
+      "name": "internal/intern",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/intern?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.4734192852570889.40208834380915914",
+      "name": "internal/itoa",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/itoa?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.4166152524568111.6428137987902149",
+      "name": "internal/lazyregexp",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/lazyregexp?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7212757190909665.834127920436051",
+      "name": "internal/nettrace",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/nettrace?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.3194446665612052.0338642283410564",
+      "name": "internal/oserror",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/oserror?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.5554201108487812.11991060427087319",
+      "name": "internal/poll",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/poll?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.3562064525836236.6757850049715272",
+      "name": "internal/race",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/race?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.08022678955985052.13213044175959132",
+      "name": "internal/reflectlite",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/reflectlite?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.8823406677470016.4865597928645278",
+      "name": "internal/safefilepath",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/safefilepath?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9530055813672981.13040447117823573",
+      "name": "internal/singleflight",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/singleflight?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.08514394091361155.3681320204014952",
+      "name": "internal/syscall/execenv",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/syscall/execenv?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.47736207133181385.2790660957248797",
+      "name": "internal/syscall/unix",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/syscall/unix?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6403381998511685.6012431950859887",
+      "name": "internal/testlog",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/testlog?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.18038054857986519.44714832990701214",
+      "name": "internal/unsafeheader",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/internal/unsafeheader?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6535002134903001.7166166062813528",
+      "name": "io",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/io?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.4842130921424519.09181950236439618",
+      "name": "io/fs",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/io/fs?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.5409125680973877.7053002048726527",
+      "name": "io/ioutil",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/io/ioutil?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7876897160161679.9038553940372109",
+      "name": "ipaddr.js",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/ipaddr.js@1.9.1",
+      "type": "library",
+      "version": "1.9.1"
+    },
+    {
+      "bom-ref": "BomRef.793171381305238.41964904159828675",
+      "name": "is-positive",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/is-positive@3.1.0?vcs_url=git%2Bssh://git%40github.com/kevva/is-positive.git%4097edff6f525f192a3f83cea1944765f769ae2678",
+      "type": "library",
+      "version": "3.1.0"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/libacl@2.3.1-4.el9?arch=x86_64&upstream=acl-2.3.1-4.el9.src.rpm&distro=rhel-9.5&package-id=6a12891a28711ed0",
+      "cpe": "cpe:2.3:a:libacl:libacl:2.3.1-4.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "LGPLv2+"
+          }
+        }
+      ],
+      "name": "libacl",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:libacl:2.3.1-4.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "4.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "40554"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "acl-2.3.1-4.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/libacl@2.3.1-4.el9?arch=x86_64&distro=rhel-9.5&upstream=acl-2.3.1-4.el9.src.rpm",
+      "type": "library",
+      "version": "2.3.1-4.el9"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/libattr@2.5.1-3.el9?arch=x86_64&upstream=attr-2.5.1-3.el9.src.rpm&distro=rhel-9.5&package-id=246362466b6f01d4",
+      "cpe": "cpe:2.3:a:libattr:libattr:2.5.1-3.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "LGPLv2+"
+          }
+        }
+      ],
+      "name": "libattr",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:libattr:2.5.1-3.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "3.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "29429"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "attr-2.5.1-3.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/libattr@2.5.1-3.el9?arch=x86_64&distro=rhel-9.5&upstream=attr-2.5.1-3.el9.src.rpm",
+      "type": "library",
+      "version": "2.5.1-3.el9"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/libcap@2.48-9.el9_2?arch=x86_64&upstream=libcap-2.48-9.el9_2.src.rpm&distro=rhel-9.5&package-id=e129417de8081c72",
+      "cpe": "cpe:2.3:a:libcap:libcap:2.48-9.el9_2:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD or GPLv2"
+          }
+        }
+      ],
+      "name": "libcap",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:libcap:2.48-9.el9_2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "9.el9_2"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "177471"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "libcap-2.48-9.el9_2.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/libcap@2.48-9.el9_2?arch=x86_64&distro=rhel-9.5&upstream=libcap-2.48-9.el9_2.src.rpm",
+      "type": "library",
+      "version": "2.48-9.el9_2"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/libgcc@11.5.0-2.el9?arch=x86_64&upstream=gcc-11.5.0-2.el9.src.rpm&distro=rhel-9.5&package-id=492434936db2f877",
+      "cpe": "cpe:2.3:a:libgcc:libgcc:11.5.0-2.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD"
+          }
+        }
+      ],
+      "name": "libgcc",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:libgcc:11.5.0-2.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "2.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "198756"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "gcc-11.5.0-2.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/libgcc@11.5.0-2.el9?arch=x86_64&distro=rhel-9.5&upstream=gcc-11.5.0-2.el9.src.rpm",
+      "type": "library",
+      "version": "11.5.0-2.el9"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/libselinux@3.6-1.el9?arch=x86_64&upstream=libselinux-3.6-1.el9.src.rpm&distro=rhel-9.5&package-id=79db8c526f87ba3b",
+      "cpe": "cpe:2.3:a:libselinux:libselinux:3.6-1.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "Public Domain"
+          }
+        }
+      ],
+      "name": "libselinux",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:libselinux:3.6-1.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "1.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "176853"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "libselinux-3.6-1.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/libselinux@3.6-1.el9?arch=x86_64&distro=rhel-9.5&upstream=libselinux-3.6-1.el9.src.rpm",
+      "type": "library",
+      "version": "3.6-1.el9"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/libsepol@3.6-1.el9?arch=x86_64&upstream=libsepol-3.6-1.el9.src.rpm&distro=rhel-9.5&package-id=9891839d8f699944",
+      "cpe": "cpe:2.3:a:libsepol:libsepol:3.6-1.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "LGPLv2+"
+          }
+        }
+      ],
+      "name": "libsepol",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:libsepol:3.6-1.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "1.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "829251"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "libsepol-3.6-1.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/libsepol@3.6-1.el9?arch=x86_64&distro=rhel-9.5&upstream=libsepol-3.6-1.el9.src.rpm",
+      "type": "library",
+      "version": "3.6-1.el9"
+    },
+    {
+      "bom-ref": "BomRef.24156550920187936.7027051662208517",
+      "name": "log",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/log?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7274290744910186.9722819930413389",
+      "name": "log/syslog",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/log/syslog?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.3526594729421719.5016254418344287",
+      "name": "math",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/math?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.383279368214149.861585754579893",
+      "name": "math/big",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/math/big?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.21441272552516988.8457098779167861",
+      "name": "math/bits",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/math/bits?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.39748543486868293.014688790546322994",
+      "name": "math/rand",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/math/rand?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.027744532765804353.594033659917551",
+      "name": "media-typer",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/media-typer@0.3.0",
+      "type": "library",
+      "version": "0.3.0"
+    },
+    {
+      "bom-ref": "BomRef.9864645785028565.44696237427412355",
+      "name": "merge-descriptors",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/merge-descriptors@1.0.1",
+      "type": "library",
+      "version": "1.0.1"
+    },
+    {
+      "bom-ref": "BomRef.47198699991116333.26303733164555787",
+      "name": "methods",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/methods@1.1.2",
+      "type": "library",
+      "version": "1.1.2"
+    },
+    {
+      "bom-ref": "BomRef.05581343593450594.8631103500494711",
+      "name": "mime",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/mime@1.6.0",
+      "type": "library",
+      "version": "1.6.0"
+    },
+    {
+      "bom-ref": "BomRef.6638710901379311.5686047935317646",
+      "name": "mime",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/mime?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.004738837764621695.32446072154477734",
+      "name": "mime-db",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/mime-db@1.52.0",
+      "type": "library",
+      "version": "1.52.0"
+    },
+    {
+      "bom-ref": "BomRef.11303081029271134.7175294877815784",
+      "name": "mime-types",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/mime-types@2.1.35",
+      "type": "library",
+      "version": "2.1.35"
+    },
+    {
+      "bom-ref": "BomRef.14376886126846966.6696534321750375",
+      "name": "mime/multipart",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/mime/multipart?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7238654749045075.06212449771470907",
+      "name": "mime/quotedprintable",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/mime/quotedprintable?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9819116395932369.9893687339124116",
+      "name": "ms",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/ms@2.0.0",
+      "type": "library",
+      "version": "2.0.0"
+    },
+    {
+      "bom-ref": "BomRef.2709178144232005.8435502411183029",
+      "name": "ms",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/ms@2.1.3",
+      "type": "library",
+      "version": "2.1.3"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/ncurses-base@6.2-10.20210508.el9?arch=noarch&upstream=ncurses-6.2-10.20210508.el9.src.rpm&distro=rhel-9.5&package-id=a0d19211c8c4589b",
+      "cpe": "cpe:2.3:a:ncurses-base:ncurses-base:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "ncurses-base",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:ncurses-base:ncurses_base:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:ncurses:ncurses-base:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:ncurses:ncurses_base:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:ncurses_base:ncurses-base:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:ncurses_base:ncurses_base:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:ncurses-base:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:ncurses_base:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "10.20210508.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "307293"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "ncurses-6.2-10.20210508.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/ncurses-base@6.2-10.20210508.el9?arch=noarch&distro=rhel-9.5&upstream=ncurses-6.2-10.20210508.el9.src.rpm",
+      "type": "library",
+      "version": "6.2-10.20210508.el9"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/ncurses-libs@6.2-10.20210508.el9?arch=x86_64&upstream=ncurses-6.2-10.20210508.el9.src.rpm&distro=rhel-9.5&package-id=31b40b2b21390159",
+      "cpe": "cpe:2.3:a:ncurses-libs:ncurses-libs:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "ncurses-libs",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:ncurses-libs:ncurses_libs:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:ncurses:ncurses-libs:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:ncurses:ncurses_libs:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:ncurses_libs:ncurses-libs:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:ncurses_libs:ncurses_libs:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:ncurses-libs:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:ncurses_libs:6.2-10.20210508.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "10.20210508.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "994375"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "ncurses-6.2-10.20210508.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/ncurses-libs@6.2-10.20210508.el9?arch=x86_64&distro=rhel-9.5&upstream=ncurses-6.2-10.20210508.el9.src.rpm",
+      "type": "library",
+      "version": "6.2-10.20210508.el9"
+    },
+    {
+      "bom-ref": "BomRef.9472593650263778.2647228238778735",
+      "name": "negotiator",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/negotiator@0.6.3",
+      "type": "library",
+      "version": "0.6.3"
+    },
+    {
+      "bom-ref": "BomRef.9484244039175684.8457818699079458",
+      "name": "net",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.02186814107087709.0063434471946627324",
+      "name": "net/http",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/http?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.4642140387941377.5615160751387239",
+      "name": "net/http/httptrace",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/http/httptrace?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7447961314546961.8251934638293564",
+      "name": "net/http/internal",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/http/internal?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.19341038488587325.1340199446174587",
+      "name": "net/http/internal/ascii",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/http/internal/ascii?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.5181389071096462.22246571861166853",
+      "name": "net/netip",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/netip?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.805475139876367.6734147161933292",
+      "name": "net/textproto",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/textproto?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.0644662603355588.753304398037872",
+      "name": "net/url",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/net/url?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6501657684269903.4029812449631536",
+      "name": "not-baz",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/not-baz@1.0.0?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd#baz",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "bom-ref": "BomRef.7629278950263186.42184703446141714",
+      "name": "npm_test",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/npm_test@1.1.0?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd",
+      "type": "library",
+      "version": "1.1.0"
+    },
+    {
+      "bom-ref": "BomRef.8026329079428965.24047214260574679",
+      "name": "object-inspect",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/object-inspect@1.12.3",
+      "type": "library",
+      "version": "1.12.3"
+    },
+    {
+      "bom-ref": "BomRef.7554756710321033.5798307394552765",
+      "name": "on-finished",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/on-finished@2.4.1",
+      "type": "library",
+      "version": "2.4.1"
+    },
+    {
+      "bom-ref": "BomRef.6651591412201213.7470563259650632",
+      "name": "os",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/os?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.043176529312003664.46262643350968324",
+      "name": "os/exec",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/os/exec?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.4066793694659254.8039146403498224",
+      "name": "parseurl",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/parseurl@1.3.3",
+      "type": "library",
+      "version": "1.3.3"
+    },
+    {
+      "bom-ref": "BomRef.2177033771066167.4364235030159961",
+      "name": "path",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/path?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.007869873326287746.5855771631489229",
+      "name": "path-to-regexp",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/path-to-regexp@0.1.7",
+      "type": "library",
+      "version": "0.1.7"
+    },
+    {
+      "bom-ref": "BomRef.8721001954504605.11213732189592573",
+      "name": "path/filepath",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/path/filepath?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/pcre2@10.40-6.el9?arch=x86_64&upstream=pcre2-10.40-6.el9.src.rpm&distro=rhel-9.5&package-id=1a97d50a68b062d7",
+      "cpe": "cpe:2.3:a:redhat:pcre2:10.40-6.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD"
+          }
+        }
+      ],
+      "name": "pcre2",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:pcre2:pcre2:10.40-6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "6.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "652298"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "pcre2-10.40-6.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/pcre2@10.40-6.el9?arch=x86_64&distro=rhel-9.5&upstream=pcre2-10.40-6.el9.src.rpm",
+      "type": "library",
+      "version": "10.40-6.el9"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/pcre2-syntax@10.40-6.el9?arch=noarch&upstream=pcre2-10.40-6.el9.src.rpm&distro=rhel-9.5&package-id=8f3dd37865073b05",
+      "cpe": "cpe:2.3:a:pcre2-syntax:pcre2-syntax:10.40-6.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD"
+          }
+        }
+      ],
+      "name": "pcre2-syntax",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:pcre2-syntax:pcre2_syntax:10.40-6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:pcre2:pcre2-syntax:10.40-6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:pcre2:pcre2_syntax:10.40-6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:pcre2_syntax:pcre2-syntax:10.40-6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:pcre2_syntax:pcre2_syntax:10.40-6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:pcre2-syntax:10.40-6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:pcre2_syntax:10.40-6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "6.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "234324"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "pcre2-10.40-6.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/pcre2-syntax@10.40-6.el9?arch=noarch&distro=rhel-9.5&upstream=pcre2-10.40-6.el9.src.rpm",
+      "type": "library",
+      "version": "10.40-6.el9"
+    },
+    {
+      "bom-ref": "BomRef.4695259970878508.23093899560730557",
+      "name": "proxy-addr",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/proxy-addr@2.0.7",
+      "type": "library",
+      "version": "2.0.7"
+    },
+    {
+      "bom-ref": "BomRef.0950685250541351.959059768669107",
+      "name": "qs",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/qs@6.11.0",
+      "type": "library",
+      "version": "6.11.0"
+    },
+    {
+      "bom-ref": "BomRef.2564485192972885.7924547893557132",
+      "name": "range-parser",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/range-parser@1.2.1",
+      "type": "library",
+      "version": "1.2.1"
+    },
+    {
+      "bom-ref": "BomRef.9852153654917515.6550093434147131",
+      "name": "raw-body",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/raw-body@2.5.1",
+      "type": "library",
+      "version": "2.5.1"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/redhat-release@9.5-0.6.el9?arch=x86_64&upstream=redhat-release-9.5-0.6.el9.src.rpm&distro=rhel-9.5&package-id=bbf1d165194eceb0",
+      "cpe": "cpe:2.3:a:redhat-release:redhat-release:9.5-0.6.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "GPLv2"
+          }
+        }
+      ],
+      "name": "redhat-release",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat-release:redhat_release:9.5-0.6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:redhat-release:9.5-0.6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat:redhat_release:9.5-0.6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat_release:redhat-release:9.5-0.6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:redhat_release:redhat_release:9.5-0.6.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "0.6.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "58817"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "redhat-release-9.5-0.6.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/redhat-release@9.5-0.6.el9?arch=x86_64&distro=rhel-9.5&upstream=redhat-release-9.5-0.6.el9.src.rpm",
+      "type": "library",
+      "version": "9.5-0.6.el9"
+    },
+    {
+      "bom-ref": "BomRef.76270940425491.06349388738659067",
+      "name": "reflect",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/reflect?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9089068172776776.3632719043110558",
+      "name": "regexp",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/regexp?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.04987441898731926.6897158651755715",
+      "name": "regexp/syntax",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/regexp/syntax?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.21698389228161674.7337223390140525",
+      "name": "requests",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/requests@2.28.2",
+      "type": "library",
+      "version": "2.28.2"
+    },
+    {
+      "bom-ref": "BomRef.3082217160737807.7691395977371386",
+      "name": "runtime",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/runtime?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.022361620346601274.8028223403811985",
+      "name": "runtime/cgo",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/runtime/cgo?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9707920583888735.9998477836387234",
+      "name": "runtime/internal/atomic",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/runtime/internal/atomic?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7851509125790883.03572285252699858",
+      "name": "runtime/internal/math",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/runtime/internal/math?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7471284144851429.1028491098550034",
+      "name": "runtime/internal/sys",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/runtime/internal/sys?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.36601391254876947.8123144041254882",
+      "name": "runtime/internal/syscall",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/runtime/internal/syscall?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9356275023426255.17840206526778246",
+      "name": "safe-buffer",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/safe-buffer@5.2.1",
+      "type": "library",
+      "version": "5.2.1"
+    },
+    {
+      "bom-ref": "BomRef.22090757171780984.44433979385634315",
+      "name": "safer-buffer",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/safer-buffer@2.1.2",
+      "type": "library",
+      "version": "2.1.2"
+    },
+    {
+      "bom-ref": "BomRef.6552725213862601.14947674993802218",
+      "name": "sax",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/sax@0.1.1",
+      "type": "library",
+      "version": "0.1.1"
+    },
+    {
+      "bom-ref": "BomRef.8007965836493034.8726590407708",
+      "name": "send",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/send@0.18.0",
+      "type": "library",
+      "version": "0.18.0"
+    },
+    {
+      "bom-ref": "BomRef.06928380629928377.6999543366884026",
+      "name": "serve-static",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/serve-static@1.15.0",
+      "type": "library",
+      "version": "1.15.0"
+    },
+    {
+      "bom-ref": "BomRef.8993891264169624.17604926213104055",
+      "name": "setprototypeof",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/setprototypeof@1.2.0",
+      "type": "library",
+      "version": "1.2.0"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/setup@2.13.7-10.el9?arch=noarch&upstream=setup-2.13.7-10.el9.src.rpm&distro=rhel-9.5&package-id=befa3e6a19701472",
+      "cpe": "cpe:2.3:a:redhat:setup:2.13.7-10.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "Public Domain"
+          }
+        }
+      ],
+      "name": "setup",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:setup:setup:2.13.7-10.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "10.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "725932"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "setup-2.13.7-10.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/setup@2.13.7-10.el9?arch=noarch&distro=rhel-9.5&upstream=setup-2.13.7-10.el9.src.rpm",
+      "type": "library",
+      "version": "2.13.7-10.el9"
+    },
+    {
+      "bom-ref": "BomRef.3369249910824237.2490641292514819",
+      "name": "setuptools",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/setuptools@67.1.0",
+      "type": "library",
+      "version": "67.1.0"
+    },
+    {
+      "bom-ref": "BomRef.7794967295694206.03693118027543563",
+      "name": "side-channel",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/side-channel@1.0.4",
+      "type": "library",
+      "version": "1.0.4"
+    },
+    {
+      "bom-ref": "BomRef.9300228255415325.502101005503425",
+      "name": "sort",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/sort?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.07736943388807704.3934726059569026",
+      "name": "spam",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/spam@1.0.0?vcs_url=git%2Bhttps://github.com/cachito-testing/npm-cachi2-smoketest%40f1d31c2b051b218c84399b12461e0957d87bd0cd#spam-packages/spam",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "bom-ref": "BomRef.9310252665115601.4201071768508181",
+      "name": "statuses",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/statuses@2.0.1",
+      "type": "library",
+      "version": "2.0.1"
+    },
+    {
+      "bom-ref": "BomRef.5396882393578946.049047652117297",
+      "name": "strconv",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/strconv?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.342345237138971.0348535308305451",
+      "name": "strings",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/strings?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.518491159302929.9565867366368328",
+      "name": "sync",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/sync?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.5958146543942957.2762369298163704",
+      "name": "sync/atomic",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/sync/atomic?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9743631964198237.6435547207755282",
+      "name": "syscall",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/syscall?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.07047125608976446.6052249556128276",
+      "name": "test_package_cachi2",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/test-package-cachi2@1.0.0?vcs_url=git%2Bhttps://github.com/cachito-testing/pip-e2e-test%401ecda839ba9ca55070d75c86c26a1bb07d777bba",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "bom-ref": "BomRef.1880255584675532.2394284024485619",
+      "name": "time",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/time?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.8169142924417236.6934557423099492",
+      "name": "toidentifier",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/toidentifier@1.0.1",
+      "type": "library",
+      "version": "1.0.1"
+    },
+    {
+      "bom-ref": "BomRef.8598954125948417.26934727792229785",
+      "name": "type-is",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/type-is@1.6.18",
+      "type": "library",
+      "version": "1.6.18"
+    },
+    {
+      "bom-ref": "pkg:rpm/rhel/tzdata@2024b-2.el9?arch=noarch&upstream=tzdata-2024b-2.el9.src.rpm&distro=rhel-9.5&package-id=f21803b5b9d9adef",
+      "cpe": "cpe:2.3:a:redhat:tzdata:2024b-2.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "Public Domain"
+          }
+        }
+      ],
+      "name": "tzdata",
+      "properties": [
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:tzdata:tzdata:2024b-2.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "2.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "1654640"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "tzdata-2024b-2.el9.src.rpm"
+        },
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/tzdata@2024b-2.el9?arch=noarch&distro=rhel-9.5&upstream=tzdata-2024b-2.el9.src.rpm",
+      "type": "library",
+      "version": "2024b-2.el9"
+    },
+    {
+      "bom-ref": "BomRef.11535333786699686.6735235391477096",
+      "name": "unicode",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/unicode?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.048990187928179996.21792564890951172",
+      "name": "unicode/utf16",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/unicode/utf16?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.38875428360890585.49101430323449446",
+      "name": "unicode/utf8",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/unicode/utf8?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.3379776137606205.6157245615426026",
+      "name": "unpipe",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/unpipe@1.0.0",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "bom-ref": "BomRef.31683069636620775.09939551383373413",
+      "name": "unsafe",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/unsafe?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.8136710275062081.6593413280923783",
+      "name": "urllib3",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/urllib3@1.26.14",
+      "type": "library",
+      "version": "1.26.14"
+    },
+    {
+      "bom-ref": "BomRef.134372107222424.7184995668824863",
+      "name": "utils-merge",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/utils-merge@1.0.1",
+      "type": "library",
+      "version": "1.0.1"
+    },
+    {
+      "bom-ref": "BomRef.651493739962381.9137095706770046",
+      "name": "uuid",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/uuid@9.0.0",
+      "type": "library",
+      "version": "9.0.0"
+    },
+    {
+      "bom-ref": "BomRef.47916956811797584.5443283199195211",
+      "name": "vary",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:npm/vary@1.1.2",
+      "type": "library",
+      "version": "1.1.2"
+    },
+    {
+      "bom-ref": "BomRef.22278293932483906.14348216921012902",
+      "name": "vendor/golang.org/x/crypto/chacha20",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/chacha20?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.8041335581285546.9707589180613745",
+      "name": "vendor/golang.org/x/crypto/chacha20poly1305",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/chacha20poly1305?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.5228296992480148.5937230883367315",
+      "name": "vendor/golang.org/x/crypto/cryptobyte",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/cryptobyte?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.15627882760744471.9142137244690255",
+      "name": "vendor/golang.org/x/crypto/cryptobyte/asn1",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/cryptobyte/asn1?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6604401464486428.488518681040512",
+      "name": "vendor/golang.org/x/crypto/hkdf",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/hkdf?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.02344941625650021.5967918301682817",
+      "name": "vendor/golang.org/x/crypto/internal/alias",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/internal/alias?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.1356373190515784.6064613941314946",
+      "name": "vendor/golang.org/x/crypto/internal/poly1305",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/crypto/internal/poly1305?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.17433295536613258.8550588834237803",
+      "name": "vendor/golang.org/x/net/dns/dnsmessage",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/net/dns/dnsmessage?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.13106970114347694.7136446891897016",
+      "name": "vendor/golang.org/x/net/http/httpguts",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/net/http/httpguts?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.5011690448051322.42522119884390386",
+      "name": "vendor/golang.org/x/net/http/httpproxy",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/net/http/httpproxy?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7939705028139502.8300052868475332",
+      "name": "vendor/golang.org/x/net/http2/hpack",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/net/http2/hpack?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.7978724240227636.5831203597541158",
+      "name": "vendor/golang.org/x/net/idna",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/net/idna?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.6485342589243219.12065930644426826",
+      "name": "vendor/golang.org/x/sys/cpu",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/sys/cpu?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.4929935321372545.7618811806992731",
+      "name": "vendor/golang.org/x/text/secure/bidirule",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/text/secure/bidirule?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.5347637873006955.42280429820342624",
+      "name": "vendor/golang.org/x/text/transform",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/text/transform?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.35042883055634444.4586815355114623",
+      "name": "vendor/golang.org/x/text/unicode/bidi",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/text/unicode/bidi?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.024006570217552592.9922560951399436",
+      "name": "vendor/golang.org/x/text/unicode/norm",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:golang/vendor/golang.org/x/text/unicode/norm?type=package",
+      "type": "library"
+    },
+    {
+      "bom-ref": "BomRef.9242354169650665.08067734675325167",
+      "name": "wheel",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:pypi/wheel@0.38.4",
+      "type": "library",
+      "version": "0.38.4"
+    },
+    {
+      "bom-ref": "os:rhel@9.5",
+      "cpe": "cpe:2.3:o:redhat:enterprise_linux:9:*:baseos:*:*:*:*:*",
+      "description": "Red Hat Enterprise Linux 9.5 (Plow)",
+      "externalReferences": [
+        {
+          "type": "issue-tracker",
+          "url": "https://issues.redhat.com/"
+        },
+        {
+          "type": "website",
+          "url": "https://www.redhat.com/"
+        }
+      ],
+      "name": "rhel",
+      "properties": [
+        {
+          "name": "syft:distro:id",
+          "value": "rhel"
+        },
+        {
+          "name": "syft:distro:idLike:0",
+          "value": "fedora"
+        },
+        {
+          "name": "syft:distro:prettyName",
+          "value": "Red Hat Enterprise Linux 9.5 (Plow)"
+        },
+        {
+          "name": "syft:distro:versionID",
+          "value": "9.5"
+        }
+      ],
+      "swid": {
+        "name": "rhel",
+        "tagId": "rhel",
+        "version": "9.5"
+      },
+      "type": "operating-system",
+      "version": "9.5"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "BomRef.809102356021671.6887464804280965"
+    },
+    {
+      "ref": "BomRef.5122008439805494.4051696518135134"
+    },
+    {
+      "ref": "BomRef.3453216115471418.9507987239834482"
+    },
+    {
+      "ref": "BomRef.9304679340896232.6764138187289573"
+    },
+    {
+      "ref": "BomRef.7554877390498772.848305872293883"
+    },
+    {
+      "ref": "BomRef.8545606786324806.8323914468875238"
+    },
+    {
+      "ref": "BomRef.40962043920809066.733895041509303"
+    },
+    {
+      "ref": "BomRef.35106148838793905.373704091123782"
+    },
+    {
+      "ref": "BomRef.4206853775596542.29581318653904876"
+    },
+    {
+      "ref": "BomRef.028297978302258553.7832873070703246"
+    },
+    {
+      "ref": "BomRef.5526818965704962.8413387998935941"
+    },
+    {
+      "ref": "BomRef.003450633426899774.8722711807972725"
+    },
+    {
+      "ref": "BomRef.05446848551662198.10947204109719488"
+    },
+    {
+      "ref": "BomRef.39329038840550645.37527066660513764"
+    },
+    {
+      "ref": "BomRef.6606991463374952.3884202067678123"
+    },
+    {
+      "ref": "BomRef.7349445002451966.9565699097869057"
+    },
+    {
+      "ref": "BomRef.06374925676346654.679358509695565"
+    },
+    {
+      "ref": "BomRef.6419960710176923.3400122164123578"
+    },
+    {
+      "ref": "BomRef.7637095508284685.2160680897125773"
+    },
+    {
+      "ref": "BomRef.21380452849359988.7904847135418358"
+    },
+    {
+      "ref": "BomRef.29154250158932415.042554942514770766"
+    },
+    {
+      "ref": "BomRef.7674131159600668.13852230221055095"
+    },
+    {
+      "ref": "BomRef.7881723933468381.6994254257225607"
+    },
+    {
+      "ref": "BomRef.2902496627713952.9229218230987511"
+    },
+    {
+      "ref": "BomRef.550802196043805.5375862720729448"
+    },
+    {
+      "ref": "BomRef.5527901945673972.5059939781453984"
+    },
+    {
+      "ref": "BomRef.42005694400308835.9341630171863887"
+    },
+    {
+      "ref": "BomRef.12540806723994657.19737042528815896"
+    },
+    {
+      "ref": "BomRef.31657231742936365.6049774069908135"
+    },
+    {
+      "ref": "BomRef.09615359218267217.10371108278078278"
+    },
+    {
+      "ref": "BomRef.14851797957951052.189978025369671"
+    },
+    {
+      "ref": "BomRef.3151870638815406.3538866357922428"
+    },
+    {
+      "ref": "BomRef.6520430624646295.9299626884952782"
+    },
+    {
+      "ref": "BomRef.9399970315957704.8519980465097935"
+    },
+    {
+      "ref": "BomRef.38290123861388325.08336389921105536"
+    },
+    {
+      "ref": "BomRef.6052390048331043.8544171803310852"
+    },
+    {
+      "ref": "BomRef.862622545007315.8657403076403534"
+    },
+    {
+      "ref": "BomRef.5103141879966183.5887440400262304"
+    },
+    {
+      "ref": "BomRef.7922183591465937.6317152785233452"
+    },
+    {
+      "ref": "BomRef.12441059073204264.7051253589794422"
+    },
+    {
+      "ref": "BomRef.4035088807749323.9627750221421654"
+    },
+    {
+      "ref": "BomRef.6627726649757268.37088507897726386"
+    },
+    {
+      "ref": "BomRef.3555255284587945.49913140248431564"
+    },
+    {
+      "ref": "BomRef.9319912664113562.029604089410826817"
+    },
+    {
+      "ref": "BomRef.979066489405629.6012431463719327"
+    },
+    {
+      "ref": "BomRef.2739369858341216.7192539669282908"
+    },
+    {
+      "ref": "BomRef.11555810089757446.796201513132884"
+    },
+    {
+      "ref": "BomRef.6432358700512222.4988372847581112"
+    },
+    {
+      "ref": "BomRef.7557299240505801.3817745669208139"
+    },
+    {
+      "ref": "BomRef.6125779735525035.011706573467153869"
+    },
+    {
+      "ref": "BomRef.7306746019243922.011221974670032164"
+    },
+    {
+      "ref": "BomRef.3388017107319805.49458368199896363"
+    },
+    {
+      "ref": "BomRef.22598501978112018.23591761405972678"
+    },
+    {
+      "ref": "BomRef.7653581428415992.7805935673799831"
+    },
+    {
+      "ref": "BomRef.058758586083576536.21708290220186055"
+    },
+    {
+      "ref": "BomRef.7462046151200002.35032224798170897"
+    },
+    {
+      "ref": "BomRef.745789872640885.966579943027633"
+    },
+    {
+      "ref": "BomRef.9534446437835897.8996742278466843"
+    },
+    {
+      "ref": "BomRef.12371143326705747.09144138085666009"
+    },
+    {
+      "ref": "BomRef.5274621675412949.9582669322741868"
+    },
+    {
+      "ref": "BomRef.5725986722176675.9091868984189176"
+    },
+    {
+      "ref": "BomRef.6621671687339108.14220260210158242"
+    },
+    {
+      "ref": "BomRef.8458248812911648.7988685017372196"
+    },
+    {
+      "ref": "BomRef.04481429162741013.9958641221347979"
+    },
+    {
+      "ref": "BomRef.6460175643435458.1150329814511366"
+    },
+    {
+      "ref": "BomRef.6658838546984214.00425436656367062"
+    },
+    {
+      "ref": "BomRef.9151924530743406.7362356175523002"
+    },
+    {
+      "ref": "BomRef.07058466409230091.25543298627712274"
+    },
+    {
+      "ref": "BomRef.032103767245282966.4164064624704865"
+    },
+    {
+      "ref": "BomRef.04049298081789787.1757345306318968"
+    },
+    {
+      "ref": "BomRef.9284079885943181.6170946542644618"
+    },
+    {
+      "ref": "BomRef.09983966672774025.01649997957273963"
+    },
+    {
+      "ref": "BomRef.8415939689689814.4230266896368583"
+    },
+    {
+      "ref": "BomRef.5675192806740433.163526559210449"
+    },
+    {
+      "ref": "BomRef.02377342438557284.5689979125482832"
+    },
+    {
+      "ref": "BomRef.9385946389546954.8836372797107693"
+    },
+    {
+      "ref": "BomRef.07773003546906365.3303654516055473"
+    },
+    {
+      "ref": "BomRef.9319130219891477.8418143752432377"
+    },
+    {
+      "ref": "BomRef.8732346300610329.8336689083519058"
+    },
+    {
+      "ref": "BomRef.020011233549694696.03377272554902011"
+    },
+    {
+      "ref": "BomRef.8670662054740312.8644869767096209"
+    },
+    {
+      "ref": "BomRef.38473480858153797.35547012676483136"
+    },
+    {
+      "ref": "BomRef.4256645842256752.34187721605080024"
+    },
+    {
+      "ref": "BomRef.6654828619893027.6601848712762003"
+    },
+    {
+      "ref": "BomRef.5934199755577617.5497598957208174"
+    },
+    {
+      "ref": "BomRef.028888417137881484.2069989618531748"
+    },
+    {
+      "ref": "BomRef.27696604831989236.7058271650076491"
+    },
+    {
+      "ref": "BomRef.048441511057303654.5591860899096663"
+    },
+    {
+      "ref": "BomRef.9611854019740929.9543990080289865"
+    },
+    {
+      "ref": "BomRef.09927504879570526.7491504709760971"
+    },
+    {
+      "ref": "BomRef.870585967532795.13000811536018286"
+    },
+    {
+      "ref": "BomRef.48980563382478426.4314859077591937"
+    },
+    {
+      "ref": "BomRef.13856082530829272.20296699181784328"
+    },
+    {
+      "ref": "BomRef.786048265748853.29200637128643203"
+    },
+    {
+      "ref": "BomRef.4067811287261789.510572056594271"
+    },
+    {
+      "ref": "BomRef.3868677377277856.8951307731624462"
+    },
+    {
+      "ref": "BomRef.667481187428825.7222402985479601"
+    },
+    {
+      "ref": "BomRef.6787521633383568.08351151910903964"
+    },
+    {
+      "ref": "BomRef.781812517195818.3920241029690503"
+    },
+    {
+      "ref": "BomRef.5601709823689373.5658368083985696"
+    },
+    {
+      "ref": "BomRef.5018018399525078.003942453591359474"
+    },
+    {
+      "ref": "BomRef.49944954101708794.08700118417931713"
+    },
+    {
+      "ref": "BomRef.4308198717875784.49950812472460626"
+    },
+    {
+      "ref": "BomRef.808599373314762.16122218660229937"
+    },
+    {
+      "ref": "BomRef.5733072346637742.9509005662631009"
+    },
+    {
+      "ref": "BomRef.04578313365502085.9308538363617643"
+    },
+    {
+      "ref": "BomRef.05838749943629706.8030794959398331"
+    },
+    {
+      "ref": "BomRef.7001879481268215.8425002658078171"
+    },
+    {
+      "ref": "BomRef.27710122064764653.9907700707956745"
+    },
+    {
+      "ref": "BomRef.42384375772215444.5151686245640122"
+    },
+    {
+      "ref": "BomRef.7638253696686851.8947189267545205"
+    },
+    {
+      "ref": "BomRef.08443521000223642.8434372554396118"
+    },
+    {
+      "ref": "BomRef.2534394342372849.9941684736745087"
+    },
+    {
+      "ref": "BomRef.3033924528589538.3249394876531908"
+    },
+    {
+      "ref": "BomRef.548829449391157.2156998509180451"
+    },
+    {
+      "ref": "BomRef.5910129723492628.600288143396226"
+    },
+    {
+      "ref": "BomRef.9266284741626983.33593967407510916"
+    },
+    {
+      "ref": "BomRef.9941262965205486.9159418995641276"
+    },
+    {
+      "ref": "BomRef.24528095597168187.7094485215961579"
+    },
+    {
+      "ref": "BomRef.1378091621805384.6384941716951754"
+    },
+    {
+      "ref": "BomRef.5392945154633536.9510198590104554"
+    },
+    {
+      "ref": "BomRef.32476792152523415.6474109819576768"
+    },
+    {
+      "ref": "BomRef.6740042471750934.7076454844581853"
+    },
+    {
+      "ref": "BomRef.7468933347282185.709925867139154"
+    },
+    {
+      "ref": "BomRef.9692796836784988.9894552690116083"
+    },
+    {
+      "ref": "BomRef.20646640307187913.23502577418297488"
+    },
+    {
+      "ref": "BomRef.4874183943223017.6653272391893946"
+    },
+    {
+      "ref": "BomRef.058290880422725344.32318414324892886"
+    },
+    {
+      "ref": "BomRef.5317694199168302.035930696381607174"
+    },
+    {
+      "ref": "BomRef.7134705722488598.523833114031946"
+    },
+    {
+      "ref": "BomRef.10831936570760548.6922927251615545"
+    },
+    {
+      "ref": "BomRef.6116799100643706.7526528454580886"
+    },
+    {
+      "ref": "BomRef.1569646688599522.9542521069754993"
+    },
+    {
+      "ref": "BomRef.23471945898643864.24426529531420715"
+    },
+    {
+      "ref": "BomRef.46747602704226465.494412850306159"
+    },
+    {
+      "ref": "BomRef.036951683061605456.2176136338715282"
+    },
+    {
+      "ref": "BomRef.18538174095329352.22997923702868583"
+    },
+    {
+      "ref": "BomRef.6462236166339065.09047422134031147"
+    },
+    {
+      "ref": "BomRef.44483914294566196.9110990993967099"
+    },
+    {
+      "ref": "BomRef.06685653815821424.5525725710240488"
+    },
+    {
+      "ref": "BomRef.6842290222818962.9336993483355487"
+    },
+    {
+      "ref": "BomRef.06281524358870105.3616337405855078"
+    },
+    {
+      "ref": "BomRef.0026813350694369076.21675420539843615"
+    },
+    {
+      "ref": "BomRef.6738771617171199.8938119935640231"
+    },
+    {
+      "ref": "BomRef.5768743499344227.2939327301959921"
+    },
+    {
+      "ref": "BomRef.9128216199514966.3666240298382122"
+    },
+    {
+      "ref": "BomRef.6345720511990487.8773417106137817"
+    },
+    {
+      "ref": "BomRef.16500693219929852.9400993347256686"
+    },
+    {
+      "ref": "BomRef.05212285652578663.061569161540516615"
+    },
+    {
+      "ref": "BomRef.8974965851441566.8556469152751819"
+    },
+    {
+      "ref": "BomRef.33138178788757.38742690232594057"
+    },
+    {
+      "ref": "BomRef.1825037463787582.08289263776098699"
+    },
+    {
+      "ref": "BomRef.2345259428800044.47323487328131275"
+    },
+    {
+      "ref": "BomRef.4113894977190411.3358589736979112"
+    },
+    {
+      "ref": "BomRef.31664804592617424.2589586215897859"
+    },
+    {
+      "ref": "BomRef.97930867322915.18006604480256339"
+    },
+    {
+      "ref": "BomRef.28688256490844954.10009358942308855"
+    },
+    {
+      "ref": "BomRef.4734192852570889.40208834380915914"
+    },
+    {
+      "ref": "BomRef.4166152524568111.6428137987902149"
+    },
+    {
+      "ref": "BomRef.7212757190909665.834127920436051"
+    },
+    {
+      "ref": "BomRef.3194446665612052.0338642283410564"
+    },
+    {
+      "ref": "BomRef.5554201108487812.11991060427087319"
+    },
+    {
+      "ref": "BomRef.3562064525836236.6757850049715272"
+    },
+    {
+      "ref": "BomRef.08022678955985052.13213044175959132"
+    },
+    {
+      "ref": "BomRef.8823406677470016.4865597928645278"
+    },
+    {
+      "ref": "BomRef.9530055813672981.13040447117823573"
+    },
+    {
+      "ref": "BomRef.08514394091361155.3681320204014952"
+    },
+    {
+      "ref": "BomRef.47736207133181385.2790660957248797"
+    },
+    {
+      "ref": "BomRef.6403381998511685.6012431950859887"
+    },
+    {
+      "ref": "BomRef.18038054857986519.44714832990701214"
+    },
+    {
+      "ref": "BomRef.6535002134903001.7166166062813528"
+    },
+    {
+      "ref": "BomRef.4842130921424519.09181950236439618"
+    },
+    {
+      "ref": "BomRef.5409125680973877.7053002048726527"
+    },
+    {
+      "ref": "BomRef.7876897160161679.9038553940372109"
+    },
+    {
+      "ref": "BomRef.793171381305238.41964904159828675"
+    },
+    {
+      "ref": "BomRef.24156550920187936.7027051662208517"
+    },
+    {
+      "ref": "BomRef.7274290744910186.9722819930413389"
+    },
+    {
+      "ref": "BomRef.3526594729421719.5016254418344287"
+    },
+    {
+      "ref": "BomRef.383279368214149.861585754579893"
+    },
+    {
+      "ref": "BomRef.21441272552516988.8457098779167861"
+    },
+    {
+      "ref": "BomRef.39748543486868293.014688790546322994"
+    },
+    {
+      "ref": "BomRef.027744532765804353.594033659917551"
+    },
+    {
+      "ref": "BomRef.9864645785028565.44696237427412355"
+    },
+    {
+      "ref": "BomRef.47198699991116333.26303733164555787"
+    },
+    {
+      "ref": "BomRef.05581343593450594.8631103500494711"
+    },
+    {
+      "ref": "BomRef.6638710901379311.5686047935317646"
+    },
+    {
+      "ref": "BomRef.004738837764621695.32446072154477734"
+    },
+    {
+      "ref": "BomRef.11303081029271134.7175294877815784"
+    },
+    {
+      "ref": "BomRef.14376886126846966.6696534321750375"
+    },
+    {
+      "ref": "BomRef.7238654749045075.06212449771470907"
+    },
+    {
+      "ref": "BomRef.9819116395932369.9893687339124116"
+    },
+    {
+      "ref": "BomRef.2709178144232005.8435502411183029"
+    },
+    {
+      "ref": "BomRef.9472593650263778.2647228238778735"
+    },
+    {
+      "ref": "BomRef.9484244039175684.8457818699079458"
+    },
+    {
+      "ref": "BomRef.02186814107087709.0063434471946627324"
+    },
+    {
+      "ref": "BomRef.4642140387941377.5615160751387239"
+    },
+    {
+      "ref": "BomRef.7447961314546961.8251934638293564"
+    },
+    {
+      "ref": "BomRef.19341038488587325.1340199446174587"
+    },
+    {
+      "ref": "BomRef.5181389071096462.22246571861166853"
+    },
+    {
+      "ref": "BomRef.805475139876367.6734147161933292"
+    },
+    {
+      "ref": "BomRef.0644662603355588.753304398037872"
+    },
+    {
+      "ref": "BomRef.6501657684269903.4029812449631536"
+    },
+    {
+      "ref": "BomRef.7629278950263186.42184703446141714"
+    },
+    {
+      "ref": "BomRef.8026329079428965.24047214260574679"
+    },
+    {
+      "ref": "BomRef.7554756710321033.5798307394552765"
+    },
+    {
+      "ref": "BomRef.6651591412201213.7470563259650632"
+    },
+    {
+      "ref": "BomRef.043176529312003664.46262643350968324"
+    },
+    {
+      "ref": "BomRef.4066793694659254.8039146403498224"
+    },
+    {
+      "ref": "BomRef.2177033771066167.4364235030159961"
+    },
+    {
+      "ref": "BomRef.007869873326287746.5855771631489229"
+    },
+    {
+      "ref": "BomRef.8721001954504605.11213732189592573"
+    },
+    {
+      "ref": "BomRef.4695259970878508.23093899560730557"
+    },
+    {
+      "ref": "BomRef.0950685250541351.959059768669107"
+    },
+    {
+      "ref": "BomRef.2564485192972885.7924547893557132"
+    },
+    {
+      "ref": "BomRef.9852153654917515.6550093434147131"
+    },
+    {
+      "ref": "BomRef.76270940425491.06349388738659067"
+    },
+    {
+      "ref": "BomRef.9089068172776776.3632719043110558"
+    },
+    {
+      "ref": "BomRef.04987441898731926.6897158651755715"
+    },
+    {
+      "ref": "BomRef.21698389228161674.7337223390140525"
+    },
+    {
+      "ref": "BomRef.3082217160737807.7691395977371386"
+    },
+    {
+      "ref": "BomRef.022361620346601274.8028223403811985"
+    },
+    {
+      "ref": "BomRef.9707920583888735.9998477836387234"
+    },
+    {
+      "ref": "BomRef.7851509125790883.03572285252699858"
+    },
+    {
+      "ref": "BomRef.7471284144851429.1028491098550034"
+    },
+    {
+      "ref": "BomRef.36601391254876947.8123144041254882"
+    },
+    {
+      "ref": "BomRef.9356275023426255.17840206526778246"
+    },
+    {
+      "ref": "BomRef.22090757171780984.44433979385634315"
+    },
+    {
+      "ref": "BomRef.6552725213862601.14947674993802218"
+    },
+    {
+      "ref": "BomRef.8007965836493034.8726590407708"
+    },
+    {
+      "ref": "BomRef.06928380629928377.6999543366884026"
+    },
+    {
+      "ref": "BomRef.8993891264169624.17604926213104055"
+    },
+    {
+      "ref": "BomRef.3369249910824237.2490641292514819"
+    },
+    {
+      "ref": "BomRef.7794967295694206.03693118027543563"
+    },
+    {
+      "ref": "BomRef.9300228255415325.502101005503425"
+    },
+    {
+      "ref": "BomRef.07736943388807704.3934726059569026"
+    },
+    {
+      "ref": "BomRef.9310252665115601.4201071768508181"
+    },
+    {
+      "ref": "BomRef.5396882393578946.049047652117297"
+    },
+    {
+      "ref": "BomRef.342345237138971.0348535308305451"
+    },
+    {
+      "ref": "BomRef.518491159302929.9565867366368328"
+    },
+    {
+      "ref": "BomRef.5958146543942957.2762369298163704"
+    },
+    {
+      "ref": "BomRef.9743631964198237.6435547207755282"
+    },
+    {
+      "ref": "BomRef.07047125608976446.6052249556128276"
+    },
+    {
+      "ref": "BomRef.1880255584675532.2394284024485619"
+    },
+    {
+      "ref": "BomRef.8169142924417236.6934557423099492"
+    },
+    {
+      "ref": "BomRef.8598954125948417.26934727792229785"
+    },
+    {
+      "ref": "BomRef.11535333786699686.6735235391477096"
+    },
+    {
+      "ref": "BomRef.048990187928179996.21792564890951172"
+    },
+    {
+      "ref": "BomRef.38875428360890585.49101430323449446"
+    },
+    {
+      "ref": "BomRef.3379776137606205.6157245615426026"
+    },
+    {
+      "ref": "BomRef.31683069636620775.09939551383373413"
+    },
+    {
+      "ref": "BomRef.8136710275062081.6593413280923783"
+    },
+    {
+      "ref": "BomRef.134372107222424.7184995668824863"
+    },
+    {
+      "ref": "BomRef.651493739962381.9137095706770046"
+    },
+    {
+      "ref": "BomRef.47916956811797584.5443283199195211"
+    },
+    {
+      "ref": "BomRef.22278293932483906.14348216921012902"
+    },
+    {
+      "ref": "BomRef.8041335581285546.9707589180613745"
+    },
+    {
+      "ref": "BomRef.5228296992480148.5937230883367315"
+    },
+    {
+      "ref": "BomRef.15627882760744471.9142137244690255"
+    },
+    {
+      "ref": "BomRef.6604401464486428.488518681040512"
+    },
+    {
+      "ref": "BomRef.02344941625650021.5967918301682817"
+    },
+    {
+      "ref": "BomRef.1356373190515784.6064613941314946"
+    },
+    {
+      "ref": "BomRef.17433295536613258.8550588834237803"
+    },
+    {
+      "ref": "BomRef.13106970114347694.7136446891897016"
+    },
+    {
+      "ref": "BomRef.5011690448051322.42522119884390386"
+    },
+    {
+      "ref": "BomRef.7939705028139502.8300052868475332"
+    },
+    {
+      "ref": "BomRef.7978724240227636.5831203597541158"
+    },
+    {
+      "ref": "BomRef.6485342589243219.12065930644426826"
+    },
+    {
+      "ref": "BomRef.4929935321372545.7618811806992731"
+    },
+    {
+      "ref": "BomRef.5347637873006955.42280429820342624"
+    },
+    {
+      "ref": "BomRef.35042883055634444.4586815355114623"
+    },
+    {
+      "ref": "BomRef.024006570217552592.9922560951399436"
+    },
+    {
+      "ref": "BomRef.9242354169650665.08067734675325167"
+    },
+    {
+      "ref": "BomRef.examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed"
+    },
+    {
+      "ref": "af63bd4c8601b7f1"
+    },
+    {
+      "ref": "os:rhel@9.5"
+    },
+    {
+      "ref": "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&upstream=basesystem-11-13.el9.src.rpm&distro=rhel-9.5&package-id=fcabd006cb3bfe7d"
+    },
+    {
+      "ref": "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&upstream=bash-5.1.8-9.el9.src.rpm&distro=rhel-9.5&package-id=a6062d7253817d9d"
+    },
+    {
+      "ref": "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&upstream=coreutils-8.32-36.el9.src.rpm&distro=rhel-9.5&package-id=bc07797a46d14a80"
+    },
+    {
+      "ref": "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&upstream=filesystem-3.16-5.el9.src.rpm&distro=rhel-9.5&package-id=5423c4a724c69dca"
+    },
+    {
+      "ref": "pkg:rpm/rhel/glibc-common@2.34-125.el9_5.1?arch=x86_64&upstream=glibc-2.34-125.el9_5.1.src.rpm&distro=rhel-9.5&package-id=5d2e03b4ae3e405b"
+    },
+    {
+      "ref": "pkg:rpm/rhel/glibc-minimal-langpack@2.34-125.el9_5.1?arch=x86_64&upstream=glibc-2.34-125.el9_5.1.src.rpm&distro=rhel-9.5&package-id=d35bdd9cfa0b8d62"
+    },
+    {
+      "ref": "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&upstream=glibc-2.34-125.el9_5.1.src.rpm&distro=rhel-9.5&package-id=ab6bbd6d165109d2"
+    },
+    {
+      "ref": "pkg:rpm/rhel/gpg-pubkey@5a6340b3-6229229e?distro=rhel-9.5&package-id=6a4614b48b443e33"
+    },
+    {
+      "ref": "pkg:rpm/rhel/gpg-pubkey@fd431d51-4ae0493b?distro=rhel-9.5&package-id=0b9edfc7dd36b25d"
+    },
+    {
+      "ref": "pkg:rpm/rhel/libacl@2.3.1-4.el9?arch=x86_64&upstream=acl-2.3.1-4.el9.src.rpm&distro=rhel-9.5&package-id=6a12891a28711ed0"
+    },
+    {
+      "ref": "pkg:rpm/rhel/libattr@2.5.1-3.el9?arch=x86_64&upstream=attr-2.5.1-3.el9.src.rpm&distro=rhel-9.5&package-id=246362466b6f01d4"
+    },
+    {
+      "ref": "pkg:rpm/rhel/libcap@2.48-9.el9_2?arch=x86_64&upstream=libcap-2.48-9.el9_2.src.rpm&distro=rhel-9.5&package-id=e129417de8081c72"
+    },
+    {
+      "ref": "pkg:rpm/rhel/libgcc@11.5.0-2.el9?arch=x86_64&upstream=gcc-11.5.0-2.el9.src.rpm&distro=rhel-9.5&package-id=492434936db2f877"
+    },
+    {
+      "ref": "pkg:rpm/rhel/libselinux@3.6-1.el9?arch=x86_64&upstream=libselinux-3.6-1.el9.src.rpm&distro=rhel-9.5&package-id=79db8c526f87ba3b"
+    },
+    {
+      "ref": "pkg:rpm/rhel/libsepol@3.6-1.el9?arch=x86_64&upstream=libsepol-3.6-1.el9.src.rpm&distro=rhel-9.5&package-id=9891839d8f699944"
+    },
+    {
+      "ref": "pkg:rpm/rhel/ncurses-base@6.2-10.20210508.el9?arch=noarch&upstream=ncurses-6.2-10.20210508.el9.src.rpm&distro=rhel-9.5&package-id=a0d19211c8c4589b"
+    },
+    {
+      "ref": "pkg:rpm/rhel/ncurses-libs@6.2-10.20210508.el9?arch=x86_64&upstream=ncurses-6.2-10.20210508.el9.src.rpm&distro=rhel-9.5&package-id=31b40b2b21390159"
+    },
+    {
+      "ref": "pkg:rpm/rhel/pcre2-syntax@10.40-6.el9?arch=noarch&upstream=pcre2-10.40-6.el9.src.rpm&distro=rhel-9.5&package-id=8f3dd37865073b05"
+    },
+    {
+      "ref": "pkg:rpm/rhel/pcre2@10.40-6.el9?arch=x86_64&upstream=pcre2-10.40-6.el9.src.rpm&distro=rhel-9.5&package-id=1a97d50a68b062d7"
+    },
+    {
+      "ref": "pkg:rpm/rhel/redhat-release@9.5-0.6.el9?arch=x86_64&upstream=redhat-release-9.5-0.6.el9.src.rpm&distro=rhel-9.5&package-id=bbf1d165194eceb0"
+    },
+    {
+      "ref": "pkg:rpm/rhel/setup@2.13.7-10.el9?arch=noarch&upstream=setup-2.13.7-10.el9.src.rpm&distro=rhel-9.5&package-id=befa3e6a19701472"
+    },
+    {
+      "ref": "pkg:rpm/rhel/tzdata@2024b-2.el9?arch=noarch&upstream=tzdata-2024b-2.el9.src.rpm&distro=rhel-9.5&package-id=f21803b5b9d9adef"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "BomRef.examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "1"
+        }
+      ],
+      "name": "examplecontainer",
+      "purl": "pkg:oci/examplecontainer@sha256:1?repository_url=quay.io/foobar/examplecontainer",
+      "type": "container",
+      "version": "v10"
+    },
+    "timestamp": "2024-12-18T11:08:00+01:00",
+    "tools": {
+      "components": [
+        {
+          "author": "red hat",
+          "name": "cachi2",
+          "type": "application"
+        },
+        {
+          "author": "anchore",
+          "name": "syft",
+          "type": "application",
+          "version": "1.4.1"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:1d823647-6b64-41b3-a29b-1d09cfb3ba8a",
+  "version": 1,
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "formulation": [
+    {
+      "components": [
+        {
+          "bom-ref": "BomRef.konflux-test-0b947c0ad395438e31ccc30ce44e25bfcbab7446d81698c7723213c42310cca5",
+          "hashes": [
+            {
+              "alg": "SHA-256",
+              "content": "3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c"
+            }
+          ],
+          "name": "konflux-test",
+          "properties": [
+            {
+              "name": "konflux:container:is_builder_image:for_stage",
+              "value": "0"
+            }
+          ],
+          "purl": "pkg:oci/konflux-test@sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c?repository_url=quay.io/redhat-user-workloads/rhtap-integration-tenant/konflux-test",
+          "type": "container",
+          "version": "baf5e59d5d35615d0db13b46bd91194458011af8"
+        },
+        {
+          "bom-ref": "BomRef.tssc-test-6a05578d5701d2e19527b1c4281713be977e8e61384b11586e91130021db804a",
+          "hashes": [
+            {
+              "alg": "SHA-256",
+              "content": "3d8d66fe36f2687ef5a321a42db3c2ee81f2988096af7949768cc9b737a14cde"
+            }
+          ],
+          "name": "tssc-test",
+          "properties": [
+            {
+              "name": "konflux:container:is_base_image",
+              "value": "true"
+            }
+          ],
+          "purl": "pkg:oci/tssc-test@sha256:3d8d66fe36f2687ef5a321a42db3c2ee81f2988096af7949768cc9b737a14cde?repository_url=quay.io/redhat-user-workloads/rhtap-shared-team-tenant/tssc-test",
+          "type": "container",
+          "version": "on-pr-8d06bd154f11dac847df6abe734cb07b38832429"
+        }
+      ]
+    },
+    {
+      "components": [
+        {
+          "bom-ref": "BomRef.ubi9-3dc12a4b157dac850ce6a64801e8ad2fc4211b61c6e9fc80389b19f8c02f4294",
+          "hashes": [
+            {
+              "alg": "SHA-256",
+              "content": "123456789012345678901234567789012"
+            }
+          ],
+          "name": "ubi9",
+          "properties": [
+            {
+              "name": "konflux:container:is_builder_image:additional_builder_image",
+              "value": "script-runner-image"
+            }
+          ],
+          "purl": "pkg:oci/ubi9@sha256:123456789012345678901234567789012?repository_url=quay.io/ubi9",
+          "type": "container",
+          "version": "latest"
+        }
+      ]
+    }
+  ]
+}

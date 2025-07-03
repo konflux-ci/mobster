@@ -1,0 +1,113 @@
+"""A module for generating SBOM documents for OCI images."""
+
+__all__ = ["GenerateOciImageCommand"]
+
+import json
+import logging
+from pathlib import Path
+from typing import Any
+
+from spdx_tools.spdx.jsonschema.document_converter import DocumentConverter
+from spdx_tools.spdx.model.document import Document
+from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
+from spdx_tools.spdx.writer.write_utils import convert
+
+from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
+from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
+from mobster.cmd.generate.oci_image.base_images_dockerfile import (
+    extend_sbom_with_base_images_from_dockerfile,
+)
+from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.cmd.generate.oci_image.spdx_utils import normalize_sbom
+from mobster.image import Image
+from mobster.sbom.merge import merge_sboms
+
+LOGGER = logging.getLogger(__name__)
+
+
+class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
+    """
+    Command to generate an SBOM document for an OCI image.
+    """
+
+    @staticmethod
+    async def _dump_sbom_to_dict(
+        sbom: Document | CycloneDX1BomWrapper,
+    ) -> dict[str, Any]:
+        if isinstance(sbom, Document):
+            return convert(sbom, DocumentConverter())  # type: ignore[no-untyped-call]
+        return sbom.to_dict()
+
+    # pylint: disable=too-many-locals
+    async def execute(self) -> Any:
+        """
+        Generate an SBOM document for OCI image.
+        """
+        LOGGER.debug("Generating SBOM document for OCI image")
+        # Argument parsing
+        syft_boms: list[Path] = self.cli_args.from_syft or []
+        hermeto_bom: Path = self.cli_args.from_hermeto
+        image_pullspec: str = self.cli_args.image_pullspec
+        image_digest: str = self.cli_args.image_digest
+        parsed_dockerfile_path: Path = self.cli_args.parsed_dockerfile_path
+        dockerfile_target_stage: str = self.cli_args.dockerfile_target
+        additional_base_images: list[str] = self.cli_args.additional_base_image or []
+        # contextualize: bool = self.cli_args.contextualize
+        # TODO add contextual SBOM utilities    # pylint: disable=fixme
+        # pylint: enable=fixme
+
+        with open(parsed_dockerfile_path, encoding="utf-8") as parsed_dockerfile_io:
+            parsed_dockerfile = json.load(parsed_dockerfile_io)
+
+        # Initializing the image object
+        image = Image.from_image_index_url_and_digest(image_pullspec, image_digest)
+
+        # Merging Syft & Hermeto SBOMs
+        if len(syft_boms) > 1 or hermeto_bom:
+            merged_sbom_dict = merge_sboms(syft_boms, hermeto_bom)
+        else:
+            # Just one image provided, nothing to merge
+            with open(syft_boms[0], encoding="utf8") as sbom_file:
+                merged_sbom_dict = json.load(sbom_file)
+        sbom: Document | CycloneDX1BomWrapper
+        if merged_sbom_dict.get("bomFormat") == "CycloneDX":
+            sbom = CycloneDX1BomWrapper.from_dict(merged_sbom_dict)
+        elif "spdxVersion" in merged_sbom_dict:
+            await normalize_sbom(merged_sbom_dict)
+            sbom = JsonLikeDictParser().parse(merged_sbom_dict)  # type: ignore[no-untyped-call]
+        else:
+            raise ValueError("Unknown SBOM Format!")
+
+        # Extending with image reference
+        await extend_sbom_with_image_reference(sbom, image, False)
+
+        # Extending with base images references from a dockerfile
+        await extend_sbom_with_base_images_from_dockerfile(
+            sbom, parsed_dockerfile, dockerfile_target_stage
+        )
+
+        # Extending with additional base images
+        for image_ref in additional_base_images:
+            image_object = Image.from_oci_artifact_reference(image_ref)
+            await extend_sbom_with_image_reference(
+                sbom, image_object, is_builder_image=True
+            )
+
+        self._content = await self._dump_sbom_to_dict(sbom)
+        return self._content
+
+    # pylint: enable=too-many-locals
+
+    async def save(self) -> None:
+        """
+        Saves the output of the command either to STDOUT
+        or to a specified file.
+        Returns:
+            bool: Was the save operation successful?
+        """
+        output_file: Path = self.cli_args.output
+        if output_file is None:
+            print(json.dumps(self._content))
+        else:
+            with open(output_file, "w", encoding="utf-8") as write_stram:
+                json.dump(self._content, write_stram)

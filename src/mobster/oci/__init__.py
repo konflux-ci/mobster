@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import platform
+import re
 import tempfile
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -119,7 +120,8 @@ def make_oci_auth_file(
     is provided, tries using ~/.docker/config.json.
 
     Args:
-        reference: Reference to an image in the form registry[:port]/repo@sha256-X.
+        reference: Reference to an image in the form
+            registry[:port]/repo[:tag]@sha256-X.
         auth: Existing docker config.json path.
 
     Yields:
@@ -188,7 +190,10 @@ def _get_auth_subconfig(config: DockerConfig, reference: str) -> DockerConfig:
             }
         )
     """
-    repository, _ = reference.split("@", 1)
+    # Remove digest from the pullspec if present
+    repository = reference.split("@", 1)[0]
+    # Remove tag from the pullspec if present (don't confuse port and a tag)
+    repository = re.sub(r"^(.+):[^/]+$", r"\g<1>", repository)
     # registry is up to the first slash
     registry = repository.split("/", 1)[0]
 
