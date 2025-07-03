@@ -184,8 +184,7 @@ class Image:  # pylint: disable=too-many-instance-attributes
             >>> image("quay.io/org/apache", "sha256:deadbeef").name
             "apache"
         """
-        _, name = self.repository.rsplit("/", 1)
-        return name
+        return self.repository.rsplit("/", 1)[-1]
 
     def purl(self) -> PackageURL:
         """

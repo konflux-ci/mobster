@@ -1,4 +1,5 @@
 import hashlib
+import json
 import random as rand
 from typing import Any
 
@@ -91,3 +92,30 @@ def random_digest() -> str:
     random_bytes = rand.randbytes(32)
     digest_hash = hashlib.sha256(random_bytes).hexdigest()
     return f"sha256:{digest_hash}"
+
+
+@pytest.fixture(scope="session")
+def sample1_parsed_dockerfile() -> dict[str, Any]:
+    with open("tests/data/dockerfiles/sample1/parsed.json") as json_file:
+        return json.load(json_file)
+
+
+@pytest.fixture(scope="session")
+def sample2_parsed_dockerfile() -> dict[str, Any]:
+    with open("tests/data/dockerfiles/sample2/parsed.json") as json_file:
+        return json.load(json_file)
+
+
+@pytest.fixture(scope="session")
+def spdx_sbom_skeleton() -> dict[str, Any]:
+    yield {
+        "spdxVersion": "SPDX-2.3",
+        "dataLicense": "CC0-1.0",
+        "SPDXID": "SPDXRef-DOCUMENT",
+        "name": "foo",
+        "documentNamespace": "https://foo.example.com/bar",
+        "creationInfo": {
+            "created": "1970-01-01T00:00:00Z",
+            "creators": ["Tool: Konflux"],
+        },
+    }
