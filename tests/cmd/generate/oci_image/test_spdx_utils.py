@@ -40,6 +40,7 @@ from mobster.image import Image
         ("Tool: foo", "Tool: foo"),
         ("Person: foo", "Person: foo"),
         ("Organization: foo", "Organization: foo"),
+        ("NOASSERTION", "NOASSERTION"),
     ],
 )
 async def test_normalize_actor(actor: str, expected_output: str) -> None:

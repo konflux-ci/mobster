@@ -33,7 +33,9 @@ async def normalize_actor(actor: str) -> str:
     Returns:
         str: The normalized actor.
     """
-    if not actor.upper().startswith(("TOOL: ", "ORGANIZATION: ", "PERSON: ")):
+    if not actor.upper().startswith(
+        ("TOOL: ", "ORGANIZATION: ", "PERSON: ", "NOASSERTION")
+    ):
         return "Tool: " + actor
     return actor
 
