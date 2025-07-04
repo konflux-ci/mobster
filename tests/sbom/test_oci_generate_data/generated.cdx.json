@@ -1,11 +1,6 @@
 {
   "components": [
     {
-      "bom-ref": "af63bd4c8601b7f1",
-      "name": ".",
-      "type": "file"
-    },
-    {
       "bom-ref": "BomRef.809102356021671.6887464804280965",
       "name": "@types/prop-types",
       "properties": [

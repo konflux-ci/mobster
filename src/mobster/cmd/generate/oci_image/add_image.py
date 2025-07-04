@@ -47,7 +47,12 @@ async def update_component_in_cyclonedx_sbom(
         )
     else:
         # Add the image component to the SBOM as the root element
-        if sbom_wrapped.sbom.metadata.component:
+        if (
+            (root_component := sbom_wrapped.sbom.metadata.component)
+            and root_component.name
+            and not root_component.name.startswith((".", "/"))
+        ):
+            # Backup old root element if it isn't a virtual component
             sbom_wrapped.sbom.components.add(sbom_wrapped.sbom.metadata.component)
         sbom_wrapped.sbom.metadata.component = image_component
 
