@@ -13,6 +13,7 @@ from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrappe
 from mobster.cmd.generate.oci_image.spdx_utils import (
     BUILDER_IMAGE_PROPERTY,
     update_package_in_spdx_sbom,
+    update_sbom_name_and_namespace,
 )
 from mobster.image import Image
 from mobster.sbom.cyclonedx import get_component
@@ -73,3 +74,5 @@ async def extend_sbom_with_image_reference(
         await update_component_in_cyclonedx_sbom(sbom, image, is_builder_image)
     elif isinstance(sbom, Document):
         await update_package_in_spdx_sbom(sbom, image, is_builder_image)
+        if not is_builder_image:
+            await update_sbom_name_and_namespace(sbom, image)

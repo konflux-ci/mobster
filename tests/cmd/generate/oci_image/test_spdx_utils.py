@@ -85,7 +85,8 @@ async def test_normalize_package(
                 "SPDXID": "SPDXRef-DOCUMENT",
                 "dataLicense": "CC0-1.0",
                 "spdxVersion": "SPDX-2.3",
-                "documentNamespace": "https://konflux-ci.dev/spdx/1",
+                "documentNamespace": "https://konflux-ci.dev/spdxdocs/"
+                "MOBSTER:UNFILLED_NAME (please update this field)-1",
                 "name": "MOBSTER:UNFILLED_NAME (please update this field)",
                 "creationInfo": {
                     "created": "1970-01-01T00:00:00Z",
@@ -102,13 +103,13 @@ async def test_normalize_package(
         )
     ],
 )
-@patch("mobster.cmd.generate.oci_image.spdx_utils.uuid")
+@patch("mobster.sbom.spdx.uuid4")
 async def test_normalize_sbom(
     mock_uuid: MagicMock,
     input_sbom_dict: dict[str, Any],
     expected_sbom_dict: dict[str, Any],
 ) -> None:
-    mock_uuid.uuid4.return_value = 1
+    mock_uuid.return_value = 1
     sbom_dict = input_sbom_dict.copy()
     await normalize_sbom(sbom_dict)
     assert sbom_dict == expected_sbom_dict
