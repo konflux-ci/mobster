@@ -16,6 +16,7 @@ from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
 from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     extend_sbom_with_base_images_from_dockerfile,
+    get_digest_for_image_ref,
 )
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.spdx_utils import normalize_sbom
@@ -47,16 +48,13 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         # Argument parsing
         syft_boms: list[Path] = self.cli_args.from_syft
         hermeto_bom: Path | None = self.cli_args.from_hermeto
-        image_pullspec: str = self.cli_args.image_pullspec
-        image_digest: str = self.cli_args.image_digest
+        image_pullspec: str | None = self.cli_args.image_pullspec
+        image_digest: str | None = self.cli_args.image_digest
         parsed_dockerfile_path: Path | None = self.cli_args.parsed_dockerfile_path
         dockerfile_target_stage: str | None = self.cli_args.dockerfile_target
         additional_base_images: list[str] = self.cli_args.additional_base_image
         # contextualize: bool = self.cli_args.contextualize
         # TODO add contextual SBOM utilities    # pylint: disable=fixme
-
-        # Initializing the image object
-        image = Image.from_image_index_url_and_digest(image_pullspec, image_digest)
 
         # Merging Syft & Hermeto SBOMs
         if len(syft_boms) > 1 or hermeto_bom:
@@ -66,6 +64,8 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             with open(syft_boms[0], encoding="utf8") as sbom_file:
                 merged_sbom_dict = json.load(sbom_file)
         sbom: Document | CycloneDX1BomWrapper
+
+        # Parsing into objects
         if merged_sbom_dict.get("bomFormat") == "CycloneDX":
             sbom = CycloneDX1BomWrapper.from_dict(merged_sbom_dict)
         elif "spdxVersion" in merged_sbom_dict:
@@ -75,7 +75,24 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             raise ValueError("Unknown SBOM Format!")
 
         # Extending with image reference
-        await extend_sbom_with_image_reference(sbom, image, False)
+        if image_pullspec:
+            if not image_digest:
+                LOGGER.info(
+                    "Provided pullspec but not digest."
+                    " Resolving the digest using oras..."
+                )
+                image_digest = await get_digest_for_image_ref(image_pullspec)
+            if not image_digest:
+                raise ValueError(
+                    "No value for image digest was provided "
+                    "and the image is not visible to oras!"
+                )
+            image = Image.from_image_index_url_and_digest(image_pullspec, image_digest)
+            await extend_sbom_with_image_reference(sbom, image, False)
+        elif image_digest:
+            LOGGER.warning(
+                "Provided image digest but no pullspec. The digest value is ignored."
+            )
 
         # Extending with base images references from a dockerfile
         if parsed_dockerfile_path:
