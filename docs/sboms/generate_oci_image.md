@@ -36,7 +36,7 @@ mobster --verbose  generate oci-image \
 
 ## List of arguments
 - `--from-syft` -- must be present at least once, points to an SBOM file (in a JSON format) created by Syft
-- `--from-hermeto` --  optionally points to an SBOM file (in a JSON format) created by Hermeto
+- `--from-hermeto` -- points to an SBOM file (in a JSON format) created by Hermeto
 - `--image-pullspec` -- the pullspec of the image processed in the format `<registry>/<repository>:<tag>`
 - `--image-digest` -- the digest of the image processed in the format `sha256:<digest value>`
 - `--parsed-dockerfile-path` -- points to a dockerfile processed by `dockerfile-json`
@@ -45,4 +45,3 @@ mobster --verbose  generate oci-image \
   expects the format `<registry>/<repository>:<tag>@sha256:<digest value>`
 - `--contextualize` -- NOT IMPLEMENTED YET
 - `--output` -- where to save the SBOM. prints it to STDOUT if this is not specified
-- 

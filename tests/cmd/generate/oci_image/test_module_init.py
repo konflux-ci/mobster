@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, patch
+from typing import Any, Literal
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -152,6 +152,82 @@ async def test_GenerateOciImageCommand_execute(
         return compare_cdx_sbom_dicts(actual, expected)
 
     compare_sbom_dicts(await command.execute(), expected_sbom)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ["pullspec", "digest", "oras_response", "expected_action"],
+    [
+        ("foo:v1", "sha256:1", None, "run"),
+        ("foo:v1", None, "sha256:1", "ask-oras"),
+        (None, None, None, "nothing"),
+        (None, "sha256:1", None, "warning"),
+        ("foo:v1", None, None, "error"),
+    ],
+)
+@patch("mobster.cmd.generate.oci_image.LOGGER")
+@patch("mobster.cmd.generate.oci_image.json")
+@patch("mobster.cmd.generate.oci_image.extend_sbom_with_image_reference")
+@patch("mobster.cmd.generate.oci_image.get_digest_for_image_ref")
+@patch("mobster.cmd.generate.oci_image.open")
+async def test_GenerateOciImageCommand_execute_handle_pullspec(
+    mock_open: MagicMock,
+    mock_get_digest: AsyncMock,
+    mock_extend_sbom: AsyncMock,
+    mock_json: MagicMock,
+    mock_logger: MagicMock,
+    pullspec: str | None,
+    digest: str | None,
+    oras_response: str | None,
+    expected_action: Literal["run", "warning", "error", "nothing", "ask-oras"],
+) -> None:
+    mock_json.load.return_value = {"spdxVersion": "SPDX-2.3"}
+    mock_get_digest.return_value = oras_response
+
+    args = MagicMock()
+    args.from_syft = [Path("foo")]
+    args.from_hermeto = None
+    args.image_pullspec = pullspec
+    args.image_digest = digest
+    args.parsed_dockerfile_path = None
+    args.dockerfile_target = None
+    args.additional_base_image = []
+    command = GenerateOciImageCommand(args)
+    if expected_action == "error":
+        with pytest.raises(ValueError):
+            await command.execute()
+    else:
+        await command.execute()
+        if expected_action == "nothing":
+            mock_extend_sbom.assert_not_awaited()
+            return
+        if expected_action == "warning":
+            mock_logger.warning.assert_called_once()
+            return
+        if expected_action == "ask-oras":
+            mock_get_digest.assert_awaited_once()
+
+        mock_extend_sbom.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.generate.oci_image.open")
+@patch("mobster.cmd.generate.oci_image.json")
+async def test_GenerateOciImageCommand_execute_unknown_sbom(
+    mock_json: MagicMock, mock_open: MagicMock
+) -> None:
+    args = MagicMock()
+    mock_json.load.return_value = {"foo": "bar"}
+    args.from_syft = [Path("foo")]
+    args.from_hermeto = None
+    args.image_pullspec = None
+    args.image_digest = None
+    args.parsed_dockerfile_path = None
+    args.dockerfile_target = None
+    args.additional_base_image = []
+    command = GenerateOciImageCommand(args)
+    with pytest.raises(ValueError):
+        await command.execute()
 
 
 @pytest.mark.asyncio
