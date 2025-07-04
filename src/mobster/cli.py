@@ -70,8 +70,10 @@ def generate_oci_image_parser(subparsers: Any) -> None:
     """
 
     def validated_digest(value: str) -> str:
-        assert value.startswith("sha256:"), "The digest must start with 'sha256:'!"
-        return value
+        assert re.match(r"^sha256:[0-9a-f]{32}$", value, re.IGNORECASE), (
+            "The digest must start with 'sha256:' and contain 32 hexa symbols!"
+        )
+        return value.lower()
 
     def validated_pullspec(value: str) -> str:
         assert ":" in value and not value.startswith(":") and not value.endswith(":"), (
@@ -127,6 +129,7 @@ def generate_oci_image_parser(subparsers: Any) -> None:
         "--additional-base-image",
         type=validated_additional_reference,
         action="append",
+        default=[],
         help="Base (builder) image to add, can be specified multiple times. "
         "Expects the format <registry>/<repository>:<tag>@sha256:<digest value>",
     )
@@ -135,13 +138,6 @@ def generate_oci_image_parser(subparsers: Any) -> None:
         action="store_true",
         help="Contextualize the SBOM",
         default=False,
-    )
-    oci_image_parser.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        default=None,
-        help="Specifies the Output file. If omitted, defaults to STDOUT.",
     )
     oci_image_parser.set_defaults(func=oci_image.GenerateOciImageCommand)
 

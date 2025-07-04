@@ -38,26 +38,22 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             return convert(sbom, DocumentConverter())  # type: ignore[no-untyped-call]
         return sbom.to_dict()
 
-    # pylint: disable=too-many-locals
     async def execute(self) -> Any:
         """
         Generate an SBOM document for OCI image.
         """
+        # pylint: disable=too-many-locals
         LOGGER.debug("Generating SBOM document for OCI image")
         # Argument parsing
-        syft_boms: list[Path] = self.cli_args.from_syft or []
-        hermeto_bom: Path = self.cli_args.from_hermeto
+        syft_boms: list[Path] = self.cli_args.from_syft
+        hermeto_bom: Path | None = self.cli_args.from_hermeto
         image_pullspec: str = self.cli_args.image_pullspec
         image_digest: str = self.cli_args.image_digest
-        parsed_dockerfile_path: Path = self.cli_args.parsed_dockerfile_path
-        dockerfile_target_stage: str = self.cli_args.dockerfile_target
-        additional_base_images: list[str] = self.cli_args.additional_base_image or []
+        parsed_dockerfile_path: Path | None = self.cli_args.parsed_dockerfile_path
+        dockerfile_target_stage: str | None = self.cli_args.dockerfile_target
+        additional_base_images: list[str] = self.cli_args.additional_base_image
         # contextualize: bool = self.cli_args.contextualize
         # TODO add contextual SBOM utilities    # pylint: disable=fixme
-        # pylint: enable=fixme
-
-        with open(parsed_dockerfile_path, encoding="utf-8") as parsed_dockerfile_io:
-            parsed_dockerfile = json.load(parsed_dockerfile_io)
 
         # Initializing the image object
         image = Image.from_image_index_url_and_digest(image_pullspec, image_digest)
@@ -82,9 +78,12 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         await extend_sbom_with_image_reference(sbom, image, False)
 
         # Extending with base images references from a dockerfile
-        await extend_sbom_with_base_images_from_dockerfile(
-            sbom, parsed_dockerfile, dockerfile_target_stage
-        )
+        if parsed_dockerfile_path:
+            with open(parsed_dockerfile_path, encoding="utf-8") as parsed_dockerfile_io:
+                parsed_dockerfile = json.load(parsed_dockerfile_io)
+            await extend_sbom_with_base_images_from_dockerfile(
+                sbom, parsed_dockerfile, dockerfile_target_stage
+            )
 
         # Extending with additional base images
         for image_ref in additional_base_images:
@@ -95,8 +94,6 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         self._content = await self._dump_sbom_to_dict(sbom)
         return self._content
-
-    # pylint: enable=too-many-locals
 
     async def save(self) -> None:
         """

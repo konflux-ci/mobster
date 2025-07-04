@@ -91,6 +91,37 @@ async def get_base_images_refs_from_dockerfile(
     return base_images_pullspecs
 
 
+async def get_digest_for_image_ref(image_ref: str) -> str | None:
+    """
+    Fetches the digest of a pullspec using oras.
+    Args:
+        image_ref (str): The pullspec
+
+    Returns:
+        str | None: The digest if fetched correctly. None otherwise.
+    """
+    with make_oci_auth_file(image_ref) as auth_file:
+        code, stdout, stderr = await run_async_subprocess(
+            [
+                "oras",
+                "resolve",
+                "--registry-config",
+                str(auth_file),
+                f"{image_ref}",
+            ],
+        )
+        if (not code) and stdout:
+            return stdout.decode().strip()
+        LOGGER.warning(
+            "Problem getting digest of a base image '%s' by oras. "
+            "Got digest: '%s' and STDERR: %s",
+            image_ref,
+            stdout.decode(),
+            stderr.decode(),
+        )
+        return None
+
+
 async def get_objects_for_base_images(
     base_images_refs: list[str | None],
 ) -> dict[str, Image]:
@@ -102,55 +133,19 @@ async def get_objects_for_base_images(
     Returns:
         dict[str, Image]: Mapping of pullspecs and their image objects
     """
-    # pylint: disable=fixme
-    # TODO: IS THIS CORRECT? ARE WE GUARANTEED TO PULL THE CORRECT IMAGE?
-    # other possibility would be to require a file to parse from a previous
-    # step of the pipelines
-    # pylint: enable=fixme
     image_objects = {}
     for image_ref in base_images_refs:
         if not image_ref:
             # Skips the "scratch" image
             continue
-        with make_oci_auth_file(image_ref) as auth_file:
-            LOGGER.debug("Pulling image for buildah: '%s'", image_ref)
-            # We expect that the image is built in a different pipeline stage
-            # so we pull the image before trying to resolve it locally
-            code, _, stderr = await run_async_subprocess(
-                ["buildah", "pull", image_ref],
-                env={"DOCKER_CONFIG": str(auth_file.parent)},
+        if image_ref in image_objects:
+            # Already resolved ref
+            continue
+        digest = await get_digest_for_image_ref(image_ref)
+        if digest:
+            image_objects[image_ref] = Image.from_image_index_url_and_digest(
+                image_ref, digest
             )
-            if code:
-                LOGGER.warning(
-                    "Unable to pull image for buildah: '%s'. Process STDERR:\n%s",
-                    image_ref,
-                    stderr.decode(),
-                )
-                continue
-            code, stdout, stderr = await run_async_subprocess(
-                [
-                    "buildah",
-                    "images",
-                    "--format",
-                    "{{ .Digest }}",
-                    "--filter",
-                    f"reference={image_ref}",
-                ],
-                env={"DOCKER_CONFIG": str(auth_file.parent)},
-            )
-            if (not code) and stdout:
-                image_objects[image_ref] = Image.from_image_index_url_and_digest(
-                    image_ref, stdout.decode().strip()
-                )
-
-            else:
-                LOGGER.warning(
-                    "Problem getting digest of a base image '%s' by buildah. "
-                    "Got digest: '%s' and STDERR: %s",
-                    image_ref,
-                    stdout.decode(),
-                    stderr.decode(),
-                )
     return image_objects
 
 

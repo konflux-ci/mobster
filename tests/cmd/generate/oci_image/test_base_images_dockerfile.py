@@ -1,4 +1,5 @@
 import datetime
+from hashlib import sha256
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -109,10 +110,7 @@ async def test_get_base_images_refs_from_dockerfile(
     [
         "base_images_refs",
         "expected_outcome",
-        "buildah_pull_stdout",
-        "buildah_pull_stderr",
-        "buildah_images_stdout",
-        "buildah_images_stderr",
+        "oras_stderr",
     ],
     [
         (
@@ -120,40 +118,27 @@ async def test_get_base_images_refs_from_dockerfile(
                 "registry.access.redhat.com/ubi8/ubi:latest",
                 "alpine:3.10",
                 None,
+                "registry.access.redhat.com/ubi8/ubi:latest",
             ],
             {
                 "alpine:3.10": Image.from_image_index_url_and_digest(
-                    "alpine:3.10", "sha256:1"
+                    "alpine:3.10",
+                    "sha256:ef437a97b47a6c00ea884fa314df3e05d542e14ef999c344e394808c2b7035d9",
                 ),
                 "registry.access.redhat.com/ubi8/ubi"
                 ":latest": Image.from_image_index_url_and_digest(
-                    "registry.access.redhat.com/ubi8/ubi:latest", "sha256:1"
+                    "registry.access.redhat.com/ubi8/ubi:latest",
+                    "sha256:f75e57db5cbc53b37a8b33a0b0b084782ddae260220d9dd8cc968eab4d579062",
                 ),
             },
             b"",
-            b"",
-            b"sha256:1\n",
-            b"",
         ),
         (
             [
                 "registry.access.redhat.com/ubi8/ubi:latest",
             ],
             {},
-            b"",
-            b"Cannot pull the image I guess.",
-            b"",
-            b"",
-        ),
-        (
-            [
-                "registry.access.redhat.com/ubi8/ubi:latest",
-            ],
-            {},
-            b"",
-            b"",
-            b"",
-            b"Cannot find the image locally I guess.",
+            b"Uh oh, error I guess.",
         ),
     ],
 )
@@ -168,34 +153,21 @@ async def test_get_objects_for_base_images(
     mock_run_async_subprocess: AsyncMock,
     base_images_refs: list[str],
     expected_outcome: dict[str, Image],
-    buildah_pull_stdout: bytes,
-    buildah_pull_stderr: bytes,
-    buildah_images_stdout: bytes,
-    buildah_images_stderr: bytes,
+    oras_stderr: bytes,
 ) -> None:
     def mocked_subprocess_calling(*args, **_) -> tuple[int, bytes, bytes]:
-        if args[0][1] == "pull":
-            return (
-                (int(bool(buildah_pull_stderr))),
-                buildah_pull_stdout,
-                buildah_pull_stderr,
-            )
-        elif args[0][1] == "images":
-            return (
-                (int(bool(buildah_images_stderr))),
-                buildah_images_stdout,
-                buildah_images_stderr,
-            )
+        digest = f"sha256:{sha256(args[0][-1].encode()).hexdigest()}\n".encode()
+        return (
+            (int(bool(oras_stderr))),
+            digest,
+            oras_stderr,
+        )
 
     mock_run_async_subprocess.side_effect = mocked_subprocess_calling
 
     assert await get_objects_for_base_images(base_images_refs) == expected_outcome
-    if buildah_pull_stderr:
-        assert any(
-            args[0].startswith("Unable to pull")
-            for args in mock_logger.warning.call_args
-        )
-    if buildah_images_stderr:
+
+    if oras_stderr:
         assert any(
             args[0].startswith("Problem getting digest of a base image")
             for args in mock_logger.warning.call_args

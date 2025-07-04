@@ -1,24 +1,20 @@
 """SPDX-2.X utilities for the generate oci-image target"""
 
 import json
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
-from spdx_tools.spdx.model.checksum import Checksum, ChecksumAlgorithm
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import (
-    ExternalPackageRef,
-    ExternalPackageRefCategory,
     Package,
 )
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
 from mobster import get_mobster_version
 from mobster.image import Image
-from mobster.sbom.spdx import get_package
+from mobster.sbom.spdx import get_image_package, get_namespace
 
 BUILDER_IMAGE_PROPERTY = {
     "name": "konflux:container:is_builder_image:additional_builder_image",
@@ -76,10 +72,10 @@ async def normalize_sbom(sbom: dict[str, Any]) -> None:
         sbom["dataLicense"] = "CC0-1.0"
     if "spdxVersion" not in sbom:
         sbom["spdxVersion"] = "SPDX-2.3"
-    if "documentNamespace" not in sbom:
-        sbom["documentNamespace"] = f"https://konflux-ci.dev/spdx/{uuid.uuid4()}"
     if "name" not in sbom:
         sbom["name"] = "MOBSTER:UNFILLED_NAME (please update this field)"
+    if "documentNamespace" not in sbom:
+        sbom["documentNamespace"] = get_namespace(sbom["name"])
 
     creation_info = sbom.get("creationInfo", {})
     if "created" not in creation_info:
@@ -93,6 +89,22 @@ async def normalize_sbom(sbom: dict[str, Any]) -> None:
 
     for package in sbom.get("packages", []):
         await normalize_package(package)
+
+
+async def update_sbom_name_and_namespace(sbom: Document, image: Image) -> None:
+    """
+    Update the SBOM name with the image reference in the format 'repository@digest'.
+    Also update its namespace using the same value and Konflux URL.
+    Args:
+        sbom (spdx_tools.spdx.model.document.Document): The SBOM
+        image (Image): The main image
+
+    Returns:
+        None: Nothing, changes are performed in-place.
+    """
+    name = f"{image.repository}@{image.digest}"
+    sbom.creation_info.name = name
+    sbom.creation_info.document_namespace = get_namespace(name)
 
 
 async def find_spdx_root_relationships(sbom: Document) -> list[Relationship]:
@@ -124,16 +136,19 @@ async def find_spdx_root_packages_spdxid(sbom_doc: Document) -> list[str]:
         sbom_doc (spdx_tools.spdx.model.document.Document): The SBOM
 
     Returns:
-        str: The SPDXID of the root package
+        list[str]: The SPDXID of the root package
     """
-    spdx_ids = []
+    spdx_ids = set()
     root_relationships = await find_spdx_root_relationships(sbom_doc)
     for root_relationship in root_relationships:
-        if root_relationship.relationship_type is RelationshipType.DESCRIBES:
-            spdx_ids.append(root_relationship.related_spdx_element_id)
-        else:
-            spdx_ids.append(root_relationship.spdx_element_id)
-    return spdx_ids  # type: ignore[return-value]
+        if (
+            root_relationship.relationship_type is RelationshipType.DESCRIBES
+            and isinstance(root_relationship.related_spdx_element_id, str)
+        ):
+            spdx_ids.add(root_relationship.related_spdx_element_id)
+        elif isinstance(root_relationship.spdx_element_id, str):
+            spdx_ids.add(root_relationship.spdx_element_id)
+    return list(spdx_ids)
 
 
 async def find_spdx_root_packages(sbom: Document) -> list[Package]:
@@ -143,7 +158,7 @@ async def find_spdx_root_packages(sbom: Document) -> list[Package]:
         sbom (spdx_tools.spdx.model.document.Document): The SBOM
 
     Returns:
-        spdx_tools.spdx.model.package.Package: The root package
+        list[spdx_tools.spdx.model.package.Package]: The root package
     """
     packages = []
     root_spdxids = set(await find_spdx_root_packages_spdxid(sbom))
@@ -267,24 +282,7 @@ async def update_package_in_spdx_sbom(
     Returns:
         dict: Updated SBOM with the image reference added.
     """
-    package = get_package(
-        spdx_id=image.propose_spdx_id(),
-        name=image.name,
-        version=image.tag,
-        external_refs=[
-            ExternalPackageRef(
-                category=ExternalPackageRefCategory.PACKAGE_MANAGER,
-                reference_type="purl",
-                locator=image.purl().to_string(),
-            )
-        ],
-        checksums=[
-            Checksum(
-                algorithm=getattr(ChecksumAlgorithm, image.digest_algo.upper()),
-                value=image.digest_hex_val,
-            )
-        ],
-    )
+    package = get_image_package(image, image.propose_spdx_id())
 
     sbom.packages.insert(0, package)
     if is_builder_image:

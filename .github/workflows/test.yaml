@@ -25,11 +25,12 @@ jobs:
         run: |
           poetry install --no-interaction --no-root
 
-      - name: Install Hadolint via Brew
+      - name: Install Hadolint and Oras via Brew
         run: |
           NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          /home/linuxbrew/.linuxbrew/bin/brew install hadolint
+          /home/linuxbrew/.linuxbrew/bin/brew install hadolint oras
           sudo ln -s /home/linuxbrew/.linuxbrew/bin/hadolint /usr/bin/
+          sudo ln -s /home/linuxbrew/.linuxbrew/bin/oras /usr/bin/
 
       - name: Run Tests
         run: |
