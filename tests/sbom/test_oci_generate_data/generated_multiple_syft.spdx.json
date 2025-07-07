@@ -4,28 +4,29 @@
     "created": "2024-12-18T11:28:00Z",
     "creators": [
       "Organization: Anchore, Inc",
-      "Tool: syft-1.4.1"
+      "Tool: syft-1.4.1",
+      "Tool: Mobster-0.4.0"
     ],
     "licenseListVersion": "3.23"
   },
   "dataLicense": "CC0-1.0",
-  "name": ".",
+  "name": "quay.io/foobar/examplecontainer@sha256:11111111111111111111111111111111",
   "spdxVersion": "SPDX-2.3",
-  "documentNamespace": "https://anchore.com/syft/dir/syft-sboms-b66779b6-6e20-4128-9fad-da28250a1b82",
+  "documentNamespace": "https://konflux-ci.dev/spdxdocs/quay.io/foobar/examplecontainer@sha256:11111111111111111111111111111111-5cab6b74-c196-4300-a1ee-dab4c9b7572d",
   "packages": [
     {
-      "SPDXID": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
+      "SPDXID": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "1"
+          "checksumValue": "11111111111111111111111111111111"
         }
       ],
       "downloadLocation": "NOASSERTION",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE_MANAGER",
-          "referenceLocator": "pkg:oci/examplecontainer@sha256:1?repository_url=quay.io/foobar/examplecontainer",
+          "referenceLocator": "pkg:oci/examplecontainer@sha256:11111111111111111111111111111111?repository_url=quay.io/foobar/examplecontainer",
           "referenceType": "purl"
         }
       ],
@@ -56,7 +57,7 @@
       "licenseDeclared": "NOASSERTION",
       "name": "certifi",
       "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
-      "supplier": "Tool: NOASSERTION",
+      "supplier": "NOASSERTION",
       "versionInfo": "2022.12.7"
     },
     {
@@ -235,7 +236,7 @@
       "licenseDeclared": "NOASSERTION",
       "name": "charset-normalizer",
       "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
-      "supplier": "Tool: NOASSERTION",
+      "supplier": "NOASSERTION",
       "versionInfo": "3.0.1"
     },
     {
@@ -414,7 +415,7 @@
       "licenseDeclared": "NOASSERTION",
       "name": "flit-core",
       "sourceInfo": "acquired package info from installed python package manifest file: /requirements-build.txt",
-      "supplier": "Tool: NOASSERTION",
+      "supplier": "NOASSERTION",
       "versionInfo": "3.8.0"
     },
     {
@@ -493,7 +494,7 @@
       "licenseDeclared": "NOASSERTION",
       "name": "idna",
       "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
-      "supplier": "Tool: NOASSERTION",
+      "supplier": "NOASSERTION",
       "versionInfo": "3.4"
     },
     {
@@ -517,7 +518,7 @@
       "licenseDeclared": "NOASSERTION",
       "name": "requests",
       "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
-      "supplier": "Tool: NOASSERTION",
+      "supplier": "NOASSERTION",
       "versionInfo": "2.28.2"
     },
     {
@@ -541,7 +542,7 @@
       "licenseDeclared": "NOASSERTION",
       "name": "setuptools",
       "sourceInfo": "acquired package info from installed python package manifest file: /requirements-build.txt",
-      "supplier": "Tool: NOASSERTION",
+      "supplier": "NOASSERTION",
       "versionInfo": "67.1.0"
     },
     {
@@ -565,7 +566,7 @@
       "licenseDeclared": "NOASSERTION",
       "name": "urllib3",
       "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
-      "supplier": "Tool: NOASSERTION",
+      "supplier": "NOASSERTION",
       "versionInfo": "1.26.14"
     },
     {
@@ -644,7 +645,7 @@
       "licenseDeclared": "NOASSERTION",
       "name": "wheel",
       "sourceInfo": "acquired package info from installed python package manifest file: /requirements-build.txt",
-      "supplier": "Tool: NOASSERTION",
+      "supplier": "NOASSERTION",
       "versionInfo": "0.38.4"
     },
     {
@@ -1025,7 +1026,7 @@
       "licenseDeclared": "LicenseRef-pubkey",
       "name": "gpg-pubkey",
       "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
-      "supplier": "Tool: NOASSERTION",
+      "supplier": "NOASSERTION",
       "versionInfo": "5a6340b3-6229229e"
     },
     {
@@ -1074,7 +1075,7 @@
       "licenseDeclared": "LicenseRef-pubkey",
       "name": "gpg-pubkey",
       "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
-      "supplier": "Tool: NOASSERTION",
+      "supplier": "NOASSERTION",
       "versionInfo": "fd431d51-4ae0493b"
     },
     {
@@ -1637,17 +1638,17 @@
       "licenseDeclared": "NOASSERTION",
       "name": "registry.access.redhat.com/ubi9/ubi-micro",
       "primaryPackagePurpose": "CONTAINER",
-      "supplier": "Tool: NOASSERTION",
+      "supplier": "NOASSERTION",
       "versionInfo": "9.5"
     },
     {
       "SPDXID": "SPDXRef-image-konflux-test-0b947c0ad395438e31ccc30ce44e25bfcbab7446d81698c7723213c42310cca5",
       "annotations": [
         {
-          "annotationDate": "2025-07-03T09:12:16Z",
+          "annotationDate": "2025-07-07T10:22:38Z",
           "annotationType": "OTHER",
           "annotator": "Tool: konflux:jsonencoded",
-          "comment": "{\"name\":\"konflux:container:is_builder_image:for_stage\",\"value\":\"0\"}"
+          "comment": "{\"name\":\"konflux:container:is_base_image\",\"value\":\"true\"}"
         }
       ],
       "checksums": [
@@ -1669,76 +1670,46 @@
       "name": "konflux-test",
       "supplier": "Organization: Red Hat",
       "versionInfo": "baf5e59d5d35615d0db13b46bd91194458011af8"
-    },
-    {
-      "SPDXID": "SPDXRef-image-tssc-test-6a05578d5701d2e19527b1c4281713be977e8e61384b11586e91130021db804a",
-      "annotations": [
-        {
-          "annotationDate": "2025-07-03T09:12:16Z",
-          "annotationType": "OTHER",
-          "annotator": "Tool: konflux:jsonencoded",
-          "comment": "{\"name\":\"konflux:container:is_base_image\",\"value\":\"true\"}"
-        }
-      ],
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "3d8d66fe36f2687ef5a321a42db3c2ee81f2988096af7949768cc9b737a14cde"
-        }
-      ],
-      "downloadLocation": "NOASSERTION",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE_MANAGER",
-          "referenceLocator": "pkg:oci/tssc-test@sha256:3d8d66fe36f2687ef5a321a42db3c2ee81f2988096af7949768cc9b737a14cde?repository_url=quay.io/redhat-user-workloads/rhtap-shared-team-tenant/tssc-test",
-          "referenceType": "purl"
-        }
-      ],
-      "filesAnalyzed": false,
-      "licenseDeclared": "NOASSERTION",
-      "name": "tssc-test",
-      "supplier": "Organization: Red Hat",
-      "versionInfo": "on-pr-8d06bd154f11dac847df6abe734cb07b38832429"
     }
   ],
   "relationships": [
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
       "relatedSpdxElement": "SPDXRef-Package-python-certifi-605ce44010623730",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
       "relatedSpdxElement": "SPDXRef-Package-python-charset-normalizer-af8ef9b528d1324d",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
       "relatedSpdxElement": "SPDXRef-Package-python-flit-core-24f242ce07794d00",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
       "relatedSpdxElement": "SPDXRef-Package-python-idna-ff5d4caf61299680",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
       "relatedSpdxElement": "SPDXRef-Package-python-requests-03176f57fdf54d1e",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
       "relatedSpdxElement": "SPDXRef-Package-python-setuptools-7ae302e7223ecbbd",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
       "relatedSpdxElement": "SPDXRef-Package-python-urllib3-531a10a07587b59c",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
       "relatedSpdxElement": "SPDXRef-Package-python-wheel-3a9d5577afa1b279",
       "relationshipType": "CONTAINS"
     },
@@ -1853,23 +1824,18 @@
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
       "relatedSpdxElement": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
       "relationshipType": "CONTAINS"
     },
     {
       "spdxElementId": "SPDXRef-DOCUMENT",
-      "relatedSpdxElement": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
+      "relatedSpdxElement": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
       "relationshipType": "DESCRIBES"
     },
     {
-      "spdxElementId": "SPDXRef-image-konflux-test-0b947c0ad395438e31ccc30ce44e25bfcbab7446d81698c7723213c42310cca5",
-      "relatedSpdxElement": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
-      "relationshipType": "BUILD_TOOL_OF"
-    },
-    {
-      "spdxElementId": "SPDXRef-image-examplecontainer-cd0e080deaae2dde3e9861946507cd76ef1b8a2c392e05da63fd68163637c4ed",
-      "relatedSpdxElement": "SPDXRef-image-tssc-test-6a05578d5701d2e19527b1c4281713be977e8e61384b11586e91130021db804a",
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relatedSpdxElement": "SPDXRef-image-konflux-test-0b947c0ad395438e31ccc30ce44e25bfcbab7446d81698c7723213c42310cca5",
       "relationshipType": "DESCENDANT_OF"
     }
   ]

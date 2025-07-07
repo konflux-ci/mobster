@@ -19,6 +19,7 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.parser.json.json_parser import JsonLikeDictParser
 
+from mobster import get_mobster_version
 from mobster.cmd.generate.oci_image import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     _extend_cdx_with_base_images,
@@ -676,6 +677,15 @@ async def test__extend_spdx_with_base_images(
                         "version": "1.0",
                     },
                     "timestamp": "1970-01-01T00:00:00+00:00",
+                    "tools": {
+                        "components": [
+                            {
+                                "name": "Mobster",
+                                "type": "application",
+                                "version": get_mobster_version(),
+                            }
+                        ]
+                    },
                 },
                 "serialNumber": "urn:uuid:11111111-1111-1111-1111-111111111111",
                 "version": 1,

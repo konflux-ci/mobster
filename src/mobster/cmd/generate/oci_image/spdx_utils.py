@@ -84,8 +84,7 @@ async def normalize_sbom(sbom: dict[str, Any]) -> None:
         creation_info["created"] = "1970-01-01T00:00:00Z"
     creators = creation_info.get("creators", [])
     new_creators = [await normalize_actor(creator) for creator in creators]
-    if not new_creators:
-        new_creators.append(f"Tool: Mobster-{get_mobster_version()}")
+    new_creators.append(f"Tool: Mobster-{get_mobster_version()}")
     creation_info["creators"] = new_creators
     sbom["creationInfo"] = creation_info
 

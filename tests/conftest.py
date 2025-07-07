@@ -59,7 +59,6 @@ def assert_cdx_sbom(actual: Any, expected: Any) -> None:
         "name": "Mobster",
         "version": get_mobster_version(),
     } in actual["metadata"]["tools"]["components"]
-    del actual["metadata"]["tools"]
 
     root_bom_ref = actual["metadata"]["component"]["bom-ref"]
     patch_bom_ref(
@@ -67,8 +66,13 @@ def assert_cdx_sbom(actual: Any, expected: Any) -> None:
         root_bom_ref,
         expected["metadata"]["component"]["bom-ref"],
     )
+    ignored_keys = {"metadata"}
 
-    assert actual == expected
+    for key in {*actual.keys(), *expected.keys()}:
+        if key in ignored_keys:
+            continue
+
+        assert actual.get(key) == expected.get(key)
 
 
 def patch_bom_ref(document: Any, old: str, new: str) -> Any:

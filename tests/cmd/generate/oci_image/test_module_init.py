@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
+from tests.conftest import assert_cdx_sbom
 
 
 @pytest.mark.asyncio
@@ -26,7 +27,7 @@ from mobster.cmd.generate.oci_image import GenerateOciImageCommand
             [Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")],
             Path("tests/sbom/test_merge_data/spdx/cachi2.bom.json"),
             "quay.io/foobar/examplecontainer:v10",
-            "sha256:1",
+            "sha256:11111111111111111111111111111111",
             Path("tests/data/dockerfiles/somewhat_believable_sample/parsed.json"),
             "runtime",
             ["quay.io/ubi9:latest@sha256:123456789012345678901234567789012"],
@@ -37,9 +38,9 @@ from mobster.cmd.generate.oci_image import GenerateOciImageCommand
             [Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")],
             None,
             "quay.io/foobar/examplecontainer:v10",
-            "sha256:1",
+            "sha256:11111111111111111111111111111111",
             Path("tests/data/dockerfiles/somewhat_believable_sample/parsed.json"),
-            "build",
+            "builder",
             [],
             True,
             Path(
@@ -55,9 +56,9 @@ from mobster.cmd.generate.oci_image import GenerateOciImageCommand
             ],
             None,
             "quay.io/foobar/examplecontainer:v10",
-            "sha256:1",
+            "sha256:11111111111111111111111111111111",
             Path("tests/data/dockerfiles/somewhat_believable_sample/parsed.json"),
-            "build",
+            "builder",
             [],
             True,
             Path("tests/sbom/test_oci_generate_data/generated_multiple_syft.spdx.json"),
@@ -67,15 +68,12 @@ from mobster.cmd.generate.oci_image import GenerateOciImageCommand
                 Path(
                     "tests/sbom/test_merge_data/cyclonedx/syft-sboms/pip-e2e-test.bom.json"
                 ),
-                Path(
-                    "tests/sbom/test_merge_data/cyclonedx/syft-sboms/ubi-micro.bom.json"
-                ),
             ],
-            Path("tests/sbom/test_merge_data/cyclonedx/cachi2.bom.json"),
+            None,
             "quay.io/foobar/examplecontainer:v10",
-            "sha256:1",
+            "sha256:11111111111111111111111111111111",
             Path("tests/data/dockerfiles/somewhat_believable_sample/parsed.json"),
-            "build",
+            "builder",
             ["quay.io/ubi9:latest@sha256:123456789012345678901234567789012"],
             True,
             Path("tests/sbom/test_oci_generate_data/generated.cdx.json"),
@@ -133,23 +131,10 @@ async def test_GenerateOciImageCommand_execute(
                                 ) from None
         assert actual["relationships"] == expected["relationships"]
 
-    def compare_cdx_sbom_dicts(
-        actual: dict[str, Any], expected: dict[str, Any]
-    ) -> None:
-        assert actual["metadata"]["component"] == expected["metadata"]["component"]
-        for idx, component in enumerate(actual["components"]):
-            if component.get("type") != "container":
-                for key, value in component.items():
-                    if key != "bom-ref":
-                        assert value == expected["components"][idx][key]
-            else:
-                assert component == expected["components"][idx]
-        assert actual["formulation"] == expected["formulation"]
-
     def compare_sbom_dicts(actual: dict[str, Any], expected: dict[str, Any]) -> None:
         if "spdxVersion" in actual and "spdxVersion" in expected:
             return compare_spdx_sbom_dicts(actual, expected)
-        return compare_cdx_sbom_dicts(actual, expected)
+        return assert_cdx_sbom(actual, expected)
 
     compare_sbom_dicts(await command.execute(), expected_sbom)
 

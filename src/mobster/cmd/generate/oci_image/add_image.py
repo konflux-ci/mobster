@@ -2,9 +2,8 @@
 Module for adding an image reference to SBOM (root SBOM element or a builder image)
 """
 
-from cyclonedx.model import (
-    Property,
-)
+from cyclonedx.model import Property
+from cyclonedx.model.dependency import Dependency
 from spdx_tools.spdx.model.document import (
     Document,
 )
@@ -46,15 +45,21 @@ async def update_component_in_cyclonedx_sbom(
             {"components": CycloneDX1BomWrapper.get_component_dicts([image_component])}
         )
     else:
-        # Add the image component to the SBOM as the root element
-        if (
-            (root_component := sbom_wrapped.sbom.metadata.component)
-            and root_component.name
-            and not root_component.name.startswith((".", "/"))
-        ):
-            # Backup old root element if it isn't a virtual component
-            sbom_wrapped.sbom.components.add(sbom_wrapped.sbom.metadata.component)
         sbom_wrapped.sbom.metadata.component = image_component
+        sbom_wrapped.sbom.components.add(image_component)
+        # Mark other components as dependencies. This also
+        # allows having the same `metadata.component.bom-ref`
+        # and `components[].bom-ref` for the root component
+        sbom_wrapped.sbom.dependencies.add(
+            Dependency(
+                ref=image_component.bom_ref,
+                dependencies=[
+                    Dependency(component.bom_ref)
+                    for component in sbom_wrapped.sbom.components
+                    if component != image_component
+                ],
+            )
+        )
 
     return sbom_wrapped
 

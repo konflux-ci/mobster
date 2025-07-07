@@ -10,9 +10,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from cyclonedx.model.bom import Bom
-from cyclonedx.model.component import Component
+from cyclonedx.model.component import Component, ComponentType
 from cyclonedx.output import make_outputter
 from cyclonedx.schema import OutputFormat, SchemaVersion
+
+from mobster import get_mobster_version
 
 
 @dataclass
@@ -69,7 +71,15 @@ class CycloneDX1BomWrapper:
         """
         formulation = sbom_dict.pop("formulation", [])
         # pylint: disable=no-member
-        return CycloneDX1BomWrapper(
+        bom_object = CycloneDX1BomWrapper(
             Bom.from_json(sbom_dict),  # type: ignore[attr-defined]
             formulation,
         )
+        bom_object.sbom.metadata.tools.components.add(
+            Component(
+                version=get_mobster_version(),
+                name="Mobster",
+                type=ComponentType.APPLICATION,
+            )
+        )
+        return bom_object

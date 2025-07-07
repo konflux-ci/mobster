@@ -12,6 +12,7 @@ from mobster.cmd.generate.oci_image.add_image import (
     update_component_in_cyclonedx_sbom,
 )
 from mobster.image import Image
+from tests.conftest import assert_cdx_sbom
 
 
 @pytest.mark.asyncio
@@ -82,12 +83,6 @@ from mobster.image import Image
                 "bomFormat": "CycloneDX",
                 "specVersion": "1.6",
                 "components": [
-                    # THE ROOT ELEMENT IS NOT PRESENT HERE
-                    # as the `bpm-ref` field MUST be unique
-                    # and according to the library devs the
-                    # component should not be replicated
-                    # to the `metadata.component` and `components` fields, see:
-                    # https://github.com/CycloneDX/cyclonedx-python-lib/issues/807#issuecomment-2801489375
                     {
                         "bom-ref": "BomRef.base",
                         "hashes": [{"alg": "SHA-256", "content": "1"}],
@@ -96,6 +91,21 @@ from mobster.image import Image
                         "repository_url=quay.io/example/base",
                         "type": "container",
                         "version": "1.0",
+                    },
+                    {
+                        "bom-ref": "BomRef.ham-"
+                        "ae1b34732beb04d81a7dd66866751f28ff0a12a4eaa8965e36a0b6060d0417a2",
+                        "hashes": [
+                            {
+                                "alg": "SHA-256",
+                                "content": "3",
+                            },
+                        ],
+                        "name": "ham",
+                        "purl": "pkg:oci/ham@sha256:3?"
+                        "repository_url=foo.bar/foobar/ham",
+                        "type": "container",
+                        "version": "v1",
                     },
                     {
                         "bom-ref": "BomRef.pkg",
@@ -111,7 +121,8 @@ from mobster.image import Image
                     {"ref": "BomRef.base", "dependsOn": ["BomRef.pkg"]},
                     {
                         "ref": "BomRef.ham-"
-                        "ae1b34732beb04d81a7dd66866751f28ff0a12a4eaa8965e36a0b6060d0417a2"
+                        "ae1b34732beb04d81a7dd66866751f28ff0a12a4eaa8965e36a0b6060d0417a2",
+                        "dependsOn": ["BomRef.base", "BomRef.pkg"],
                     },
                     {"ref": "BomRef.pkg"},
                 ],
@@ -221,7 +232,7 @@ async def test_update_component_in_cyclonedx_sbom(
     initial_sbom = CycloneDX1BomWrapper.from_dict(input_sbom_dict)
     await update_component_in_cyclonedx_sbom(initial_sbom, image, is_builder_image)
     updated_sbom_dict = initial_sbom.to_dict()
-    assert updated_sbom_dict == expected_wrapped_sbom
+    assert_cdx_sbom(updated_sbom_dict, expected_wrapped_sbom)
 
 
 @pytest.mark.asyncio

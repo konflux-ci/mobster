@@ -2,5 +2,5 @@ FROM quay.io/redhat-user-workloads/rhtap-integration-tenant/konflux-test:baf5e59
 USER 1001
 RUN ["echo", "foo"]
 
-FROM quay.io/redhat-user-workloads/rhtap-shared-team-tenant/tssc-test:on-pr-8d06bd154f11dac847df6abe734cb07b38832429 AS runtime
+FROM quay.io/redhat-user-workloads/rhtap-shared-team-tenant/tssc-test:tssc-test-on-push-2m6dq-build-container AS runtime
 RUN ["echo", "bar"]
