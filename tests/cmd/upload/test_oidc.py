@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import httpx
 import pytest
@@ -292,3 +292,103 @@ async def test__ensure_valid_token_disabled_auth() -> None:
 
     # Should not raise any exception
     await client._ensure_valid_token(None)  # type: ignore
+
+
+@pytest.mark.asyncio
+async def test_get() -> None:
+    client = _get_valid_client()
+
+    with patch.object(
+        client,
+        "_request",
+        new_callable=AsyncMock,
+        return_value=MagicMock(),
+    ) as mock_request:
+        await client.get("foo", headers={"header": "test"})
+
+        mock_request.assert_awaited_once_with(
+            "get",
+            "foo",
+            headers={"header": "test"},
+            params=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_delete() -> None:
+    client = _get_valid_client()
+
+    with patch.object(
+        client,
+        "_request",
+        new_callable=AsyncMock,
+        return_value=MagicMock(),
+    ) as mock_request:
+        await client.delete("foo", headers={"header": "test"})
+
+        mock_request.assert_awaited_once_with(
+            "delete",
+            "foo",
+            headers={"header": "test"},
+            params=None,
+        )
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._ensure_valid_token")
+@patch("httpx.AsyncClient")
+async def test_stream(
+    mock_async_client_class: MagicMock, mock_ensure_valid_token: AsyncMock
+) -> None:
+    client = _get_valid_client()
+
+    # Mock the httpx.AsyncClient instance
+    mock_client_instance = MagicMock()
+    mock_client_instance.headers = {}
+
+    # Mock the response object
+    mock_response = AsyncMock()
+    mock_response.raise_for_status = Mock()
+
+    # Mock aiter_bytes to return an async iterator
+    async def mock_aiter_bytes() -> Any:
+        for chunk in [b"chunk1", b"chunk2"]:
+            yield chunk
+
+    mock_response.aiter_bytes = mock_aiter_bytes
+
+    # Mock the stream context manager
+    mock_stream_context = AsyncMock()
+    mock_stream_context.__aenter__.return_value = mock_response
+    mock_stream_context.__aexit__.return_value = None
+    mock_client_instance.stream.return_value = mock_stream_context
+    mock_async_client_class.return_value = mock_client_instance
+
+    # Call the stream method and collect results
+    result_chunks = []
+    async for chunk in client.stream(
+        "GET",
+        "api/v2/sbom/123/download",
+        headers={"custom-header": "value"},
+        params={"param1": "value1"},
+    ):
+        result_chunks.append(chunk)
+
+    # Verify httpx.AsyncClient was created with correct parameters
+    mock_async_client_class.assert_called_once_with(proxy=client._proxies, timeout=60)
+
+    # Verify token was ensured
+    mock_ensure_valid_token.assert_awaited_once_with(mock_client_instance)
+
+    # Verify the stream method was called with correct parameters
+    mock_client_instance.stream.assert_called_once_with(
+        "GET",
+        "https://api.example.com/v1/api/v2/sbom/123/download",
+        params={"param1": "value1"},
+    )
+
+    # Verify response status was checked
+    mock_response.raise_for_status.assert_called_once()
+
+    # Verify we got the expected chunks
+    assert result_chunks == [b"chunk1", b"chunk2"]
