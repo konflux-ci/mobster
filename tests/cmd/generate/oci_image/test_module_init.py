@@ -1,12 +1,36 @@
+import datetime
 import json
 from pathlib import Path
 from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from cyclonedx.model.bom import Bom
+from cyclonedx.model.bom_ref import BomRef
+from cyclonedx.model.component import Component, ComponentType
+from cyclonedx.model.dependency import Dependency
+from spdx_tools.spdx.model.document import CreationInfo, Document
+from spdx_tools.spdx.model.package import Package
 
-from mobster.cmd.generate.oci_image import GenerateOciImageCommand
+from mobster.cmd.generate.oci_image import CycloneDX1BomWrapper, GenerateOciImageCommand
 from tests.conftest import assert_cdx_sbom
+
+
+@pytest.fixture()
+def image_digest_file_content() -> str:
+    return (
+        "quay.io/redhat-user-workloads/"
+        "rhtap-integration-tenant/konflux-test:"
+        "baf5e59d5d35615d0db13b46bd91194458011af8 "
+        "quay.io/redhat-user-workloads/rhtap-integration-tenant/"
+        "konflux-test:baf5e59d5d35615d0db13b46bd91194458011af8@"
+        "sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c\n"
+        "quay.io/redhat-user-workloads/rhtap-shared-team-tenant/"
+        "tssc-test:tssc-test-on-push-2m6dq-build-container "
+        "quay.io/redhat-user-workloads/rhtap-shared-team-tenant/"
+        "tssc-test:tssc-test-on-push-2m6dq-build-container@"
+        "sha256:04f8c3262172fa024beaed2b120414d6011d0c0d4ea578619e32a3c353ec5ee5"
+    )
 
 
 @pytest.mark.asyncio
@@ -18,6 +42,7 @@ from tests.conftest import assert_cdx_sbom
         "image_digest",
         "parsed_dockerfile_path",
         "dockerfile_target_stage",
+        "use_base_image_digest_content",
         "additional_base_images",
         "contextualize",
         "expected_sbom_path",
@@ -30,6 +55,7 @@ from tests.conftest import assert_cdx_sbom
             "sha256:11111111111111111111111111111111",
             Path("tests/data/dockerfiles/somewhat_believable_sample/parsed.json"),
             "runtime",
+            True,
             ["quay.io/ubi9:latest@sha256:123456789012345678901234567789012"],
             True,
             Path("tests/sbom/test_oci_generate_data/generated.spdx.json"),
@@ -41,6 +67,7 @@ from tests.conftest import assert_cdx_sbom
             "sha256:11111111111111111111111111111111",
             Path("tests/data/dockerfiles/somewhat_believable_sample/parsed.json"),
             "builder",
+            True,
             [],
             True,
             Path(
@@ -59,6 +86,7 @@ from tests.conftest import assert_cdx_sbom
             "sha256:11111111111111111111111111111111",
             Path("tests/data/dockerfiles/somewhat_believable_sample/parsed.json"),
             "builder",
+            False,
             [],
             True,
             Path("tests/sbom/test_oci_generate_data/generated_multiple_syft.spdx.json"),
@@ -74,22 +102,27 @@ from tests.conftest import assert_cdx_sbom
             "sha256:11111111111111111111111111111111",
             Path("tests/data/dockerfiles/somewhat_believable_sample/parsed.json"),
             "builder",
+            True,
             ["quay.io/ubi9:latest@sha256:123456789012345678901234567789012"],
             True,
             Path("tests/sbom/test_oci_generate_data/generated.cdx.json"),
         ),
     ],
 )
+@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.open")
 async def test_GenerateOciImageCommand_execute(
+    mock_open_digest_file: MagicMock,
     syft_boms: list[Path],
     hermeto_bom: Path,
     image_pullspec: str,
     image_digest: str,
     parsed_dockerfile_path: Path,
     dockerfile_target_stage: str | None,
+    use_base_image_digest_content: bool,
     additional_base_images: list[str],
     contextualize: bool,
     expected_sbom_path: Path,
+    image_digest_file_content: str,
 ) -> None:
     args = MagicMock()
     args.from_syft = syft_boms
@@ -99,6 +132,12 @@ async def test_GenerateOciImageCommand_execute(
     args.parsed_dockerfile_path = parsed_dockerfile_path
     args.dockerfile_target = dockerfile_target_stage
     args.additional_base_image = additional_base_images
+    if not use_base_image_digest_content:
+        args.base_image_digest_file = None
+    else:
+        (
+            mock_open_digest_file.return_value.__enter__.return_value.readlines
+        ).return_value = image_digest_file_content.split("\n")
     command = GenerateOciImageCommand(args)
 
     with open(expected_sbom_path) as expected_file_stream:
@@ -136,7 +175,10 @@ async def test_GenerateOciImageCommand_execute(
             return compare_spdx_sbom_dicts(actual, expected)
         return assert_cdx_sbom(actual, expected)
 
-    compare_sbom_dicts(await command.execute(), expected_sbom)
+    sbom = await command.execute()
+    sbom_dict = await GenerateOciImageCommand.dump_sbom_to_dict(sbom)
+
+    compare_sbom_dicts(sbom_dict, expected_sbom)
 
 
 @pytest.mark.asyncio
@@ -187,7 +229,9 @@ async def test_GenerateOciImageCommand_execute_handle_pullspec(
             mock_extend_sbom.assert_not_awaited()
             return
         if expected_action == "warning":
-            mock_logger.warning.assert_called_once()
+            mock_logger.warning.assert_any_call(
+                "Provided image digest but no pullspec. The digest value is ignored."
+            )
             return
         if expected_action == "ask-oras":
             mock_get_digest.assert_awaited_once()
@@ -219,14 +263,63 @@ async def test_GenerateOciImageCommand_execute_unknown_sbom(
 @pytest.mark.parametrize(["save_file"], [(None,), (Path("foo"),)])
 @patch("mobster.cmd.generate.oci_image.open")
 @patch("mobster.cmd.generate.oci_image.print")
+@patch("mobster.cmd.generate.oci_image.GenerateOciImageCommand.dump_sbom_to_dict")
 async def test_GenerateOciImageCommand_save(
-    mock_print: MagicMock, mock_open: MagicMock, save_file: Path | None
+    mock_dump_sbom_to_dict: AsyncMock,
+    mock_print: MagicMock,
+    mock_open: MagicMock,
+    save_file: Path | None,
 ) -> None:
+    mock_dump_sbom_to_dict.return_value = {}
     args = MagicMock()
     args.output = save_file
     command = GenerateOciImageCommand(args)
     await command.save()
+    mock_dump_sbom_to_dict.assert_awaited_once()
     if save_file:
         mock_open.assert_called_once_with(save_file, "w", encoding="utf-8")
     else:
         mock_print.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.generate.oci_image.LOGGER")
+async def test_GenerateOciImageCommand__soft_validate_content_spdx(
+    mock_logger: MagicMock,
+) -> None:
+    command = GenerateOciImageCommand(MagicMock())
+    command._content = Document(
+        creation_info=CreationInfo(
+            spdx_version="SPDX-2.3",
+            spdx_id="SPDXRef-DOCUMENT",
+            name="foo",
+            document_namespace="https://foo.bar/example",
+            created=datetime.datetime(1970, 1, 1),
+            creators=[],
+        ),
+        packages=[
+            Package("a", "b", "c", file_name="/foo.bar"),
+            Package("b", "c", "d", file_name="/var/foo.spam"),
+        ],
+    )
+    await command._soft_validate_content()
+    mock_logger.warning.assert_called()
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.generate.oci_image.LOGGER")
+async def test_GenerateOciImageCommand__soft_validate_content_cdx(
+    mock_logger: MagicMock,
+):
+    cdx_sbom_object = Bom(
+        components=[
+            Component(name="a", type=ComponentType.APPLICATION, bom_ref=BomRef("a"))
+        ],
+        dependencies=[
+            Dependency(ref=BomRef("a"), dependencies=[Dependency(ref=BomRef("b"))])
+        ],
+    )
+    command = GenerateOciImageCommand(MagicMock())
+    command._content = CycloneDX1BomWrapper(sbom=cdx_sbom_object)
+    await command._soft_validate_content()
+    mock_logger.warning.assert_called()

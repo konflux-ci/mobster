@@ -29,6 +29,7 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     _get_spdx_packages_from_base_images,
     extend_sbom_with_base_images_from_dockerfile,
     get_base_images_refs_from_dockerfile,
+    get_image_objects_from_file,
     get_objects_for_base_images,
 )
 from mobster.image import Image
@@ -104,6 +105,42 @@ async def test_get_base_images_refs_from_dockerfile(
         await get_base_images_refs_from_dockerfile(dockerfile, target_stage)
         == expected_list
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ["file_content", "expected_dict"],
+    [
+        (
+            "alpine:3.10 docker.io/library/alpine:3.10"
+            "@sha256:451eee8bedcb2f029756dc3e9d73bab0e7943c1ac55cff3a4861c52a0fdd3e98\n"
+            "quay.io/foo/bar:spam quay.io/foo/bar:spam@"
+            "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            {
+                "alpine:3.10": Image(
+                    repository="docker.io/library/alpine",
+                    digest="sha256:451eee8bedcb2f029756dc3e9d73bab0e7943c1ac55cff3a4861c52a0fdd3e98",
+                    tag="3.10",
+                    domain="docker.io",
+                ),
+                "quay.io/foo/bar:spam": Image(
+                    repository="quay.io/foo/bar",
+                    digest="sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                    tag="spam",
+                    domain="quay.io",
+                ),
+            },
+        )
+    ],
+)
+@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.open")
+async def test_get_digests_from_file(
+    mock_open: MagicMock, file_content: str, expected_dict: dict[str, Image]
+) -> None:
+    mock_open.return_value.__enter__.return_value.readlines.return_value = (
+        file_content.split("\n")
+    )
+    assert await get_image_objects_from_file(MagicMock()) == expected_dict
 
 
 @pytest.mark.asyncio
@@ -808,9 +845,13 @@ async def test_extend_sbom_with_base_images_from_dockerfile(
     input_sbom_object: CycloneDX1BomWrapper | Document,
 ) -> None:
     mock_parsed_dockerfile = MagicMock()
+    mock_base_images_objects = None
     mock_dockerfile_target = MagicMock()
     await extend_sbom_with_base_images_from_dockerfile(
-        input_sbom_object, mock_parsed_dockerfile, mock_dockerfile_target
+        input_sbom_object,
+        mock_parsed_dockerfile,
+        mock_base_images_objects,
+        mock_dockerfile_target,
     )
     mock_get_base_images_refs_from_dockerfile.assert_awaited_once_with(
         mock_parsed_dockerfile, mock_dockerfile_target

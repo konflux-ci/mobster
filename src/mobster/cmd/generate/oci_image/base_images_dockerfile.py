@@ -2,7 +2,9 @@
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from cyclonedx.model import Property
@@ -120,6 +122,30 @@ async def get_digest_for_image_ref(image_ref: str) -> str | None:
             stderr.decode(),
         )
         return None
+
+
+async def get_image_objects_from_file(base_images_digests: Path) -> dict[str, Image]:
+    """
+    Parses the base image digest file into a dictionary of
+    image references present in a Dockerfile and Image
+    objects.
+    Args:
+        base_images_digests (Path): File containing the digests of images.
+            expects the format <image_ref> <name>:<tag>@sha256:<digest>
+
+    Returns:
+        dict[str, Image]: Mapping of the references to Image objects
+    """
+    base_images_mapping = {}
+    with open(base_images_digests, encoding="utf-8") as input_file_stream:
+        for line in input_file_stream.readlines():
+            if not line:
+                continue
+            line = line.strip()
+            image_ref, image_full_reference = re.split(r"\s+", line)
+            image_obj = Image.from_oci_artifact_reference(image_full_reference)
+            base_images_mapping[image_ref] = image_obj
+    return base_images_mapping
 
 
 async def get_objects_for_base_images(
@@ -358,6 +384,7 @@ async def _extend_cdx_with_base_images(
 async def extend_sbom_with_base_images_from_dockerfile(
     sbom: CycloneDX1BomWrapper | Document,
     parsed_dockerfile: dict[str, Any],
+    base_images_objects: dict[str, Image] | None = None,
     dockerfile_target_stage: str | None = None,
 ) -> None:
     """
@@ -367,6 +394,8 @@ async def extend_sbom_with_base_images_from_dockerfile(
         sbom (CycloneDX1BomWrapper | spdx_tools.spdx.model.Document): SBOM to be edited.
         parsed_dockerfile (dict[str, Any]):
             The output of `dockerfile-json` command loaded into a dictionary.
+        base_images_objects (dict[str, Image] | None):
+            Pre-resolved map
         dockerfile_target_stage (Optional[str]):
             The build target for this build, determines which image is considered parent
             and what images were not used at all.
@@ -378,7 +407,9 @@ async def extend_sbom_with_base_images_from_dockerfile(
     base_images_refs = await get_base_images_refs_from_dockerfile(
         parsed_dockerfile, dockerfile_target_stage
     )
-    base_images = await get_objects_for_base_images(base_images_refs)
+    base_images = base_images_objects or await get_objects_for_base_images(
+        base_images_refs
+    )
 
     if isinstance(sbom, CycloneDX1BomWrapper):
         await _extend_cdx_with_base_images(sbom, base_images_refs, base_images)

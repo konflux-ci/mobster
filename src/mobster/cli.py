@@ -70,8 +70,8 @@ def generate_oci_image_parser(subparsers: Any) -> None:
     """
 
     def validated_digest(value: str) -> str:
-        assert re.match(r"^sha256:[0-9a-f]{32}$", value, re.IGNORECASE), (
-            "The digest must start with 'sha256:' and contain 32 hexa symbols!"
+        assert re.match(r"^sha256:[0-9a-f]{64}$", value, re.IGNORECASE), (
+            "The digest must start with 'sha256:' and contain 64 hexa symbols!"
         )
         return value.lower()
 
@@ -116,6 +116,14 @@ def generate_oci_image_parser(subparsers: Any) -> None:
         "--parsed-dockerfile-path",
         type=Path,
         help="Path to the parsed Dockerfile file",
+    )
+    oci_image_parser.add_argument(
+        "--base-image-digest-file",
+        type=Path,
+        help="Path to the file containing references "
+        "to images in the Dockerfile and their digests. "
+        "Expected format: "
+        "`<registry>/<repository>:<tag> <registry>/<repository>:<tag>@sha256:<digest>`",
     )
     oci_image_parser.add_argument(
         "--dockerfile-target",

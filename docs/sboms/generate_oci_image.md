@@ -40,6 +40,9 @@ mobster --verbose  generate oci-image \
 - `--image-pullspec` -- the pullspec of the image processed in the format `<registry>/<repository>:<tag>`
 - `--image-digest` -- the digest of the image processed in the format `sha256:<digest value>`
 - `--parsed-dockerfile-path` -- points to a dockerfile processed by `dockerfile-json`
+- `--base-image-digest-file` -- points to a file with digests for images used in Dockerfile.
+  if omitted, the references will be fetched via `oras`. The expected format of the file is
+  `<registry>/<repository>:<tag> <registry>/<repository>:<tag>@sha256:<digest>`
 - `--dockerfile-target` -- if a build target was used for multi-stage build, use this argument to specify the build target
 - `--additional-base-images` -- optionally add references to other build images outside the parsed Dockerfile.
   expects the format `<registry>/<repository>:<tag>@sha256:<digest value>`
