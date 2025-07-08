@@ -4,7 +4,9 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from cyclonedx.model.component import BomRef, Component, ComponentType, Property
+from cyclonedx.model import Property
+from cyclonedx.model.bom_ref import BomRef
+from cyclonedx.model.component import Component, ComponentType
 from packageurl import PackageURL
 from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
@@ -17,10 +19,9 @@ from spdx_tools.spdx.model.package import (
 )
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
-from spdx_tools.spdx.parser.json.json_parser import JsonLikeDictParser
+from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
 from mobster import get_mobster_version
-from mobster.cmd.generate.oci_image import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     _extend_cdx_with_base_images,
     _extend_spdx_with_base_images,
@@ -32,6 +33,7 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     get_image_objects_from_file,
     get_objects_for_base_images,
 )
+from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.image import Image
 
 
@@ -189,11 +191,11 @@ async def test_get_objects_for_base_images(
     mock_logger: AsyncMock,
     mock_make_oci_auth_file: AsyncMock,
     mock_run_async_subprocess: AsyncMock,
-    base_images_refs: list[str],
+    base_images_refs: list[str | None],
     expected_outcome: dict[str, Image],
     oras_stderr: bytes,
 ) -> None:
-    def mocked_subprocess_calling(*args, **_) -> tuple[int, bytes, bytes]:
+    def mocked_subprocess_calling(*args: Any, **_: Any) -> tuple[int, bytes, bytes]:
         digest = f"sha256:{sha256(args[0][-1].encode()).hexdigest()}\n".encode()
         return (
             (int(bool(oras_stderr))),
@@ -280,9 +282,9 @@ async def test_get_objects_for_base_images(
     ],
 )
 async def test__get_images_and_their_annotations(
-    base_images_refs: list[str],
+    base_images_refs: list[str | None],
     base_images: dict[str, Image],
-    expected_output: list[tuple[Image, dict[str, str]]],
+    expected_output: list[tuple[Image, list[dict[str, str]]]],
 ) -> None:
     assert (
         await _get_images_and_their_annotations(base_images_refs, base_images)
@@ -352,7 +354,7 @@ async def test__get_images_and_their_annotations(
     ],
 )
 async def test__get_cdx_components_from_base_images(
-    base_images_refs: list[str],
+    base_images_refs: list[str | None],
     base_images: dict[str, Image],
     expected_output: list[Component],
 ) -> None:
@@ -465,7 +467,7 @@ async def test__get_cdx_components_from_base_images(
 @patch("mobster.cmd.generate.oci_image.base_images_dockerfile.datetime")
 async def test__get_spdx_packages_from_base_images(
     mock_datetime: MagicMock,
-    base_images_refs: list[str],
+    base_images_refs: list[str | None],
     base_images: dict[str, Image],
     expected_output: tuple[list[Package], list[Annotation]],
 ) -> None:
@@ -652,7 +654,7 @@ async def test__extend_spdx_with_base_images(
     mock_datetime.now.return_value = datetime.datetime(1970, 1, 1)
     new_sbom = spdx_sbom_skeleton.copy()
     new_sbom.update(sbom_additional_fields)
-    sbom_doc_object = JsonLikeDictParser().parse(new_sbom)
+    sbom_doc_object = JsonLikeDictParser().parse(new_sbom)  # type: ignore[no-untyped-call]
     await _extend_spdx_with_base_images(sbom_doc_object, base_image_refs, base_images)
     assert sbom_doc_object == expected_output
 
@@ -822,7 +824,7 @@ async def test__extend_cdx_with_base_images(
 @pytest.mark.parametrize(
     ["input_sbom_object"],
     [
-        (CycloneDX1BomWrapper(sbom=None),),
+        (CycloneDX1BomWrapper(sbom=MagicMock()),),
         (
             Document(
                 creation_info=CreationInfo(

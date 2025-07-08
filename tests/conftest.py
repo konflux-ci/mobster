@@ -1,6 +1,7 @@
 import hashlib
 import json
 import random as rand
+from collections.abc import Generator
 from typing import Any
 
 import pytest
@@ -101,17 +102,17 @@ def random_digest() -> str:
 @pytest.fixture(scope="session")
 def sample1_parsed_dockerfile() -> dict[str, Any]:
     with open("tests/data/dockerfiles/sample1/parsed.json") as json_file:
-        return json.load(json_file)
+        return json.load(json_file)  # type: ignore[no-any-return]
 
 
 @pytest.fixture(scope="session")
 def sample2_parsed_dockerfile() -> dict[str, Any]:
     with open("tests/data/dockerfiles/sample2/parsed.json") as json_file:
-        return json.load(json_file)
+        return json.load(json_file)  # type: ignore[no-any-return]
 
 
 @pytest.fixture(scope="session")
-def spdx_sbom_skeleton() -> dict[str, Any]:
+def spdx_sbom_skeleton() -> Generator[dict[str, Any], Any, Any]:
     yield {
         "spdxVersion": "SPDX-2.3",
         "dataLicense": "CC0-1.0",

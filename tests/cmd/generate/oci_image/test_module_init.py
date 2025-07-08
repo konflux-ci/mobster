@@ -12,7 +12,8 @@ from cyclonedx.model.dependency import Dependency
 from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import Package
 
-from mobster.cmd.generate.oci_image import CycloneDX1BomWrapper, GenerateOciImageCommand
+from mobster.cmd.generate.oci_image import GenerateOciImageCommand
+from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from tests.conftest import assert_cdx_sbom
 
 
@@ -310,7 +311,7 @@ async def test_GenerateOciImageCommand__soft_validate_content_spdx(
 @patch("mobster.cmd.generate.oci_image.LOGGER")
 async def test_GenerateOciImageCommand__soft_validate_content_cdx(
     mock_logger: MagicMock,
-):
+) -> None:
     cdx_sbom_object = Bom(
         components=[
             Component(name="a", type=ComponentType.APPLICATION, bom_ref=BomRef("a"))

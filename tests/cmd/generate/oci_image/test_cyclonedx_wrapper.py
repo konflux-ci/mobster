@@ -1,10 +1,11 @@
 from typing import Any
 
 import pytest
-from cyclonedx.model.component import BomRef, Component, ComponentType
+from cyclonedx.model.bom_ref import BomRef
+from cyclonedx.model.component import Component, ComponentType
 from packageurl import PackageURL
 
-from mobster.cmd.generate.oci_image import CycloneDX1BomWrapper
+from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 
 
 @pytest.mark.parametrize(
@@ -40,7 +41,9 @@ from mobster.cmd.generate.oci_image import CycloneDX1BomWrapper
         ),
     ],
 )
-def test_get_component_dicts(input_components, expected_dicts):
+def test_get_component_dicts(
+    input_components: list[Component], expected_dicts: list[dict[str, Any]]
+) -> None:
     assert CycloneDX1BomWrapper.get_component_dicts(input_components) == expected_dicts
 
 

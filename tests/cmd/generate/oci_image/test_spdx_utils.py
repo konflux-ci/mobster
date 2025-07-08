@@ -14,7 +14,7 @@ from spdx_tools.spdx.model.package import (
 )
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
-from spdx_tools.spdx.parser.json.json_parser import JsonLikeDictParser
+from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
 from mobster import get_mobster_version
 from mobster.cmd.generate.oci_image.spdx_utils import (
@@ -216,13 +216,13 @@ async def test_normalize_sbom(
 async def test_find_spdx_root(
     spdx_sbom_skeleton: dict[str, Any],
     sbom_fields: dict[str, Any],
-    expected_relationship_object: list[dict[str, Any]],
+    expected_relationship_object: list[Relationship],
     expected_spdxid: list[str],
     expected_package_object: list[Package],
 ) -> None:
     new_sbom = spdx_sbom_skeleton.copy()
     new_sbom.update(sbom_fields)
-    sbom_doc_object = JsonLikeDictParser().parse(new_sbom)
+    sbom_doc_object = JsonLikeDictParser().parse(new_sbom)  # type: ignore[no-untyped-call]
     assert expected_relationship_object == await find_spdx_root_relationships(
         sbom_doc_object
     )
@@ -303,11 +303,11 @@ async def test_is_virtual_root(package: Package, is_virtual: bool) -> None:
 async def test_redirect_spdx_virtual_root_to_new_root(
     spdx_sbom_skeleton: dict[str, Any],
     additional_fields: dict[str, Any],
-    expected_relationships: Document,
+    expected_relationships: list[Relationship],
 ) -> None:
     new_sbom = spdx_sbom_skeleton.copy()
     new_sbom.update(additional_fields)
-    sbom_doc_object = JsonLikeDictParser().parse(new_sbom)
+    sbom_doc_object = JsonLikeDictParser().parse(new_sbom)  # type: ignore[no-untyped-call]
     await redirect_spdx_virtual_root_to_new_root(
         sbom_doc_object, "SPDXRef-foo", "SPDXRef-spam"
     )
@@ -477,7 +477,7 @@ async def test_redirect_current_roots_to_new_root(
 ) -> None:
     new_sbom = spdx_sbom_skeleton.copy()
     new_sbom.update(additional_fields)
-    sbom_doc_object = JsonLikeDictParser().parse(new_sbom)
+    sbom_doc_object = JsonLikeDictParser().parse(new_sbom)  # type: ignore[no-untyped-call]
     await redirect_current_roots_to_new_root(sbom_doc_object, new_root_spdxid)
     assert sbom_doc_object == expected_outcome
 
@@ -802,6 +802,6 @@ async def test_update_package_in_spdx_sbom(
     mock_datetime.now.return_value = datetime.datetime(1970, 1, 1, 0, 0, 0)
     new_sbom = spdx_sbom_skeleton.copy()
     new_sbom.update(additional_fields)
-    sbom_doc_object = JsonLikeDictParser().parse(new_sbom)
+    sbom_doc_object = JsonLikeDictParser().parse(new_sbom)  # type: ignore[no-untyped-call]
     await update_package_in_spdx_sbom(sbom_doc_object, image_object, is_builder_image)
     assert sbom_doc_object == expected_outcome
