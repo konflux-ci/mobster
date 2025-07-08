@@ -26,6 +26,13 @@ class Command(ABC):
 
         self._exit_code = value
 
+    @property
+    def name(self) -> str:
+        """
+        Name of the command, used for logging purposes.
+        """
+        return self.__class__.__name__
+
     @abstractmethod
     async def execute(self) -> Any:
         """

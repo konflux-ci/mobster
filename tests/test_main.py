@@ -1,8 +1,11 @@
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from mobster.main import main, run
+
+LOGGER = logging.getLogger(__name__)
 
 
 @patch("mobster.main.run")
@@ -19,7 +22,10 @@ def test_main(mock_setup_args: MagicMock, mock_run: AsyncMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_run(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_run(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     mock_args = MagicMock()
     mock_args.func = MagicMock()
     mock_args.func.return_value.execute = AsyncMock()
@@ -30,3 +36,6 @@ async def test_run(monkeypatch: pytest.MonkeyPatch) -> None:
 
     mock_args.func.return_value.execute.assert_called_once()
     mock_args.func.return_value.save.assert_called_once()
+
+    # check that log_elapsed log is present
+    assert "completed in" in caplog.text
