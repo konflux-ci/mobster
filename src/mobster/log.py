@@ -4,8 +4,11 @@ Logging configuration and utility functions.
 
 import logging
 import logging.config
+import time
+from collections.abc import Generator
+from contextlib import contextmanager
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def setup_logging(verbose: bool) -> None:
@@ -37,4 +40,26 @@ def setup_logging(verbose: bool) -> None:
     }
 
     logging.config.dictConfig(config=logconfig)
-    logger.info("Logging level set to %s", log_level)
+    LOGGER.info("Logging level set to %s", log_level)
+
+
+@contextmanager
+def log_elapsed(name: str) -> Generator[None, None, None]:
+    """
+    Log time elapsed in the with block.
+
+    Example:
+        >>> with log_elapsed("sleep"):
+                time.sleep(1)
+        "sleep completed in 1s"
+
+    Args:
+        name: The name of the action to log elapsed time of
+    """
+
+    start_time = time.time()
+    try:
+        yield
+    finally:
+        elapsed = time.time() - start_time
+        LOGGER.debug("%s completed in %.2fs", name, elapsed)

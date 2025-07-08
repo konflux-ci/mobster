@@ -129,6 +129,7 @@ class TPAUploadCommand(Command):
             start_time = time.time()
             try:
                 await client.upload_sbom(sbom_file)
+                LOGGER.info("Successfully uploaded %s to TPA", sbom_file)
             except Exception:  # pylint: disable=broad-except
                 LOGGER.exception(
                     "Error uploading %s and took %s", filename, time.time() - start_time
