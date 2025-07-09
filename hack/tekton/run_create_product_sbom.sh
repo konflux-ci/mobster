@@ -28,6 +28,11 @@ create_product_sbom \
     --release-data "$release_data" \
     --sbom-path "$sbom_path"
 
+export MOBSTER_TPA_SSO_ACCOUNT="dummy"
+export MOBSTER_TPA_SSO_TOKEN="dummy"
+export MOBSTER_TPA_SSO_TOKEN_URL="dummy"
+export MOBSTER_TPA_AUTH_DISABLE="true"
+
 upload_sboms_to_atlas \
     --data-dir "$data_dir" \
     --atlas-api-url "$atlas_api_url" \
