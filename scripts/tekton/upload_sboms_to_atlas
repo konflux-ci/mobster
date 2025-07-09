@@ -64,9 +64,12 @@ fi
 
 mobster --verbose upload tpa \
   --tpa-base-url "$atlas_api_url" \
-  --from-dir "$sbom_path" > "$report_path"
+  --from-dir "$sbom_path" \
+  --report > "$report_path"
 
 upload_exit_code=$?
+
+cat "$report_path" | jq
 
 if [[ $upload_exit_code -eq 2 ]]; then
   # Exit code 2 indicates that the script failed with transient errors.
