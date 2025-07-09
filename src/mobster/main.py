@@ -7,7 +7,7 @@ from typing import Any
 
 from mobster import cli
 from mobster.cmd.base import Command
-from mobster.log import setup_logging
+from mobster.log import log_elapsed, setup_logging
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,8 +21,9 @@ async def run(args: Any) -> None:
 
     """
     command: Command = args.func(args)
-    await command.execute()
-    await command.save()
+    with log_elapsed(command.name):
+        await command.execute()
+        await command.save()
     LOGGER.info("Exiting with code %s.", command.exit_code)
     sys.exit(command.exit_code)
 

@@ -103,6 +103,17 @@ class TestAugmentCommand:
         return cmd
 
     @pytest.mark.asyncio
+    async def test_augment_command_name(
+        self,
+        augment_command_save: AugmentImageCommand,
+    ) -> None:
+        """
+        Test to avoid breaking monitoring in case that AugmentImageCommand is changed
+        Used by Splunk
+        """
+        assert augment_command_save.name == "AugmentImageCommand"
+
+    @pytest.mark.asyncio
     async def test_augment_command_save(
         self,
         augment_command_save: AugmentImageCommand,

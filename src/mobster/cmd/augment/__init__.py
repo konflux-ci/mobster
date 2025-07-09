@@ -32,6 +32,13 @@ class AugmentImageCommand(Command):
         super().__init__(*args, **kwargs)
         self.sboms: list[SBOM] = []
 
+    @property
+    def name(self) -> str:
+        """
+        Name of the augment command used for logging purposes.
+        """
+        return "AugmentImageCommand"
+
     async def execute(self) -> Any:
         """
         Update OCI image SBOMs based on the supplied args.
