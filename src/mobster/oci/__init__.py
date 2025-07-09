@@ -130,15 +130,12 @@ def make_oci_auth_file(
                 perform_work_in_oci()
     """
     if auth is None:
-        logger.debug("No auth path provided to make_oci_auth_file.")
         auth = _find_auth_file()
         if auth is None:
             raise ValueError("Could not find a valid OCI authentication file.")
 
     if not auth.is_file():
         raise ValueError(f"No auth config file at {auth}.")
-
-    logger.debug("Looking for auth entry for %s in auth file %s", reference, auth)
 
     with open(auth, encoding="utf-8") as f:
         config = DockerConfig.model_validate_json(f.read())
@@ -231,7 +228,6 @@ def _find_auth_file() -> Path | None:
 
     docker_auth = Path(os.path.expanduser("~/.docker/config.json"))
     possible_auths.append(docker_auth)
-    logger.debug("List of possible OCI auth files: %s", possible_auths)
 
     for curr_auth in possible_auths:
         if curr_auth.is_file():
