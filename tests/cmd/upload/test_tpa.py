@@ -34,7 +34,9 @@ async def test_upload_sbom_success(
     mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
 
     mock_response = httpx.Response(
-        200, request=httpx.Request("POST", "https://api.example.com/v1/api/v2/sbom")
+        200,
+        request=httpx.Request("POST", "https://api.example.com/v1/api/v2/sbom"),
+        content=b'{"id": "urn:uuid:12345678-1234-5678-9012-123456789012"}',
     )
     mock_post.return_value = mock_response
 
@@ -48,7 +50,7 @@ async def test_upload_sbom_success(
         headers={"content-type": "application/json"},
         params={},
     )
-    assert response == mock_response
+    assert response == "urn:uuid:12345678-1234-5678-9012-123456789012"
 
 
 @pytest.mark.asyncio

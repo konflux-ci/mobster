@@ -3,6 +3,7 @@ TPA API client
 """
 
 import itertools
+import json
 import logging
 import os
 from collections.abc import AsyncGenerator
@@ -24,7 +25,7 @@ class TPAClient(OIDCClientCredentialsClient):
 
     async def upload_sbom(
         self, sbom_filepath: Path, labels: dict[str, str] | None = None
-    ) -> httpx.Response:
+    ) -> str:
         """
         Upload SBOM via API.
 
@@ -52,7 +53,8 @@ class TPAClient(OIDCClientCredentialsClient):
                 headers=headers,
                 params=params,
             )
-            return response
+            urn: str = json.loads(response.content)["id"]
+            return urn
 
     async def list_sboms(
         self, query: str, sort: str, page_size: int = 50
