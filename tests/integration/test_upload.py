@@ -1,3 +1,4 @@
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -5,10 +6,31 @@ from pathlib import Path
 import pytest
 
 from mobster.cmd.upload.tpa import TPAClient
-from mobster.cmd.upload.upload import UploadReport
+from mobster.cmd.upload.upload import UploadReport, UploadSuccess
 from tests.integration.utils import prepare_input_sbom
 
 TESTDATA_PATH = Path(__file__).parent.parent / "data"
+
+
+URN_PATTERN = re.compile(
+    r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+)
+
+
+def assert_report(actual: UploadReport, expected: UploadReport) -> None:
+    """
+    Verify that the actual UploadReport matches the expected report. URNs are
+    not matched, just verified using a regular expression.
+    """
+    assert set(actual.failure) == set(expected.failure)
+
+    def get_path(s_report: UploadSuccess) -> Path:
+        return s_report.path
+
+    assert set(map(get_path, actual.success)) == set(map(get_path, expected.success))
+
+    for success in actual.success:
+        assert URN_PATTERN.match(success.urn) is not None
 
 
 @pytest.mark.asyncio
@@ -26,7 +48,7 @@ async def test_upload_tpa_file_integration(
     )
 
     expected_report = UploadReport(
-        success=[test_sbom_path],
+        success=[UploadSuccess(path=test_sbom_path, urn="")],
         failure=[],
     )
 
@@ -57,6 +79,4 @@ async def test_upload_tpa_file_integration(
     )
 
     actual_report = UploadReport.model_validate_json(result.stdout)
-    assert actual_report == expected_report, (
-        "Upload report does not match expected report."
-    )
+    assert_report(actual_report, expected_report)

@@ -2,12 +2,16 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 
 from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedException
 from mobster.cmd.upload.tpa import TPAClient
-from mobster.cmd.upload.upload import TPAUploadCommand, UploadExitCode, UploadReport
+from mobster.cmd.upload.upload import (
+    TPAUploadCommand,
+    UploadExitCode,
+    UploadReport,
+    UploadSuccess,
+)
 
 
 @pytest.fixture
@@ -23,9 +27,7 @@ def mock_tpa_client() -> AsyncMock:
     """Create a mock TPA client that returns success for uploads."""
     mock = AsyncMock(spec=TPAClient)
     mock.upload_sbom = AsyncMock(
-        return_value=httpx.Response(
-            200, request=httpx.Request("POST", "https://example.com")
-        )
+        return_value="urn:uuid:12345678-1234-5678-9012-123456789012"
     )
     return mock
 
@@ -56,8 +58,8 @@ async def test_execute_upload_from_directory(
 ) -> None:
     """Test uploading SBOMs from a directory."""
     mock_tpa_client_class.return_value = mock_tpa_client
-    mock_tpa_client.upload_sbom.return_value = httpx.Response(
-        200, request=httpx.Request("POST", "https://example.com")
+    mock_tpa_client.upload_sbom.return_value = (
+        "urn:uuid:12345678-1234-5678-9012-123456789012"
     )
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
 
@@ -96,8 +98,8 @@ async def test_execute_upload_single_file(
 ) -> None:
     """Test uploading a single SBOM file."""
     mock_tpa_client_class.return_value = mock_tpa_client
-    mock_tpa_client.upload_sbom.return_value = httpx.Response(
-        200, request=httpx.Request("POST", "https://example.com")
+    mock_tpa_client.upload_sbom.return_value = (
+        "urn:uuid:12345678-1234-5678-9012-123456789012"
     )
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
 
@@ -208,7 +210,7 @@ async def test_execute_upload_mixed_results(
     mock_tpa_client = AsyncMock(spec=TPAClient)
     # First upload succeeds, second one fails
     mock_tpa_client.upload_sbom.side_effect = [
-        httpx.Response(200, request=httpx.Request("POST", "https://example.com")),
+        "urn:uuid:12345678-1234-5678-9012-123456789012",  # Success returns URN
         Exception("Upload failed"),  # Failure
     ]
     mock_tpa_client_class.return_value = mock_tpa_client
@@ -228,7 +230,12 @@ async def test_execute_upload_mixed_results(
     await command.execute()
 
     expected_report = UploadReport(
-        success=[Path("/test/dir/file1.json")],
+        success=[
+            UploadSuccess(
+                path=Path("/test/dir/file1.json"),
+                urn="urn:uuid:12345678-1234-5678-9012-123456789012",
+            )
+        ],
         failure=[Path("/test/dir/file2.json")],
     )
 
@@ -267,7 +274,7 @@ def test_gather_sboms_nonexistent() -> None:
     "results,expected_exit_code,description",
     [
         ([], 0, "empty results list"),
-        ([None, None], 0, "all successful uploads"),
+        (["urn:uuid:test", "urn:uuid:test2"], 0, "all successful uploads"),
         (
             [RetryExhaustedException()],
             UploadExitCode.TRANSIENT_ERROR.value,
@@ -282,7 +289,7 @@ def test_gather_sboms_nonexistent() -> None:
     ],
 )
 def test_set_exit_code(
-    results: list[BaseException | None], expected_exit_code: int, description: str
+    results: list[BaseException | str], expected_exit_code: int, description: str
 ) -> None:
     """
     Test set_exit_code function with various result combinations.
