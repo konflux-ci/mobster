@@ -27,20 +27,34 @@ class UploadExitCode(Enum):
     TRANSIENT_ERROR = 2
 
 
+class UploadSuccess(pydantic.BaseModel):
+    """
+    Object representing a successful Atlas upload.
+
+    Attributes:
+        path: Filesystem path of the uploaded SBOM.
+        urn: Uniform Resource Name in Atlas of the uploaded SBOM.
+    """
+
+    path: Path
+    urn: str
+
+
 class UploadReport(pydantic.BaseModel):
     """Upload report containing successful and failed uploads.
 
     Attributes:
-        success: List of file paths that were successfully uploaded.
+        success: List of UploadSuccess objects for SBOMs that were successfully
+            uploaded.
         failure: List of file paths that failed to upload.
     """
 
-    success: list[Path]
+    success: list[UploadSuccess]
     failure: list[Path]
 
     @staticmethod
     def build_report(
-        results: list[tuple[Path, BaseException | None]],
+        results: list[tuple[Path, BaseException | str]],
     ) -> "UploadReport":
         """Build an upload report from upload results.
 
@@ -51,7 +65,11 @@ class UploadReport(pydantic.BaseModel):
         Returns:
             UploadReport instance with successful and failed uploads categorized.
         """
-        success = [path for path, result in results if result is None]
+        success = [
+            UploadSuccess(path=path, urn=urn)
+            for path, urn in results
+            if isinstance(urn, str)
+        ]
         failure = [
             path for path, result in results if isinstance(result, BaseException)
         ]
@@ -108,7 +126,7 @@ class TPAUploadCommand(Command):
         auth: OIDCClientCredentials | None,
         tpa_url: str,
         semaphore: asyncio.Semaphore,
-    ) -> None:
+    ) -> str:
         """
         Upload a single SBOM file to TPA using HTTP client.
 
@@ -128,8 +146,9 @@ class TPAUploadCommand(Command):
             filename = sbom_file.name
             start_time = time.time()
             try:
-                await client.upload_sbom(sbom_file)
+                resp = await client.upload_sbom(sbom_file)
                 LOGGER.info("Successfully uploaded %s to TPA", sbom_file)
+                return resp
             except Exception:  # pylint: disable=broad-except
                 LOGGER.exception(
                     "Error uploading %s and took %s", filename, time.time() - start_time
@@ -170,7 +189,7 @@ class TPAUploadCommand(Command):
         LOGGER.info("Upload complete")
         return UploadReport.build_report(list(zip(sbom_files, results, strict=True)))
 
-    def set_exit_code(self, results: list[BaseException | None]) -> None:
+    def set_exit_code(self, results: list[BaseException | str]) -> None:
         """
         Set the exit code based on the upload results. If all exceptions found
         are RetryExhaustedException, the exit code is
