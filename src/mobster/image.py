@@ -51,6 +51,7 @@ class Image:  # pylint: disable=too-many-instance-attributes
     arch: str | None = None
     domain: str | None = None
     digest_alg: str | None = None
+    manifest: str | None = None
 
     @staticmethod
     def from_image_index_url_and_digest(
