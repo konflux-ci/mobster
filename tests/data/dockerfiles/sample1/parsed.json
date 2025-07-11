@@ -1,0 +1,176 @@
+{
+  "MetaArgs": [
+    {
+      "Key": "ALPINE_TAG",
+      "DefaultValue": "3.10",
+      "ProvidedValue": null,
+      "Value": "3.10"
+    }
+  ],
+  "Stages": [
+    {
+      "Name": "build",
+      "OrigCmd": "FROM",
+      "BaseName": "alpine:3.10",
+      "Platform": "",
+      "Comment": "",
+      "SourceCode": "FROM alpine:${ALPINE_TAG} AS build",
+      "Location": [
+        {
+          "Start": {
+            "Line": 3,
+            "Character": 0
+          },
+          "End": {
+            "Line": 3,
+            "Character": 0
+          }
+        }
+      ],
+      "As": "build",
+      "From": {
+        "Image": "alpine:3.10"
+      },
+      "Commands": [
+        {
+          "CmdLine": [
+            "echo \"Hello world\" > abc"
+          ],
+          "Files": null,
+          "FlagsUsed": [
+            "network"
+          ],
+          "Mounts": [],
+          "Name": "RUN",
+          "NetworkMode": "host",
+          "PrependShell": true,
+          "Security": "sandbox"
+        }
+      ]
+    },
+    {
+      "Name": "test",
+      "OrigCmd": "FROM",
+      "BaseName": "build",
+      "Platform": "",
+      "Comment": "",
+      "SourceCode": "FROM build AS test",
+      "Location": [
+        {
+          "Start": {
+            "Line": 6,
+            "Character": 0
+          },
+          "End": {
+            "Line": 6,
+            "Character": 0
+          }
+        }
+      ],
+      "As": "test",
+      "From": {
+        "Stage": {
+          "Named": "build",
+          "Index": 0
+        }
+      },
+      "Commands": [
+        {
+          "CmdLine": [
+            "echo \"foo\" > bar"
+          ],
+          "Files": null,
+          "FlagsUsed": [
+            "security"
+          ],
+          "Mounts": [],
+          "Name": "RUN",
+          "NetworkMode": "default",
+          "PrependShell": true,
+          "Security": "insecure"
+        }
+      ]
+    },
+    {
+      "Name": "",
+      "OrigCmd": "FROM",
+      "BaseName": "scratch",
+      "Platform": "",
+      "Comment": "",
+      "SourceCode": "FROM scratch",
+      "Location": [
+        {
+          "Start": {
+            "Line": 9,
+            "Character": 0
+          },
+          "End": {
+            "Line": 9,
+            "Character": 0
+          }
+        }
+      ],
+      "From": {
+        "Scratch": true
+      },
+      "Commands": [
+        {
+          "Chmod": "",
+          "Chown": "nobody:nobody",
+          "DestPath": ".",
+          "ExcludePatterns": null,
+          "From": "build",
+          "Link": false,
+          "Mounts": null,
+          "Name": "COPY",
+          "NetworkMode": "",
+          "Parents": false,
+          "Security": "",
+          "SourceContents": null,
+          "SourcePaths": [
+            "abc"
+          ]
+        },
+        {
+          "CmdLine": [],
+          "Files": null,
+          "FlagsUsed": [
+            "mount"
+          ],
+          "Mounts": [
+            {
+              "Type": "bind",
+              "From": "",
+              "Source": "",
+              "Target": "",
+              "ReadOnly": true,
+              "SizeLimit": 0,
+              "CacheID": "",
+              "CacheSharing": "",
+              "Required": false,
+              "Env": null,
+              "Mode": null,
+              "UID": null,
+              "GID": null
+            }
+          ],
+          "Name": "RUN",
+          "NetworkMode": "default",
+          "PrependShell": true,
+          "Security": "sandbox"
+        },
+        {
+          "CmdLine": [
+            "echo"
+          ],
+          "Files": null,
+          "Mounts": null,
+          "Name": "CMD",
+          "NetworkMode": "",
+          "PrependShell": false,
+          "Security": ""
+        }
+      ]
+    }
+  ]
+}
