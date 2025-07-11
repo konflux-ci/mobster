@@ -1,0 +1,10 @@
+{
+  "releaseNotes": {
+    "product_name": "Product",
+    "product_version": "1.0",
+    "cpe": [
+      "cpe:/a:redhat:product:1.0::el9",
+      "cpe:/a:redhat:product:1.0::el10"
+    ]
+  }
+}
