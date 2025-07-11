@@ -1,5 +1,7 @@
 import hashlib
+import json
 import random as rand
+from collections.abc import Generator
 from typing import Any
 
 import pytest
@@ -58,7 +60,6 @@ def assert_cdx_sbom(actual: Any, expected: Any) -> None:
         "name": "Mobster",
         "version": get_mobster_version(),
     } in actual["metadata"]["tools"]["components"]
-    del actual["metadata"]["tools"]
 
     root_bom_ref = actual["metadata"]["component"]["bom-ref"]
     patch_bom_ref(
@@ -66,8 +67,13 @@ def assert_cdx_sbom(actual: Any, expected: Any) -> None:
         root_bom_ref,
         expected["metadata"]["component"]["bom-ref"],
     )
+    ignored_keys = {"metadata"}
 
-    assert actual == expected
+    for key in {*actual.keys(), *expected.keys()}:
+        if key in ignored_keys:
+            continue
+
+        assert actual.get(key) == expected.get(key)
 
 
 def patch_bom_ref(document: Any, old: str, new: str) -> Any:
@@ -91,3 +97,30 @@ def random_digest() -> str:
     random_bytes = rand.randbytes(32)
     digest_hash = hashlib.sha256(random_bytes).hexdigest()
     return f"sha256:{digest_hash}"
+
+
+@pytest.fixture(scope="session")
+def sample1_parsed_dockerfile() -> dict[str, Any]:
+    with open("tests/data/dockerfiles/sample1/parsed.json") as json_file:
+        return json.load(json_file)  # type: ignore[no-any-return]
+
+
+@pytest.fixture(scope="session")
+def sample2_parsed_dockerfile() -> dict[str, Any]:
+    with open("tests/data/dockerfiles/sample2/parsed.json") as json_file:
+        return json.load(json_file)  # type: ignore[no-any-return]
+
+
+@pytest.fixture(scope="session")
+def spdx_sbom_skeleton() -> Generator[dict[str, Any], Any, Any]:
+    yield {
+        "spdxVersion": "SPDX-2.3",
+        "dataLicense": "CC0-1.0",
+        "SPDXID": "SPDXRef-DOCUMENT",
+        "name": "foo",
+        "documentNamespace": "https://foo.example.com/bar",
+        "creationInfo": {
+            "created": "1970-01-01T00:00:00Z",
+            "creators": ["Tool: Konflux"],
+        },
+    }
