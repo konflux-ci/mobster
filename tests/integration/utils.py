@@ -1,5 +1,6 @@
 """Utility functions for integration tests."""
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
@@ -32,3 +33,28 @@ def prepare_input_sbom(
         json.dump(original_content, file)
 
     return dest_path, original_content
+
+
+async def run_cmd(cmd: list[str]) -> str:
+    """
+    Run a shell command asynchronously and return its output.
+
+    Args:
+        cmd (list[str]): A list of command arguments to execute.
+
+    Returns:
+        str: A string containing the command's standard output.
+    """
+    process = await asyncio.create_subprocess_shell(
+        " ".join(cmd),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    stdout, stderr = await process.communicate()
+    if process.returncode != 0:
+        raise RuntimeError(
+            f"Command failed with error: {stderr.decode().strip()}",
+            f"returncode: {process.returncode}, stdout: {stdout.decode().strip()}",
+        )
+    return stdout.decode().strip()
