@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from mobster.cmd.upload.tpa import TPAClient
+from mobster.cmd.upload.upload import UploadReport
 from tests.integration.utils import prepare_input_sbom
 
 TESTDATA_PATH = Path(__file__).parent.parent / "data"
@@ -20,6 +21,12 @@ async def test_upload_tpa_file_integration(
     test_sbom_path, _ = prepare_input_sbom(
         sbom_file, tmp_path, "sbom.json", temporary_sbom_name
     )
+
+    expected_report = UploadReport(
+        success=[test_sbom_path],
+        failure=[],
+    )
+
     result = subprocess.run(
         [
             "mobster",
@@ -29,6 +36,7 @@ async def test_upload_tpa_file_integration(
             tpa_base_url,
             "--file",
             str(test_sbom_path),
+            "--report",
         ],
         capture_output=True,
     )
@@ -42,4 +50,9 @@ async def test_upload_tpa_file_integration(
     assert len(all_sboms) > 0, "No SBOMs found in TPA after upload"
     assert any(sbom.name == temporary_sbom_name for sbom in all_sboms), (
         f"Uploaded SBOM with name {temporary_sbom_name} not found in TPA"
+    )
+
+    actual_report = UploadReport.model_validate_json(result.stdout)
+    assert actual_report == expected_report, (
+        "Upload report does not match expected report."
     )
