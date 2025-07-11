@@ -1,11 +1,13 @@
 import hashlib
 import json
+import tempfile
 from dataclasses import dataclass
 from typing import Any, Literal
 
 import httpx
 
 from mobster.image import Image
+from mobster.oci import run_async_subprocess
 
 
 @dataclass
@@ -55,6 +57,20 @@ class ReferrersTagOCIClient:
                 return self.registry_url.removeprefix(prefix)
         return self.registry_url
 
+    def _get_digest_from_manifest(self, manifest: str) -> str:
+        """
+        Calculate the digest from the manifest string.
+
+        Args:
+            manifest: The manifest string.
+
+        Returns:
+            str: The extracted sha256 digest.
+        """
+        m = hashlib.sha256()
+        m.update(manifest.encode("utf-8"))
+        return f"sha256:{m.hexdigest()}"
+
     async def create_image(self, name: str, tag: str) -> Image:
         """
         Create a minimal OCI image in the registry.
@@ -66,10 +82,116 @@ class ReferrersTagOCIClient:
         Returns:
             Image: The created image object.
         """
-        config_digest = await self._push_blob(name, b"")
-        digest = await self._push_manifest(name, tag, config_digest)
-        repo = f"{self.registry}/{name}"
-        return Image(repository=repo, digest=digest, tag=tag)
+        image_pullspec = f"{self.registry}/{name}:{tag}"
+
+        cmd = [
+            "oras",
+            "push",
+            image_pullspec,
+            "--config",
+            # These are just dummy values that registry requires, but they
+            # don't contain any real data.
+            "tests/data/integration/config.json:application/vnd.oci.image.config.v1+json",
+            "tests/data/integration/layer.tar.gz:application/vnd.oci.image.layer.v1.tar+gzip",
+        ]
+        code, _, stderr = await run_async_subprocess(cmd)
+        if code != 0:
+            raise RuntimeError(
+                f"Failed to create image {image_pullspec} in registry."
+                f"Error: {stderr.decode()}"
+            )
+
+        manifest = await self.fetch_manifest(name, tag)
+        return Image(
+            repository=f"{self.registry}/{name}",
+            digest=self._get_digest_from_manifest(manifest),
+            tag=tag,
+            manifest=manifest,
+        )
+
+    async def create_image_index(
+        self, name: str, tag: str, images: list[Image]
+    ) -> Image:
+        """
+        Create an OCI image index in the registry.
+
+        Args:
+            name: The index name.
+            tag: The index tag.
+            images: List of images to include in the index.
+
+        Returns:
+            Image: The created image index object.
+        """
+        index_body = {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "manifests": [
+                {
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "digest": image.digest,
+                    "size": len(image.manifest or ""),
+                    "platform": {
+                        "architecture": image.arch or "amd64",
+                        "os": "linux",
+                    },
+                }
+                for image in images
+            ],
+        }
+        with tempfile.NamedTemporaryFile(
+            mode="w", delete=False, suffix=".json"
+        ) as index_file_tmp:
+            with open(index_file_tmp.name, "w", encoding="utf-8") as index_file:
+                json.dump(index_body, index_file)
+            index_manifest_path = index_file_tmp.name
+
+            image_pullspec = f"{self.registry}/{name}:{tag}"
+            cmd = [
+                "oras",
+                "manifest",
+                "push",
+                "--media-type",
+                "application/vnd.oci.image.index.v1+json",
+                image_pullspec,
+                index_manifest_path,
+            ]
+
+            code, _, stderr = await run_async_subprocess(cmd)
+            if code != 0:
+                raise RuntimeError(
+                    f"Failed to push image index {image_pullspec} to registry."
+                    f"Error: {stderr.decode()}"
+                )
+            manifest = await self.fetch_manifest(name, tag)
+            return Image(
+                repository=f"{self.registry}/{name}",
+                digest=self._get_digest_from_manifest(manifest),
+                tag=tag,
+                manifest=manifest,
+            )
+
+    async def fetch_manifest(self, name: str, tag: str) -> str:
+        """
+        Fetch the manifest of an image from the registry.
+
+        Args:
+            name (str): A repository name.
+            tag (str): An image tag.
+
+        Returns:
+            str: Image manigest.
+        """
+        image_pullspec = f"{self.registry}/{name}:{tag}"
+        cmd = ["oras", "manifest", "fetch", image_pullspec]
+        code, stdout, stderr = await run_async_subprocess(cmd)
+        if code != 0:
+            raise RuntimeError(
+                f"Failed to fetch manifest {image_pullspec} to registry. "
+                f"Error: {stderr.decode()}"
+            )
+
+        return stdout.decode().strip()
 
     async def attach_sbom(
         self, image: Image, format: Literal["spdx", "cyclonedx"], sbom: bytes
@@ -99,7 +221,6 @@ class ReferrersTagOCIClient:
                 size=sbom_length,
             )
         ]
-
         # the config is not used in any way but must be specified to conform
         # with spec
         config_digest = await self._push_blob(image.name, b"")
