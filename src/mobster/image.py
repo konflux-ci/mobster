@@ -11,20 +11,25 @@ from mobster.oci import get_image_manifest
 
 # Regular expression to validate OCI image references with digest
 # credit to https://regex101.com/r/nmsdpa/1)
-ARTIFACT_PATTERN = re.compile(
-    r"""
-    ^
-    (?P<repository>
-      (?:(?P<domain>(?:(?:[\w-]+(?:\.[\w-]+)+)(?::\d+)?)|[\w]+:\d+)/)
-      (?P<name>[a-z0-9_.-]+(?:/[a-z0-9_.-]+)*)
-    )
-    (?::(?P<tag>[\w][\w.-]{0,127}))?
-    (?:@(?P<digest>
+_REPOSITORY_REGEX_STR = r"""
+(?P<repository>
+  (?:(?P<domain>(?:(?:[\w-]+(?:\.[\w-]+)+)(?::\d+)?)|[\w]+:\d+)/)
+  (?P<name>[a-z0-9_.-]+(?:/[a-z0-9_.-]+)*)
+)
+"""
+_TAG_REGEX_STR = r"(?::(?P<tag>[\w][\w.-]{0,127}))?"
+_DIGEST_REGEX_STR = r"""
+(?:@(?P<digest>
       (?P<digest_alg>[A-Za-z][A-Za-z0-9]*)(?:[+.-_][A-Za-z][A-Za-z0-9]*)*:
-      (?P<digest_hash>[0-9a-fA-F]{32,})))
-    $
-    """,
+      (?P<digest_hash>[0-9a-fA-F]{32,}))
+)
+"""
+ARTIFACT_PATTERN = re.compile(
+    f"^{_REPOSITORY_REGEX_STR}{_TAG_REGEX_STR}{_DIGEST_REGEX_STR}$",
     re.VERBOSE | re.MULTILINE,
+)
+PULLSPEC_PATTERN = re.compile(
+    f"^{_REPOSITORY_REGEX_STR}{_TAG_REGEX_STR}$", re.VERBOSE | re.MULTILINE
 )
 
 
@@ -184,8 +189,7 @@ class Image:  # pylint: disable=too-many-instance-attributes
             >>> image("quay.io/org/apache", "sha256:deadbeef").name
             "apache"
         """
-        _, name = self.repository.rsplit("/", 1)
-        return name
+        return self.repository.rsplit("/", 1)[-1]
 
     def purl(self) -> PackageURL:
         """

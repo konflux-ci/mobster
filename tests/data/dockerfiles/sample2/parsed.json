@@ -1,0 +1,273 @@
+{
+  "MetaArgs": [
+    {
+      "Key": "ALPINE_TAG",
+      "DefaultValue": "3.10",
+      "ProvidedValue": null,
+      "Value": "3.10"
+    }
+  ],
+  "Stages": [
+    {
+      "Name": "",
+      "OrigCmd": "FROM",
+      "BaseName": "registry.access.redhat.com/ubi8/ubi:latest",
+      "Platform": "",
+      "Comment": "",
+      "SourceCode": "FROM registry.access.redhat.com/ubi8/ubi:latest",
+      "Location": [
+        {
+          "Start": {
+            "Line": 3,
+            "Character": 0
+          },
+          "End": {
+            "Line": 3,
+            "Character": 0
+          }
+        }
+      ],
+      "From": {
+        "Image": "registry.access.redhat.com/ubi8/ubi:latest"
+      },
+      "Commands": [
+        {
+          "Chmod": "",
+          "Chown": "",
+          "DestPath": "/",
+          "ExcludePatterns": null,
+          "From": "",
+          "Link": false,
+          "Mounts": null,
+          "Name": "COPY",
+          "NetworkMode": "",
+          "Parents": false,
+          "Security": "",
+          "SourceContents": null,
+          "SourcePaths": [
+            "entrypoint.sh"
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "build",
+      "OrigCmd": "FROM",
+      "BaseName": "alpine:3.10",
+      "Platform": "",
+      "Comment": "",
+      "SourceCode": "FROM alpine:${ALPINE_TAG} AS build",
+      "Location": [
+        {
+          "Start": {
+            "Line": 6,
+            "Character": 0
+          },
+          "End": {
+            "Line": 6,
+            "Character": 0
+          }
+        }
+      ],
+      "As": "build",
+      "From": {
+        "Image": "alpine:3.10"
+      },
+      "Commands": [
+        {
+          "CmdLine": [
+            "echo \"foo\""
+          ],
+          "Files": null,
+          "FlagsUsed": [],
+          "Mounts": [],
+          "Name": "RUN",
+          "NetworkMode": "default",
+          "PrependShell": true,
+          "Security": "sandbox"
+        },
+        {
+          "CmdLine": [
+            "/entrypoint.sh"
+          ],
+          "Files": null,
+          "Mounts": null,
+          "Name": "ENTRYPOINT",
+          "NetworkMode": "",
+          "PrependShell": false,
+          "Security": ""
+        }
+      ]
+    },
+    {
+      "Name": "test",
+      "OrigCmd": "FROM",
+      "BaseName": "build",
+      "Platform": "",
+      "Comment": "",
+      "SourceCode": "FROM build AS test",
+      "Location": [
+        {
+          "Start": {
+            "Line": 11,
+            "Character": 0
+          },
+          "End": {
+            "Line": 11,
+            "Character": 0
+          }
+        }
+      ],
+      "As": "test",
+      "From": {
+        "Stage": {
+          "Named": "build",
+          "Index": 1
+        }
+      },
+      "Commands": [
+        {
+          "CmdLine": [
+            "echo \"foo\""
+          ],
+          "Files": null,
+          "FlagsUsed": [],
+          "Mounts": [],
+          "Name": "RUN",
+          "NetworkMode": "default",
+          "PrependShell": true,
+          "Security": "sandbox"
+        }
+      ]
+    },
+    {
+      "Name": "nothing",
+      "OrigCmd": "FROM",
+      "BaseName": "scratch",
+      "Platform": "",
+      "Comment": "",
+      "SourceCode": "FROM scratch AS nothing",
+      "Location": [
+        {
+          "Start": {
+            "Line": 14,
+            "Character": 0
+          },
+          "End": {
+            "Line": 14,
+            "Character": 0
+          }
+        }
+      ],
+      "As": "nothing",
+      "From": {
+        "Scratch": true
+      },
+      "Commands": [
+        {
+          "Chmod": "",
+          "Chown": "nobody:nobody",
+          "DestPath": ".",
+          "ExcludePatterns": null,
+          "From": "build",
+          "Link": false,
+          "Mounts": null,
+          "Name": "COPY",
+          "NetworkMode": "",
+          "Parents": false,
+          "Security": "",
+          "SourceContents": null,
+          "SourcePaths": [
+            "abc"
+          ]
+        },
+        {
+          "CmdLine": [
+            "echo \"foo\""
+          ],
+          "Files": null,
+          "FlagsUsed": [],
+          "Mounts": [],
+          "Name": "RUN",
+          "NetworkMode": "default",
+          "PrependShell": true,
+          "Security": "sandbox"
+        }
+      ]
+    },
+    {
+      "Name": "foo",
+      "OrigCmd": "FROM",
+      "BaseName": "registry.access.redhat.com/ubi9/ubi:latest",
+      "Platform": "",
+      "Comment": "",
+      "SourceCode": "FROM registry.access.redhat.com/ubi9/ubi:latest AS foo",
+      "Location": [
+        {
+          "Start": {
+            "Line": 18,
+            "Character": 0
+          },
+          "End": {
+            "Line": 18,
+            "Character": 0
+          }
+        }
+      ],
+      "As": "foo",
+      "From": {
+        "Image": "registry.access.redhat.com/ubi9/ubi:latest"
+      },
+      "Commands": [
+        {
+          "CmdLine": [
+            "echo hi"
+          ],
+          "Files": null,
+          "Mounts": null,
+          "Name": "CMD",
+          "NetworkMode": "",
+          "PrependShell": false,
+          "Security": ""
+        }
+      ]
+    },
+    {
+      "Name": "bar",
+      "OrigCmd": "FROM",
+      "BaseName": "registry.access.redhat.com/ubi8/ubi:latest",
+      "Platform": "",
+      "Comment": "",
+      "SourceCode": "FROM registry.access.redhat.com/ubi8/ubi:latest AS bar",
+      "Location": [
+        {
+          "Start": {
+            "Line": 21,
+            "Character": 0
+          },
+          "End": {
+            "Line": 21,
+            "Character": 0
+          }
+        }
+      ],
+      "As": "bar",
+      "From": {
+        "Image": "registry.access.redhat.com/ubi8/ubi:latest"
+      },
+      "Commands": [
+        {
+          "CmdLine": [
+            "echo hi"
+          ],
+          "Files": null,
+          "Mounts": null,
+          "Name": "CMD",
+          "NetworkMode": "",
+          "PrependShell": false,
+          "Security": ""
+        }
+      ]
+    }
+  ]
+}

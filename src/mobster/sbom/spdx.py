@@ -36,6 +36,19 @@ def get_root_package_relationship(spdx_id: str) -> Relationship:
     )
 
 
+def get_namespace(sbom_name: str) -> str:
+    """
+    Create a namespace for the SBOM using its name
+    and a Konflux URL.
+    Args:
+        sbom_name (str): Name of the SBOM
+
+    Returns:
+        str: The generated documentNamespace
+    """
+    return f"https://konflux-ci.dev/spdxdocs/{sbom_name}-{uuid4()}"
+
+
 def get_creation_info(sbom_name: str) -> CreationInfo:
     """Create the creation information for the SPDX document.
 
@@ -50,7 +63,7 @@ def get_creation_info(sbom_name: str) -> CreationInfo:
         spdx_id="SPDXRef-DOCUMENT",
         name=sbom_name,
         data_license="CC0-1.0",
-        document_namespace=f"https://konflux-ci.dev/spdxdocs/{sbom_name}-{uuid4()}",
+        document_namespace=get_namespace(sbom_name),
         creators=[
             Actor(ActorType.ORGANIZATION, "Red Hat"),
             Actor(ActorType.TOOL, "Konflux CI"),
