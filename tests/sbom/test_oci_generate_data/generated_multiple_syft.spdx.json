@@ -1,0 +1,1842 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "creationInfo": {
+    "created": "2024-12-18T11:28:00Z",
+    "creators": [
+      "Organization: Anchore, Inc",
+      "Tool: syft-1.4.1",
+      "Tool: Mobster-0.4.0"
+    ],
+    "licenseListVersion": "3.23"
+  },
+  "dataLicense": "CC0-1.0",
+  "name": "quay.io/foobar/examplecontainer@sha256:11111111111111111111111111111111",
+  "spdxVersion": "SPDX-2.3",
+  "documentNamespace": "https://konflux-ci.dev/spdxdocs/quay.io/foobar/examplecontainer@sha256:11111111111111111111111111111111-5cab6b74-c196-4300-a1ee-dab4c9b7572d",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "11111111111111111111111111111111"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/examplecontainer@sha256:11111111111111111111111111111111?repository_url=quay.io/foobar/examplecontainer",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "examplecontainer",
+      "supplier": "Organization: Red Hat",
+      "versionInfo": "v10"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-certifi-605ce44010623730",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:kennethreitz:certifi:2022.12.7:*:*:*:*:python:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:pypi/certifi@2022.12.7",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "certifi",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "2022.12.7"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-charset-normalizer-af8ef9b528d1324d",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset-normalizer:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset-normalizer:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset_normalizer:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset_normalizer:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset-normalizer:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset-normalizer:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset_normalizer:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset_normalizer:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset-normalizer:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset-normalizer:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset_normalizer:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset_normalizer:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset-normalizer:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset-normalizer:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset_normalizer:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset_normalizer:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-charset:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_charset:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python-charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python_charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:charset:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:charset-normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:charset_normalizer:3.0.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:pypi/charset-normalizer@3.0.1",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "charset-normalizer",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "3.0.1"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-flit-core-24f242ce07794d00",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit-core:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit-core:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit_core:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit_core:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit-core:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit-core:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit_core:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit_core:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit-core:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit-core:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit_core:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit_core:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit:python-flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit:python_flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-flit:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_flit:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit-core:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit-core:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit_core:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit_core:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit:flit-core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:flit:flit_core:3.8.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:pypi/flit-core@3.8.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "flit-core",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements-build.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "3.8.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-idna-ff5d4caf61299680",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-idna:python-idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-idna:python_idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_idna:python-idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_idna:python_idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python-idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python_idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:idna:python-idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:idna:python_idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-idna:idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_idna:idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:idna:idna:3.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:pypi/idna@3.4",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "idna",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "3.4"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-requests-03176f57fdf54d1e",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:requests:2.28.2:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:pypi/requests@2.28.2",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "requests",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "2.28.2"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-setuptools-7ae302e7223ecbbd",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:setuptools:67.1.0:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:pypi/setuptools@67.1.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "setuptools",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements-build.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "67.1.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-urllib3-531a10a07587b59c",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:urllib3:1.26.14:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:pypi/urllib3@1.26.14",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "urllib3",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "1.26.14"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-python-wheel-3a9d5577afa1b279",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-wheel:python-wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-wheel:python_wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_wheel:python-wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_wheel:python_wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python-wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:python_wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python-wheel:wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python_wheel:wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:wheel:python-wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:wheel:python_wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:python:wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:wheel:wheel:0.38.4:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:pypi/wheel@0.38.4",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "wheel",
+      "sourceInfo": "acquired package info from installed python package manifest file: /requirements-build.txt",
+      "supplier": "NOASSERTION",
+      "versionInfo": "0.38.4"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-basesystem-fcabd006cb3bfe7d",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:basesystem:basesystem:11-13.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:basesystem:11-13.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&upstream=basesystem-11-13.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-Public-Domain",
+      "name": "basesystem",
+      "originator": "Organization: Red Hat, Inc.",
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "11-13.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-bash-a6062d7253817d9d",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:bash:5.1.8-9.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:bash:bash:5.1.8-9.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&upstream=bash-5.1.8-9.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-GPLv3-",
+      "name": "bash",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "9295a01e788345a66a371467a1dd0c085d921f52"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "5.1.8-9.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-coreutils-single-bc07797a46d14a80",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:coreutils-single:coreutils-single:8.32-36.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:coreutils-single:coreutils_single:8.32-36.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:coreutils_single:coreutils-single:8.32-36.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:coreutils_single:coreutils_single:8.32-36.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:coreutils:coreutils-single:8.32-36.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:coreutils:coreutils_single:8.32-36.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:coreutils-single:8.32-36.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:coreutils_single:8.32-36.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&upstream=coreutils-8.32-36.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-GPLv3-",
+      "name": "coreutils-single",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "642d9f7db3fbba6ece69558b5c706930ec126584"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "8.32-36.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-filesystem-5423c4a724c69dca",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:filesystem:filesystem:3.16-5.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:filesystem:3.16-5.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&upstream=filesystem-3.16-5.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-Public-Domain",
+      "name": "filesystem",
+      "originator": "Organization: Red Hat, Inc.",
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "3.16-5.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-glibc-ab6bbd6d165109d2",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:glibc:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc:glibc:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&upstream=glibc-2.34-125.el9_5.1.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-cedbc2fa4301332b3d3569627696d986a63b3f3a293a2759a611c7c3deebd428",
+      "name": "glibc",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "ed0c5417a07603087b40443f16c64c67a2d0ed45"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "2.34-125.el9_5.1"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-glibc-common-5d2e03b4ae3e405b",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc-common:glibc-common:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc-common:glibc_common:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc_common:glibc-common:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc_common:glibc_common:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:glibc-common:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:glibc_common:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc:glibc-common:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc:glibc_common:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/glibc-common@2.34-125.el9_5.1?arch=x86_64&upstream=glibc-2.34-125.el9_5.1.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-cedbc2fa4301332b3d3569627696d986a63b3f3a293a2759a611c7c3deebd428",
+      "name": "glibc-common",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "4ce35b5a588ee407a7e87d76e2a1301252a618c5"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "2.34-125.el9_5.1"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-glibc-minimal-langpack-d35bdd9cfa0b8d62",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc-minimal-langpack:glibc-minimal-langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc-minimal-langpack:glibc_minimal_langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc_minimal_langpack:glibc-minimal-langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc_minimal_langpack:glibc_minimal_langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc-minimal:glibc-minimal-langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc-minimal:glibc_minimal_langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc_minimal:glibc-minimal-langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc_minimal:glibc_minimal_langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:glibc-minimal-langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:glibc_minimal_langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc:glibc-minimal-langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:glibc:glibc_minimal_langpack:2.34-125.el9_5.1:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/glibc-minimal-langpack@2.34-125.el9_5.1?arch=x86_64&upstream=glibc-2.34-125.el9_5.1.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-cedbc2fa4301332b3d3569627696d986a63b3f3a293a2759a611c7c3deebd428",
+      "name": "glibc-minimal-langpack",
+      "originator": "Organization: Red Hat, Inc.",
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "2.34-125.el9_5.1"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-gpg-pubkey-6a4614b48b443e33",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:gpg-pubkey:gpg-pubkey:5a6340b3-6229229e:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:gpg-pubkey:gpg_pubkey:5a6340b3-6229229e:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:gpg_pubkey:gpg-pubkey:5a6340b3-6229229e:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:gpg_pubkey:gpg_pubkey:5a6340b3-6229229e:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:gpg:gpg-pubkey:5a6340b3-6229229e:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:gpg:gpg_pubkey:5a6340b3-6229229e:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/gpg-pubkey@5a6340b3-6229229e?distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-pubkey",
+      "name": "gpg-pubkey",
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "NOASSERTION",
+      "versionInfo": "5a6340b3-6229229e"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-gpg-pubkey-0b9edfc7dd36b25d",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:gpg-pubkey:gpg-pubkey:fd431d51-4ae0493b:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:gpg-pubkey:gpg_pubkey:fd431d51-4ae0493b:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:gpg_pubkey:gpg-pubkey:fd431d51-4ae0493b:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:gpg_pubkey:gpg_pubkey:fd431d51-4ae0493b:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:gpg:gpg-pubkey:fd431d51-4ae0493b:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:gpg:gpg_pubkey:fd431d51-4ae0493b:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/gpg-pubkey@fd431d51-4ae0493b?distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-pubkey",
+      "name": "gpg-pubkey",
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "NOASSERTION",
+      "versionInfo": "fd431d51-4ae0493b"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-libacl-6a12891a28711ed0",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:libacl:libacl:2.3.1-4.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:libacl:2.3.1-4.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/libacl@2.3.1-4.el9?arch=x86_64&upstream=acl-2.3.1-4.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-LGPLv2-",
+      "name": "libacl",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "66c8d8a589a6f28bba41148d9ad13341e78a5a9e"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "2.3.1-4.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-libattr-246362466b6f01d4",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:libattr:libattr:2.5.1-3.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:libattr:2.5.1-3.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/libattr@2.5.1-3.el9?arch=x86_64&upstream=attr-2.5.1-3.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-LGPLv2-",
+      "name": "libattr",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "a18d42a0a3759707cfea42ce8caa4761a5b3ad82"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "2.5.1-3.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-libcap-e129417de8081c72",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:libcap:libcap:2.48-9.el9_2:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:libcap:2.48-9.el9_2:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/libcap@2.48-9.el9_2?arch=x86_64&upstream=libcap-2.48-9.el9_2.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-BSD-or-GPLv2",
+      "name": "libcap",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "6e666c18cd839e6632a9395ab154f116f10ebb65"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "2.48-9.el9_2"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-libgcc-492434936db2f877",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:libgcc:libgcc:11.5.0-2.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:libgcc:11.5.0-2.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/libgcc@11.5.0-2.el9?arch=x86_64&upstream=gcc-11.5.0-2.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-0a20635703258c08665cede2a4166b90795ad1cb30dd85cfde1598463d68ebf5",
+      "name": "libgcc",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "e94494ca348ac9fc5b386d040fe90f0981971511"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "11.5.0-2.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-libselinux-79db8c526f87ba3b",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:libselinux:libselinux:3.6-1.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:libselinux:3.6-1.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/libselinux@3.6-1.el9?arch=x86_64&upstream=libselinux-3.6-1.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-Public-Domain",
+      "name": "libselinux",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "1b498b7af44a22054ee36e80a252f403a74b1936"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "3.6-1.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-libsepol-9891839d8f699944",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:libsepol:libsepol:3.6-1.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:libsepol:3.6-1.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/libsepol@3.6-1.el9?arch=x86_64&upstream=libsepol-3.6-1.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-LGPLv2-",
+      "name": "libsepol",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "73cd4d33cfe1305a388f0126d6faeab4b2352da4"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "3.6-1.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-ncurses-base-a0d19211c8c4589b",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:ncurses-base:ncurses-base:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:ncurses-base:ncurses_base:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:ncurses_base:ncurses-base:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:ncurses_base:ncurses_base:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:ncurses:ncurses-base:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:ncurses:ncurses_base:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:ncurses-base:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:ncurses_base:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/ncurses-base@6.2-10.20210508.el9?arch=noarch&upstream=ncurses-6.2-10.20210508.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "name": "ncurses-base",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "7318e5838debb2d923905e67f9e8830f2a1ff5f4"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "6.2-10.20210508.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-ncurses-libs-31b40b2b21390159",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:ncurses-libs:ncurses-libs:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:ncurses-libs:ncurses_libs:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:ncurses_libs:ncurses-libs:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:ncurses_libs:ncurses_libs:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:ncurses:ncurses-libs:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:ncurses:ncurses_libs:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:ncurses-libs:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:ncurses_libs:6.2-10.20210508.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/ncurses-libs@6.2-10.20210508.el9?arch=x86_64&upstream=ncurses-6.2-10.20210508.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "name": "ncurses-libs",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "4c1a2e70da159a5c5750d9c16c50843bd216d5f4"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "6.2-10.20210508.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-pcre2-1a97d50a68b062d7",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:pcre2:10.40-6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:pcre2:pcre2:10.40-6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/pcre2@10.40-6.el9?arch=x86_64&upstream=pcre2-10.40-6.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-BSD",
+      "name": "pcre2",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "c74f502aab3063ee72922a7735edbd2f32c92080"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "10.40-6.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-pcre2-syntax-8f3dd37865073b05",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:pcre2-syntax:pcre2-syntax:10.40-6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:pcre2-syntax:pcre2_syntax:10.40-6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:pcre2_syntax:pcre2-syntax:10.40-6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:pcre2_syntax:pcre2_syntax:10.40-6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:pcre2-syntax:10.40-6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:pcre2_syntax:10.40-6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:pcre2:pcre2-syntax:10.40-6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:pcre2:pcre2_syntax:10.40-6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/pcre2-syntax@10.40-6.el9?arch=noarch&upstream=pcre2-10.40-6.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-BSD",
+      "name": "pcre2-syntax",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "24e5a6c8ae65ef32012444c539eb087f1b59a11a"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "10.40-6.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-redhat-release-bbf1d165194eceb0",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat-release:redhat-release:9.5-0.6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat-release:redhat_release:9.5-0.6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat_release:redhat-release:9.5-0.6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat_release:redhat_release:9.5-0.6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:redhat-release:9.5-0.6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:redhat_release:9.5-0.6.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/redhat-release@9.5-0.6.el9?arch=x86_64&upstream=redhat-release-9.5-0.6.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-GPLv2",
+      "name": "redhat-release",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "52b7a27197892b1c65e8cb823a69d488baad9e23"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "9.5-0.6.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-setup-befa3e6a19701472",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:setup:2.13.7-10.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:setup:setup:2.13.7-10.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/setup@2.13.7-10.el9?arch=noarch&upstream=setup-2.13.7-10.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-Public-Domain",
+      "name": "setup",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "73e4e3231d55347f5e68ec3d299370ea45716056"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "2.13.7-10.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-tzdata-f21803b5b9d9adef",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:redhat:tzdata:2024b-2.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceLocator": "cpe:2.3:a:tzdata:tzdata:2024b-2.el9:*:*:*:*:*:*:*",
+          "referenceType": "cpe23Type"
+        },
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/tzdata@2024b-2.el9?arch=noarch&upstream=tzdata-2024b-2.el9.src.rpm&distro=rhel-9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "LicenseRef-Public-Domain",
+      "name": "tzdata",
+      "originator": "Organization: Red Hat, Inc.",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "2a486eded3c62267c2c6a9f3e0afc9fcc9f71874"
+      },
+      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
+      "supplier": "Organization: Red Hat, Inc.",
+      "versionInfo": "2024b-2.el9"
+    },
+    {
+      "SPDXID": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "71c7ec827876417693bd3feb615a5c70753b78667cb27c17cb3a5346a6955da5"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/registry.access.redhat.com/ubi9/ubi-micro@sha256:71c7ec827876417693bd3feb615a5c70753b78667cb27c17cb3a5346a6955da5?arch=amd64&tag=9.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "registry.access.redhat.com/ubi9/ubi-micro",
+      "primaryPackagePurpose": "CONTAINER",
+      "supplier": "NOASSERTION",
+      "versionInfo": "9.5"
+    },
+    {
+      "SPDXID": "SPDXRef-image-konflux-test-0b947c0ad395438e31ccc30ce44e25bfcbab7446d81698c7723213c42310cca5",
+      "annotations": [
+        {
+          "annotationDate": "2025-07-07T10:22:38Z",
+          "annotationType": "OTHER",
+          "annotator": "Tool: konflux:jsonencoded",
+          "comment": "{\"name\":\"konflux:container:is_base_image\",\"value\":\"true\"}"
+        }
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/konflux-test@sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c?repository_url=quay.io/redhat-user-workloads/rhtap-integration-tenant/konflux-test",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "konflux-test",
+      "supplier": "Organization: Red Hat",
+      "versionInfo": "baf5e59d5d35615d0db13b46bd91194458011af8"
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relatedSpdxElement": "SPDXRef-Package-python-certifi-605ce44010623730",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relatedSpdxElement": "SPDXRef-Package-python-charset-normalizer-af8ef9b528d1324d",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relatedSpdxElement": "SPDXRef-Package-python-flit-core-24f242ce07794d00",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relatedSpdxElement": "SPDXRef-Package-python-idna-ff5d4caf61299680",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relatedSpdxElement": "SPDXRef-Package-python-requests-03176f57fdf54d1e",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relatedSpdxElement": "SPDXRef-Package-python-setuptools-7ae302e7223ecbbd",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relatedSpdxElement": "SPDXRef-Package-python-urllib3-531a10a07587b59c",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relatedSpdxElement": "SPDXRef-Package-python-wheel-3a9d5577afa1b279",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-basesystem-fcabd006cb3bfe7d",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-bash-a6062d7253817d9d",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-coreutils-single-bc07797a46d14a80",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-filesystem-5423c4a724c69dca",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-glibc-ab6bbd6d165109d2",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-glibc-common-5d2e03b4ae3e405b",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-glibc-minimal-langpack-d35bdd9cfa0b8d62",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-gpg-pubkey-6a4614b48b443e33",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-gpg-pubkey-0b9edfc7dd36b25d",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-libacl-6a12891a28711ed0",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-libattr-246362466b6f01d4",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-libcap-e129417de8081c72",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-libgcc-492434936db2f877",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-libselinux-79db8c526f87ba3b",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-libsepol-9891839d8f699944",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-ncurses-base-a0d19211c8c4589b",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-ncurses-libs-31b40b2b21390159",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-pcre2-1a97d50a68b062d7",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-pcre2-syntax-8f3dd37865073b05",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-redhat-release-bbf1d165194eceb0",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-setup-befa3e6a19701472",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-tzdata-f21803b5b9d9adef",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relatedSpdxElement": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relatedSpdxElement": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relationshipType": "DESCRIBES"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relatedSpdxElement": "SPDXRef-image-konflux-test-0b947c0ad395438e31ccc30ce44e25bfcbab7446d81698c7723213c42310cca5",
+      "relationshipType": "DESCENDANT_OF"
+    }
+  ]
+}
