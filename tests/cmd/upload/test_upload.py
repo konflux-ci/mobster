@@ -8,9 +8,9 @@ from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedExcepti
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.cmd.upload.upload import (
     TPAUploadCommand,
+    TPAUploadReport,
+    TPAUploadSuccess,
     UploadExitCode,
-    UploadReport,
-    UploadSuccess,
 )
 
 
@@ -226,9 +226,9 @@ async def test_execute_upload_mixed_results(
 
     await command.execute()
 
-    expected_report = UploadReport(
+    expected_report = TPAUploadReport(
         success=[
-            UploadSuccess(
+            TPAUploadSuccess(
                 path=Path("/test/dir/file1.json"),
                 urn="urn:uuid:12345678-1234-5678-9012-123456789012",
             )
@@ -237,7 +237,7 @@ async def test_execute_upload_mixed_results(
     )
 
     out, _ = capsys.readouterr()
-    actual_report = UploadReport.model_validate_json(out)
+    actual_report = TPAUploadReport.model_validate_json(out)
     assert actual_report == expected_report
 
     # Verify upload_sbom was called for each file
