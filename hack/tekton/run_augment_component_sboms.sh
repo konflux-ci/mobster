@@ -17,6 +17,9 @@ snapshot_spec="snapshot.json"
 atlas_api_url="http://localhost:8080"
 retry_s3_bucket="mpp-e1-preprod-sbom-29093454-2ea7-4fd0-b4cf-dc69a7529ee0"
 sbom_path="component-sboms"
+tpa_report_path="tpa_report.json"
+failed_dir="failed-sboms"
+report="report.json"
 
 repo_root="$(git rev-parse --show-toplevel)"
 export PATH="$(repo_root)/scripts/tekton/:$PATH"
@@ -34,8 +37,18 @@ export MOBSTER_TPA_AUTH_DISABLE="true"
 upload_sboms_to_atlas \
     --data-dir "$data_dir" \
     --atlas-api-url "$atlas_api_url" \
-    --sbom-path "$sbom_path"
+    --sbom-path "$sbom_path" \
+    --report-path "$tpa_report_path" \
+    --failed-dir "$failed_dir"
 
 upload_sboms_to_s3 \
     --data-dir "$data_dir" \
-    --retry-s3-bucket "$retry_s3_bucket"
+    --retry-s3-bucket "$retry_s3_bucket" \
+    --failed-dir "$failed_dir"
+
+generate_upload_report \
+    --data-dir "$data_dir" \
+    --tpa-report "$tpa_report_path" \
+    --failed-dir "$failed_dir" \
+    --result "$report" \
+    --type "component"

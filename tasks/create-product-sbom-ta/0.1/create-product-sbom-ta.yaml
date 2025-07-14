@@ -95,9 +95,15 @@ spec:
       description: Used as a working directory.
 
   results:
-    - description: Produced trusted data artifact
-      name: sourceDataArtifact
+    - name: sourceDataArtifact
       type: string
+      description: Produced trusted data artifact
+
+    - name: uploadReport
+      type: string
+      description: |
+        Path to the final report in the dataDir containing the summary of TPA and S3 SBOM
+        uploads.
 
   volumes:
     - name: workdir
@@ -182,7 +188,9 @@ spec:
         upload_sboms_to_atlas \
           --data-dir "$(params.dataDir)" \
           --atlas-api-url "$(params.atlasApiUrl)" \
-          --sbom-path "product-sbom"
+          --sbom-path "product-sbom" \
+          --report-path "product_report.json" \
+          --failed-dir "failed-sboms"
 
     - name: upload-sboms-to-s3
       image: quay.io/konflux-ci/mobster:ed4ae93fadd870a17ed981ce8a754b1d178e8007
@@ -206,7 +214,20 @@ spec:
         set -eux
         upload_sboms_to_s3 \
           --data-dir "$(params.dataDir)" \
-          --retry-s3-bucket "$(params.retryS3Bucket)"
+          --retry-s3-bucket "$(params.retryS3Bucket)" \
+          --failed-dir "failed-sboms"
+
+    - name: generate-upload-report
+      image: quay.io/konflux-ci/mobster:ed4ae93fadd870a17ed981ce8a754b1d178e8007
+      script: |
+        #!/usr/bin/env bash
+        set -eux
+        generate_upload_report \
+          --data-dir "$(params.dataDir)" \
+          --tpa-report "product_report.json" \
+          --failed-dir "failed-sboms" \
+          --type "product" \
+          --result "$(results.uploadReport.path)"
 
     - name: create-trusted-artifact
       ref:

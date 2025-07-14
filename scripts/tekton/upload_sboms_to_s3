@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -eux
 
-OPTS=$(getopt -o '' --long data-dir:,retry-s3-bucket: -- "$@")
+OPTS=$(getopt -o '' --long data-dir:,retry-s3-bucket:,failed-dir: -- "$@")
 eval set -- "$OPTS"
 
 data_dir=""
 retry_s3_bucket=""
+failed_dir=""
 
 while true; do
     case "$1" in
@@ -15,6 +16,10 @@ while true; do
             ;;
         --retry-s3-bucket)
             retry_s3_bucket="$2"
+            shift 2
+            ;;
+        --failed-dir)
+            failed_dir="$2"
             shift 2
             ;;
         --)
@@ -28,8 +33,11 @@ while true; do
     esac
 done
 
-if [[ -z "$data_dir" || -z "$retry_s3_bucket" ]]; then
-    echo "Error: Both --data-dir and --retry-s3-bucket are required" >&2
+if [[ -z "$data_dir" || \
+      -z "$retry_s3_bucket" || \
+      -z "$failed_dir" \
+      ]]; then
+    echo "Error: missing required argument or is empty" >&2
     exit 1
 fi
 
@@ -47,6 +55,9 @@ for var_name in "${required_vars[@]}"; do
 done
 set -x
 
-failed_path="${data_dir}/failed-sboms"
 
-aws s3 cp "$failed_path" s3://${retry_s3_bucket}/ --recursive
+aws s3 cp "$failed_dir" s3://${retry_s3_bucket}/ --recursive
+
+# remove all uploaded SBOMs, so that a final report can be generated in a
+# further step.
+rm -f "${failed_dir}/*"

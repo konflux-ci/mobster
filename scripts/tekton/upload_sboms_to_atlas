@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 set -ux
 
-OPTS=$(getopt -o '' --long data-dir:,atlas-api-url:,sbom-path: -- "$@")
+OPTS=$(getopt -o '' --long data-dir:,atlas-api-url:,sbom-path:,report-path:,failed-dir: -- "$@")
 eval set -- "$OPTS"
 
 data_dir=""
 atlas_api_url=""
 sbom_path=""
+failed_dir=""
+report_path=""
 
 while true; do
     case "$1" in
@@ -22,6 +24,14 @@ while true; do
             sbom_path="$2"
             shift 2
             ;;
+        --report-path)
+            report_path="$2"
+            shift 2
+            ;;
+        --failed-dir)
+            failed_dir="$2"
+            shift 2
+            ;;
         --)
             shift
             break
@@ -33,8 +43,13 @@ while true; do
     esac
 done
 
-if [[ -z "$data_dir" || -z "$atlas_api_url" || -z "$sbom_path" ]]; then
-    echo "Error: --data-dir, --atlas-api-url and --sbom-path are required" >&2
+if [[ -z "$data_dir" || \
+      -z "$atlas_api_url" || \
+      -z "$sbom_path" || \
+      -z "$report_path" || \
+      -z "$failed_dir" \
+      ]]; then
+    echo "Error: missing required argument or argument is empty" >&2
     exit 1
 fi
 
@@ -54,9 +69,7 @@ done
 set -x
 
 sbom_path="${data_dir}/${sbom_path}"
-report_path="${data_dir}/report.json"
-failed_path="${data_dir}/failed-sboms"
-mkdir -p "$failed_path"
+mkdir -p "$failed_dir"
 
 if [[ $(find "$sbom_path" -type f | wc -l) -eq 0 ]]; then
     >&2 echo "Error: no SBOMs to upload found."
@@ -77,7 +90,7 @@ if [[ $upload_exit_code -eq 2 ]]; then
   # Then use xargs to copy all the failed SBOM files to a directory, from
   # which the upload-sboms-to-s3 step will push to S3.
   jq '.failure[]' "$report_path" | \
-    xargs -I {} cp {} "$failed_path"
+    xargs -I {} cp {} "$failed_dir"
 elif [[ $upload_exit_code -ne 0 ]]; then
   exit $upload_exit_code
 fi

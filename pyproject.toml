@@ -42,6 +42,7 @@ repository = "https://github.com/konflux-ci/mobster"
 
 [project.scripts]
 mobster = "mobster.main:main"
+generate_upload_report = 'mobster.report:main'
 
 [tool.ruff]
 line-length = 88
