@@ -1,5 +1,68 @@
 # Changelog
 
+## [0.5.0](https://github.com/konflux-ci/mobster/compare/v0.4.0...v0.5.0) (2025-07-14)
+
+
+### Features
+
+* Add extra logging to get precise metrics ([433d83c](https://github.com/konflux-ci/mobster/commit/433d83c0e64d6895806ef6170a80e5d3937bde60))
+* Add extra logging to get precise metrics ([af6a3e3](https://github.com/konflux-ci/mobster/commit/af6a3e3f9717260cfbcdc0a9fa6cd7e90685caca))
+* Add integration tests for TPA interaction ([72e9444](https://github.com/konflux-ci/mobster/commit/72e9444fd0b74d13020601a9218238c737989c4d))
+* add report to Tekton Atlas upload script ([85ca8e4](https://github.com/konflux-ci/mobster/commit/85ca8e43283e102b83cd8b8fbbaadc7dca2483dd))
+* add SBOM download stub ([e7b2f5a](https://github.com/konflux-ci/mobster/commit/e7b2f5a7d4fc2d139f782516bb6a6202fcffcac5))
+* add stubs for the TPA client ([3a52547](https://github.com/konflux-ci/mobster/commit/3a52547053e552059b0ec7bc22cd010310197211))
+* add stubs for the TPA client ([691c2f6](https://github.com/konflux-ci/mobster/commit/691c2f680c9397ed39cd67d8d7628a18e09a4eb1))
+* add TPA container to compose ([c2b5666](https://github.com/konflux-ci/mobster/commit/c2b5666ca5fd69ce3e985a6b7e7a699c8c014eb9))
+* allow optionally disabling TPA auth ([5b4394e](https://github.com/konflux-ci/mobster/commit/5b4394e2d877cf626119ba969db8fb3aa5195a68))
+* disable TPA auth in SBOM hack scripts ([88a355b](https://github.com/konflux-ci/mobster/commit/88a355b01070b959e62ed1f91cd0a3567e1db848))
+* **ISV-5858:** Implement mobster generate oci-image. ([5ca11cb](https://github.com/konflux-ci/mobster/commit/5ca11cb49f2a20f1c959ef331509c32bc5ce8893))
+* **ISV-5875:** add script to mimick tekton task process ([fafd8df](https://github.com/konflux-ci/mobster/commit/fafd8dfe5a9219d157895b8c7d5c0d3bedf1e718))
+* **ISV-5875:** create release-time SBOM augmentation task ([ed4ae93](https://github.com/konflux-ci/mobster/commit/ed4ae93fadd870a17ed981ce8a754b1d178e8007))
+* **ISV-5875:** don't embed tekton task scripts ([0583930](https://github.com/konflux-ci/mobster/commit/05839304299bbef0d17f7b8f725752c8f593c747))
+* **ISV-5875:** handle nonexistent and empty dir in upload ([bdacd34](https://github.com/konflux-ci/mobster/commit/bdacd34c019363fb174eed0864eb7237aa00347f))
+* **ISV-5875:** handle retry exhaustion error separately ([a5692a1](https://github.com/konflux-ci/mobster/commit/a5692a1877443a98585c3a204887d4774da7fe2b))
+* **ISV-5875:** improve exit code handling ([548c9ce](https://github.com/konflux-ci/mobster/commit/548c9ce1f77f5f6cadb7ac0a3b49065626158215))
+* **ISV-5875:** remove registry port restrictions ([ef16603](https://github.com/konflux-ci/mobster/commit/ef166033c55c3f3d1675606996dcbb9048343d8c))
+* **ISV-5875:** support ports in image references ([5a9e258](https://github.com/konflux-ci/mobster/commit/5a9e2588038bfef8fb2856a09c0a42101ce9030b))
+* **ISV-5875:** Tekton task scripts use long options ([f012ec2](https://github.com/konflux-ci/mobster/commit/f012ec22cd2606f9250cca60376e368b39a94a32))
+* **ISV-5875:** use enum for upload exit codes ([8cbf681](https://github.com/konflux-ci/mobster/commit/8cbf681b2e1f6513338bebee0625055e9a31c515))
+* **ISV-5875:** use upload report for S3 retry ([9bed081](https://github.com/konflux-ci/mobster/commit/9bed0814b215a081d84d9ca3a960e9115c725900))
+* **ISV-5992:** add sbom-path arg to TKN scripts ([95b981b](https://github.com/konflux-ci/mobster/commit/95b981bb89e17ed21cc94f638aff09ca84659420))
+* **ISV-5992:** add tkn task for product SBOMs ([3c59bc8](https://github.com/konflux-ci/mobster/commit/3c59bc8beadafee241e086f2a662156ae6f5e518))
+* **ISV-5992:** create product SBOM creation task ([785d33f](https://github.com/konflux-ci/mobster/commit/785d33fdbd3429e06cbeeec216b7f1585b8693cf))
+* **ISV-6007:** Implement list and download and delete TPA commands ([ee4f335](https://github.com/konflux-ci/mobster/commit/ee4f335c707799f0c2bcb0d3ae6256ffb0a53b8c))
+* **ISV-6007:** Implement list and download and delete TPA commands ([e40f37a](https://github.com/konflux-ci/mobster/commit/e40f37a793ecead9766957a40dcc36c216e9db98))
+* move tpa url to pytest param ([9d9e7c6](https://github.com/konflux-ci/mobster/commit/9d9e7c63d50b87f2f4c21d9e2decacf651464e30))
+* prototype integration tests ([7fce317](https://github.com/konflux-ci/mobster/commit/7fce31746ee9605f40601e50be33edd0c65a6c6d))
+* remove verbose debug logging ([e00b2ce](https://github.com/konflux-ci/mobster/commit/e00b2ce8a15cafba5df47319fe38dc3317be4487))
+* Simplify the Github release process ([a13409f](https://github.com/konflux-ci/mobster/commit/a13409f956c811184ae76fc26fabc0fb98dcca82))
+* Simplify the Github release process ([993046d](https://github.com/konflux-ci/mobster/commit/993046d28062893469cf3bec6b56991dddd57d55))
+* skip int tests in tox github action ([1733d6b](https://github.com/konflux-ci/mobster/commit/1733d6b0142bccf3e1540c1b383098b8007ca273))
+* specify commit digest for product task ([d898189](https://github.com/konflux-ci/mobster/commit/d898189abe9afdf3cb34fa149757b43cbc14334d))
+* specify commit digest for product task ([abdc3de](https://github.com/konflux-ci/mobster/commit/abdc3de3cb750d38b3745abf0a9bb872f29ad615))
+* Support multi-arch builds with all available arches ([8c923b0](https://github.com/konflux-ci/mobster/commit/8c923b0da039414675b6229f07c22e00d65f5b14))
+* use newest commit in component tekton task ([490dea7](https://github.com/konflux-ci/mobster/commit/490dea7385540c86b6b69a84670150e88937ed14))
+* use newest commit in component tekton task ([41328cd](https://github.com/konflux-ci/mobster/commit/41328cd5ccfdd03e8c1429ce902fb5373ace3f3d))
+
+
+### Bug Fixes
+
+* Add arch parameters to the right place ([96d0877](https://github.com/konflux-ci/mobster/commit/96d0877a960334b8ff7d60f025b67e1943f691e1))
+* Add arch parameters to the right place ([b8df482](https://github.com/konflux-ci/mobster/commit/b8df48207f4e2b8608548457adb4b8eb3ebab10b))
+* add missing arg ([0732611](https://github.com/konflux-ci/mobster/commit/073261142b8537ad1fe2729a394fbd6aa187ea22))
+* add missing upload report to atlas upload script ([7d5da7c](https://github.com/konflux-ci/mobster/commit/7d5da7c6e3d3928acf130741f066cdf713739347))
+* **ISV-5875:** remove extra pass ([8c94ba0](https://github.com/konflux-ci/mobster/commit/8c94ba091db471f7cfbd7d8d545ba44b78c21618))
+* remove unused code branch ([487e985](https://github.com/konflux-ci/mobster/commit/487e985166039698cbc86db03bd19f2d2c8a2178))
+
+
+### Documentation
+
+* add docs to OCI client ([b43ed15](https://github.com/konflux-ci/mobster/commit/b43ed15b8e23f53cb05753b6215a97d22351ebd9))
+* add docstrings ([e885128](https://github.com/konflux-ci/mobster/commit/e885128776889990177d28ed39957856f8d9e043))
+* add integration test docs ([91e495f](https://github.com/konflux-ci/mobster/commit/91e495fd73647bc089dd26bc5448689658a41eaa))
+* **ISV-5875:** expand trusted artifact references ([9a693f8](https://github.com/konflux-ci/mobster/commit/9a693f8bf041a527c4a7d34f496872aa3f00f0d4))
+* **ISV-5992:** expand TA references ([4a30be7](https://github.com/konflux-ci/mobster/commit/4a30be77c6a2f05bdccf073a49796a33309fabd6))
+
 ## [0.4.0](https://github.com/konflux-ci/mobster/compare/v0.3.0...v0.4.0) (2025-06-24)
 
 
