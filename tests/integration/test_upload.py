@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from mobster.cmd.upload.tpa import TPAClient
-from mobster.cmd.upload.upload import UploadReport, UploadSuccess
+from mobster.cmd.upload.upload import TPAUploadReport, TPAUploadSuccess
 from tests.integration.utils import prepare_input_sbom
 
 TESTDATA_PATH = Path(__file__).parent.parent / "data"
@@ -17,14 +17,14 @@ URN_PATTERN = re.compile(
 )
 
 
-def assert_report(actual: UploadReport, expected: UploadReport) -> None:
+def assert_report(actual: TPAUploadReport, expected: TPAUploadReport) -> None:
     """
     Verify that the actual UploadReport matches the expected report. URNs are
     not matched, just verified using a regular expression.
     """
     assert set(actual.failure) == set(expected.failure)
 
-    def get_path(s_report: UploadSuccess) -> Path:
+    def get_path(s_report: TPAUploadSuccess) -> Path:
         return s_report.path
 
     assert set(map(get_path, actual.success)) == set(map(get_path, expected.success))
@@ -44,8 +44,8 @@ async def test_upload_tpa_file_integration(
         sbom_file, tmp_path, "sbom.json", temporary_sbom_name
     )
 
-    expected_report = UploadReport(
-        success=[UploadSuccess(path=test_sbom_path, urn="")],
+    expected_report = TPAUploadReport(
+        success=[TPAUploadSuccess(path=test_sbom_path, urn="")],
         failure=[],
     )
 
@@ -74,5 +74,5 @@ async def test_upload_tpa_file_integration(
         f"Uploaded SBOM with name {temporary_sbom_name} not found in TPA"
     )
 
-    actual_report = UploadReport.model_validate_json(result.stdout)
+    actual_report = TPAUploadReport.model_validate_json(result.stdout)
     assert_report(actual_report, expected_report)

@@ -27,7 +27,7 @@ class UploadExitCode(Enum):
     TRANSIENT_ERROR = 2
 
 
-class UploadSuccess(pydantic.BaseModel):
+class TPAUploadSuccess(pydantic.BaseModel):
     """
     Object representing a successful Atlas upload.
 
@@ -40,7 +40,7 @@ class UploadSuccess(pydantic.BaseModel):
     urn: str
 
 
-class UploadReport(pydantic.BaseModel):
+class TPAUploadReport(pydantic.BaseModel):
     """Upload report containing successful and failed uploads.
 
     Attributes:
@@ -49,13 +49,13 @@ class UploadReport(pydantic.BaseModel):
         failure: List of file paths that failed to upload.
     """
 
-    success: list[UploadSuccess]
+    success: list[TPAUploadSuccess]
     failure: list[Path]
 
     @staticmethod
     def build_report(
         results: list[tuple[Path, BaseException | str]],
-    ) -> "UploadReport":
+    ) -> "TPAUploadReport":
         """Build an upload report from upload results.
 
         Args:
@@ -66,7 +66,7 @@ class UploadReport(pydantic.BaseModel):
             UploadReport instance with successful and failed uploads categorized.
         """
         success = [
-            UploadSuccess(path=path, urn=urn)
+            TPAUploadSuccess(path=path, urn=urn)
             for path, urn in results
             if isinstance(urn, str)
         ]
@@ -74,7 +74,7 @@ class UploadReport(pydantic.BaseModel):
             path for path, result in results if isinstance(result, BaseException)
         ]
 
-        return UploadReport(success=success, failure=failure)
+        return TPAUploadReport(success=success, failure=failure)
 
 
 class TPAUploadCommand(Command):
@@ -161,7 +161,7 @@ class TPAUploadCommand(Command):
         tpa_url: str,
         sbom_files: list[Path],
         workers: int,
-    ) -> UploadReport:
+    ) -> TPAUploadReport:
         """
         Upload SBOM files to TPA given a directory or a file.
 
@@ -187,7 +187,7 @@ class TPAUploadCommand(Command):
         self.set_exit_code(results)
 
         LOGGER.info("Upload complete")
-        return UploadReport.build_report(list(zip(sbom_files, results, strict=True)))
+        return TPAUploadReport.build_report(list(zip(sbom_files, results, strict=True)))
 
     def set_exit_code(self, results: list[BaseException | str]) -> None:
         """
