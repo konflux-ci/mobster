@@ -1,4 +1,25 @@
 #!/usr/bin/env bash
+# Upload failed SBOM files to S3 bucket for retry processing
+#
+# Parameters:
+#   --data-dir:        Base directory containing input files and where outputs will be stored
+#   --retry-s3-bucket: S3 bucket name where failed SBOMs will be uploaded
+#   --failed-dir:      Directory containing failed SBOM files to upload
+#
+# Dependencies:
+#   Input files:
+#     - Failed SBOM files in ${failed_dir}/ directory
+#
+#   Previous pipeline steps:
+#     - upload_sboms_to_atlas step that populates failed_dir with failed uploads
+#
+#   Environment variables (required):
+#     - AWS_ACCESS_KEY_ID: AWS access key for S3 authentication
+#     - AWS_SECRET_ACCESS_KEY: AWS secret key for S3 authentication
+#
+# Output:
+#   - SBOM files uploaded to s3://${retry_s3_bucket}/
+#   - Failed directory cleaned up after successful upload to S3
 set -eux
 
 OPTS=$(getopt -o '' --long data-dir:,retry-s3-bucket:,failed-dir: -- "$@")

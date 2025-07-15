@@ -1,4 +1,25 @@
 #!/usr/bin/env bash
+# Upload SBOMs to Atlas TPA service with retry mechanism for failed uploads
+#
+# Parameters:
+#   --data-dir:      Base directory containing input files and where outputs will be stored
+#   --atlas-api-url: Base URL for the Atlas TPA API endpoint
+#   --sbom-path:     Relative path within data-dir containing SBOMs to upload
+#   --report-path:   Path where upload report will be written
+#   --failed-dir:    Directory where failed SBOM files will be copied for retry
+#
+# Dependencies:
+#   Input files:
+#     - SBOM files in ${data_dir}/${sbom_path}/ directory
+#
+#   Environment variables (required):
+#     - MOBSTER_TPA_SSO_ACCOUNT: TPA SSO account identifier
+#     - MOBSTER_TPA_SSO_TOKEN: TPA SSO authentication token
+#     - MOBSTER_TPA_SSO_TOKEN_URL: TPA SSO token endpoint URL
+#
+# Output:
+#   - TPA Upload report at ${report_path}
+#   - Failed SBOM files copied to ${failed_dir}/ (if any uploads fail with transient errors)
 set -ux
 
 OPTS=$(getopt -o '' --long data-dir:,atlas-api-url:,sbom-path:,report-path:,failed-dir: -- "$@")
