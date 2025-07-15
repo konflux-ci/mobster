@@ -3,14 +3,13 @@ This module contains integration tests for scripts used in release Tekton
 tasks.
 """
 
+import subprocess
 from pathlib import Path
 
-
-import subprocess
 import pytest
 
 from mobster.cmd.upload.upload import TPAUploadReport, TPAUploadSuccess
-from mobster.report import ComponentReport, ProductReport, MobsterReport
+from mobster.report import ComponentReport, MobsterReport, ProductReport
 
 
 @pytest.mark.parametrize(
@@ -29,7 +28,7 @@ from mobster.report import ComponentReport, ProductReport, MobsterReport
                     failure=[Path("failed.json")],
                 )
             ),
-            id="tpa-success-failure-and-s3-failure"
+            id="tpa-success-failure-and-s3-failure",
         ),
         pytest.param(
             "product",
@@ -44,7 +43,7 @@ from mobster.report import ComponentReport, ProductReport, MobsterReport
                     failure=[],
                 )
             ),
-            id="tpa-success-failure-and-s3-push-success"
+            id="tpa-success-failure-and-s3-push-success",
         ),
     ],
 )
@@ -95,7 +94,7 @@ def test_generate_upload_report(
         report_cls = ProductReport
 
     # Verify that the result was written to and contains a valid report.
-    with open(result, "r") as fp:
+    with open(result) as fp:
         report = report_cls.model_validate_json(fp.read())
 
     # Verify that the report matches the expected report.
