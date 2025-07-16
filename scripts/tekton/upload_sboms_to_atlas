@@ -90,7 +90,10 @@ done
 set -x
 
 sbom_path="${data_dir}/${sbom_path}"
-mkdir -p "$failed_dir"
+report_path="${data_dir}/${report_path}"
+
+failed_dir="${data_dir}/${failed_dir}"
+mkdir -p "${failed_dir}"
 
 if [[ $(find "$sbom_path" -type f | wc -l) -eq 0 ]]; then
     >&2 echo "Error: no SBOMs to upload found."

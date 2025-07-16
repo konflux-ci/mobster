@@ -62,6 +62,8 @@ if [[ -z "$data_dir" || \
     exit 1
 fi
 
+failed_dir="${data_dir}/${failed_dir}"
+
 required_vars=(
   "AWS_ACCESS_KEY_ID"
   "AWS_SECRET_ACCESS_KEY"
