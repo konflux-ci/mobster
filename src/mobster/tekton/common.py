@@ -4,6 +4,8 @@ from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path
 
+from mobster.tekton.s3 import S3Client
+
 
 class AtlasTransientError(Exception):
     """"""
@@ -28,7 +30,7 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument("--retry-s3-bucket", type=str)
 
 
-def upload_sboms(dir: Path, atlas_url: str, retry_s3_bucket: str | None):
+async def upload_sboms(dir: Path, atlas_url: str, retry_s3_bucket: str | None):
     if not atlas_credentials_exist():
         raise ValueError("Missing Atlas authentication.")
 
@@ -38,7 +40,7 @@ def upload_sboms(dir: Path, atlas_url: str, retry_s3_bucket: str | None):
         if retry_s3_bucket:
             if not s3_credentials_exist():
                 raise ValueError("Missing AWS authentication.") from e
-            upload_to_s3(dir, retry_s3_bucket)
+            await upload_to_s3(dir, retry_s3_bucket)
 
 
 def upload_to_atlas(dir: Path, atlas_url: str):
@@ -62,8 +64,17 @@ def upload_to_atlas(dir: Path, atlas_url: str):
         raise AtlasUploadError(res.stderr)
 
 
-def upload_to_s3(dir: Path, bucket: str):
-    pass  # TODO: implement an S3 client _somewhere somehow_
+async def upload_to_s3(dir: Path, bucket: str):
+    client = S3Client(
+        bucket=bucket,
+        access_key=os.environ["AWS_ACCESS_KEY_ID"],
+        secret_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+        endpoint_url=os.environ.get(
+            "AWS_ENDPOINT_URL"
+        ),  # configurable for testing purposes
+    )
+
+    await client.upload_dir(dir)
 
 
 def atlas_credentials_exist():

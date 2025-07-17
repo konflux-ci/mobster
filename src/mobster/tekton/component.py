@@ -1,4 +1,5 @@
 import argparse as ap
+import asyncio
 import logging
 import subprocess
 from dataclasses import dataclass
@@ -48,15 +49,15 @@ def augment_component_sboms(sbom_path: Path, snapshot_spec: Path) -> None:
     res.check_returncode()  # TODO:
 
 
-def process_component_sboms(args: ProcessComponentArgs) -> None:
+async def process_component_sboms(args: ProcessComponentArgs) -> None:
     sbom_dir = args.data_dir / "sbom"
     sbom_dir.mkdir(exist_ok=True)
 
     augment_component_sboms(sbom_dir, args.snapshot_spec)
-    upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
+    await upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
 
 
 def main():
     setup_logging(verbose=True)
     args = parse_args()
-    process_component_sboms(args)
+    asyncio.run(process_component_sboms(args))
