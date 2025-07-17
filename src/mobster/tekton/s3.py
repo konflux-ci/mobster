@@ -1,3 +1,4 @@
+import asyncio
 from io import BytesIO
 from pathlib import Path
 
@@ -13,7 +14,12 @@ class S3Client:
     snapshot_prefix = "snapshots"
 
     def __init__(
-        self, bucket: str, access_key: str, secret_key: str, endpoint_url: str
+        self,
+        bucket: str,
+        access_key: str,
+        secret_key: str,
+        endpoint_url: str,
+        concurrency_limit: int = 10,
     ) -> None:
         """
         Initialize the S3 client.
@@ -23,6 +29,7 @@ class S3Client:
             access_key: AWS access key ID for authentication.
             secret_key: AWS secret access key for authentication.
             endpoint_url: URL of the S3 endpoint.
+            concurrency_limit: Maximum number of concurrent uploads (default: 10).
         """
         self.bucket = bucket
         self.session = aioboto3.Session(
@@ -30,10 +37,20 @@ class S3Client:
             aws_secret_access_key=secret_key,
         )
         self.endpoint_url = endpoint_url
+        self.semaphore = asyncio.Semaphore(concurrency_limit)
 
     async def exists(self, key: str) -> bool:
         """
-        Returns true if object with {key} exists in the bucket.
+        Check if an object with the given key exists in the bucket.
+
+        Args:
+            key: The S3 object key to check for existence.
+
+        Returns:
+            True if the object exists, False otherwise.
+
+        Raises:
+            ClientError: If an error other than 404 occurs during the check.
         """
         async with self.session.client(
             "s3", endpoint_url=self.endpoint_url
@@ -48,34 +65,71 @@ class S3Client:
 
     async def upload_dir(self, dir: Path) -> None:
         """
-        Upload all SBOMs in specified directory, using their filenames as
-        object keys.
+        Upload all files in the specified directory to S3.
+
+        Uses the filename as the S3 object key for each file.
+
+        Args:
+            dir: Path to the directory containing files to upload.
         """
-        for file_path in dir.iterdir():
-            if file_path.is_file():
-                await self.upload_file(file_path)
+        file_paths = [file_path for file_path in dir.iterdir() if file_path.is_file()]
+
+        tasks = [self.upload_file(file_path) for file_path in file_paths]
+        await asyncio.gather(*tasks)
 
     async def upload_file(self, path: Path) -> None:
         """
-        Upload a single SBOM to S3, using its filename as key.
+        Upload a single file to S3.
+
+        Uses the filename as the S3 object key.
+
+        Args:
+            path: Path to the file to upload.
         """
-        key = path.name
-        async with self.session.client(
-            "s3", endpoint_url=self.endpoint_url
-        ) as s3_client:
-            await s3_client.upload_file(str(path), self.bucket, key)
+        async with self.semaphore:
+            key = path.name
+            async with self.session.client(
+                "s3", endpoint_url=self.endpoint_url
+            ) as s3_client:
+                await s3_client.upload_file(str(path), self.bucket, key)
 
     async def upload_snapshot(self, snapshot: SnapshotModel, release_id: str) -> None:
-        io = BytesIO(snapshot.model_dump_json().encode())
-        key = f"{self.snapshot_prefix}/{release_id}"
-        async with self.session.client(
-            "s3", endpoint_url=self.endpoint_url
-        ) as s3_client:
-            await s3_client.upload_fileobj(io, self.bucket, key)
+        """
+        Upload a snapshot to S3 bucket with prefix.
+
+        Args:
+            snapshot: The snapshot model to upload.
+            release_id: The release ID to use as the object key.
+        """
+        await self._upload_input_data(snapshot, release_id)
 
     async def upload_release_data(self, data: ReleaseData, release_id: str) -> None:
-        io = BytesIO(data.model_dump_json().encode())
-        key = f"{self.release_data_prefix}/{release_id}"
+        """
+        Upload release data to S3 bucket with prefix.
+
+        Args:
+            data: The release data to upload.
+            release_id: The release ID to use as the object key.
+        """
+        await self._upload_input_data(data, release_id)
+
+    async def _upload_input_data(
+        self, input: SnapshotModel | ReleaseData, release_id: str
+    ) -> None:
+        """
+        Upload input data (snapshot or release data) to S3 bucket with prefix.
+
+        Args:
+            input: The input data to upload (either SnapshotModel or ReleaseData).
+            release_id: The release ID to use as part of the object key.
+        """
+        if isinstance(input, SnapshotModel):
+            prefix = self.snapshot_prefix
+        else:
+            prefix = self.release_data_prefix
+
+        io = BytesIO(input.model_dump_json().encode())
+        key = f"{prefix}/{release_id}"
         async with self.session.client(
             "s3", endpoint_url=self.endpoint_url
         ) as s3_client:
@@ -118,25 +172,54 @@ class S3Client:
         Returns:
             True if the error is a 404 Not Found, False otherwise.
         """
-        return e.response["Error"]["Code"] == "404"
+        error = e.response.get("Error")
+        if not error:
+            return False
+        code = error.get("Code")
+        if not code:
+            return False
+        return code == "404"
 
     async def get_release_data(self, path: Path, release_id: str) -> bool:
         """
-        Saves file at "{self.bucket}/release-data/{release_id}" to path.
+        Download release data from S3 to a local file.
+
+        Args:
+            path: Local file path where the release data should be saved.
+            release_id: The release ID to retrieve.
+
+        Returns:
+            True if the release data was successfully downloaded, False if not found.
+
+        Raises:
+            ClientError: If an error other than 404 occurs during download.
         """
         key = f"{self.release_data_prefix}/{release_id}"
         return await self._get_object(path, key)
 
     async def get_snapshot(self, path: Path, release_id: str) -> bool:
         """
-        Saves file at "{self.bucket}/snapshots/{release_id}" to path.
+        Download snapshot data from S3 to a local file.
+
+        Args:
+            path: Local file path where the snapshot data should be saved.
+            release_id: The release ID to retrieve.
+
+        Returns:
+            True if the snapshot was successfully downloaded, False if not found.
+
+        Raises:
+            ClientError: If an error other than 404 occurs during download.
         """
         key = f"{self.snapshot_prefix}/{release_id}"
         return await self._get_object(path, key)
 
     async def clear_bucket(self) -> None:
         """
-        Removes all objects in the bucket.
+        Remove all objects from the S3 bucket.
+
+        This method will delete all objects in the bucket using paginated listing
+        to handle buckets with many objects.
         """
         async with self.session.client(
             "s3", endpoint_url=self.endpoint_url
