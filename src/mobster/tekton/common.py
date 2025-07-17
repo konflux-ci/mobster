@@ -62,7 +62,8 @@ async def upload_sboms(
         retry_s3_bucket: S3 bucket name for retry uploads.
 
     Raises:
-        ValueError: If authentication credentials are missing.
+        ValueError: If Atlas authentication credentials are missing or a retry
+            bucket is specified, but the authentication credentials are missing
     """
     if not atlas_credentials_exist():
         raise ValueError("Missing Atlas authentication.")
@@ -88,25 +89,25 @@ def upload_to_atlas(dirpath: Path, atlas_url: str) -> None:
         AtlasTransientError: If a transient error occurs (exit code 2).
         AtlasUploadError: If a non-transient error occurs.
     """
-    res = subprocess.run(
-        [
-            "mobster",
-            "--verbose",
-            "upload",
-            "tpa",
-            "--tpa-base-url",
-            atlas_url,
-            "--from-dir",
-            dirpath,
-            "--report",
-        ],
-        check=False,
-    )
-    if res.returncode == 2:
-        raise AtlasTransientError()
-
-    if res.returncode != 0:
-        raise AtlasUploadError(res.stderr)
+    try:
+        subprocess.run(
+            [
+                "mobster",
+                "--verbose",
+                "upload",
+                "tpa",
+                "--tpa-base-url",
+                atlas_url,
+                "--from-dir",
+                dirpath,
+                "--report",
+            ],
+            check=True,
+        )
+    except subprocess.CalledProcessError as err:
+        if err.returncode == 2:
+            raise AtlasTransientError() from err
+        raise AtlasUploadError() from err
 
 
 async def upload_to_s3(dirpath: Path, bucket: str) -> None:
