@@ -18,8 +18,8 @@ class S3Client:
         bucket: str,
         access_key: str,
         secret_key: str,
-        endpoint_url: str,
         concurrency_limit: int = 10,
+        endpoint_url: str | None = None,
     ) -> None:
         """
         Initialize the S3 client.
