@@ -23,6 +23,8 @@ async def test_upload_file(s3_client: S3Client, tmp_path: Path) -> None:
     with open(file_path, "w") as f:
         json.dump(test_data, f)
 
+    assert not await s3_client.exists(file_path.name)
+
     await s3_client.upload_file(file_path)
 
     assert await s3_client.exists(file_path.name)
