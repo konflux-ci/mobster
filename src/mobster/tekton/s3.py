@@ -1,3 +1,7 @@
+"""
+Async S3 client used for SBOM operations.
+"""
+
 import asyncio
 from io import BytesIO
 from pathlib import Path
@@ -10,6 +14,10 @@ from mobster.release import SnapshotModel
 
 
 class S3Client:
+    """
+    Async S3 client used for SBOM operations.
+    """
+
     release_data_prefix = "release-data"
     snapshot_prefix = "snapshots"
 
