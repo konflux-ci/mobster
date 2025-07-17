@@ -1,4 +1,4 @@
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator
 from typing import Any
 
 import pytest
@@ -45,8 +45,8 @@ def tpa_auth_env(monkeypatch: pytest.MonkeyPatch) -> None:
     return None
 
 
-@pytest.fixture
-def s3_client(s3_endpoint_url: str) -> Generator[S3Client, None, None]:
+@pytest_asyncio.fixture
+async def s3_client(s3_endpoint_url: str) -> AsyncGenerator[S3Client, None]:
     # these are set in compose.yaml
     access_key = "minioAccessKey"
     secret_key = "minioSecretKey"
@@ -55,7 +55,7 @@ def s3_client(s3_endpoint_url: str) -> Generator[S3Client, None, None]:
     client = S3Client(bucket, access_key, secret_key, s3_endpoint_url)
 
     yield client
-    client.clear_bucket()
+    await client.clear_bucket()
 
 
 @pytest_asyncio.fixture

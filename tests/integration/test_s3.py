@@ -12,7 +12,8 @@ from mobster.release import ComponentModel, SnapshotModel
 from mobster.tekton.s3 import S3Client
 
 
-def test_upload_file(s3_client: S3Client, tmp_path: Path) -> None:
+@pytest.mark.asyncio
+async def test_upload_file(s3_client: S3Client, tmp_path: Path) -> None:
     """
     Test uploading a single file to S3.
     """
@@ -22,12 +23,13 @@ def test_upload_file(s3_client: S3Client, tmp_path: Path) -> None:
     with open(file_path, "w") as f:
         json.dump(test_data, f)
 
-    s3_client.upload_file(file_path)
+    await s3_client.upload_file(file_path)
 
-    assert s3_client.exists(file_path.name)
+    assert await s3_client.exists(file_path.name)
 
 
-def test_upload_dir(s3_client: S3Client, tmp_path: Path) -> None:
+@pytest.mark.asyncio
+async def test_upload_dir(s3_client: S3Client, tmp_path: Path) -> None:
     """
     Test uploading a directory with multiple files to S3.
     """
@@ -37,10 +39,10 @@ def test_upload_dir(s3_client: S3Client, tmp_path: Path) -> None:
         with open(file_path, "w") as f:
             json.dump({"file": filename}, f)
 
-    s3_client.upload_dir(tmp_path)
+    await s3_client.upload_dir(tmp_path)
 
     for filename in test_files:
-        assert s3_client.exists(filename)
+        assert await s3_client.exists(filename)
 
 
 @pytest.mark.parametrize(
@@ -80,10 +82,11 @@ def test_upload_dir(s3_client: S3Client, tmp_path: Path) -> None:
         ),
     ],
 )
-def test_upload_data_objects(
+@pytest.mark.asyncio
+async def test_upload_data_objects(
     s3_client: S3Client,
     data_type: str,
-    data_object,
+    data_object: object,
     upload_method: str,
     prefix_attr: str,
     release_id: str,
@@ -93,12 +96,12 @@ def test_upload_data_objects(
     """
     # Get the upload method and call it
     method = getattr(s3_client, upload_method)
-    method(data_object, release_id)
+    await method(data_object, release_id)
 
     # Verify it exists using the exists() method
     prefix = getattr(s3_client, prefix_attr)
     expected_key = f"{prefix}/{release_id}"
-    assert s3_client.exists(expected_key)
+    assert await s3_client.exists(expected_key)
 
 
 @pytest.mark.parametrize(
@@ -138,11 +141,12 @@ def test_upload_data_objects(
         ),
     ],
 )
-def test_get_data_objects(
+@pytest.mark.asyncio
+async def test_get_data_objects(
     s3_client: S3Client,
     tmp_path: Path,
     data_type: str,
-    data_object,
+    data_object: object,
     upload_method: str,
     download_method: str,
     release_id: str,
@@ -152,14 +156,14 @@ def test_get_data_objects(
     """
     # First upload the data object
     upload_func = getattr(s3_client, upload_method)
-    upload_func(data_object, release_id)
+    await upload_func(data_object, release_id)
 
     # Now test downloading it
     download_path = tmp_path / f"downloaded_{data_type}.json"
 
     # Download the data object
     download_func = getattr(s3_client, download_method)
-    result = download_func(download_path, release_id)
+    result = await download_func(download_path, release_id)
 
     # Verify download succeeded
     assert result is True
@@ -173,7 +177,8 @@ def test_get_data_objects(
         pytest.param("release_data", "get_release_data", id="release_data"),
     ],
 )
-def test_get_data_objects_nonexistent(
+@pytest.mark.asyncio
+async def test_get_data_objects_nonexistent(
     s3_client: S3Client, tmp_path: Path, data_type: str, download_method: str
 ) -> None:
     """
@@ -183,7 +188,7 @@ def test_get_data_objects_nonexistent(
 
     # Try to download a non-existent data object
     download_func = getattr(s3_client, download_method)
-    result = download_func(download_path, "nonexistent-release")
+    result = await download_func(download_path, "nonexistent-release")
 
     # Verify download failed
     assert result is False
