@@ -1,4 +1,5 @@
 import argparse as ap
+import asyncio
 import logging
 import subprocess
 from dataclasses import dataclass
@@ -54,16 +55,16 @@ def create_product_sbom(
     res.check_returncode()  # TODO:
 
 
-def process_product_sboms(args: ProcessProductArgs) -> None:
+async def process_product_sboms(args: ProcessProductArgs) -> None:
     sbom_dir = args.data_dir / "sbom"
     sbom_dir.mkdir(exist_ok=True)
     sbom_path = sbom_dir / "sbom.json"
 
     create_product_sbom(sbom_path, args.snapshot_spec, args.release_data)
-    upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
+    await upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
 
 
 def main():
     setup_logging(verbose=True)
     args = parse_args()
-    process_product_sboms(args)
+    asyncio.run(process_product_sboms(args))
