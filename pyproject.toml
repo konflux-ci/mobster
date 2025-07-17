@@ -42,6 +42,8 @@ repository = "https://github.com/konflux-ci/mobster"
 
 [project.scripts]
 mobster = "mobster.main:main"
+process_product_sbom = "mobster.tekton.product:main"
+process_component_sboms = "mobster.tekton.component:main"
 
 [tool.ruff]
 line-length = 88
