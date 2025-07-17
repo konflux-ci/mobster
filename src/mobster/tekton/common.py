@@ -50,13 +50,14 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument("--retry-s3-bucket", type=str)
 
 
-# TODO: this needs further testing to verify that it works as expected
-async def upload_sboms(dir: Path, atlas_url: str, retry_s3_bucket: str | None):
+async def upload_sboms(
+    dirpath: Path, atlas_url: str, retry_s3_bucket: str | None
+) -> None:
     """
     Upload SBOMs to Atlas with S3 fallback on transient errors.
 
     Args:
-        dir: Directory containing SBOMs to upload.
+        dirpath: Directory containing SBOMs to upload.
         atlas_url: URL of the Atlas TPA instance.
         retry_s3_bucket: S3 bucket name for retry uploads.
 
@@ -67,20 +68,20 @@ async def upload_sboms(dir: Path, atlas_url: str, retry_s3_bucket: str | None):
         raise ValueError("Missing Atlas authentication.")
 
     try:
-        upload_to_atlas(dir, atlas_url)
+        upload_to_atlas(dirpath, atlas_url)
     except AtlasTransientError as e:
         if retry_s3_bucket:
             if not s3_credentials_exist():
                 raise ValueError("Missing AWS authentication.") from e
-            await upload_to_s3(dir, retry_s3_bucket)
+            await upload_to_s3(dirpath, retry_s3_bucket)
 
 
-def upload_to_atlas(dir: Path, atlas_url: str):
+def upload_to_atlas(dirpath: Path, atlas_url: str) -> None:
     """
     Upload SBOMs to Atlas TPA instance.
 
     Args:
-        dir: Directory containing SBOMs to upload.
+        dirpath: Directory containing SBOMs to upload.
         atlas_url: URL of the Atlas TPA instance.
 
     Raises:
@@ -96,9 +97,10 @@ def upload_to_atlas(dir: Path, atlas_url: str):
             "--tpa-base-url",
             atlas_url,
             "--from-dir",
-            dir,
+            dirpath,
             "--report",
-        ]
+        ],
+        check=False,
     )
     if res.returncode == 2:
         raise AtlasTransientError()
@@ -107,12 +109,12 @@ def upload_to_atlas(dir: Path, atlas_url: str):
         raise AtlasUploadError(res.stderr)
 
 
-async def upload_to_s3(dir: Path, bucket: str):
+async def upload_to_s3(dirpath: Path, bucket: str) -> None:
     """
     Upload SBOMs to S3 bucket.
 
     Args:
-        dir: Directory containing SBOMs to upload.
+        dirpath: Directory containing SBOMs to upload.
         bucket: S3 bucket name.
     """
     client = S3Client(
@@ -124,10 +126,10 @@ async def upload_to_s3(dir: Path, bucket: str):
         ),  # configurable for testing purposes
     )
 
-    await client.upload_dir(dir)
+    await client.upload_dir(dirpath)
 
 
-def atlas_credentials_exist():
+def atlas_credentials_exist() -> bool:
     """
     Check if Atlas TPA SSO credentials are present in environment.
 
@@ -141,7 +143,7 @@ def atlas_credentials_exist():
     )
 
 
-def s3_credentials_exist():
+def s3_credentials_exist() -> bool:
     """
     Check if AWS S3 credentials are present in environment.
 

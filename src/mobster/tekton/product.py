@@ -63,7 +63,7 @@ def create_product_sbom(
         snapshot_spec: Path to snapshot specification file.
         release_data: Path to release data file.
     """
-    res = subprocess.run(
+    subprocess.run(
         [
             "mobster",
             "--verbose",
@@ -75,9 +75,9 @@ def create_product_sbom(
             snapshot_spec,
             "--release-data",
             release_data,
-        ]
+        ],
+        check=True,
     )
-    res.check_returncode()  # TODO:
 
 
 async def process_product_sboms(args: ProcessProductArgs) -> None:
@@ -95,7 +95,7 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     await upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
 
 
-def main():
+def main() -> None:
     """
     Main entry point for product SBOM processing.
     """

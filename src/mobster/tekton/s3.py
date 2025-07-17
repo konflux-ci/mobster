@@ -21,6 +21,7 @@ class S3Client:
     release_data_prefix = "release-data"
     snapshot_prefix = "snapshots"
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
         bucket: str,
@@ -71,16 +72,18 @@ class S3Client:
                     return False
                 raise
 
-    async def upload_dir(self, dir: Path) -> None:
+    async def upload_dir(self, dirpath: Path) -> None:
         """
         Upload all files in the specified directory to S3.
 
         Uses the filename as the S3 object key for each file.
 
         Args:
-            dir: Path to the directory containing files to upload.
+            dirpath: Path to the directory containing files to upload.
         """
-        file_paths = [file_path for file_path in dir.iterdir() if file_path.is_file()]
+        file_paths = [
+            file_path for file_path in dirpath.iterdir() if file_path.is_file()
+        ]
 
         tasks = [self.upload_file(file_path) for file_path in file_paths]
         await asyncio.gather(*tasks)
@@ -122,21 +125,21 @@ class S3Client:
         await self._upload_input_data(data, release_id)
 
     async def _upload_input_data(
-        self, input: SnapshotModel | ReleaseData, release_id: str
+        self, obj: SnapshotModel | ReleaseData, release_id: str
     ) -> None:
         """
         Upload input data (snapshot or release data) to S3 bucket with prefix.
 
         Args:
-            input: The input data to upload (either SnapshotModel or ReleaseData).
+            obj: The input data to upload (either SnapshotModel or ReleaseData).
             release_id: The release ID to use as part of the object key.
         """
-        if isinstance(input, SnapshotModel):
+        if isinstance(obj, SnapshotModel):
             prefix = self.snapshot_prefix
         else:
             prefix = self.release_data_prefix
 
-        io = BytesIO(input.model_dump_json().encode())
+        io = BytesIO(obj.model_dump_json().encode())
         key = f"{prefix}/{release_id}"
         async with self.session.client(
             "s3", endpoint_url=self.endpoint_url
