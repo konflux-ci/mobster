@@ -53,7 +53,7 @@ def augment_component_sboms(sbom_path: Path, snapshot_spec: Path) -> None:
         sbom_path: Path where the SBOM will be saved.
         snapshot_spec: Path to snapshot specification file.
     """
-    res = subprocess.run(
+    subprocess.run(
         [
             "mobster",
             "--verbose",
@@ -63,9 +63,9 @@ def augment_component_sboms(sbom_path: Path, snapshot_spec: Path) -> None:
             "oci-image",
             "--snapshot",
             snapshot_spec,
-        ]
+        ],
+        check=True,
     )
-    res.check_returncode()  # TODO:
 
 
 async def process_component_sboms(args: ProcessComponentArgs) -> None:
@@ -82,7 +82,7 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     await upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
 
 
-def main():
+def main() -> None:
     """
     Main entry point for component SBOM processing.
     """
