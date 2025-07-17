@@ -1,3 +1,7 @@
+"""
+Script used in Tekton task for processing product SBOMs.
+"""
+
 import argparse as ap
 import asyncio
 import logging
@@ -17,10 +21,23 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class ProcessProductArgs(CommonArgs):
+    """
+    Arguments for product SBOM processing.
+
+    Attributes:
+        release_data: Path to release data file.
+    """
+
     release_data: Path
 
 
 def parse_args() -> ProcessProductArgs:
+    """
+    Parse command line arguments for product SBOM processing.
+
+    Returns:
+        ProcessProductArgs: Parsed arguments.
+    """
     parser = ap.ArgumentParser()
     add_common_args(parser)
     parser.add_argument("--release-data", type=Path, required=True)
@@ -38,6 +55,14 @@ def parse_args() -> ProcessProductArgs:
 def create_product_sbom(
     sbom_path: Path, snapshot_spec: Path, release_data: Path
 ) -> None:
+    """
+    Create a product SBOM using the mobster generate command.
+
+    Args:
+        sbom_path: Path where the SBOM will be saved.
+        snapshot_spec: Path to snapshot specification file.
+        release_data: Path to release data file.
+    """
     res = subprocess.run(
         [
             "mobster",
@@ -56,6 +81,12 @@ def create_product_sbom(
 
 
 async def process_product_sboms(args: ProcessProductArgs) -> None:
+    """
+    Process product SBOMs by creating and uploading them.
+
+    Args:
+        args: Arguments containing data directory and configuration.
+    """
     sbom_dir = args.data_dir / "sbom"
     sbom_dir.mkdir(exist_ok=True)
     sbom_path = sbom_dir / "sbom.json"
@@ -65,6 +96,9 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
 
 
 def main():
+    """
+    Main entry point for product SBOM processing.
+    """
     setup_logging(verbose=True)
     args = parse_args()
     asyncio.run(process_product_sboms(args))
