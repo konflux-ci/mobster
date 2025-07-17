@@ -52,7 +52,7 @@ async def s3_client(s3_endpoint_url: str) -> AsyncGenerator[S3Client, None]:
     secret_key = "minioSecretKey"
     bucket = "sboms"
 
-    client = S3Client(bucket, access_key, secret_key, s3_endpoint_url)
+    client = S3Client(bucket, access_key, secret_key, endpoint_url=s3_endpoint_url)
 
     yield client
     await client.clear_bucket()
