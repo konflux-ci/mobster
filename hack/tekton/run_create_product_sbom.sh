@@ -17,27 +17,15 @@ snapshot_spec="snapshot.json"
 release_data="data.json"
 atlas_api_url="http://localhost:8080"
 retry_s3_bucket="mpp-e1-preprod-sbom-29093454-2ea7-4fd0-b4cf-dc69a7529ee0"
-sbom_path="product-sbom"
-
-repo_root="$(git rev-parse --show-toplevel)"
-export PATH="${repo_root}/scripts/tekton/:$PATH"
-
-create_product_sbom \
-    --data-dir "$data_dir" \
-    --snapshot-spec "$snapshot_spec" \
-    --release-data "$release_data" \
-    --sbom-path "$sbom_path"
 
 export MOBSTER_TPA_SSO_ACCOUNT="dummy"
 export MOBSTER_TPA_SSO_TOKEN="dummy"
 export MOBSTER_TPA_SSO_TOKEN_URL="dummy"
 export MOBSTER_TPA_AUTH_DISABLE="true"
 
-upload_sboms_to_atlas \
+process_product_sbom \
     --data-dir "$data_dir" \
+    --snapshot-spec "$snapshot_spec" \
+    --release-data "$release_data" \
     --atlas-api-url "$atlas_api_url" \
-    --sbom-path "$sbom_path"
-
-upload_sboms_to_s3 \
-    --data-dir "$data_dir" \
     --retry-s3-bucket "$retry_s3_bucket"
