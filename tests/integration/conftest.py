@@ -5,8 +5,8 @@ import pytest
 import pytest_asyncio
 
 from mobster.cmd.upload.tpa import TPAClient
+from mobster.tekton.s3 import S3Client
 from tests.integration.oci_client import ReferrersTagOCIClient
-from tests.integration.s3 import S3Client
 
 
 def pytest_addoption(parser: Any) -> None:
@@ -50,7 +50,7 @@ def s3_client(s3_endpoint_url: str) -> Generator[S3Client, None, None]:
     # these are set in compose.yaml
     access_key = "minioAccessKey"
     secret_key = "minioSecretKey"
-    bucket = "s3://sboms"
+    bucket = "sboms"
 
     client = S3Client(bucket, access_key, secret_key, s3_endpoint_url)
 
