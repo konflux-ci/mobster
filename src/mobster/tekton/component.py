@@ -37,6 +37,8 @@ def parse_args() -> ProcessComponentArgs:
     add_common_args(parser)
     args = parser.parse_args()
 
+    # the snapshot_spec is joined with the data_dir as previous tasks provide
+    # the path as relative to the dataDir
     return ProcessComponentArgs(
         data_dir=args.data_dir,
         snapshot_spec=args.data_dir / args.snapshot_spec,

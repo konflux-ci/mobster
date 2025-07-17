@@ -43,6 +43,8 @@ def parse_args() -> ProcessProductArgs:
     parser.add_argument("--release-data", type=Path, required=True)
     args = parser.parse_args()
 
+    # the snapshot_spec and release_data are joined with the data_dir as
+    # previous tasks provide the paths as relative to the dataDir
     return ProcessProductArgs(
         data_dir=args.data_dir,
         snapshot_spec=args.data_dir / args.snapshot_spec,
