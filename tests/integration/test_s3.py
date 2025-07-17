@@ -46,10 +46,9 @@ async def test_upload_dir(s3_client: S3Client, tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ["data_type", "data_object", "upload_method", "prefix_attr", "release_id"],
+    ["data_object", "upload_method", "prefix_attr", "release_id"],
     [
         pytest.param(
-            "snapshot",
             SnapshotModel(
                 components=[
                     ComponentModel(
@@ -67,7 +66,6 @@ async def test_upload_dir(s3_client: S3Client, tmp_path: Path) -> None:
             id="snapshot",
         ),
         pytest.param(
-            "release_data",
             ReleaseData(
                 releaseNotes=ReleaseNotes(
                     product_name="Test Product",
@@ -85,7 +83,6 @@ async def test_upload_dir(s3_client: S3Client, tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_upload_data_objects(
     s3_client: S3Client,
-    data_type: str,
     data_object: object,
     upload_method: str,
     prefix_attr: str,
@@ -94,11 +91,9 @@ async def test_upload_data_objects(
     """
     Test uploading data objects (snapshot or release_data) to S3.
     """
-    # Get the upload method and call it
     method = getattr(s3_client, upload_method)
     await method(data_object, release_id)
 
-    # Verify it exists using the exists() method
     prefix = getattr(s3_client, prefix_attr)
     expected_key = f"{prefix}/{release_id}"
     assert await s3_client.exists(expected_key)
@@ -154,18 +149,14 @@ async def test_get_data_objects(
     """
     Test downloading data objects (snapshot or release_data) from S3.
     """
-    # First upload the data object
     upload_func = getattr(s3_client, upload_method)
     await upload_func(data_object, release_id)
 
-    # Now test downloading it
     download_path = tmp_path / f"downloaded_{data_type}.json"
 
-    # Download the data object
     download_func = getattr(s3_client, download_method)
     result = await download_func(download_path, release_id)
 
-    # Verify download succeeded
     assert result is True
     assert download_path.exists()
 
@@ -186,9 +177,7 @@ async def test_get_data_objects_nonexistent(
     """
     download_path = tmp_path / f"nonexistent_{data_type}.json"
 
-    # Try to download a non-existent data object
     download_func = getattr(s3_client, download_method)
     result = await download_func(download_path, "nonexistent-release")
 
-    # Verify download failed
     assert result is False
