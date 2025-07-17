@@ -1,7 +1,7 @@
 from io import BytesIO
 from pathlib import Path
 
-import boto3
+import aioboto3
 from botocore.exceptions import ClientError
 
 from mobster.cmd.generate.product import ReleaseData
@@ -25,52 +25,63 @@ class S3Client:
             endpoint_url: URL of the S3 endpoint.
         """
         self.bucket = bucket
-        self.s3_client = boto3.client(
-            "s3",
+        self.session = aioboto3.Session(
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
-            endpoint_url=endpoint_url,
         )
+        self.endpoint_url = endpoint_url
 
-    def exists(self, key: str) -> bool:
+    async def exists(self, key: str) -> bool:
         """
         Returns true if object with {key} exists in the bucket.
         """
-        try:
-            self.s3_client.head_object(Bucket=self.bucket, Key=key)
-            return True
-        except ClientError as e:
-            if S3Client._response_is_not_found(e):
-                return False
-            raise
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint_url
+        ) as s3_client:
+            try:
+                await s3_client.head_object(Bucket=self.bucket, Key=key)
+                return True
+            except ClientError as e:
+                if S3Client._response_is_not_found(e):
+                    return False
+                raise
 
-    def upload_dir(self, dir: Path) -> None:
+    async def upload_dir(self, dir: Path) -> None:
         """
         Upload all SBOMs in specified directory, using their filenames as
         object keys.
         """
         for file_path in dir.iterdir():
             if file_path.is_file():
-                self.upload_file(file_path)
+                await self.upload_file(file_path)
 
-    def upload_file(self, path: Path) -> None:
+    async def upload_file(self, path: Path) -> None:
         """
         Upload a single SBOM to S3, using its filename as key.
         """
         key = path.name
-        self.s3_client.upload_file(str(path), self.bucket, key)
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint_url
+        ) as s3_client:
+            await s3_client.upload_file(str(path), self.bucket, key)
 
-    def upload_snapshot(self, snapshot: SnapshotModel, release_id: str) -> None:
+    async def upload_snapshot(self, snapshot: SnapshotModel, release_id: str) -> None:
         io = BytesIO(snapshot.model_dump_json().encode())
         key = f"{self.snapshot_prefix}/{release_id}"
-        self.s3_client.upload_fileobj(io, self.bucket, key)
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint_url
+        ) as s3_client:
+            await s3_client.upload_fileobj(io, self.bucket, key)
 
-    def upload_release_data(self, data: ReleaseData, release_id: str) -> None:
+    async def upload_release_data(self, data: ReleaseData, release_id: str) -> None:
         io = BytesIO(data.model_dump_json().encode())
         key = f"{self.release_data_prefix}/{release_id}"
-        self.s3_client.upload_fileobj(io, self.bucket, key)
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint_url
+        ) as s3_client:
+            await s3_client.upload_fileobj(io, self.bucket, key)
 
-    def _get_object(self, path: Path, key: str) -> bool:
+    async def _get_object(self, path: Path, key: str) -> bool:
         """
         Download an object from S3 to a local file path.
 
@@ -84,12 +95,15 @@ class S3Client:
         Raises:
             ClientError: If an error other than 404 occurs during download.
         """
-        try:
-            self.s3_client.download_file(self.bucket, key, str(path))
-        except ClientError as e:
-            if S3Client._response_is_not_found(e):
-                return False
-            raise
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint_url
+        ) as s3_client:
+            try:
+                await s3_client.download_file(self.bucket, key, str(path))
+            except ClientError as e:
+                if S3Client._response_is_not_found(e):
+                    return False
+                raise
 
         return True
 
@@ -104,31 +118,34 @@ class S3Client:
         Returns:
             True if the error is a 404 Not Found, False otherwise.
         """
-        return e.response["Error"]["Code"] == "404"  # type: ignore
+        return e.response["Error"]["Code"] == "404"
 
-    def get_release_data(self, path: Path, release_id: str) -> bool:
+    async def get_release_data(self, path: Path, release_id: str) -> bool:
         """
         Saves file at "{self.bucket}/release-data/{release_id}" to path.
         """
         key = f"{self.release_data_prefix}/{release_id}"
-        return self._get_object(path, key)
+        return await self._get_object(path, key)
 
-    def get_snapshot(self, path: Path, release_id: str) -> bool:
+    async def get_snapshot(self, path: Path, release_id: str) -> bool:
         """
         Saves file at "{self.bucket}/snapshots/{release_id}" to path.
         """
         key = f"{self.snapshot_prefix}/{release_id}"
-        return self._get_object(path, key)
+        return await self._get_object(path, key)
 
-    def clear_bucket(self) -> None:
+    async def clear_bucket(self) -> None:
         """
         Removes all objects in the bucket.
         """
-        paginator = self.s3_client.get_paginator("list_objects_v2")
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint_url
+        ) as s3_client:
+            paginator = s3_client.get_paginator("list_objects_v2")
 
-        for page in paginator.paginate(Bucket=self.bucket):
-            if "Contents" in page:
-                objects = [{"Key": obj["Key"]} for obj in page["Contents"]]
-                self.s3_client.delete_objects(
-                    Bucket=self.bucket, Delete={"Objects": objects}
-                )
+            async for page in paginator.paginate(Bucket=self.bucket):
+                if "Contents" in page:
+                    objects = [{"Key": obj["Key"]} for obj in page["Contents"]]
+                    await s3_client.delete_objects(
+                        Bucket=self.bucket, Delete={"Objects": objects}
+                    )
