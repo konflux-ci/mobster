@@ -148,18 +148,7 @@ spec:
         - name: sourceDataArtifact
           value: $(params.sourceDataArtifact)
 
-    - name: create-product-sbom
-      image: quay.io/konflux-ci/mobster:ed4ae93fadd870a17ed981ce8a754b1d178e8007
-      script: |
-        #!/usr/bin/env bash
-        set -eux
-        create_product_sbom \
-          --data-dir "$(params.dataDir)" \
-          --snapshot-spec "$(params.snapshotSpec)" \
-          --release-data "$(params.releaseData)" \
-          --sbom-path "product-sbom"
-
-    - name: upload-sboms-to-atlas
+    - name: process-product-sbom
       image: quay.io/konflux-ci/mobster:ed4ae93fadd870a17ed981ce8a754b1d178e8007
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
@@ -176,17 +165,6 @@ spec:
               optional: true
         - name: MOBSTER_TPA_SSO_TOKEN_URL
           value: $(params.ssoTokenUrl)
-      script: |
-        #!/usr/bin/env bash
-        set -eux
-        upload_sboms_to_atlas \
-          --data-dir "$(params.dataDir)" \
-          --atlas-api-url "$(params.atlasApiUrl)" \
-          --sbom-path "product-sbom"
-
-    - name: upload-sboms-to-s3
-      image: quay.io/konflux-ci/mobster:ed4ae93fadd870a17ed981ce8a754b1d178e8007
-      env:
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
@@ -204,8 +182,11 @@ spec:
       script: |
         #!/usr/bin/env bash
         set -eux
-        upload_sboms_to_s3 \
+        process_product_sbom \
           --data-dir "$(params.dataDir)" \
+          --snapshot-spec "$(params.snapshotSpec)" \
+          --release-data "$(params.releaseData)" \
+          --atlas-api-url "$(params.atlasApiUrl)" \
           --retry-s3-bucket "$(params.retryS3Bucket)"
 
     - name: create-trusted-artifact

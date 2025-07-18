@@ -27,15 +27,8 @@ RUN poetry install --no-root --without dev
 # Copy the application code into the container
 COPY src/mobster /app/src/mobster
 
-# Copy scripts used in tekton tasks
-COPY scripts/tekton /app/bin
-
 # Install the package
 RUN poetry install --without dev
-
-# We don't want the AWS cli as a direct dependency of mobster, so we have to
-# use a workaround.
-RUN .venv/bin/pip install awscli==1.40.33
 
 # Use Red Hat UBI 9 Python base image for the runtime
 FROM registry.access.redhat.com/ubi9/python-312@sha256:c9a967a1cf947f2374f45d8817f5328f4893be6b0d5749d2287f1db8ed429675
