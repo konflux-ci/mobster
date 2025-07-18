@@ -38,8 +38,9 @@ podman run -it quay.io/konflux-ci/mobster:latest mobster --help
 
 ## Development environment
 
-Follow an instruction in the [development-environment.md](docs/development-environment.md)
-file to set up your development environment.
+Follow the instructions in the
+[development-environment.md](docs/development-environment.md) file to set up
+your development environment.
 
 
 ## Contributing
