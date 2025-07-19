@@ -35,6 +35,7 @@ class CommonArgs:
     snapshot_spec: Path
     atlas_api_url: str
     retry_s3_bucket: str
+    release_id: str
 
 
 def add_common_args(parser: ArgumentParser) -> None:
@@ -48,6 +49,7 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument("--snapshot-spec", type=Path, required=True)
     parser.add_argument("--atlas-api-url", type=str)
     parser.add_argument("--retry-s3-bucket", type=str)
+    parser.add_argument("--release-id", type=str)
 
 
 async def upload_sboms(

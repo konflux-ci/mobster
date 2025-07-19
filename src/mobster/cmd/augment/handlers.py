@@ -3,6 +3,7 @@ This module is used to augment release-time SBOMs.
 """
 
 import logging
+from datetime import datetime
 from typing import Any
 
 from packageurl import PackageURL
@@ -185,6 +186,21 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
             creation_info["creators"].append(creator)
 
     @classmethod
+    def _augment_annotations_release_id(
+        cls, annotations: list[Any], release_id: str | None
+    ) -> None:
+        """
+        Add release_id to the SBOM's annotations
+        """
+        release_id_annotation = {
+            "annotationDate": datetime.now().isoformat(),
+            "annotationType": "OTHER",
+            "annotator": f"Mobster-{get_mobster_version()}",
+            "comment": f"release_id={release_id}",
+        }
+        annotations.append(release_id_annotation)
+
+    @classmethod
     def _update_index_image_sbom(
         cls, component: Component, index: IndexImage, sbom: Any
     ) -> None:
@@ -246,11 +262,21 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
             component.tags,
         )
 
-    def update_sbom(self, component: Component, image: Image, sbom: Any) -> None:
+    def update_sbom(
+        self,
+        component: Component,
+        image: Image,
+        sbom: Any,
+        release_id: str | None = None,
+    ) -> None:
         """
         Update a build-time SBOM with release-time data.
         """
         self._augment_creation_info(sbom["creationInfo"])
+        if release_id:
+            if "annotations" not in sbom:
+                sbom["annotations"] = []
+            self._augment_annotations_release_id(sbom["annotations"], release_id)
         if isinstance(image, IndexImage):
             SPDXVersion2._update_index_image_sbom(component, image, sbom)
         elif isinstance(image, Image):
@@ -268,7 +294,13 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         SBOMFormat.CDX_V1_6,
     ]
 
-    def update_sbom(self, component: Component, image: Image, sbom: Any) -> None:
+    def update_sbom(
+        self,
+        component: Component,
+        image: Image,
+        sbom: Any,
+        release_id: str | None = None,
+    ) -> None:
         """
         Update an SBOM for an image based on a component.
         """
@@ -277,6 +309,8 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
 
         self._bump_version(sbom)
         self._update_metadata_component(component, image, sbom)
+        if release_id:
+            self._augment_metadata_properties_release_id(sbom, release_id)
 
         for cdx_component in sbom.get("components", []):
             if cdx_component.get("type") != "container":
@@ -365,6 +399,22 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         components = metadata["tools"]["components"]
         if not self._has_current_mobster_version(components):
             components.append(cyclonedx.get_tools_component_dict())
+
+    def _augment_metadata_properties_release_id(
+        self, sbom: Any, release_id: str | None
+    ) -> None:
+        """
+        Add release_id to SBOM's metadata.properties
+        """
+        if "metadata" not in sbom:
+            sbom["metadata"] = {}
+
+        metadata = sbom["metadata"]
+        if "properties" not in metadata:
+            metadata["properties"] = []
+
+        release_id_property = {"name": "release_id", "value": release_id}
+        metadata["properties"].append(release_id_property)
 
     def _has_current_mobster_version(self, components: list[Any]) -> bool:
         """

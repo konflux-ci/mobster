@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from spdx_tools.spdx.model.actor import Actor, ActorType
+from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
 from spdx_tools.spdx.model.checksum import Checksum, ChecksumAlgorithm
 from spdx_tools.spdx.model.document import CreationInfo
 from spdx_tools.spdx.model.package import (
@@ -18,6 +19,8 @@ from spdx_tools.spdx.model.spdx_none import SpdxNone
 from mobster import get_mobster_version
 from mobster.artifact import Artifact
 from mobster.image import Image
+
+DOC_ELEMENT_ID = "SPDXRef-DOCUMENT"
 
 
 def get_root_package_relationship(spdx_id: str) -> Relationship:
@@ -175,4 +178,17 @@ def get_package(
         files_analyzed=False,
         external_references=external_refs,
         checksums=checksums,
+    )
+
+
+def get_release_id_annotation(release_id: str) -> Annotation:
+    """
+    Create an SPDX annotation with release_id
+    """
+    return Annotation(
+        spdx_id=DOC_ELEMENT_ID,
+        annotation_date=datetime.now(timezone.utc),
+        annotation_type=AnnotationType.OTHER,
+        annotator=Actor(ActorType.TOOL, f"Mobster-{get_mobster_version()}"),
+        annotation_comment=f"release_id={release_id}",
     )

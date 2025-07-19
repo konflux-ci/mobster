@@ -40,6 +40,16 @@ def assert_spdx_sbom(actual: Any, expected: Any) -> None:
         if "Mobster" not in creator
     ]
 
+    if "annotations" in expected:
+        assert (
+            actual["annotations"][0]["annotator"] == f"Mobster-{get_mobster_version()}"
+        )
+        # Remove annotator from actual, as it's not in the expected result
+        actual["annotations"][0].pop("annotator")
+        actual["annotations"][0]["annotationDate"] = expected["annotations"][0][
+            "annotationDate"
+        ]
+
     assert actual == expected
 
 

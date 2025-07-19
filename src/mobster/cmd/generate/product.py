@@ -52,7 +52,9 @@ class GenerateProductCommand(GenerateCommand):
         snapshot = await make_snapshot(self.cli_args.snapshot)
 
         self.release_notes = parse_release_notes(self.cli_args.release_data)
-        self.document = create_sbom(self.release_notes, snapshot)
+        self.document = create_sbom(
+            self.release_notes, snapshot, self.cli_args.release_id
+        )
         LOGGER.info("Successfully created product-level SBOM.")
 
     async def save(self) -> None:
@@ -100,12 +102,15 @@ class GenerateProductCommand(GenerateCommand):
         )
 
 
-def create_sbom(release_notes: ReleaseNotes, snapshot: Snapshot) -> Document:
+def create_sbom(
+    release_notes: ReleaseNotes, snapshot: Snapshot, release_id: str | None = None
+) -> Document:
     """Create an SPDX document based on release notes and a snapshot.
 
     Args:
         release_notes: The release notes containing product information.
         snapshot: The snapshot containing component information.
+        release_id(str, optional): A release id to be added to the SBOM's annotations
 
     Returns:
         Document: The generated SPDX document.
@@ -115,7 +120,9 @@ def create_sbom(release_notes: ReleaseNotes, snapshot: Snapshot) -> Document:
     creation_info = spdx.get_creation_info(
         f"{release_notes.product_name} {release_notes.product_version}"
     )
-
+    annotations = []
+    if release_id:
+        annotations.append(spdx.get_release_id_annotation(release_id))
     product_package = create_product_package(product_elem_id, release_notes)
     product_relationship = spdx.get_root_package_relationship(product_elem_id)
 
@@ -125,6 +132,7 @@ def create_sbom(release_notes: ReleaseNotes, snapshot: Snapshot) -> Document:
     )
 
     return Document(
+        annotations=annotations,
         creation_info=creation_info,
         packages=[product_package, *component_packages],
         relationships=[product_relationship, *component_relationships],

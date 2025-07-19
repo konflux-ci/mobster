@@ -51,11 +51,12 @@ def parse_args() -> ProcessProductArgs:
         release_data=args.data_dir / args.release_data,
         atlas_api_url=args.atlas_api_url,
         retry_s3_bucket=args.retry_s3_bucket,
+        release_id=args.release_id,
     )
 
 
 def create_product_sbom(
-    sbom_path: Path, snapshot_spec: Path, release_data: Path
+    sbom_path: Path, snapshot_spec: Path, release_data: Path, release_id: str
 ) -> None:
     """
     Create a product SBOM using the mobster generate command.
@@ -64,6 +65,7 @@ def create_product_sbom(
         sbom_path: Path where the SBOM will be saved.
         snapshot_spec: Path to snapshot specification file.
         release_data: Path to release data file.
+        release_id: Release ID to store in SBOM file.
     """
     subprocess.run(
         [
@@ -77,6 +79,8 @@ def create_product_sbom(
             snapshot_spec,
             "--release-data",
             release_data,
+            "--release-id",
+            release_id,
         ],
         check=True,
     )
@@ -93,7 +97,9 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     sbom_dir.mkdir(exist_ok=True)
     sbom_path = sbom_dir / "sbom.json"
 
-    create_product_sbom(sbom_path, args.snapshot_spec, args.release_data)
+    create_product_sbom(
+        sbom_path, args.snapshot_spec, args.release_data, args.release_id
+    )
     await upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
 
 

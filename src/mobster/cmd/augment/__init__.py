@@ -51,8 +51,11 @@ class AugmentImageCommand(Command):
         verify = self.cli_args.verification_key is not None
         cosign = CosignClient(self.cli_args.verification_key)
         concurrency_limit = self.cli_args.concurrency
+        release_id = self.cli_args.release_id
 
-        ok, self.sboms = await update_sboms(snapshot, cosign, verify, concurrency_limit)
+        ok, self.sboms = await update_sboms(
+            snapshot, cosign, verify, concurrency_limit, release_id
+        )
         if not ok:
             self.exit_code = 1
 
@@ -122,7 +125,9 @@ async def write_sbom(sbom: Any, path: Path) -> None:
         await fp.write(json.dumps(sbom))
 
 
-def update_sbom_in_situ(component: Component, image: Image, sbom: SBOM) -> bool:
+def update_sbom_in_situ(
+    component: Component, image: Image, sbom: SBOM, release_id: str | None = None
+) -> bool:
     """
     Determine the matching SBOM handler and update the SBOM with release-time
     information in situ.
@@ -131,10 +136,11 @@ def update_sbom_in_situ(component: Component, image: Image, sbom: SBOM) -> bool:
         component (Component): The component the image belongs to.
         image (Image): Object representing an image being released.
         sbom (dict): SBOM parsed as dictionary.
+        release_id: release id to be added to the SBOM's annotations, optional
     """
 
     if sbom.format in SPDXVersion2.supported_versions:
-        SPDXVersion2().update_sbom(component, image, sbom.doc)
+        SPDXVersion2().update_sbom(component, image, sbom.doc, release_id)
         return True
 
     # The CDX handler does not support updating SBOMs for index images, as those
@@ -142,18 +148,19 @@ def update_sbom_in_situ(component: Component, image: Image, sbom: SBOM) -> bool:
     if sbom.format in CycloneDXVersion1.supported_versions and not isinstance(
         image, IndexImage
     ):
-        CycloneDXVersion1().update_sbom(component, image, sbom.doc)
+        CycloneDXVersion1().update_sbom(component, image, sbom.doc, release_id)
         return True
 
     return False
 
 
-async def update_sbom(
+async def update_sbom(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     component: Component,
     image: Image,
     cosign: Cosign,
     verify: bool,
     semaphore: asyncio.Semaphore,
+    release_id: str | None = None,
 ) -> SBOM | None:
     """Get an augmented SBOM of an image in a repository.
 
@@ -166,6 +173,7 @@ async def update_sbom(
         cosign: Cosign client for verification.
         verify: Whether to verify SBOM digest via image provenance.
         semaphore: Concurrency control semaphore.
+        release_id: release id to be added to the SBOM's annotations, optional
 
     Returns:
         An augmented SBOM if it can be enriched, None if enrichment fails.
@@ -174,7 +182,7 @@ async def update_sbom(
     async with semaphore:
         try:
             sbom = await load_sbom(image, cosign, verify)
-            if not update_sbom_in_situ(component, image, sbom):
+            if not update_sbom_in_situ(component, image, sbom, release_id):
                 raise SBOMError(f"Unsupported SBOM format for image {image}.")
             LOGGER.info("Successfully enriched SBOM for image %s", image)
             return sbom
@@ -187,7 +195,11 @@ async def update_sbom(
 
 
 async def update_component_sboms(
-    component: Component, cosign: Cosign, verify: bool, semaphore: asyncio.Semaphore
+    component: Component,
+    cosign: Cosign,
+    verify: bool,
+    semaphore: asyncio.Semaphore,
+    release_id: str | None = None,
 ) -> tuple[bool, list[SBOM]]:
     """
     Update SBOMs for a component.
@@ -199,6 +211,7 @@ async def update_component_sboms(
         cosign (Cosign): implementation of the Cosign protocol
         verify (bool): True if the SBOM's digest should be verified via the
             provenance of the image
+        release_id(str, optional): release id to be added to the SBOM's annotations
 
     Returns:
         Tuple where the first value specifies whether all SBOMs were augmented
@@ -209,18 +222,20 @@ async def update_component_sboms(
         # for both the index image and the child single arch images.
         index = component.image
         update_tasks = [
-            update_sbom(component, index, cosign, verify, semaphore),
+            update_sbom(component, index, cosign, verify, semaphore, release_id),
         ]
         for child in index.children:
             update_tasks.append(
-                update_sbom(component, child, cosign, verify, semaphore)
+                update_sbom(component, child, cosign, verify, semaphore, release_id)
             )
 
         results = await asyncio.gather(*update_tasks)
     else:
         # Single arch image
         results = [
-            await update_sbom(component, component.image, cosign, verify, semaphore)
+            await update_sbom(
+                component, component.image, cosign, verify, semaphore, release_id
+            )
         ]
 
     status: bool = all(results)
@@ -228,7 +243,11 @@ async def update_component_sboms(
 
 
 async def update_sboms(
-    snapshot: Snapshot, cosign: Cosign, verify: bool, concurrency_limit: int
+    snapshot: Snapshot,
+    cosign: Cosign,
+    verify: bool,
+    concurrency_limit: int,
+    release_id: str | None = None,
 ) -> tuple[bool, list[SBOM]]:
     """
     Update component SBOMs with release-time information based on a Snapshot.
@@ -239,12 +258,13 @@ async def update_sboms(
         verify (bool): True if the SBOM's digest should be verified via the
             provenance of the image
         concurrency_limit: concurrency limit for SBOM augmentation
+        release_id: release id to be added to the SBOMs' annotations, optional
     """
     semaphore = asyncio.Semaphore(concurrency_limit)
 
     results = await asyncio.gather(
         *[
-            update_component_sboms(component, cosign, verify, semaphore)
+            update_component_sboms(component, cosign, verify, semaphore, release_id)
             for component in snapshot.components
         ],
     )

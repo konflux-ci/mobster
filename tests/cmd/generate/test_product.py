@@ -39,14 +39,19 @@ class Args:
     snapshot: Path
     release_data: Path
     output: Path
+    release_id: str
 
 
-@pytest.fixture(params=[Path("product.json"), None], ids=["file", "stdout"])
+@pytest.fixture(
+    params=[(Path("product.json"), "release-id-1"), (None, None)],
+    ids=["file", "stdout"],
+)
 def generate_product_command_args(request: Any) -> Args:
     return Args(
         snapshot=Path("snapshot"),
         release_data=Path("data.json"),
-        output=request.param,
+        output=request.param[0],
+        release_id=request.param[1],
     )
 
 
@@ -249,6 +254,7 @@ class TestGenerateProductCommand:
             sbom_dict, f"{release_notes.product_name} {release_notes.product_version}"
         )
         verify_cpe(sbom_dict, cpe)
+        verify_release_id(sbom_dict, generate_product_command.cli_args.release_id)
         verify_purls(sbom_dict, purls)
         verify_relationships(sbom_dict, snapshot.components)
         verify_checksums(sbom_dict)
@@ -355,6 +361,16 @@ def verify_cpe(sbom: Any, expected_cpe: str | list[str]) -> None:
             "referenceLocator": cpe,
             "referenceType": "cpe22Type",
         } in sbom["packages"][0]["externalRefs"]
+
+
+def verify_release_id(sbom: Any, expected_release_id: str) -> None:
+    """
+    Verify that release_id annotation match the expected values.
+    """
+    if expected_release_id:
+        assert expected_release_id in sbom["annotations"][0]["comment"]
+    else:
+        assert "annotations" not in sbom
 
 
 def verify_purls(sbom: Any, expected: list[str]) -> None:
