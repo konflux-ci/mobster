@@ -14,7 +14,7 @@ from spdx_tools.spdx.model.package import Package
 
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
-from tests.conftest import assert_cdx_sbom
+from tests.conftest import assert_cdx_sbom, assert_spdx_sbom
 
 
 @pytest.fixture()
@@ -49,7 +49,7 @@ def image_digest_file_content() -> str:
         "expected_sbom_path",
     ],
     [
-        (
+        pytest.param(
             [Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")],
             Path("tests/sbom/test_merge_data/spdx/cachi2.bom.json"),
             "quay.io/foobar/examplecontainer:v10",
@@ -60,8 +60,9 @@ def image_digest_file_content() -> str:
             ["quay.io/ubi9:latest@sha256:123456789012345678901234567789012"],
             True,
             Path("tests/sbom/test_oci_generate_data/generated.spdx.json"),
+            id="syft-hermeto-dockerfile-and-additional-images",
         ),
-        (
+        pytest.param(
             [Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")],
             None,
             "quay.io/foobar/examplecontainer:v10",
@@ -74,8 +75,9 @@ def image_digest_file_content() -> str:
             Path(
                 "tests/sbom/test_oci_generate_data/generated_without_hermet_without_additional.spdx.json"
             ),
+            id="syft-and-dockerfile",
         ),
-        (
+        pytest.param(
             [
                 Path(
                     "tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json"
@@ -91,8 +93,9 @@ def image_digest_file_content() -> str:
             [],
             True,
             Path("tests/sbom/test_oci_generate_data/generated_multiple_syft.spdx.json"),
+            id="multiple-syft-and-dockerfile",
         ),
-        (
+        pytest.param(
             [
                 Path(
                     "tests/sbom/test_merge_data/cyclonedx/syft-sboms/pip-e2e-test.bom.json"
@@ -107,6 +110,7 @@ def image_digest_file_content() -> str:
             ["quay.io/ubi9:latest@sha256:123456789012345678901234567789012"],
             True,
             Path("tests/sbom/test_oci_generate_data/generated.cdx.json"),
+            id="syft-cdx-dockerfile-and-additional-images",
         ),
     ],
 )
@@ -144,38 +148,9 @@ async def test_GenerateOciImageCommand_execute(
     with open(expected_sbom_path) as expected_file_stream:
         expected_sbom = json.load(expected_file_stream)
 
-    def compare_spdx_sbom_dicts(
-        actual: dict[str, Any], expected: dict[str, Any]
-    ) -> None:
-        for index, package in enumerate(actual["packages"]):
-            for key, value in package.items():
-                if key == "annotations":
-                    for annotation_idx, annotation in enumerate(value):
-                        for annotation_key in (
-                            "annotationType",
-                            "annotator",
-                            "comment",
-                            # Ignore annotationDate
-                        ):
-                            try:
-                                assert (
-                                    annotation[annotation_key]
-                                    == expected["packages"][index]["annotations"][
-                                        annotation_idx
-                                    ][annotation_key]
-                                )
-                            except (KeyError, IndexError):
-                                raise AssertionError(
-                                    f"Cannot match package {package} with the"
-                                    f" expected value {expected['packages'][index]}"
-                                ) from None
-                else:
-                    assert package[key] == expected["packages"][index][key]
-        assert actual["relationships"] == expected["relationships"]
-
     def compare_sbom_dicts(actual: dict[str, Any], expected: dict[str, Any]) -> None:
         if "spdxVersion" in actual and "spdxVersion" in expected:
-            return compare_spdx_sbom_dicts(actual, expected)
+            return assert_spdx_sbom(actual, expected)
         return assert_cdx_sbom(actual, expected)
 
     sbom = await command.execute()

@@ -2,7 +2,6 @@
 This module contains OCI data types and code to manipulate them.
 """
 
-import asyncio
 import json
 import logging
 import os

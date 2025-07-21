@@ -8,6 +8,13 @@ import re
 
 LOGGER = logging.getLogger(__name__)
 
+ARCH_TRANSLATION = {
+    "amd64": {"x86_64", "x64"},
+    "arm64": {"arm", "arm64", "aarch64_be", "aarch64", "armv8b", "armv8l"},
+    "ppc64le": {"powerpc", "ppc", "ppc64", "ppcle"},
+    "s390x": {"s390"},
+}
+
 
 def normalize_file_name(current_name: str) -> str:
     """
@@ -64,3 +71,21 @@ async def run_async_subprocess(
 
     return code, stdout, stderr
 
+
+def identify_arch() -> str:
+    """
+    Fetches the runtime arch and converts it to oci manifest arch format.
+
+    Returns:
+        oci manifest compatible arch identifier.
+    """
+
+    platform_arch = platform.machine()
+
+    for oci_arch, uname_arches in ARCH_TRANSLATION.items():
+        if platform_arch in uname_arches:
+            return oci_arch
+    LOGGER.warning(
+        "Unknown architecture '%s'. Using 'unknown' as fallback.", platform_arch
+    )
+    return platform_arch
