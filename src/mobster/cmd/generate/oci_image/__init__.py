@@ -87,7 +87,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         def _open_bom(bom: Path) -> dict[str, Any]:
             with open(bom, encoding="utf-8") as bom_file:
-                return json.load(bom_file)  # type: ignore
+                return json.load(bom_file)  # type: ignore[no-any-return]
 
         if syft_boms is not None:
             # Merging Syft & Hermeto SBOMs
