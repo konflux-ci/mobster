@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import sys
-from typing import Any
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
@@ -29,7 +28,6 @@ class BucketClient:
 
     def store_sbom_input_data(self, sbom_input_data: dict, key: str) -> None:
         try:
-
             self.client.put_object(
                 Bucket=self.bucket,
                 Key=key,
@@ -43,32 +41,34 @@ class BucketClient:
             LOGGER.error(f"Failed to store SBOM input data to s3://{self.bucket}/{key}")
             raise
 
+
 def entrypoint_for_snapshot_data(
     sbom_input_file: dict,
     release_id: str,
     bucket: BucketClient,
-    prefix: str,
     log_tag: str,
 ) -> None:
     try:
         with open(sbom_input_file, encoding="utf-8") as fp:
             validated_data = SnapshotModel.model_validate_json(fp.read())
-        bucket.store_sbom_input_data(validated_data.dict(), f"{prefix}/{release_id}")
+        bucket.store_sbom_input_data(validated_data.dict(), f"snapshots/{release_id}")
     except Exception as e:
         LOGGER.error(f"[{log_tag}]Failed to parse SBOM input data file: {e}")
         raise
+
 
 def entrypoint_for_release_data(
     sbom_input_file: dict,
     release_id: str,
     bucket: BucketClient,
-    prefix: str,
     log_tag: str,
 ) -> None:
     try:
         with open(sbom_input_file, encoding="utf-8") as fp:
             validated_data = ReleaseData.model_validate_json(fp.read()).release_notes
-        bucket.store_sbom_input_data(validated_data.dict(), f"{prefix}/{release_id}")
+        bucket.store_sbom_input_data(
+            validated_data.dict(), f"release-data/{release_id}"
+        )
     except Exception as e:
         LOGGER.error(f"[{log_tag}]Failed to parse SBOM input data file: {e}")
         raise
@@ -81,7 +81,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Store SBOM input data to S3 bucket",
     )
-    parser.add_argument("--input_file", required=True, help="Path to the JSON input file")
+    parser.add_argument(
+        "--input_file", required=True, help="Path to the JSON input file"
+    )
     parser.add_argument("--release_id", required=True, help="Tekton Pipeline run UID")
     parser.add_argument("--bucket", required=True, help="The name of the S3 bucket")
     args = parser.parse_args()
@@ -92,15 +94,11 @@ def main() -> None:
 
     if entrypoint_type == "snapshot_spec_data":
         log_tag = "SNAPSHOT"
-        entrypoint_for_snapshot_data(
-            args.input_file, args.release_id, bucket, SnapshotModel, log_tag
-        )
+        entrypoint_for_snapshot_data(args.input_file, args.release_id, bucket, log_tag)
 
     if entrypoint_type == "release_time_data":
         log_tag = "RELEASE_DATA"
-        entrypoint_for_release_data(
-            args.input_file, args.release_id, bucket, ReleaseData, log_tag
-        )
+        entrypoint_for_release_data(args.input_file, args.release_id, bucket, log_tag)
 
 
 if __name__ == "__main__":
