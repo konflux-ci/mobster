@@ -17,51 +17,9 @@ from typing import Any
 import pydantic
 
 from mobster.error import SBOMError
+from mobster.utils import run_async_subprocess
 
 logger = logging.getLogger(__name__)
-
-
-async def run_async_subprocess(
-    cmd: list[str], env: dict[str, str] | None = None, retry_times: int = 0
-) -> tuple[int, bytes, bytes]:
-    """Run command in subprocess asynchronously.
-
-    Args:
-        cmd: Command to run in subprocess.
-        env: Environment dictionary.
-        retry_times: Number of retries if the process ends with non-zero return code.
-
-    Returns:
-        tuple[int, bytes, bytes]: Return code, stdout, and stderr.
-    """
-    if retry_times < 0:
-        raise ValueError("Retry count cannot be negative.")
-
-    cmd_env = dict(os.environ)
-    if env:
-        cmd_env.update(env)
-
-    # do this to avoid unbound warnings,
-    # the loop always runs at least once, so they're always set
-    code, stdout, stderr = 0, b"", b""
-
-    for _ in range(1 + retry_times):
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=cmd_env,
-        )
-
-        stdout, stderr = await proc.communicate()
-        assert (
-            proc.returncode is not None
-        )  # can't be None after proc.communicate is awaited
-        code = proc.returncode
-        if code == 0:
-            return code, stdout, stderr
-
-    return code, stdout, stderr
 
 
 async def get_image_manifest(reference: str) -> dict[str, Any]:

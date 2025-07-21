@@ -10,8 +10,9 @@ from pathlib import Path
 
 from mobster.error import SBOMError
 from mobster.image import Image
-from mobster.oci import make_oci_auth_file, run_async_subprocess
+from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, Provenance02
+from mobster.utils import run_async_subprocess
 
 logger = logging.getLogger(__name__)
 
