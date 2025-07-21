@@ -468,9 +468,9 @@ class TestCosignClient:
                 loaded = json.load(fp)
                 predicate = loaded["predicate"]
                 if build_finished_on is not None:
-                    predicate["metadata"][
-                        "buildFinishedOn"
-                    ] = build_finished_on.isoformat()
+                    predicate["metadata"]["buildFinishedOn"] = (
+                        build_finished_on.isoformat()
+                    )
                 else:
                     del predicate["metadata"]["buildFinishedOn"]
             return predicate  # type: ignore

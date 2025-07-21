@@ -103,3 +103,23 @@ async def test_run_async_subprocess_negative_retry() -> None:
     assert "Retry count cannot be negative" in str(excinfo.value)
 
 
+@pytest.mark.parametrize(
+    "input_arch, expected_arch",
+    [
+        pytest.param("x86_64", "amd64", id="x86_64"),
+        pytest.param("aarch64", "arm64", id="aarch64"),
+        pytest.param("ppc64", "ppc64le", id="ppc64le"),
+        pytest.param("s390", "s390x", id="s390x"),
+        pytest.param("unknown_arch", "unknown_arch", id="unknown_arch"),
+    ],
+)
+@patch("mobster.utils.platform.machine")
+def test_identify_arch(
+    mock_platform: MagicMock, input_arch: str, expected_arch: str
+) -> None:
+    """
+    Test the identify_arch function.
+    """
+    mock_platform.return_value = input_arch
+    arch = utils.identify_arch()
+    assert arch == expected_arch

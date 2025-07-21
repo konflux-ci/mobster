@@ -4,8 +4,7 @@
     "created": "2024-12-18T11:28:00Z",
     "creators": [
       "Organization: Anchore, Inc",
-      "Tool: syft-1.4.1",
-      "Tool: Mobster-0.4.0"
+      "Tool: syft-1.4.1"
     ],
     "licenseListVersion": "3.23"
   },
@@ -15,7 +14,7 @@
   "documentNamespace": "https://konflux-ci.dev/spdxdocs/quay.io/foobar/examplecontainer@sha256:11111111111111111111111111111111-5cab6b74-c196-4300-a1ee-dab4c9b7572d",
   "packages": [
     {
-      "SPDXID": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "SPDXID": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -26,13 +25,13 @@
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE_MANAGER",
-          "referenceLocator": "pkg:oci/examplecontainer@sha256:11111111111111111111111111111111?repository_url=quay.io/foobar/examplecontainer",
+          "referenceLocator": "pkg:oci/examplecontainer@sha256:11111111111111111111111111111111?arch=amd64&repository_url=quay.io/foobar/examplecontainer",
           "referenceType": "purl"
         }
       ],
       "filesAnalyzed": false,
       "licenseDeclared": "NOASSERTION",
-      "name": "examplecontainer",
+      "name": "examplecontainer_amd64",
       "supplier": "Organization: Red Hat",
       "versionInfo": "v10"
     },
@@ -1674,42 +1673,42 @@
   ],
   "relationships": [
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-python-certifi-605ce44010623730",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-python-charset-normalizer-af8ef9b528d1324d",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-python-flit-core-24f242ce07794d00",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-python-idna-ff5d4caf61299680",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-python-requests-03176f57fdf54d1e",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-python-setuptools-7ae302e7223ecbbd",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-python-urllib3-531a10a07587b59c",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-python-wheel-3a9d5577afa1b279",
       "relationshipType": "CONTAINS"
     },
@@ -1824,17 +1823,17 @@
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
       "relationshipType": "CONTAINS"
     },
     {
       "spdxElementId": "SPDXRef-DOCUMENT",
-      "relatedSpdxElement": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "relatedSpdxElement": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relationshipType": "DESCRIBES"
     },
     {
-      "spdxElementId": "SPDXRef-image-examplecontainer-4512523e22a0d7b91727f74d26cbe78058ae94700d6dfa4fe84adf5f8481f5f2",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-image-konflux-test-0b947c0ad395438e31ccc30ce44e25bfcbab7446d81698c7723213c42310cca5",
       "relationshipType": "DESCENDANT_OF"
     }

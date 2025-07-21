@@ -8,8 +8,8 @@
           "content": "11111111111111111111111111111111"
         }
       ],
-      "name": "examplecontainer",
-      "purl": "pkg:oci/examplecontainer@sha256:11111111111111111111111111111111?repository_url=quay.io/foobar/examplecontainer",
+      "name": "examplecontainer_amd64",
+      "purl": "pkg:oci/examplecontainer@sha256:11111111111111111111111111111111?arch=amd64&repository_url=quay.io/foobar/examplecontainer",
       "type": "container",
       "version": "v10"
     },
