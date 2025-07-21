@@ -4,7 +4,7 @@
 #
 # Requirements:
 #   - TPA is running locally on port 8080.
-#   - MinIO is running locall on port 9900
+#   - MinIO is running locally on port 9900.
 #   - A "snapshot.json" file exists in the data_dir. The snapshot spec should
 #       then point to an image with SBOMs to be augmented.
 #
