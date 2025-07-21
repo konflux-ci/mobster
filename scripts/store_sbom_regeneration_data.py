@@ -2,13 +2,14 @@ import argparse
 import json
 import logging
 import os
+import sys
 from typing import Any
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 from mobster.cmd.generate.product import ReleaseData
-from mobster.release import Snapshot
+from mobster.release import SnapshotModel
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,33 +27,51 @@ class BucketClient:
         )
         self.bucket = bucket
 
-    def upload_sboms(self, data: dict, key: str) -> None:
+    def store_sbom_input_data(self, sbom_input_data: dict, key: str) -> None:
         try:
+
             self.client.put_object(
                 Bucket=self.bucket,
                 Key=key,
-                Body=json.dumps(data),
+                Body=json.dumps(sbom_input_data),
                 ContentType="application/json",
             )
-            LOGGER.info(f"Successfully Stored the SBOM to s3://{self.bucket}/{key}")
+            LOGGER.info(
+                f"Successfully Stored the SBOM input data to s3://{self.bucket}/{key}"
+            )
         except (BotoCoreError, ClientError):
-            LOGGER.error(f"Failed to store SBOM to s3://{self.bucket}/{key}")
+            LOGGER.error(f"Failed to store SBOM input data to s3://{self.bucket}/{key}")
             raise
 
-
-def store_sbom_data(
-    data: dict,
-    uid: str,
+def entrypoint_for_snapshot_data(
+    sbom_input_file: dict,
+    release_id: str,
     bucket: BucketClient,
-    model_class: Any,
     prefix: str,
     log_tag: str,
 ) -> None:
     try:
-        validated_data = model_class(**data)
-        bucket.upload_sboms(validated_data.dict(), f"{prefix}/{uid}")
+        with open(sbom_input_file, encoding="utf-8") as fp:
+            validated_data = SnapshotModel.model_validate_json(fp.read())
+        bucket.store_sbom_input_data(validated_data.dict(), f"{prefix}/{release_id}")
     except Exception as e:
-        LOGGER.error(f"[{log_tag}] Failed to store SBOM: {e}")
+        LOGGER.error(f"[{log_tag}]Failed to parse SBOM input data file: {e}")
+        raise
+
+def entrypoint_for_release_data(
+    sbom_input_file: dict,
+    release_id: str,
+    bucket: BucketClient,
+    prefix: str,
+    log_tag: str,
+) -> None:
+    try:
+        with open(sbom_input_file, encoding="utf-8") as fp:
+            validated_data = ReleaseData.model_validate_json(fp.read()).release_notes
+        bucket.store_sbom_input_data(validated_data.dict(), f"{prefix}/{release_id}")
+    except Exception as e:
+        LOGGER.error(f"[{log_tag}]Failed to parse SBOM input data file: {e}")
+        raise
 
 
 def main() -> None:
@@ -60,36 +79,28 @@ def main() -> None:
     Script entrypoint.
     """
     parser = argparse.ArgumentParser(
-        description="Store SBOM Regeneration data to S3 bucket",
+        description="Store SBOM input data to S3 bucket",
     )
-    parser.add_argument(
-        "--type",
-        choices=["snapshots", "release-data"],
-        required=True,
-        help="Type of SBOM data",
-    )
-    parser.add_argument("--input", required=True, help="Path to the JSON input file")
-    parser.add_argument("--uid", required=True, help="Tekton Pipeline run UID")
+    parser.add_argument("--input_file", required=True, help="Path to the JSON input file")
+    parser.add_argument("--release_id", required=True, help="Tekton Pipeline run UID")
     parser.add_argument("--bucket", required=True, help="The name of the S3 bucket")
     args = parser.parse_args()
 
-    try:
-        with open(args.input) as sbom_file:
-            sbom_data = json.load(sbom_file)
-    except Exception as e:
-        LOGGER.error(f"Failed to read input file: {e}")
-        raise
+    entrypoint_type = os.path.basename(sys.argv[0])
 
-    BucketClient(args.bucket)
+    bucket = BucketClient(args.bucket)
 
-    config = {
-        "snapshots": (Snapshot, "SNAPSHOT"),
-        "release-data": (ReleaseData, "RELEASE_DATA"),
-    }
+    if entrypoint_type == "snapshot_spec_data":
+        log_tag = "SNAPSHOT"
+        entrypoint_for_snapshot_data(
+            args.input_file, args.release_id, bucket, SnapshotModel, log_tag
+        )
 
-    model_class, log_tag = config[args.type]
-
-    store_sbom_data(sbom_data, args.uid, model_class, args.type, log_tag)
+    if entrypoint_type == "release_time_data":
+        log_tag = "RELEASE_DATA"
+        entrypoint_for_release_data(
+            args.input_file, args.release_id, bucket, ReleaseData, log_tag
+        )
 
 
 if __name__ == "__main__":
