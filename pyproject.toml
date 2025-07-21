@@ -72,6 +72,11 @@ disable_error_code = ["import-untyped"]
 [tool.pylint.SIMILARITIES]
 min-similarity-lines = 6
 
+[tool.coverage.run]
+omit = [
+    "src/mobster/tekton/*",  # temporary, integration tests in another PR
+]
+
 [tool.poetry]
 packages = [{ include = "mobster", from = "src" }]
 
