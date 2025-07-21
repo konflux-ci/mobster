@@ -35,6 +35,7 @@ dependencies = [
     "packageurl-python (>=0.16.0,<0.17.0)",
     "aiofiles (>=24.1.0,<25.0.0)",
     "httpx (>=0.28.1,<0.29.0)",
+    "boto3>=1.36.24",
 ]
 
 [project.urls]
@@ -42,6 +43,8 @@ repository = "https://github.com/konflux-ci/mobster"
 
 [project.scripts]
 mobster = "mobster.main:main"
+snapshot_spec_data = "scripts.store_sbom_regeneration_data:main"
+release_time_data = "scripts.store_sbom_regeneration_data:main"
 
 [tool.ruff]
 line-length = 88
@@ -70,7 +73,7 @@ disable_error_code = ["import-untyped"]
 min-similarity-lines = 6
 
 [tool.poetry]
-packages = [{ include = "mobster", from = "src" }]
+packages = [{ include = "mobster", from = "src" }, { include = "scripts/store_sbom_regeneration_data.py" }]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
