@@ -145,7 +145,10 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
                 await self._fetch_token()
             client.headers["Authorization"] = "Bearer " + self._token
 
-    async def _request(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    # Mypy doesn't recognize that either a value is returned
+    # or an exception is raised in all cases
+    async def _request(  # type: ignore[return]
+        # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         method: str,
         url: str,
@@ -218,14 +221,15 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
                     LOGGER.exception("HTTP %s request failed: %s", method, exc)
                     if attempt < retries - 1:
                         await sleep(backoff_factor * (2**attempt))
+                    else:
+                        raise RetryExhaustedException(
+                            f"Retries exhausted for "
+                            f"HTTP {method} request for {effective_url}"
+                        ) from exc
                 except Exception as exc:  # pylint: disable=broad-except
                     # capture broad exception and raise it without retrying
                     LOGGER.exception("HTTP %s request failed: %s", method, exc)
                     raise
-
-            raise RetryExhaustedException(
-                f"Retries exhausted for HTTP {method} request for {effective_url}"
-            )
 
     async def get(
         self,
