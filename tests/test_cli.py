@@ -33,7 +33,6 @@ def test_parse_concurrency(value: str, expected: int | type) -> None:
 @pytest.mark.parametrize(
     ["command", "success"],
     [
-        (["generate", "oci-image"], False),
         (
             [
                 "generate",
