@@ -1,11 +1,33 @@
 #!/usr/bin/env bash
+# Upload failed SBOM files to S3 bucket for retry processing
+#
+# Parameters:
+#   --data-dir:        Base directory containing input files and where outputs will be stored
+#   --retry-s3-bucket: S3 bucket name where failed SBOMs will be uploaded
+#   --failed-dir:      Directory containing failed SBOM files to upload
+#
+# Dependencies:
+#   Input files:
+#     - Failed SBOM files in ${failed_dir}/ directory
+#
+#   Previous pipeline steps:
+#     - upload_sboms_to_atlas step that populates failed_dir with failed uploads
+#
+#   Environment variables (required):
+#     - AWS_ACCESS_KEY_ID: AWS access key for S3 authentication
+#     - AWS_SECRET_ACCESS_KEY: AWS secret key for S3 authentication
+#
+# Output:
+#   - SBOM files uploaded to s3://${retry_s3_bucket}/
+#   - Failed directory cleaned up after successful upload to S3
 set -eux
 
-OPTS=$(getopt -o '' --long data-dir:,retry-s3-bucket: -- "$@")
+OPTS=$(getopt -o '' --long data-dir:,retry-s3-bucket:,failed-dir: -- "$@")
 eval set -- "$OPTS"
 
 data_dir=""
 retry_s3_bucket=""
+failed_dir=""
 
 while true; do
     case "$1" in
@@ -15,6 +37,10 @@ while true; do
             ;;
         --retry-s3-bucket)
             retry_s3_bucket="$2"
+            shift 2
+            ;;
+        --failed-dir)
+            failed_dir="$2"
             shift 2
             ;;
         --)
@@ -28,8 +54,11 @@ while true; do
     esac
 done
 
-if [[ -z "$data_dir" || -z "$retry_s3_bucket" ]]; then
-    echo "Error: Both --data-dir and --retry-s3-bucket are required" >&2
+if [[ -z "$data_dir" || \
+      -z "$retry_s3_bucket" || \
+      -z "$failed_dir" \
+      ]]; then
+    echo "Error: missing required argument or is empty" >&2
     exit 1
 fi
 
@@ -47,6 +76,9 @@ for var_name in "${required_vars[@]}"; do
 done
 set -x
 
-failed_path="${data_dir}/failed-sboms"
 
-aws s3 cp "$failed_path" s3://${retry_s3_bucket}/ --recursive
+aws s3 cp "$failed_dir" s3://${retry_s3_bucket}/ --recursive
+
+# remove all uploaded SBOMs, so that a final report can be generated in a
+# further step.
+rm -f "${failed_dir}/*"
