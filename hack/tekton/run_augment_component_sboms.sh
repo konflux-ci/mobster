@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 # Utility testing script designed to mimick the process the
-# augment-component-sboms-ta Tekton task uses. Uses the real stage S3 bucket
-# for now.
+# augment-component-sboms-ta Tekton task uses.
 #
 # Requirements:
 #   - TPA is running locally on port 8080.
-#   - AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env vars are set with the
-#       credentials to the stage bucket
+#   - MinIO is running locally on port 9900.
 #   - A "snapshot.json" file exists in the data_dir. The snapshot spec should
 #       then point to an image with SBOMs to be augmented.
 #
@@ -15,27 +13,19 @@ set -eux
 data_dir="."
 snapshot_spec="snapshot.json"
 atlas_api_url="http://localhost:8080"
-retry_s3_bucket="mpp-e1-preprod-sbom-29093454-2ea7-4fd0-b4cf-dc69a7529ee0"
-sbom_path="component-sboms"
-
-repo_root="$(git rev-parse --show-toplevel)"
-export PATH="$(repo_root)/scripts/tekton/:$PATH"
-
-augment_sboms \
-    --data-dir "$data_dir" \
-    --snapshot-spec "$snapshot_spec" \
-    --sbom-path "$sbom_path"
+retry_s3_bucket="sboms"
 
 export MOBSTER_TPA_SSO_ACCOUNT="dummy"
 export MOBSTER_TPA_SSO_TOKEN="dummy"
 export MOBSTER_TPA_SSO_TOKEN_URL="dummy"
 export MOBSTER_TPA_AUTH_DISABLE="true"
 
-upload_sboms_to_atlas \
-    --data-dir "$data_dir" \
-    --atlas-api-url "$atlas_api_url" \
-    --sbom-path "$sbom_path"
+export AWS_ACCESS_KEY_ID="minioAccessKey"
+export AWS_SECRET_ACCESS_KEY="minioSecretKey"
+export AWS_ENDPOINT_URL="http://localhost:9900"
 
-upload_sboms_to_s3 \
+process_component_sboms \
     --data-dir "$data_dir" \
+    --snapshot-spec "$snapshot_spec" \
+    --atlas-api-url "$atlas_api_url" \
     --retry-s3-bucket "$retry_s3_bucket"
