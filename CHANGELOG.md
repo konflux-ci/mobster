@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.6.0](https://github.com/konflux-ci/mobster/compare/v0.5.0...v0.6.0) (2025-07-22)
+
+
+### Features
+
+* add S3 client with integration tests ([c089798](https://github.com/konflux-ci/mobster/commit/c089798531b10f6788ec6cd09643027e706199e8))
+* bump tekton task image version ([f5258c2](https://github.com/konflux-ci/mobster/commit/f5258c2737db1af2feb95891db07f27c26dad2a5))
+* bump tekton task image version ([64d0e14](https://github.com/konflux-ci/mobster/commit/64d0e1408644e054fefc0990e4c3cf15dd01178e))
+* clean up error handling ([32ea213](https://github.com/konflux-ci/mobster/commit/32ea2133f15aefebbf749b874604a9da76e98e85))
+* handle testing AWS endpoint url correctly ([a584cf6](https://github.com/konflux-ci/mobster/commit/a584cf678baaffe347015c42fb25cdd78bfc2410))
+* implement async S3 directory upload in tekton scripts ([aefd3ba](https://github.com/konflux-ci/mobster/commit/aefd3ba814003e577e85d1b8c23c9c849b3b5742))
+* **ISV-5867:** Update parsing of SBOM inputs ([9f1c48e](https://github.com/konflux-ci/mobster/commit/9f1c48e0b39cacfff27a39a66cdbcb20ee6a1261))
+* **ISV-5867:** Update parsing of SBOM inputs ([6781d3b](https://github.com/konflux-ci/mobster/commit/6781d3b745a52d9e7eba95077371508ffa71bb48))
+* **ISV-6139:** Mobster TPA client raises an error related to the last exception. ([68baccf](https://github.com/konflux-ci/mobster/commit/68baccfeb8098cb0797c891395ca9c74b6cfd0db))
+* **ISV-6139:** Mobster TPA client raises an error related to the last exception. ([70224fc](https://github.com/konflux-ci/mobster/commit/70224fc0de63a1eab867818f1302fef884c01c66))
+* limit concurrency in S3 client ([0618749](https://github.com/konflux-ci/mobster/commit/0618749a75caf3522ab11a7430e74d69c8201130))
+* refactor s3 client to use aioboto3 ([f54409b](https://github.com/konflux-ci/mobster/commit/f54409b00dbdd9fb6e70e4c5e62d6feee9c092b7))
+* refactor tekton tasks to use python instead of bash ([8ee74b5](https://github.com/konflux-ci/mobster/commit/8ee74b5c9772ab5853c9629eaad5c0230db86d6e))
+* remove awscli from Containerfile ([8eebe5f](https://github.com/konflux-ci/mobster/commit/8eebe5f9fc4344670b3974efc8c4baaeae56d9ed))
+* temporarily disable coverage for tekton scripts ([f854ed9](https://github.com/konflux-ci/mobster/commit/f854ed9ffdbdbebf79fc84b4d09edcc6b4f64497))
+* use migrated python script in tekton tasks ([c51435a](https://github.com/konflux-ci/mobster/commit/c51435a96d15aba7376c726502e375ff5be98e86))
+
+
+### Bug Fixes
+
+* clarify mypy ignore type ([ba9c319](https://github.com/konflux-ci/mobster/commit/ba9c319f952c3ee4aaf8e0c1e1064ccef8f3ddeb))
+* fix typos ([0be62ed](https://github.com/konflux-ci/mobster/commit/0be62edf6d664c337b2f6505fbaf4fb35405fd34))
+
+
+### Documentation
+
+* add docstrings ([2a474b1](https://github.com/konflux-ci/mobster/commit/2a474b113a3e1414cf0495a0c047bc8dde19558f))
+
 ## [0.5.0](https://github.com/konflux-ci/mobster/compare/v0.4.0...v0.5.0) (2025-07-14)
 
 
