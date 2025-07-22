@@ -243,3 +243,16 @@ class S3Client:
                     await s3_client.delete_objects(
                         Bucket=self.bucket, Delete={"Objects": objects}
                     )
+
+    async def is_bucket_empty(self) -> bool:
+        """
+        Check if the S3 bucket is empty.
+
+        Returns:
+            True if the bucket is empty, False otherwise.
+        """
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint_url
+        ) as s3_client:
+            response = await s3_client.list_objects_v2(Bucket=self.bucket)
+            return "Contents" not in response
