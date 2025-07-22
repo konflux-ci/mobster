@@ -363,7 +363,7 @@ def verify_cpe(sbom: Any, expected_cpe: str | list[str]) -> None:
         } in sbom["packages"][0]["externalRefs"]
 
 
-def verify_release_id(sbom: Any, expected_release_id: str) -> None:
+def verify_release_id(sbom: Any, expected_release_id: str | None) -> None:
     """
     Verify that release_id annotation match the expected values.
     """
