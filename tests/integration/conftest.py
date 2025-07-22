@@ -1,4 +1,4 @@
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator
 from typing import Any
 
 import pytest
@@ -7,7 +7,6 @@ import pytest_asyncio
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.tekton.s3 import S3Client
 from tests.integration.oci_client import ReferrersTagOCIClient
-from tests.integration.s3 import S3Client
 
 
 def pytest_addoption(parser: Any) -> None:
@@ -66,20 +65,6 @@ def s3_auth_env() -> dict[str, str]:
 @pytest.fixture()
 def s3_sbom_bucket() -> str:
     return "sboms"
-
-
-@pytest.fixture
-def s3_client(
-    s3_endpoint_url: str, s3_sbom_bucket: str, s3_auth_env: dict[str, str]
-) -> Generator[S3Client, None, None]:
-    # these are set in compose.yaml
-    access_key = s3_auth_env["AWS_ACCESS_KEY_ID"]
-    secret_key = s3_auth_env["AWS_SECRET_ACCESS_KEY"]
-
-    client = S3Client(s3_sbom_bucket, access_key, secret_key, s3_endpoint_url)
-
-    yield client
-    client.clear_bucket()
 
 
 @pytest_asyncio.fixture
