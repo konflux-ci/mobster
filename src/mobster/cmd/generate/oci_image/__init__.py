@@ -4,6 +4,7 @@ __all__ = ["GenerateOciImageCommand"]
 
 import json
 import logging
+from argparse import ArgumentError
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +64,39 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             except CycloneDxException as e:
                 LOGGER.warning("\n".join(e.args))
 
+    def _handle_bom_inputs(
+        self,
+        syft_boms: list[Path] | None,
+        hermeto_bom: Path | None,
+    ) -> dict[str, Any]:
+        """
+        Handles the input SBOM files, merging them if necessary.
+        Args:
+            syft_boms (list[Path] | None): List of Syft SBOM file paths.
+            hermeto_bom (Path | None): Path to a Hermeto SBOM file.
+        Returns:
+            dict[str, Any]: Merged/loaded SBOM dictionary.
+        Raises:
+            ArgumentError: If neither Syft nor Hermeto SBOMs are provided.
+        """
+        if hermeto_bom is None and syft_boms is None:
+            raise ArgumentError(
+                None,
+                "At least one of --from-syft or --from-hermeto must be provided",
+            )
+
+        def _open_bom(bom: Path) -> dict[str, Any]:
+            with open(bom, encoding="utf-8") as bom_file:
+                return json.load(bom_file)  # type: ignore[no-any-return]
+
+        if syft_boms is not None:
+            # Merging Syft & Hermeto SBOMs
+            if len(syft_boms) > 1 or hermeto_bom:
+                return merge_sboms(syft_boms, hermeto_bom)
+            return _open_bom(syft_boms[0])
+
+        return _open_bom(hermeto_bom)  # type: ignore[arg-type]
+
     async def execute(self) -> Any:
         """
         Generate an SBOM document for OCI image.
@@ -81,13 +115,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         # contextualize: bool = self.cli_args.contextualize
         # TODO add contextual SBOM utilities    # pylint: disable=fixme
 
-        # Merging Syft & Hermeto SBOMs
-        if len(syft_boms) > 1 or hermeto_bom:
-            merged_sbom_dict = merge_sboms(syft_boms, hermeto_bom)
-        else:
-            # Just one image provided, nothing to merge
-            with open(syft_boms[0], encoding="utf8") as sbom_file:
-                merged_sbom_dict = json.load(sbom_file)
+        merged_sbom_dict = self._handle_bom_inputs(syft_boms, hermeto_bom)
         sbom: Document | CycloneDX1BomWrapper
 
         # Parsing into objects

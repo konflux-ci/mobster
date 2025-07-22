@@ -1,5 +1,6 @@
 import datetime
 import json
+from argparse import ArgumentError
 from pathlib import Path
 from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -326,3 +327,71 @@ async def test_GenerateOciImageCommand__soft_validate_content_cdx(
     command._content = CycloneDX1BomWrapper(sbom=cdx_sbom_object)
     await command._soft_validate_content()
     mock_logger.warning.assert_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ["syft_boms", "hermeto_bom", "expected_action"],
+    [
+        # no SBOMs
+        (None, None, "raise_error"),
+        # single syft
+        ([Path("syft.json")], None, "load_syft"),
+        # multiple syft
+        ([Path("syft1.json"), Path("syft2.json")], None, "merge"),
+        # syft + hermeto
+        ([Path("syft.json")], Path("hermeto.json"), "merge"),
+        # multiple syft + hermeto
+        ([Path("syft1.json"), Path("syft2.json")], Path("hermeto.json"), "merge"),
+        # only hermeto
+        (None, Path("hermeto.json"), "load_hermeto"),
+    ],
+)
+@patch("builtins.open")
+@patch("json.load")
+@patch("mobster.cmd.generate.oci_image.merge_sboms")
+async def test_GenerateOciImageCommand__handle_bom_inputs(
+    mock_merge: MagicMock,
+    mock_json_load: MagicMock,
+    mock_open: MagicMock,
+    syft_boms: list[Path] | None,
+    hermeto_bom: Path | None,
+    expected_action: Literal["raise_error", "load_syft", "load_hermeto", "merge"],
+) -> None:
+    command = GenerateOciImageCommand(MagicMock())
+
+    mock_syft_data = {"name": "syft_data"}
+    mock_hermeto_data = {"name": "hermeto_data"}
+    mock_merged_data = {"name": "merged_data"}
+
+    mock_file = MagicMock()
+    mock_open.return_value.__enter__.return_value = mock_file
+    mock_json_load.side_effect = (
+        lambda _: mock_syft_data if hermeto_bom is None else mock_hermeto_data
+    )
+    mock_merge.return_value = mock_merged_data
+
+    if expected_action == "raise_error":
+        with pytest.raises(ArgumentError):
+            command._handle_bom_inputs(syft_boms, hermeto_bom)
+    else:
+        result = command._handle_bom_inputs(syft_boms, hermeto_bom)
+
+        if expected_action == "load_syft":
+            assert syft_boms is not None
+            assert hermeto_bom is None
+            mock_open.assert_called_once()
+            assert result == mock_syft_data
+            mock_merge.assert_not_called()
+
+        elif expected_action == "load_hermeto":
+            assert hermeto_bom is not None
+            assert syft_boms is None
+            mock_open.assert_called_once()
+            assert result == mock_hermeto_data
+            mock_merge.assert_not_called()
+
+        elif expected_action == "merge":
+            mock_merge.assert_called_once_with(syft_boms, hermeto_bom)
+            assert result == mock_merged_data
+            mock_open.assert_not_called()
