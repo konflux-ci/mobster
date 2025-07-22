@@ -6,12 +6,26 @@ tasks.
 import json
 import subprocess
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from mobster.cmd.upload.tpa import TPAClient
+from mobster.tekton.common import AtlasTransientError, upload_sboms
 from mobster.tekton.s3 import S3Client
 from tests.integration.oci_client import ReferrersTagOCIClient
+
+
+async def verify_sboms_in_tpa(
+    tpa_client: TPAClient,
+    n_sboms: int,
+) -> None:
+    """
+    Verify that n_sboms were uploaded to TPA.
+    """
+    sbom_gen = tpa_client.list_sboms(query="", sort="ingested")
+    sboms = [sbom async for sbom in sbom_gen]
+    assert len(sboms) == n_sboms
 
 
 @pytest.mark.asyncio
@@ -86,20 +100,30 @@ async def test_create_product_sboms_ta_happypath(
     assert await s3_client.is_bucket_empty() is True
 
 
-async def verify_sboms_in_tpa(
-    tpa_client: TPAClient,
-    n_sboms: int,
-) -> None:
+@pytest.mark.asyncio
+@patch("mobster.tekton.common.upload_to_atlas", autospec=True)
+async def test_sbom_upload_fallback(
+    mock_upload_to_atlas: AsyncMock,
+    tmp_path: Path,
+    tpa_base_url: str,
+    tpa_auth_env: dict[str, str],
+    s3_client: S3Client,
+    s3_sbom_bucket: str,
+    s3_auth_env: dict[str, str],
+):
     """
-    Verify that n_sboms were uploaded to TPA.
+    Verify that when the Atlas upload fails with a transient error, the
+    fallback mechanism is run and the SBOM is uploaded to S3 instead.
     """
-    sbom_gen = tpa_client.list_sboms(query="", sort="ingested")
-    sboms = [sbom async for sbom in sbom_gen]
-    assert len(sboms) == n_sboms
+    key = "test_file.json"
+    test_data = {"test": "data"}
+    file_path = tmp_path / key
+    with open(file_path, "w") as f:
+        json.dump(test_data, f)
 
+    # mock the atlas upload to raise a transient error
+    mock_upload_to_atlas.side_effect = AtlasTransientError
+    await upload_sboms(tmp_path, tpa_base_url, s3_sbom_bucket)
 
-def verify_generate_upload_report(data_dir: Path, final_report_path: Path) -> None:
-    """
-    Verify that generate_upload_report executed successfully.
-    """
-    assert (data_dir / final_report_path).exists()
+    # check that the fallback to s3 uploaded the object
+    assert await s3_client.exists(key) is True
