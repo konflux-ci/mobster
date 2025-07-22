@@ -127,3 +127,60 @@ async def test_sbom_upload_fallback(
 
     # check that the fallback to s3 uploaded the object
     assert await s3_client.exists(key) is True
+
+
+@pytest.mark.asyncio
+async def test_process_component_sboms_happypath(
+    s3_client: S3Client,
+    s3_sbom_bucket: str,
+    tpa_client: TPAClient,
+    tpa_base_url: str,
+    oci_client: ReferrersTagOCIClient,
+    registry_url: str,
+    tmp_path: Path,
+) -> None:
+    data_dir = tmp_path
+    snapshot_path = Path("snapshot.json")
+
+    repo_name = "release"
+    image = await oci_client.create_image(repo_name, "latest")
+    repo = f"{registry_url.removeprefix('http://')}/{repo_name}"
+    snapshot = {
+        "components": [
+            {
+                "name": "component",
+                "containerImage": f"{repo}@{image.digest}",
+                "rh-registry-repo": "registry.redhat.io/test",
+                "tags": ["latest"],
+                "repository": repo,
+            }
+        ]
+    }
+    # TODO: attach build SBOMs with the correct image digests
+    # try and reuse fixtures used for generate oci-image and generate oci-index
+
+    with open(data_dir / snapshot_path, "w") as fp:
+        json.dump(snapshot, fp)
+
+    subprocess.run(
+        [
+            "process_component_sboms",
+            "--data-dir",
+            data_dir,
+            "--snapshot-spec",
+            snapshot_path,
+            "--atlas-api-url",
+            tpa_base_url,
+            "--retry-s3-bucket",
+            s3_sbom_bucket,
+        ],
+        check=True,
+    )
+
+    # TODO: check that SBOMs were augmented and saved
+    # TODO: check that SBOMs were uploaded to Atlas
+
+    # await verify_sboms_in_tpa(tpa_client, n_sboms=1)
+
+    # check that no SBOMs were added to the bucket (TPA upload succeeded)
+    # assert await s3_client.is_bucket_empty() is True
