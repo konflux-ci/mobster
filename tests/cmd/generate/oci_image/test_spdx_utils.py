@@ -16,7 +16,6 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
-from mobster import get_mobster_tool_string
 from mobster.cmd.generate.oci_image.spdx_utils import (
     find_spdx_root_packages,
     find_spdx_root_packages_spdxid,
@@ -30,6 +29,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     update_package_in_spdx_sbom,
 )
 from mobster.image import Image
+from mobster.sbom.spdx import get_mobster_tool_string
 
 
 @pytest.mark.asyncio

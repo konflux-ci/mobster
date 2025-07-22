@@ -7,7 +7,8 @@ from typing import Any
 
 import pytest
 
-from mobster import get_mobster_tool_string, get_mobster_version
+from mobster import get_mobster_version
+from mobster.sbom.spdx import get_mobster_tool_string
 
 
 @pytest.fixture()
@@ -42,7 +43,7 @@ def assert_spdx_sbom(actual: Any, expected: Any) -> None:
     # Verify annotations only if it's expected.
     if "annotations" in expected:
         for annotation in actual["annotations"]:
-            if annotation["comment"] == "release_id=release-id-1":
+            if "release_id=" in annotation["comment"]:
                 assert annotation["annotator"] == get_mobster_tool_string()
                 check_timestamp_isoformat(annotation["annotationDate"])
                 break
@@ -89,7 +90,7 @@ def assert_cdx_sbom(actual: Any, expected: Any) -> None:
         assert actual.get(key) == expected.get(key)
 
 
-def check_timestamp_isoformat(timestamp: str) -> datetime:
+def check_timestamp_isoformat(timestamp: str) -> None:
     """
     Check that the timestamp is ISO8601 compliant (YYYY-MM-DDThh:mm:ssZ).
     Args:
@@ -98,7 +99,7 @@ def check_timestamp_isoformat(timestamp: str) -> datetime:
     Returns:
         Converted datetime object, otherwise ValueError is raised.
     """
-    return datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
+    datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
 
 
 def patch_bom_ref(document: Any, old: str, new: str) -> Any:

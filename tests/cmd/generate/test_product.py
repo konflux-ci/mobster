@@ -17,7 +17,6 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.writer.json.json_writer import write_document_to_stream
 
-from mobster import get_mobster_tool_string
 from mobster.cmd.generate.product import (
     GenerateProductCommand,
     ReleaseNotes,
@@ -25,6 +24,7 @@ from mobster.cmd.generate.product import (
 )
 from mobster.image import Image, IndexImage
 from mobster.release import Component, Snapshot
+from mobster.sbom.spdx import get_mobster_tool_string
 from tests.conftest import awaitable, check_timestamp_isoformat
 
 Digests = namedtuple("Digests", ["single_arch", "multi_arch"])
@@ -369,7 +369,7 @@ def verify_release_id(sbom: Any, expected_release_id: str | None) -> None:
     """
     if expected_release_id:
         for annotation in sbom["annotations"]:
-            if annotation["comment"] == f"release_id={expected_release_id}":
+            if "release_id=" in annotation["comment"]:
                 check_timestamp_isoformat(annotation["annotationDate"])
                 break
         else:

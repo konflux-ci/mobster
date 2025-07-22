@@ -12,9 +12,8 @@ from spdx_tools.spdx.model.package import (
 )
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
-from mobster import get_mobster_tool_string
 from mobster.image import Image
-from mobster.sbom.spdx import get_image_package, get_namespace
+from mobster.sbom.spdx import get_image_package, get_mobster_tool_string, get_namespace
 
 BUILDER_IMAGE_PROPERTY = {
     "name": "konflux:container:is_builder_image:additional_builder_image",

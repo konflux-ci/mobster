@@ -8,12 +8,13 @@ from typing import Any
 
 from packageurl import PackageURL
 
-from mobster import get_mobster_tool_string, get_mobster_version
+from mobster import get_mobster_version
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOMFormat
 from mobster.release import Component
 from mobster.sbom import cyclonedx
+from mobster.sbom.spdx import get_mobster_tool_string
 
 logger = logging.getLogger(__name__)
 
@@ -306,7 +307,9 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
             raise ValueError("CDX update SBOM does not support index images.")
 
         self._bump_version(sbom)
-        self._update_metadata_component(component, image, sbom, release_id)
+        if release_id:
+            self._augment_properties_release_id(sbom, release_id)
+        self._update_metadata_component(component, image, sbom)
 
         for cdx_component in sbom.get("components", []):
             if cdx_component.get("type") != "container":
@@ -396,17 +399,15 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         if not self._has_current_mobster_version(components):
             components.append(cyclonedx.get_tools_component_dict())
 
-    def _augment_metadata_properties_release_id(
-        self, metadata: Any, release_id: str | None
-    ) -> None:
+    def _augment_properties_release_id(self, sbom: Any, release_id: str) -> None:
         """
-        Add release_id to SBOM's metadata.properties
+        Add release_id to SBOM's properties
         """
-        if "properties" not in metadata:
-            metadata["properties"] = []
+        if "properties" not in sbom:
+            sbom["properties"] = []
 
         release_id_property = {"name": "release_id", "value": release_id}
-        metadata["properties"].append(release_id_property)
+        sbom["properties"].append(release_id_property)
 
     def _has_current_mobster_version(self, components: list[Any]) -> bool:
         """
@@ -418,7 +419,10 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         ]
 
     def _update_metadata_component(
-        self, kflx_component: Component, image: Image, sbom: Any, release_id: str | None
+        self,
+        kflx_component: Component,
+        image: Image,
+        sbom: Any,
     ) -> None:
         component = sbom.get("metadata", {}).get("component", {})
         self._update_container_component(
@@ -432,8 +436,6 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
             sbom["metadata"] = metadata
 
         self._augment_metadata_tools_components(sbom["metadata"])
-        if release_id:
-            self._augment_metadata_properties_release_id(sbom["metadata"], release_id)
 
 
 def construct_purl(

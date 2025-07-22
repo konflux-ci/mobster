@@ -70,7 +70,7 @@ def get_creation_info(sbom_name: str) -> CreationInfo:
         creators=[
             Actor(ActorType.ORGANIZATION, "Red Hat"),
             Actor(ActorType.TOOL, "Konflux CI"),
-            Actor(ActorType.TOOL, f"Mobster-{get_mobster_version()}"),
+            get_mobster_tool_actor(),
         ],
         created=datetime.now(timezone.utc),
     )
@@ -189,6 +189,20 @@ def get_release_id_annotation(release_id: str) -> Annotation:
         spdx_id=DOC_ELEMENT_ID,
         annotation_date=datetime.now(timezone.utc),
         annotation_type=AnnotationType.OTHER,
-        annotator=Actor(ActorType.TOOL, f"Mobster-{get_mobster_version()}"),
+        annotator=get_mobster_tool_actor(),
         annotation_comment=f"release_id={release_id}",
     )
+
+
+def get_mobster_tool_actor() -> Actor:
+    """
+    Get the Actor object representation of the current mobster tool.
+    """
+    return Actor(ActorType.TOOL, f"Mobster-{get_mobster_version()}")
+
+
+def get_mobster_tool_string() -> str:
+    """
+    Get the string representation of the current mobster tool.
+    """
+    return str(get_mobster_tool_actor())
