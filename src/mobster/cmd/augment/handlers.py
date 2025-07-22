@@ -3,12 +3,12 @@ This module is used to augment release-time SBOMs.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from packageurl import PackageURL
 
-from mobster import get_mobster_version
+from mobster import get_mobster_tool_string, get_mobster_version
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOMFormat
@@ -180,25 +180,25 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
         """
         Add Mobster version information to creationInfo.
         """
-        version = get_mobster_version()
-        creator = f"Tool: Mobster-{version}"
+        creator = get_mobster_tool_string()
         if creator not in creation_info["creators"]:
             creation_info["creators"].append(creator)
 
     @classmethod
-    def _augment_annotations_release_id(
-        cls, annotations: list[Any], release_id: str | None
-    ) -> None:
+    def _augment_annotations_release_id(cls, sbom: Any, release_id: str | None) -> None:
         """
         Add release_id to the SBOM's annotations
         """
+        if "annotations" not in sbom:
+            sbom["annotations"] = []
+
         release_id_annotation = {
-            "annotationDate": datetime.now().isoformat(),
+            "annotationDate": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "annotationType": "OTHER",
-            "annotator": f"Mobster-{get_mobster_version()}",
+            "annotator": get_mobster_tool_string(),
             "comment": f"release_id={release_id}",
         }
-        annotations.append(release_id_annotation)
+        sbom["annotations"].append(release_id_annotation)
 
     @classmethod
     def _update_index_image_sbom(
@@ -274,9 +274,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
         """
         self._augment_creation_info(sbom["creationInfo"])
         if release_id:
-            if "annotations" not in sbom:
-                sbom["annotations"] = []
-            self._augment_annotations_release_id(sbom["annotations"], release_id)
+            self._augment_annotations_release_id(sbom, release_id)
         if isinstance(image, IndexImage):
             SPDXVersion2._update_index_image_sbom(component, image, sbom)
         elif isinstance(image, Image):
@@ -308,9 +306,7 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
             raise ValueError("CDX update SBOM does not support index images.")
 
         self._bump_version(sbom)
-        self._update_metadata_component(component, image, sbom)
-        if release_id:
-            self._augment_metadata_properties_release_id(sbom, release_id)
+        self._update_metadata_component(component, image, sbom, release_id)
 
         for cdx_component in sbom.get("components", []):
             if cdx_component.get("type") != "container":
@@ -401,15 +397,11 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
             components.append(cyclonedx.get_tools_component_dict())
 
     def _augment_metadata_properties_release_id(
-        self, sbom: Any, release_id: str | None
+        self, metadata: Any, release_id: str | None
     ) -> None:
         """
         Add release_id to SBOM's metadata.properties
         """
-        if "metadata" not in sbom:
-            sbom["metadata"] = {}
-
-        metadata = sbom["metadata"]
         if "properties" not in metadata:
             metadata["properties"] = []
 
@@ -426,7 +418,7 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         ]
 
     def _update_metadata_component(
-        self, kflx_component: Component, image: Image, sbom: Any
+        self, kflx_component: Component, image: Image, sbom: Any, release_id: str | None
     ) -> None:
         component = sbom.get("metadata", {}).get("component", {})
         self._update_container_component(
@@ -440,6 +432,8 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
             sbom["metadata"] = metadata
 
         self._augment_metadata_tools_components(sbom["metadata"])
+        if release_id:
+            self._augment_metadata_properties_release_id(sbom["metadata"], release_id)
 
 
 def construct_purl(

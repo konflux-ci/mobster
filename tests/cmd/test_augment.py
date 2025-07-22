@@ -639,12 +639,11 @@ def test_cdx_augment_metadata_tools_components_empty_metadata() -> None:
 
 
 def test_cdx_augment_metadata_properties_release_id() -> None:
-    sbom: dict[str, Any] = {}
-    CycloneDXVersion1()._augment_metadata_properties_release_id(sbom, "release-id-1")
-    assert {
-        "name": "release_id",
-        "value": "release-id-1"
-    } in sbom["metadata"]["properties"]
+    metadata: dict[str, Any] = {}
+    CycloneDXVersion1()._augment_metadata_properties_release_id(
+        metadata, "release-id-1"
+    )
+    assert {"name": "release_id", "value": "release-id-1"} in metadata["properties"]
 
 
 def test_cdx_update_sbom_raises_error_for_index_image() -> None:

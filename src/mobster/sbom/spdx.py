@@ -33,7 +33,7 @@ def get_root_package_relationship(spdx_id: str) -> Relationship:
         Relationship: An object representing the relationship for the root package.
     """
     return Relationship(
-        spdx_element_id="SPDXRef-DOCUMENT",
+        spdx_element_id=DOC_ELEMENT_ID,
         relationship_type=RelationshipType.DESCRIBES,
         related_spdx_element_id=spdx_id,
     )
@@ -63,7 +63,7 @@ def get_creation_info(sbom_name: str) -> CreationInfo:
     """
     return CreationInfo(
         spdx_version="SPDX-2.3",
-        spdx_id="SPDXRef-DOCUMENT",
+        spdx_id=DOC_ELEMENT_ID,
         name=sbom_name,
         data_license="CC0-1.0",
         document_namespace=get_namespace(sbom_name),

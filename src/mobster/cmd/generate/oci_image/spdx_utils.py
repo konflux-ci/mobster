@@ -12,7 +12,7 @@ from spdx_tools.spdx.model.package import (
 )
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
-from mobster import get_mobster_version
+from mobster import get_mobster_tool_string
 from mobster.image import Image
 from mobster.sbom.spdx import get_image_package, get_namespace
 
@@ -84,7 +84,7 @@ async def normalize_sbom(sbom: dict[str, Any]) -> None:
         creation_info["created"] = "1970-01-01T00:00:00Z"
     creators = creation_info.get("creators", [])
     new_creators = [await normalize_actor(creator) for creator in creators]
-    new_creators.append(f"Tool: Mobster-{get_mobster_version()}")
+    new_creators.append(get_mobster_tool_string())
     creation_info["creators"] = new_creators
     sbom["creationInfo"] = creation_info
 

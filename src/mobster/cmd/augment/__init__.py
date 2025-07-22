@@ -199,7 +199,7 @@ async def update_component_sboms(
     cosign: Cosign,
     verify: bool,
     semaphore: asyncio.Semaphore,
-    release_id: str | None = None,
+    release_id: str | None,
 ) -> tuple[bool, list[SBOM]]:
     """
     Update SBOMs for a component.

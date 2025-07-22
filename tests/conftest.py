@@ -2,11 +2,12 @@ import hashlib
 import json
 import random as rand
 from collections.abc import Generator
+from datetime import datetime
 from typing import Any
 
 import pytest
 
-from mobster import get_mobster_version
+from mobster import get_mobster_tool_string, get_mobster_version
 
 
 @pytest.fixture()
@@ -30,9 +31,7 @@ def assert_spdx_sbom(actual: Any, expected: Any) -> None:
     actual["creationInfo"]["created"] = expected["creationInfo"]["created"]
     actual["documentNamespace"] = expected["documentNamespace"]
 
-    assert (
-        f"Tool: Mobster-{get_mobster_version()}" in actual["creationInfo"]["creators"]
-    )
+    assert get_mobster_tool_string() in actual["creationInfo"]["creators"]
     # Remove the Tool: Mobster entry from creators, as it's not in the expected result
     actual["creationInfo"]["creators"] = [
         creator
@@ -40,15 +39,19 @@ def assert_spdx_sbom(actual: Any, expected: Any) -> None:
         if "Mobster" not in creator
     ]
 
+    # Verify annotations only if it's expected.
     if "annotations" in expected:
-        assert (
-            actual["annotations"][0]["annotator"] == f"Mobster-{get_mobster_version()}"
-        )
-        # Remove annotator from actual, as it's not in the expected result
-        actual["annotations"][0].pop("annotator")
-        actual["annotations"][0]["annotationDate"] = expected["annotations"][0][
-            "annotationDate"
-        ]
+        for annotation in actual["annotations"]:
+            if annotation["comment"] == "release_id=release-id-1":
+                assert annotation["annotator"] == get_mobster_tool_string()
+                check_timestamp_isoformat(annotation["annotationDate"])
+                break
+        else:
+            raise AssertionError("release_id not found in annotations.")
+
+        # Remove annotations, which is already verified
+        actual.pop("annotations")
+        expected.pop("annotations")
 
     assert actual == expected
 
@@ -84,6 +87,18 @@ def assert_cdx_sbom(actual: Any, expected: Any) -> None:
             continue
 
         assert actual.get(key) == expected.get(key)
+
+
+def check_timestamp_isoformat(timestamp: str) -> datetime:
+    """
+    Check that the timestamp is ISO8601 compliant (YYYY-MM-DDThh:mm:ssZ).
+    Args:
+        timestamp (str): timestamp to validate
+
+    Returns:
+        Converted datetime object, otherwise ValueError is raised.
+    """
+    return datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
 
 
 def patch_bom_ref(document: Any, old: str, new: str) -> Any:

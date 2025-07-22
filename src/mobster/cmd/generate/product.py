@@ -103,7 +103,7 @@ class GenerateProductCommand(GenerateCommand):
 
 
 def create_sbom(
-    release_notes: ReleaseNotes, snapshot: Snapshot, release_id: str | None = None
+    release_notes: ReleaseNotes, snapshot: Snapshot, release_id: str | None
 ) -> Document:
     """Create an SPDX document based on release notes and a snapshot.
 

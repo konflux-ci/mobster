@@ -33,7 +33,7 @@ class GenerateOciIndexCommand(GenerateCommand):
         "application/vnd.docker.distribution.manifest.v2+json",
     ]
 
-    DOC_ELEMENT_ID = "SPDXRef-DOCUMENT"
+    DOC_ELEMENT_ID = spdx.DOC_ELEMENT_ID
     INDEX_ELEMENT_ID = "SPDXRef-image-index"
 
     def get_child_image_relationship(self, spdx_id: str) -> Relationship:

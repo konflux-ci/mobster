@@ -17,7 +17,7 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.writer.json.json_writer import write_document_to_stream
 
-from mobster import get_mobster_version
+from mobster import get_mobster_tool_string
 from mobster.cmd.generate.product import (
     GenerateProductCommand,
     ReleaseNotes,
@@ -25,7 +25,7 @@ from mobster.cmd.generate.product import (
 )
 from mobster.image import Image, IndexImage
 from mobster.release import Component, Snapshot
-from tests.conftest import awaitable
+from tests.conftest import awaitable, check_timestamp_isoformat
 
 Digests = namedtuple("Digests", ["single_arch", "multi_arch"])
 DIGESTS = Digests(
@@ -346,7 +346,7 @@ def verify_creation_info(sbom: Any, expected_name: str) -> None:
     """
     Verify that creationInfo fields match the expected values.
     """
-    assert f"Tool: Mobster-{get_mobster_version()}" in sbom["creationInfo"]["creators"]
+    assert get_mobster_tool_string() in sbom["creationInfo"]["creators"]
     assert sbom["name"] == expected_name
 
 
@@ -368,7 +368,12 @@ def verify_release_id(sbom: Any, expected_release_id: str | None) -> None:
     Verify that release_id annotation match the expected values.
     """
     if expected_release_id:
-        assert expected_release_id in sbom["annotations"][0]["comment"]
+        for annotation in sbom["annotations"]:
+            if annotation["comment"] == f"release_id={expected_release_id}":
+                check_timestamp_isoformat(annotation["annotationDate"])
+                break
+        else:
+            raise AssertionError("release_id not found in annotations.")
     else:
         assert "annotations" not in sbom
 
