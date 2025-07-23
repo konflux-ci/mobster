@@ -124,6 +124,21 @@ async def get_digest_for_image_ref(image_ref: str) -> str | None:
         return None
 
 
+def get_base_images_digests_lines(base_images_digests: Path) -> list[str]:
+    """
+    Return lines of the base_images_digests file.
+
+    Args:
+        base_images_digests: File containing the digests of images.
+            expects the format <image_ref> <name>:<tag>@sha256:<digest>
+
+    Returns
+        List of file lines.
+    """
+    with open(base_images_digests, encoding="utf-8") as input_file_stream:
+        return list(input_file_stream)
+
+
 async def get_image_objects_from_file(base_images_digests: Path) -> dict[str, Image]:
     """
     Parses the base image digest file into a dictionary of
@@ -137,14 +152,14 @@ async def get_image_objects_from_file(base_images_digests: Path) -> dict[str, Im
         dict[str, Image]: Mapping of the references to Image objects
     """
     base_images_mapping = {}
-    with open(base_images_digests, encoding="utf-8") as input_file_stream:
-        for line in input_file_stream.readlines():
-            if not line:
-                continue
-            line = line.strip()
-            image_ref, image_full_reference = re.split(r"\s+", line)
-            image_obj = Image.from_oci_artifact_reference(image_full_reference)
-            base_images_mapping[image_ref] = image_obj
+    lines = get_base_images_digests_lines(base_images_digests)
+    for line in lines:
+        if not line:
+            continue
+        line = line.strip()
+        image_ref, image_full_reference = re.split(r"\s+", line)
+        image_obj = Image.from_oci_artifact_reference(image_full_reference)
+        base_images_mapping[image_ref] = image_obj
     return base_images_mapping
 
 

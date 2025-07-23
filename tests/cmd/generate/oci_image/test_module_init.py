@@ -1,6 +1,7 @@
 import datetime
 import json
 from argparse import ArgumentError
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -19,20 +20,33 @@ from tests.conftest import assert_cdx_sbom
 
 
 @pytest.fixture()
-def image_digest_file_content() -> str:
-    return (
-        "quay.io/redhat-user-workloads/"
-        "rhtap-integration-tenant/konflux-test:"
-        "baf5e59d5d35615d0db13b46bd91194458011af8 "
-        "quay.io/redhat-user-workloads/rhtap-integration-tenant/"
-        "konflux-test:baf5e59d5d35615d0db13b46bd91194458011af8@"
-        "sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c\n"
-        "quay.io/redhat-user-workloads/rhtap-shared-team-tenant/"
-        "tssc-test:tssc-test-on-push-2m6dq-build-container "
-        "quay.io/redhat-user-workloads/rhtap-shared-team-tenant/"
-        "tssc-test:tssc-test-on-push-2m6dq-build-container@"
-        "sha256:04f8c3262172fa024beaed2b120414d6011d0c0d4ea578619e32a3c353ec5ee5"
-    )
+def image_digest_file_content() -> list[str]:
+    return [
+        (
+            "quay.io/redhat-user-workloads/rhtap-integration-tenant/"
+            "konflux-test:baf5e59d5d35615d0db13b46bd91194458011af8 "
+            "quay.io/redhat-user-workloads/rhtap-integration-tenant/"
+            "konflux-test:baf5e59d5d35615d0db13b46bd91194458011af8@"
+            "sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c"
+        ),
+        (
+            "quay.io/redhat-user-workloads/rhtap-shared-team-tenant/"
+            "tssc-test:tssc-test-on-push-2m6dq-build-container "
+            "quay.io/redhat-user-workloads/rhtap-shared-team-tenant/"
+            "tssc-test:tssc-test-on-push-2m6dq-build-container@"
+            "sha256:04f8c3262172fa024beaed2b120414d6011d0c0d4ea578619e32a3c353ec5ee5"
+        ),
+    ]
+
+
+@dataclass
+class GenerateOciImageCommandArgs:
+    pass
+
+
+@pytest.fixture()
+def test_case_one() -> None:
+    pass
 
 
 @pytest.mark.asyncio
@@ -111,9 +125,11 @@ def image_digest_file_content() -> str:
         ),
     ],
 )
-@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.open")
+@patch(
+    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
+)
 async def test_GenerateOciImageCommand_execute(
-    mock_open_digest_file: MagicMock,
+    mock_get_base_images_digests_lines: MagicMock,
     syft_boms: list[Path],
     hermeto_bom: Path,
     image_pullspec: str,
@@ -137,9 +153,7 @@ async def test_GenerateOciImageCommand_execute(
     if not use_base_image_digest_content:
         args.base_image_digest_file = None
     else:
-        (
-            mock_open_digest_file.return_value.__enter__.return_value.readlines
-        ).return_value = image_digest_file_content.split("\n")
+        mock_get_base_images_digests_lines.return_value = image_digest_file_content
     command = GenerateOciImageCommand(args)
 
     with open(expected_sbom_path) as expected_file_stream:
