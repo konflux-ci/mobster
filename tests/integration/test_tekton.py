@@ -6,13 +6,17 @@ tasks.
 import json
 import subprocess
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+import tempfile
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pytest_lazy_fixtures import lf
 
+from mobster.cmd.generate.oci_index import GenerateOciIndexCommand
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.tekton.common import AtlasTransientError, upload_sboms
 from mobster.tekton.s3 import S3Client
+from tests.conftest import GenerateOciImageTestCase
 from tests.integration.oci_client import ReferrersTagOCIClient
 
 
@@ -129,8 +133,34 @@ async def test_sbom_upload_fallback(
     assert await s3_client.exists(key) is True
 
 
+async def get_oci_index_sbom(manifest_path: Path, pullspec: str, digest: str) -> bytes:
+    args = MagicMock()
+    args.index_manifest_path = manifest_path
+    args.index_image_pullspec = pullspec
+    args.index_image_digest = digest
+
+    with tempfile.NamedTemporaryFile("w+b", suffix=".json") as fp:
+        args.output = fp.name
+
+        command = GenerateOciIndexCommand(args)
+        await command.execute()
+        await command.save()
+        fp.flush()
+        return fp.read()
+
+
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "generate_oci_image_case",
+    [
+        lf("test_case_spdx_with_hermeto_and_additional"),
+        lf("test_case_spdx_without_hermeto_without_additional"),
+        lf("test_case_spdx_multiple_syft"),
+        lf("test_case_cyclonedx_with_additional"),
+    ],
+)
 async def test_process_component_sboms_happypath(
+    generate_oci_image_case: GenerateOciImageTestCase,
     s3_client: S3Client,
     s3_sbom_bucket: str,
     tpa_client: TPAClient,
@@ -144,20 +174,49 @@ async def test_process_component_sboms_happypath(
 
     repo_name = "release"
     image = await oci_client.create_image(repo_name, "latest")
+    index = await oci_client.create_image_index(
+        repo_name, "latest-index", images=[image]
+    )
+
+    manifest_dir = tmp_path / "manifests"
+    manifest_dir.mkdir()
+    manifest_path = manifest_dir / "manifest.json"
+    with open(manifest_path, "w") as fp:
+        assert index.manifest is not None
+        obj = json.loads(index.manifest)
+        json.dump(obj, fp)
+
+    index_sbom = await get_oci_index_sbom(
+        manifest_path,
+        f"{registry_url.removeprefix('http://')}/{repo_name}:latest-index",
+        digest=index.digest,
+    )
+    await oci_client.attach_sbom(index, "spdx", index_sbom)
+
     repo = f"{registry_url.removeprefix('http://')}/{repo_name}"
     snapshot = {
         "components": [
             {
                 "name": "component",
-                "containerImage": f"{repo}@{image.digest}",
+                "containerImage": f"{repo}@{index.digest}",
                 "rh-registry-repo": "registry.redhat.io/test",
-                "tags": ["latest"],
+                "tags": ["latest", "1.0"],
                 "repository": repo,
             }
         ]
     }
-    # TODO: attach build SBOMs with the correct image digests
-    # try and reuse fixtures used for generate oci-image and generate oci-index
+
+    with open(generate_oci_image_case.expected_sbom_path) as fp:
+        # TODO: make a reusable function out of this
+        sbom = fp.read()
+        sbom = sbom.replace(generate_oci_image_case.args.image_digest, image.digest)
+        sbom = sbom.replace(
+            generate_oci_image_case.args.image_digest.removeprefix("sha256:"),
+            image.digest.removeprefix("sha256:"),
+        )
+        sbom_bytes = sbom.encode()
+
+    await oci_client.attach_sbom(image, "spdx", sbom_bytes)
 
     with open(data_dir / snapshot_path, "w") as fp:
         json.dump(snapshot, fp)
@@ -177,10 +236,12 @@ async def test_process_component_sboms_happypath(
         check=True,
     )
 
-    # TODO: check that SBOMs were augmented and saved
-    # TODO: check that SBOMs were uploaded to Atlas
+    assert set((data_dir / "sbom").iterdir()) == {
+        data_dir / "sbom" / image.digest,
+        data_dir / "sbom" / index.digest,
+    }
 
-    # await verify_sboms_in_tpa(tpa_client, n_sboms=1)
+    await verify_sboms_in_tpa(tpa_client, n_sboms=2)
 
     # check that no SBOMs were added to the bucket (TPA upload succeeded)
-    # assert await s3_client.is_bucket_empty() is True
+    assert await s3_client.is_bucket_empty() is True
