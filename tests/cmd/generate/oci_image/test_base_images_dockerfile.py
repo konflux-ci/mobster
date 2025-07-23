@@ -135,13 +135,13 @@ async def test_get_base_images_refs_from_dockerfile(
         )
     ],
 )
-@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.open")
+@patch(
+    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
+)
 async def test_get_digests_from_file(
-    mock_open: MagicMock, file_content: str, expected_dict: dict[str, Image]
+    mock_get_lines: MagicMock, file_content: str, expected_dict: dict[str, Image]
 ) -> None:
-    mock_open.return_value.__enter__.return_value.readlines.return_value = (
-        file_content.split("\n")
-    )
+    mock_get_lines.return_value = file_content.split("\n")
     assert await get_image_objects_from_file(MagicMock()) == expected_dict
 
 
