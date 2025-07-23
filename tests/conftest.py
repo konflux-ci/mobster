@@ -3,6 +3,8 @@ import json
 import random as rand
 from collections.abc import Generator
 from datetime import datetime
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -150,3 +152,128 @@ def spdx_sbom_skeleton() -> Generator[dict[str, Any], Any, Any]:
             "creators": ["Tool: Konflux"],
         },
     }
+
+
+@dataclass
+class GenerateOciImageCommandArgs:
+    from_syft: list[Path]
+    from_hermeto: Path | None
+    image_pullspec: str
+    image_digest: str
+    parsed_dockerfile_path: Path | None
+    dockerfile_target: str | None
+    additional_base_image: list[str]
+    base_image_digest_file: Path | None = None
+    output: Path | None = None
+
+
+@dataclass
+class GenerateOciImageTestCase:
+    args: GenerateOciImageCommandArgs
+    expected_sbom_path: Path
+
+
+@pytest.fixture()
+def test_case_spdx_with_hermeto_and_additional() -> GenerateOciImageTestCase:
+    """Test case with SPDX format, hermeto BOM, and additional base images."""
+    return GenerateOciImageTestCase(
+        args=GenerateOciImageCommandArgs(
+            from_syft=[
+                Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")
+            ],
+            from_hermeto=Path("tests/sbom/test_merge_data/spdx/cachi2.bom.json"),
+            image_pullspec="quay.io/foobar/examplecontainer:v10",
+            image_digest="sha256:11111111111111111111111111111111",
+            parsed_dockerfile_path=Path(
+                "tests/data/dockerfiles/somewhat_believable_sample/parsed.json"
+            ),
+            dockerfile_target="runtime",
+            additional_base_image=[
+                "quay.io/ubi9:latest@sha256:123456789012345678901234567789012"
+            ],
+            base_image_digest_file=Path("dummy_path"),  # Will be mocked
+        ),
+        expected_sbom_path=Path(
+            "tests/sbom/test_oci_generate_data/generated.spdx.json"
+        ),
+    )
+
+
+@pytest.fixture()
+def test_case_spdx_without_hermeto_without_additional() -> GenerateOciImageTestCase:
+    """Test case with SPDX format, no hermeto BOM, and no additional base images."""
+    return GenerateOciImageTestCase(
+        args=GenerateOciImageCommandArgs(
+            from_syft=[
+                Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")
+            ],
+            from_hermeto=None,
+            image_pullspec="quay.io/foobar/examplecontainer:v10",
+            image_digest="sha256:11111111111111111111111111111111",
+            parsed_dockerfile_path=Path(
+                "tests/data/dockerfiles/somewhat_believable_sample/parsed.json"
+            ),
+            dockerfile_target="builder",
+            additional_base_image=[],
+            base_image_digest_file=Path("dummy_path"),  # Will be mocked
+        ),
+        expected_sbom_path=Path(
+            "tests/sbom/test_oci_generate_data/generated_without_hermet_without_additional.spdx.json"
+        ),
+    )
+
+
+@pytest.fixture()
+def test_case_spdx_multiple_syft() -> GenerateOciImageTestCase:
+    """
+    Test case with SPDX format, multiple syft BOMs, and no base image digest
+    content.
+    """
+    return GenerateOciImageTestCase(
+        args=GenerateOciImageCommandArgs(
+            from_syft=[
+                Path(
+                    "tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json"
+                ),
+                Path("tests/sbom/test_merge_data/spdx/syft-sboms/ubi-micro.bom.json"),
+            ],
+            from_hermeto=None,
+            image_pullspec="quay.io/foobar/examplecontainer:v10",
+            image_digest="sha256:11111111111111111111111111111111",
+            parsed_dockerfile_path=Path(
+                "tests/data/dockerfiles/somewhat_believable_sample/parsed.json"
+            ),
+            dockerfile_target="builder",
+            additional_base_image=[],
+            base_image_digest_file=None,  # No base image digest content for this test
+        ),
+        expected_sbom_path=Path(
+            "tests/sbom/test_oci_generate_data/generated_multiple_syft.spdx.json"
+        ),
+    )
+
+
+@pytest.fixture()
+def test_case_cyclonedx_with_additional() -> GenerateOciImageTestCase:
+    """Test case with CycloneDX format and additional base images."""
+    return GenerateOciImageTestCase(
+        args=GenerateOciImageCommandArgs(
+            from_syft=[
+                Path(
+                    "tests/sbom/test_merge_data/cyclonedx/syft-sboms/pip-e2e-test.bom.json"
+                )
+            ],
+            from_hermeto=None,
+            image_pullspec="quay.io/foobar/examplecontainer:v10",
+            image_digest="sha256:11111111111111111111111111111111",
+            parsed_dockerfile_path=Path(
+                "tests/data/dockerfiles/somewhat_believable_sample/parsed.json"
+            ),
+            dockerfile_target="builder",
+            additional_base_image=[
+                "quay.io/ubi9:latest@sha256:123456789012345678901234567789012"
+            ],
+            base_image_digest_file=Path("dummy_path"),  # Will be mocked
+        ),
+        expected_sbom_path=Path("tests/sbom/test_oci_generate_data/generated.cdx.json"),
+    )
