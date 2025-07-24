@@ -13,10 +13,12 @@ import pytest
 from pytest_lazy_fixtures import lf
 
 from mobster.cmd.generate.oci_index import GenerateOciIndexCommand
+from mobster.cmd.generate.product import ReleaseNotes
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.image import Image
 from mobster.tekton.common import AtlasTransientError, upload_sboms
 from mobster.tekton.s3 import S3Client
+from tests.cmd.generate.test_product import verify_product_sbom
 from tests.conftest import GenerateOciImageTestCase
 from tests.integration.oci_client import ReferrersTagOCIClient
 
@@ -61,6 +63,9 @@ async def test_create_product_sboms_ta_happypath(
             }
         ]
     }
+    expected_purls = [
+        f"pkg:oci/test@{image.digest}?repository_url=registry.redhat.io/test&tag=latest"
+    ]
 
     with open(data_dir / snapshot_path, "w") as fp:
         json.dump(snapshot, fp)
@@ -96,8 +101,15 @@ async def test_create_product_sboms_ta_happypath(
         check=True,
     )
 
-    # check that an SBOM was created in the expected path
-    assert (data_dir / "sbom" / "sbom.json").exists()
+    # check that an SBOM was created and contains what is expected
+    with open(data_dir / "sbom" / "sbom.json") as fp:
+        sbom_dict = json.load(fp)
+        verify_product_sbom(
+            sbom_dict,
+            [component["name"] for component in snapshot["components"]],
+            ReleaseNotes.model_validate_json(json.dumps(release_data["releaseNotes"])),
+            expected_purls,
+        )
 
     await verify_sboms_in_tpa(tpa_client, n_sboms=1)
 
@@ -160,7 +172,6 @@ def get_sbom_from_test_case(case: GenerateOciImageTestCase, image_digest: str) -
     """
     with open(case.expected_sbom_path) as fp:
         sbom = fp.read()
-        sbom = sbom.replace(case.args.image_digest, image_digest)
         sbom = sbom.replace(
             case.args.image_digest.removeprefix("sha256:"),
             image_digest.removeprefix("sha256:"),

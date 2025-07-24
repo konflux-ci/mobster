@@ -249,19 +249,12 @@ class TestGenerateProductCommand:
         output.seek(0)
 
         sbom_dict = json.load(output)
-
-        verify_creation_info(
-            sbom_dict, f"{release_notes.product_name} {release_notes.product_version}"
+        verify_product_sbom(
+            sbom_dict,
+            [component.name for component in snapshot.components],
+            release_notes,
+            purls,
         )
-        verify_cpe(sbom_dict, cpe)
-        verify_release_id(sbom_dict, generate_product_command.cli_args.release_id)
-        verify_purls(sbom_dict, purls)
-        verify_relationships(sbom_dict, snapshot.components)
-        verify_checksums(sbom_dict)
-        verify_supplier(sbom_dict)
-        verify_package_licenses(sbom_dict)
-
-        assert sbom_dict["dataLicense"] == "CC0-1.0"
 
     @pytest.mark.asyncio
     async def test_save(
@@ -342,6 +335,25 @@ def test_parse_release_notes(data: dict[str, Any], expected_rn: ReleaseNotes) ->
     assert expected_rn == actual
 
 
+def verify_product_sbom(
+    sbom_dict: Any,
+    component_names: list[str],
+    release_notes: ReleaseNotes,
+    purls: list[str],
+) -> None:
+    verify_creation_info(
+        sbom_dict, f"{release_notes.product_name} {release_notes.product_version}"
+    )
+    verify_cpe(sbom_dict, release_notes.cpe)
+    verify_purls(sbom_dict, purls)
+    verify_relationships(sbom_dict, component_names)
+    verify_checksums(sbom_dict)
+    verify_supplier(sbom_dict)
+    verify_package_licenses(sbom_dict)
+
+    assert sbom_dict["dataLicense"] == "CC0-1.0"
+
+
 def verify_creation_info(sbom: Any, expected_name: str) -> None:
     """
     Verify that creationInfo fields match the expected values.
@@ -418,13 +430,13 @@ def verify_checksums(sbom: Any) -> None:
         assert actual_checksums == expected_checksums
 
 
-def verify_relationships(sbom: Any, components: list[Component]) -> None:
+def verify_relationships(sbom: Any, component_names: list[str]) -> None:
     """
     Verify that the correct relationships exist for each component and the product.
     """
-    for component in components:
+    for name in component_names:
         assert {
-            "spdxElementId": f"SPDXRef-component-{component.name}",
+            "spdxElementId": f"SPDXRef-component-{name}",
             "relatedSpdxElement": "SPDXRef-product",
             "relationshipType": "PACKAGE_OF",
         } in sbom["relationships"]
