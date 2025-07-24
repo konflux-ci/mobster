@@ -152,10 +152,7 @@ async def get_image_objects_from_file(base_images_digests: Path) -> dict[str, Im
         dict[str, Image]: Mapping of the references to Image objects
     """
     base_images_mapping = {}
-    lines = get_base_images_digests_lines(base_images_digests)
-    for line in lines:
-        if not line:
-            continue
+    for line in get_base_images_digests_lines(base_images_digests):
         line = line.strip()
         image_ref, image_full_reference = re.split(r"\s+", line)
         image_obj = Image.from_oci_artifact_reference(image_full_reference)
