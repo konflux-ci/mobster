@@ -35,6 +35,7 @@ class AugmentArgs:
     verification_key: Path | None
     reference: str | None
     concurrency: int = 1
+    release_id: str | None = None
 
 
 MakeAugmentCommand = Callable[[AugmentArgs, Snapshot | None], AugmentImageCommand]
@@ -172,6 +173,7 @@ class TestAugmentCommand:
             output=Path("output"),
             verification_key=Path("key"),
             reference=reference,
+            release_id="release-id-1",
         )
 
         snapshot = Snapshot(
@@ -634,6 +636,12 @@ def test_cdx_augment_metadata_tools_components_empty_metadata() -> None:
     assert "tools" in metadata
     assert "components" in metadata["tools"]
     assert len(metadata["tools"]["components"]) == 1
+
+
+def test_cdx_augment_properties_release_id() -> None:
+    sbom: dict[str, Any] = {}
+    CycloneDXVersion1()._augment_properties_release_id(sbom, "release-id-1")
+    assert {"name": "release_id", "value": "release-id-1"} in sbom["properties"]
 
 
 def test_cdx_update_sbom_raises_error_for_index_image() -> None:

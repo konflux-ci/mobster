@@ -17,7 +17,6 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.writer.json.json_writer import write_document_to_stream
 
-from mobster import get_mobster_version
 from mobster.cmd.generate.product import (
     GenerateProductCommand,
     ReleaseNotes,
@@ -25,7 +24,8 @@ from mobster.cmd.generate.product import (
 )
 from mobster.image import Image, IndexImage
 from mobster.release import Component, Snapshot
-from tests.conftest import awaitable
+from mobster.sbom.spdx import get_mobster_tool_string
+from tests.conftest import awaitable, check_timestamp_isoformat
 
 Digests = namedtuple("Digests", ["single_arch", "multi_arch"])
 DIGESTS = Digests(
@@ -39,14 +39,19 @@ class Args:
     snapshot: Path
     release_data: Path
     output: Path
+    release_id: str
 
 
-@pytest.fixture(params=[Path("product.json"), None], ids=["file", "stdout"])
+@pytest.fixture(
+    params=[(Path("product.json"), "release-id-1"), (None, None)],
+    ids=["file", "stdout"],
+)
 def generate_product_command_args(request: Any) -> Args:
     return Args(
         snapshot=Path("snapshot"),
         release_data=Path("data.json"),
-        output=request.param,
+        output=request.param[0],
+        release_id=request.param[1],
     )
 
 
@@ -249,6 +254,7 @@ class TestGenerateProductCommand:
             sbom_dict, f"{release_notes.product_name} {release_notes.product_version}"
         )
         verify_cpe(sbom_dict, cpe)
+        verify_release_id(sbom_dict, generate_product_command.cli_args.release_id)
         verify_purls(sbom_dict, purls)
         verify_relationships(sbom_dict, snapshot.components)
         verify_checksums(sbom_dict)
@@ -340,7 +346,7 @@ def verify_creation_info(sbom: Any, expected_name: str) -> None:
     """
     Verify that creationInfo fields match the expected values.
     """
-    assert f"Tool: Mobster-{get_mobster_version()}" in sbom["creationInfo"]["creators"]
+    assert get_mobster_tool_string() in sbom["creationInfo"]["creators"]
     assert sbom["name"] == expected_name
 
 
@@ -355,6 +361,21 @@ def verify_cpe(sbom: Any, expected_cpe: str | list[str]) -> None:
             "referenceLocator": cpe,
             "referenceType": "cpe22Type",
         } in sbom["packages"][0]["externalRefs"]
+
+
+def verify_release_id(sbom: Any, expected_release_id: str | None) -> None:
+    """
+    Verify that release_id annotation match the expected values.
+    """
+    if expected_release_id:
+        for annotation in sbom["annotations"]:
+            if "release_id=" in annotation["comment"]:
+                check_timestamp_isoformat(annotation["annotationDate"])
+                break
+        else:
+            raise AssertionError("release_id not found in annotations.")
+    else:
+        assert "annotations" not in sbom
 
 
 def verify_purls(sbom: Any, expected: list[str]) -> None:

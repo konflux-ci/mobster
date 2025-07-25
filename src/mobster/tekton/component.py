@@ -44,16 +44,20 @@ def parse_args() -> ProcessComponentArgs:
         snapshot_spec=args.data_dir / args.snapshot_spec,
         atlas_api_url=args.atlas_api_url,
         retry_s3_bucket=args.retry_s3_bucket,
+        release_id=args.release_id,
     )
 
 
-def augment_component_sboms(sbom_path: Path, snapshot_spec: Path) -> None:
+def augment_component_sboms(
+    sbom_path: Path, snapshot_spec: Path, release_id: str
+) -> None:
     """
     Augment component SBOMs using the mobster augment command.
 
     Args:
         sbom_path: Path where the SBOM will be saved.
         snapshot_spec: Path to snapshot specification file.
+        release_id: Release ID to store in SBOM file.
     """
     subprocess.run(
         [
@@ -65,6 +69,8 @@ def augment_component_sboms(sbom_path: Path, snapshot_spec: Path) -> None:
             "oci-image",
             "--snapshot",
             snapshot_spec,
+            "--release-id",
+            release_id,
         ],
         check=True,
     )
@@ -80,7 +86,7 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     sbom_dir = args.data_dir / "sbom"
     sbom_dir.mkdir(exist_ok=True)
 
-    augment_component_sboms(sbom_dir, args.snapshot_spec)
+    augment_component_sboms(sbom_dir, args.snapshot_spec, args.release_id)
     await upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
 
 

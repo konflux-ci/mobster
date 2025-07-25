@@ -200,6 +200,10 @@ def generate_product_parser(subparsers: Any) -> None:
         type=Path,
         help="path to the mapped snapshot spec data in JSON format.",
     )
+    product_parser.add_argument(
+        "--release-id",
+        help="release_id to associate with the SBOM file",
+    )
 
     product_parser.set_defaults(func=product.GenerateProductCommand)
 
@@ -290,6 +294,10 @@ def augment_command_parser(subparsers: Any) -> None:
         default=Path.cwd(),
         help="path to the output file. If not provided, the SBOMs will be saved "
         "to the working directory",
+    )
+    augment_parser.add_argument(
+        "--release-id",
+        help="release_id to associate with the SBOM file",
     )
 
     augment_subparsers = augment_parser.add_subparsers(dest="type", required=True)

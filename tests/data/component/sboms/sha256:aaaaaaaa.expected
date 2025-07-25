@@ -9,6 +9,13 @@
         "creators": [],
         "created": "2025-03-19T10:19:11Z"
     },
+    "annotations": [
+        {
+            "annotationDate": "2025-03-19T10:19:11Z",
+            "annotationType": "OTHER",
+            "comment": "release_id=release-id-1"
+        }
+    ],
     "packages": [
         {
             "SPDXID": "SPDXRef-image",
