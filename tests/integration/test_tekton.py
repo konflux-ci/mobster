@@ -16,6 +16,7 @@ from mobster.cmd.generate.oci_index import GenerateOciIndexCommand
 from mobster.cmd.generate.product import ReleaseNotes
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.image import Image
+from mobster.release import ReleaseId
 from mobster.tekton.common import AtlasTransientError, upload_sboms
 from mobster.tekton.s3 import S3Client
 from tests.cmd.generate.test_product import verify_product_sbom
@@ -48,6 +49,7 @@ async def test_create_product_sboms_ta_happypath(
     data_dir = tmp_path
     snapshot_path = Path("snapshot.json")
     release_data_path = Path("data.json")
+    release_id = ReleaseId.new()
 
     repo_name = "release"
     image = await oci_client.create_image(repo_name, "latest")
@@ -97,6 +99,8 @@ async def test_create_product_sboms_ta_happypath(
             tpa_base_url,
             "--retry-s3-bucket",
             s3_sbom_bucket,
+            "--release-id",
+            str(release_id),
         ],
         check=True,
     )
@@ -106,9 +110,10 @@ async def test_create_product_sboms_ta_happypath(
         sbom_dict = json.load(fp)
         verify_product_sbom(
             sbom_dict,
-            [component["name"] for component in snapshot["components"]],
+            [str(component["name"]) for component in snapshot["components"]],
             ReleaseNotes.model_validate_json(json.dumps(release_data["releaseNotes"])),
             expected_purls,
+            release_id,
         )
 
     await verify_sboms_in_tpa(tpa_client, n_sboms=1)
@@ -251,6 +256,7 @@ async def test_process_component_sboms_happypath(
     """
     data_dir = tmp_path
     snapshot_path = Path("snapshot.json")
+    release_id = ReleaseId.new()
 
     repo_name = "release"
     repo_with_registry = f"{registry_url.removeprefix('http://')}/{repo_name}"
@@ -287,6 +293,8 @@ async def test_process_component_sboms_happypath(
             tpa_base_url,
             "--retry-s3-bucket",
             s3_sbom_bucket,
+            "--release-id",
+            str(release_id),
         ],
         check=True,
     )

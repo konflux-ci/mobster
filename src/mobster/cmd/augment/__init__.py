@@ -14,7 +14,7 @@ from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM
 from mobster.oci.cosign import Cosign, CosignClient
-from mobster.release import Component, Snapshot, make_snapshot
+from mobster.release import Component, ReleaseId, Snapshot, make_snapshot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ async def write_sbom(sbom: Any, path: Path) -> None:
 
 
 def update_sbom_in_situ(
-    component: Component, image: Image, sbom: SBOM, release_id: str | None = None
+    component: Component, image: Image, sbom: SBOM, release_id: ReleaseId | None = None
 ) -> bool:
     """
     Determine the matching SBOM handler and update the SBOM with release-time
@@ -160,7 +160,7 @@ async def update_sbom(  # pylint: disable=too-many-arguments, too-many-positiona
     cosign: Cosign,
     verify: bool,
     semaphore: asyncio.Semaphore,
-    release_id: str | None = None,
+    release_id: ReleaseId | None = None,
 ) -> SBOM | None:
     """Get an augmented SBOM of an image in a repository.
 
@@ -199,7 +199,7 @@ async def update_component_sboms(
     cosign: Cosign,
     verify: bool,
     semaphore: asyncio.Semaphore,
-    release_id: str | None,
+    release_id: ReleaseId | None,
 ) -> tuple[bool, list[SBOM]]:
     """
     Update SBOMs for a component.
@@ -211,7 +211,7 @@ async def update_component_sboms(
         cosign (Cosign): implementation of the Cosign protocol
         verify (bool): True if the SBOM's digest should be verified via the
             provenance of the image
-        release_id(str, optional): release id to be added to the SBOM's annotations
+        release_id: release id to be added to the SBOM's annotations
 
     Returns:
         Tuple where the first value specifies whether all SBOMs were augmented
@@ -247,7 +247,7 @@ async def update_sboms(
     cosign: Cosign,
     verify: bool,
     concurrency_limit: int,
-    release_id: str | None = None,
+    release_id: ReleaseId | None = None,
 ) -> tuple[bool, list[SBOM]]:
     """
     Update component SBOMs with release-time information based on a Snapshot.

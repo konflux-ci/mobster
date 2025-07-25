@@ -10,7 +10,7 @@ import aioboto3
 from botocore.exceptions import ClientError
 
 from mobster.cmd.generate.product import ReleaseData
-from mobster.release import SnapshotModel
+from mobster.release import ReleaseId, SnapshotModel
 
 
 class S3Client:
@@ -104,7 +104,9 @@ class S3Client:
             ) as s3_client:
                 await s3_client.upload_file(str(path), self.bucket, key)
 
-    async def upload_snapshot(self, snapshot: SnapshotModel, release_id: str) -> None:
+    async def upload_snapshot(
+        self, snapshot: SnapshotModel, release_id: ReleaseId
+    ) -> None:
         """
         Upload a snapshot to S3 bucket with prefix.
 
@@ -114,7 +116,9 @@ class S3Client:
         """
         await self._upload_input_data(snapshot, release_id)
 
-    async def upload_release_data(self, data: ReleaseData, release_id: str) -> None:
+    async def upload_release_data(
+        self, data: ReleaseData, release_id: ReleaseId
+    ) -> None:
         """
         Upload release data to S3 bucket with prefix.
 
@@ -125,7 +129,7 @@ class S3Client:
         await self._upload_input_data(data, release_id)
 
     async def _upload_input_data(
-        self, obj: SnapshotModel | ReleaseData, release_id: str
+        self, obj: SnapshotModel | ReleaseData, release_id: ReleaseId
     ) -> None:
         """
         Upload input data (snapshot or release data) to S3 bucket with prefix.
@@ -140,7 +144,7 @@ class S3Client:
             prefix = self.release_data_prefix
 
         io = BytesIO(obj.model_dump_json().encode())
-        key = f"{prefix}/{release_id}"
+        key = f"{prefix}/{str(release_id)}"
         async with self.session.client(
             "s3", endpoint_url=self.endpoint_url
         ) as s3_client:
@@ -191,7 +195,7 @@ class S3Client:
             return False
         return code == "404"
 
-    async def get_release_data(self, path: Path, release_id: str) -> bool:
+    async def get_release_data(self, path: Path, release_id: ReleaseId) -> bool:
         """
         Download release data from S3 to a local file.
 
@@ -205,10 +209,10 @@ class S3Client:
         Raises:
             ClientError: If an error other than 404 occurs during download.
         """
-        key = f"{self.release_data_prefix}/{release_id}"
+        key = f"{self.release_data_prefix}/{str(release_id)}"
         return await self._get_object(path, key)
 
-    async def get_snapshot(self, path: Path, release_id: str) -> bool:
+    async def get_snapshot(self, path: Path, release_id: ReleaseId) -> bool:
         """
         Download snapshot data from S3 to a local file.
 
@@ -222,7 +226,7 @@ class S3Client:
         Raises:
             ClientError: If an error other than 404 occurs during download.
         """
-        key = f"{self.snapshot_prefix}/{release_id}"
+        key = f"{self.snapshot_prefix}/{str(release_id)}"
         return await self._get_object(path, key)
 
     async def clear_bucket(self) -> None:

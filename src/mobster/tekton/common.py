@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path
 
+from mobster.release import ReleaseId
 from mobster.tekton.s3 import S3Client
 
 
@@ -35,7 +36,7 @@ class CommonArgs:
     snapshot_spec: Path
     atlas_api_url: str
     retry_s3_bucket: str
-    release_id: str
+    release_id: ReleaseId
 
 
 def add_common_args(parser: ArgumentParser) -> None:
@@ -49,7 +50,7 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument("--snapshot-spec", type=Path, required=True)
     parser.add_argument("--atlas-api-url", type=str)
     parser.add_argument("--retry-s3-bucket", type=str)
-    parser.add_argument("--release-id", type=str)
+    parser.add_argument("--release-id", type=ReleaseId, required=True)
 
 
 async def upload_sboms(
