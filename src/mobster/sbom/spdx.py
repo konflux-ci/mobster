@@ -19,6 +19,7 @@ from spdx_tools.spdx.model.spdx_none import SpdxNone
 from mobster import get_mobster_version
 from mobster.artifact import Artifact
 from mobster.image import Image
+from mobster.release import ReleaseId
 
 DOC_ELEMENT_ID = "SPDXRef-DOCUMENT"
 
@@ -181,7 +182,7 @@ def get_package(
     )
 
 
-def get_release_id_annotation(release_id: str) -> Annotation:
+def get_release_id_annotation(release_id: ReleaseId) -> Annotation:
     """
     Create an SPDX annotation with release_id
     """
@@ -190,7 +191,7 @@ def get_release_id_annotation(release_id: str) -> Annotation:
         annotation_date=datetime.now(timezone.utc),
         annotation_type=AnnotationType.OTHER,
         annotator=get_mobster_tool_actor(),
-        annotation_comment=f"release_id={release_id}",
+        annotation_comment=f"release_id={str(release_id)}",
     )
 
 

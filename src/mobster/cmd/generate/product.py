@@ -18,7 +18,7 @@ from spdx_tools.spdx.model.package import (
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
 from mobster.cmd.generate.base import GenerateCommand
-from mobster.release import Component, Snapshot, make_snapshot
+from mobster.release import Component, ReleaseId, Snapshot, make_snapshot
 from mobster.sbom import spdx
 
 LOGGER = logging.getLogger(__name__)
@@ -103,14 +103,14 @@ class GenerateProductCommand(GenerateCommand):
 
 
 def create_sbom(
-    release_notes: ReleaseNotes, snapshot: Snapshot, release_id: str | None
+    release_notes: ReleaseNotes, snapshot: Snapshot, release_id: ReleaseId | None
 ) -> Document:
     """Create an SPDX document based on release notes and a snapshot.
 
     Args:
         release_notes: The release notes containing product information.
         snapshot: The snapshot containing component information.
-        release_id(str, optional): A release id to be added to the SBOM's annotations
+        release_id: A release id to be added to the SBOM's annotations
 
     Returns:
         Document: The generated SPDX document.

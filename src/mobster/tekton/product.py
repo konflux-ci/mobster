@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from mobster.log import setup_logging
+from mobster.release import ReleaseId
 from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
@@ -56,7 +57,10 @@ def parse_args() -> ProcessProductArgs:
 
 
 def create_product_sbom(
-    sbom_path: Path, snapshot_spec: Path, release_data: Path, release_id: str
+    sbom_path: Path,
+    snapshot_spec: Path,
+    release_data: Path,
+    release_id: ReleaseId,
 ) -> None:
     """
     Create a product SBOM using the mobster generate command.
@@ -67,23 +71,22 @@ def create_product_sbom(
         release_data: Path to release data file.
         release_id: Release ID to store in SBOM file.
     """
-    subprocess.run(
-        [
-            "mobster",
-            "--verbose",
-            "generate",
-            "--output",
-            sbom_path,
-            "product",
-            "--snapshot",
-            snapshot_spec,
-            "--release-data",
-            release_data,
-            "--release-id",
-            release_id,
-        ],
-        check=True,
-    )
+    cmd = [
+        "mobster",
+        "--verbose",
+        "generate",
+        "--output",
+        str(sbom_path),
+        "product",
+        "--snapshot",
+        str(snapshot_spec),
+        "--release-data",
+        str(release_data),
+        "--release-id",
+        str(release_id),
+    ]
+
+    subprocess.run(cmd, check=True)
 
 
 async def process_product_sboms(args: ProcessProductArgs) -> None:

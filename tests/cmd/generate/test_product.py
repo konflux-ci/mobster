@@ -7,6 +7,7 @@ from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import pytest
 from packageurl import PackageURL
@@ -23,7 +24,7 @@ from mobster.cmd.generate.product import (
     parse_release_notes,
 )
 from mobster.image import Image, IndexImage
-from mobster.release import Component, Snapshot
+from mobster.release import Component, ReleaseId, Snapshot
 from mobster.sbom.spdx import get_mobster_tool_string
 from tests.conftest import awaitable, check_timestamp_isoformat
 
@@ -39,11 +40,11 @@ class Args:
     snapshot: Path
     release_data: Path
     output: Path
-    release_id: str
+    release_id: ReleaseId
 
 
 @pytest.fixture(
-    params=[(Path("product.json"), "release-id-1"), (None, None)],
+    params=[(Path("product.json"), uuid4()), (None, None)],
     ids=["file", "stdout"],
 )
 def generate_product_command_args(request: Any) -> Args:
@@ -341,7 +342,7 @@ def verify_product_sbom(
     component_names: list[str],
     release_notes: ReleaseNotes,
     purls: list[str],
-    release_id: str,
+    release_id: ReleaseId | None,
 ) -> None:
     verify_creation_info(
         sbom_dict, f"{release_notes.product_name} {release_notes.product_version}"
@@ -378,13 +379,13 @@ def verify_cpe(sbom: Any, expected_cpe: str | list[str]) -> None:
         } in sbom["packages"][0]["externalRefs"]
 
 
-def verify_release_id(sbom: Any, expected_release_id: str | None) -> None:
+def verify_release_id(sbom: Any, expected_release_id: ReleaseId | None) -> None:
     """
     Verify that release_id annotation match the expected values.
     """
     if expected_release_id:
         for annotation in sbom["annotations"]:
-            if "release_id=" in annotation["comment"]:
+            if f"release_id={expected_release_id}" in annotation["comment"]:
                 check_timestamp_isoformat(annotation["annotationDate"])
                 break
         else:

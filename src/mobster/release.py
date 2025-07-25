@@ -4,12 +4,32 @@ enrichment.
 """
 
 import asyncio
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
 import pydantic as pdc
 
 from mobster.image import ARTIFACT_PATTERN, Image
+
+
+class ReleaseId:
+    """
+    Representation of a release ID provided by Tekton.
+    """
+
+    def __init__(self, raw_id: str) -> None:
+        self.id = uuid.UUID(raw_id)
+
+    @staticmethod
+    def new() -> "ReleaseId":
+        """
+        Generate a new random ReleaseId.
+        """
+        return ReleaseId(uuid.uuid4().hex)
+
+    def __str__(self) -> str:
+        return str(self.id)
 
 
 @dataclass

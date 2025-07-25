@@ -21,7 +21,7 @@ from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM, Provenance02
 from mobster.oci.cosign import Cosign
-from mobster.release import Component, Snapshot
+from mobster.release import Component, ReleaseId, Snapshot
 from mobster.sbom import cyclonedx
 from tests.conftest import assert_spdx_sbom, awaitable
 
@@ -640,8 +640,9 @@ def test_cdx_augment_metadata_tools_components_empty_metadata() -> None:
 
 def test_cdx_augment_properties_release_id() -> None:
     sbom: dict[str, Any] = {}
-    CycloneDXVersion1()._augment_properties_release_id(sbom, "release-id-1")
-    assert {"name": "release_id", "value": "release-id-1"} in sbom["properties"]
+    release_id = ReleaseId.new()
+    CycloneDXVersion1()._augment_properties_release_id(sbom, release_id)
+    assert {"name": "release_id", "value": str(release_id)} in sbom["properties"]
 
 
 def test_cdx_update_sbom_raises_error_for_index_image() -> None:

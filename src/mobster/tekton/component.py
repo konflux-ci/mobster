@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from mobster.log import setup_logging
+from mobster.release import ReleaseId
 from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
@@ -49,7 +50,7 @@ def parse_args() -> ProcessComponentArgs:
 
 
 def augment_component_sboms(
-    sbom_path: Path, snapshot_spec: Path, release_id: str
+    sbom_path: Path, snapshot_spec: Path, release_id: ReleaseId
 ) -> None:
     """
     Augment component SBOMs using the mobster augment command.
@@ -59,21 +60,20 @@ def augment_component_sboms(
         snapshot_spec: Path to snapshot specification file.
         release_id: Release ID to store in SBOM file.
     """
-    subprocess.run(
-        [
-            "mobster",
-            "--verbose",
-            "augment",
-            "--output",
-            sbom_path,
-            "oci-image",
-            "--snapshot",
-            snapshot_spec,
-            "--release-id",
-            release_id,
-        ],
-        check=True,
-    )
+    cmd = [
+        "mobster",
+        "--verbose",
+        "augment",
+        "--output",
+        str(sbom_path),
+        "oci-image",
+        "--snapshot",
+        str(snapshot_spec),
+        "--release-id",
+        str(release_id),
+    ]
+
+    subprocess.run(cmd, check=True)
 
 
 async def process_component_sboms(args: ProcessComponentArgs) -> None:
