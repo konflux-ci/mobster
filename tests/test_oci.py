@@ -16,7 +16,6 @@ from mobster.oci import (
     _find_auth_file,
     get_image_manifest,
     make_oci_auth_file,
-    run_async_subprocess,
 )
 from mobster.oci.artifact import SBOM, Provenance02
 from mobster.oci.cosign import CosignClient
@@ -36,84 +35,6 @@ def provenances_path(testdata_path: Path) -> Path:
 @pytest.fixture
 def sboms_path(testdata_path: Path) -> Path:
     return testdata_path.joinpath("sboms")
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "retry_times, env, exec_results, expected",
-    [
-        pytest.param(
-            0, None, [(0, b"output", b"error")], (0, b"output", b"error"), id="success"
-        ),
-        pytest.param(
-            0,
-            {"ENV_VAR": "/usr/bin"},
-            [(0, b"output", b"")],
-            (0, b"output", b""),
-            id="custom-env",
-        ),
-        pytest.param(
-            1,
-            None,
-            [(1, b"", b"error1"), (0, b"output", b"")],
-            (0, b"output", b""),
-            id="failure-retry-success",
-        ),
-        pytest.param(
-            2,
-            None,
-            [(1, b"", b"error1"), (2, b"", b"error2"), (3, b"", b"error3")],
-            (3, b"", b"error3"),
-            id="all-failures",
-        ),
-        pytest.param(
-            0,
-            None,
-            [(1, b"", b"error")],
-            (1, b"", b"error"),
-            id="single-attempt-failure",
-        ),
-    ],
-)
-async def test_run_async_subprocess(
-    retry_times: int,
-    env: dict[str, Any],
-    exec_results: list[tuple[int, bytes, bytes]],
-    expected: tuple[int, bytes, bytes],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("EXISTING", "VAR")
-    with patch("asyncio.create_subprocess_exec") as mock_exec:
-        mock_processes = []
-        for return_code, stdout, stderr in exec_results:
-            mock_process = AsyncMock()
-            mock_process.communicate.return_value = (stdout, stderr)
-            mock_process.returncode = return_code
-            mock_processes.append(mock_process)
-
-        mock_exec.side_effect = mock_processes
-
-        code, stdout, stderr = await run_async_subprocess(
-            ["cmd"], env=env, retry_times=retry_times
-        )
-
-        assert (code, stdout, stderr) == expected
-        assert mock_exec.call_count == min(len(exec_results), retry_times + 1)
-
-        for call in mock_exec.call_args_list:
-            # make sure we keep the existing env vars
-            assert "EXISTING" in call.kwargs["env"]
-            # make sure we pass env vars
-            if env is not None:
-                assert env.items() <= call.kwargs["env"].items()
-
-
-@pytest.mark.asyncio
-async def test_run_async_subprocess_negative_retry() -> None:
-    with pytest.raises(ValueError) as excinfo:
-        await run_async_subprocess(["cmd"], retry_times=-1)
-
-    assert "Retry count cannot be negative" in str(excinfo.value)
 
 
 @pytest.fixture

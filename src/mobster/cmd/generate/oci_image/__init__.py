@@ -15,6 +15,7 @@ from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDi
 from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
 from spdx_tools.spdx.writer.write_utils import convert
 
+import mobster.utils
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
 from mobster.cmd.generate.oci_image.base_images_dockerfile import (
@@ -140,7 +141,10 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                     "No value for image digest was provided "
                     "and the image is not visible to oras!"
                 )
-            image = Image.from_image_index_url_and_digest(image_pullspec, image_digest)
+            image_arch = mobster.utils.identify_arch()
+            image = Image.from_image_index_url_and_digest(
+                image_pullspec, image_digest, arch=image_arch
+            )
             await extend_sbom_with_image_reference(sbom, image, False)
         elif image_digest:
             LOGGER.warning(
