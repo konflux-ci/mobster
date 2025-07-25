@@ -182,12 +182,18 @@ spec:
       script: |
         #!/usr/bin/env bash
         set -eux
+        # This is a little fragile, ideally it would be just a param. It's here
+        # for consistency with other tasks in release-service-catalog. The
+        # script below will verify that the release_id has the correct format.
+        release_id=$(dirname "$(params.snapshotSpec)"
+
         process_product_sbom \
           --data-dir "$(params.dataDir)" \
           --snapshot-spec "$(params.snapshotSpec)" \
           --release-data "$(params.releaseData)" \
           --atlas-api-url "$(params.atlasApiUrl)" \
-          --retry-s3-bucket "$(params.retryS3Bucket)"
+          --retry-s3-bucket "$(params.retryS3Bucket)" \
+          --release-id "$release_id"
 
     - name: create-trusted-artifact
       ref:
