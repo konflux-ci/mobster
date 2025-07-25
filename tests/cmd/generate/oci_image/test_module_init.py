@@ -10,139 +10,60 @@ from cyclonedx.model.bom import Bom
 from cyclonedx.model.bom_ref import BomRef
 from cyclonedx.model.component import Component, ComponentType
 from cyclonedx.model.dependency import Dependency
+from pytest_lazy_fixtures import lf
 from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import Package
 
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
-from tests.conftest import assert_cdx_sbom
+from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom
 
 
 @pytest.fixture()
-def image_digest_file_content() -> str:
-    return (
-        "quay.io/redhat-user-workloads/"
-        "rhtap-integration-tenant/konflux-test:"
-        "baf5e59d5d35615d0db13b46bd91194458011af8 "
-        "quay.io/redhat-user-workloads/rhtap-integration-tenant/"
-        "konflux-test:baf5e59d5d35615d0db13b46bd91194458011af8@"
-        "sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c\n"
-        "quay.io/redhat-user-workloads/rhtap-shared-team-tenant/"
-        "tssc-test:tssc-test-on-push-2m6dq-build-container "
-        "quay.io/redhat-user-workloads/rhtap-shared-team-tenant/"
-        "tssc-test:tssc-test-on-push-2m6dq-build-container@"
-        "sha256:04f8c3262172fa024beaed2b120414d6011d0c0d4ea578619e32a3c353ec5ee5"
-    )
+def image_digest_file_content() -> list[str]:
+    return [
+        (
+            "quay.io/redhat-user-workloads/rhtap-integration-tenant/"
+            "konflux-test:baf5e59d5d35615d0db13b46bd91194458011af8 "
+            "quay.io/redhat-user-workloads/rhtap-integration-tenant/"
+            "konflux-test:baf5e59d5d35615d0db13b46bd91194458011af8@"
+            "sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c"
+        ),
+        (
+            "quay.io/redhat-user-workloads/rhtap-shared-team-tenant/"
+            "tssc-test:tssc-test-on-push-2m6dq-build-container "
+            "quay.io/redhat-user-workloads/rhtap-shared-team-tenant/"
+            "tssc-test:tssc-test-on-push-2m6dq-build-container@"
+            "sha256:04f8c3262172fa024beaed2b120414d6011d0c0d4ea578619e32a3c353ec5ee5"
+        ),
+    ]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    "test_case",
     [
-        "syft_boms",
-        "hermeto_bom",
-        "image_pullspec",
-        "image_digest",
-        "parsed_dockerfile_path",
-        "dockerfile_target_stage",
-        "use_base_image_digest_content",
-        "additional_base_images",
-        "contextualize",
-        "expected_sbom_path",
-    ],
-    [
-        (
-            [Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")],
-            Path("tests/sbom/test_merge_data/spdx/cachi2.bom.json"),
-            "quay.io/foobar/examplecontainer:v10",
-            "sha256:11111111111111111111111111111111",
-            Path("tests/data/dockerfiles/somewhat_believable_sample/parsed.json"),
-            "runtime",
-            True,
-            ["quay.io/ubi9:latest@sha256:123456789012345678901234567789012"],
-            True,
-            Path("tests/sbom/test_oci_generate_data/generated.spdx.json"),
-        ),
-        (
-            [Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")],
-            None,
-            "quay.io/foobar/examplecontainer:v10",
-            "sha256:11111111111111111111111111111111",
-            Path("tests/data/dockerfiles/somewhat_believable_sample/parsed.json"),
-            "builder",
-            True,
-            [],
-            True,
-            Path(
-                "tests/sbom/test_oci_generate_data/generated_without_hermet_without_additional.spdx.json"
-            ),
-        ),
-        (
-            [
-                Path(
-                    "tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json"
-                ),
-                Path("tests/sbom/test_merge_data/spdx/syft-sboms/ubi-micro.bom.json"),
-            ],
-            None,
-            "quay.io/foobar/examplecontainer:v10",
-            "sha256:11111111111111111111111111111111",
-            Path("tests/data/dockerfiles/somewhat_believable_sample/parsed.json"),
-            "builder",
-            False,
-            [],
-            True,
-            Path("tests/sbom/test_oci_generate_data/generated_multiple_syft.spdx.json"),
-        ),
-        (
-            [
-                Path(
-                    "tests/sbom/test_merge_data/cyclonedx/syft-sboms/pip-e2e-test.bom.json"
-                ),
-            ],
-            None,
-            "quay.io/foobar/examplecontainer:v10",
-            "sha256:11111111111111111111111111111111",
-            Path("tests/data/dockerfiles/somewhat_believable_sample/parsed.json"),
-            "builder",
-            True,
-            ["quay.io/ubi9:latest@sha256:123456789012345678901234567789012"],
-            True,
-            Path("tests/sbom/test_oci_generate_data/generated.cdx.json"),
-        ),
+        lf("test_case_spdx_with_hermeto_and_additional"),
+        lf("test_case_spdx_without_hermeto_without_additional"),
+        lf("test_case_spdx_multiple_syft"),
+        lf("test_case_cyclonedx_with_additional"),
     ],
 )
-@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.open")
+@patch(
+    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
+)
 async def test_GenerateOciImageCommand_execute(
-    mock_open_digest_file: MagicMock,
-    syft_boms: list[Path],
-    hermeto_bom: Path,
-    image_pullspec: str,
-    image_digest: str,
-    parsed_dockerfile_path: Path,
-    dockerfile_target_stage: str | None,
-    use_base_image_digest_content: bool,
-    additional_base_images: list[str],
-    contextualize: bool,
-    expected_sbom_path: Path,
+    mock_get_base_images_digests_lines: MagicMock,
+    test_case: GenerateOciImageTestCase,
     image_digest_file_content: str,
 ) -> None:
-    args = MagicMock()
-    args.from_syft = syft_boms
-    args.from_hermeto = hermeto_bom
-    args.image_pullspec = image_pullspec
-    args.image_digest = image_digest
-    args.parsed_dockerfile_path = parsed_dockerfile_path
-    args.dockerfile_target = dockerfile_target_stage
-    args.additional_base_image = additional_base_images
-    if not use_base_image_digest_content:
-        args.base_image_digest_file = None
-    else:
-        (
-            mock_open_digest_file.return_value.__enter__.return_value.readlines
-        ).return_value = image_digest_file_content.split("\n")
-    command = GenerateOciImageCommand(args)
+    # Set up mock for base image digest content if base_image_digest_file is present
+    if test_case.args.base_image_digest_file is not None:
+        mock_get_base_images_digests_lines.return_value = image_digest_file_content
 
-    with open(expected_sbom_path) as expected_file_stream:
+    command = GenerateOciImageCommand(test_case.args)
+
+    with open(test_case.expected_sbom_path) as expected_file_stream:
         expected_sbom = json.load(expected_file_stream)
 
     def compare_spdx_sbom_dicts(

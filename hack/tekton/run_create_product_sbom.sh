@@ -15,6 +15,7 @@ snapshot_spec="snapshot.json"
 release_data="data.json"
 atlas_api_url="http://localhost:8080"
 retry_s3_bucket="sboms"
+release_id="d6ef854f-07a4-4537-a5c7-917d52b00463"
 
 export MOBSTER_TPA_SSO_ACCOUNT="dummy"
 export MOBSTER_TPA_SSO_TOKEN="dummy"
@@ -30,4 +31,5 @@ process_product_sbom \
     --snapshot-spec "$snapshot_spec" \
     --release-data "$release_data" \
     --atlas-api-url "$atlas_api_url" \
-    --retry-s3-bucket "$retry_s3_bucket"
+    --retry-s3-bucket "$retry_s3_bucket" \
+    --release-id "$release_id"

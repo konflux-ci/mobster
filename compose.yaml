@@ -34,10 +34,8 @@ services:
     entrypoint: >
       /bin/sh -c "
       sleep 5;
-      mc alias set minio http://minio:9000 minioAccessKey minioSecretKey;
-      # create the SBOM bucket
-      mc mb minio/sboms;
-      exit 0;
+      mc alias set minio http://minio:9000 minioAccessKey minioSecretKey && \
+        mc mb minio/sboms;
       "
 
 volumes:

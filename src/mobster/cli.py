@@ -11,6 +11,7 @@ from mobster.cmd.download import download_tpa
 from mobster.cmd.generate import modelcar, oci_artifact, oci_image, oci_index, product
 from mobster.cmd.upload import upload
 from mobster.image import ARTIFACT_PATTERN, PULLSPEC_PATTERN
+from mobster.release import ReleaseId
 
 
 def setup_arg_parser() -> argparse.ArgumentParser:
@@ -202,7 +203,8 @@ def generate_product_parser(subparsers: Any) -> None:
     )
     product_parser.add_argument(
         "--release-id",
-        help="release_id to associate with the SBOM file",
+        type=ReleaseId,
+        help="UUID4 release_id to associate with the SBOM file",
     )
 
     product_parser.set_defaults(func=product.GenerateProductCommand)
@@ -295,10 +297,6 @@ def augment_command_parser(subparsers: Any) -> None:
         help="path to the output file. If not provided, the SBOMs will be saved "
         "to the working directory",
     )
-    augment_parser.add_argument(
-        "--release-id",
-        help="release_id to associate with the SBOM file",
-    )
 
     augment_subparsers = augment_parser.add_subparsers(dest="type", required=True)
     generate_augment_oci_image_parser(augment_subparsers)
@@ -335,6 +333,11 @@ def generate_augment_oci_image_parser(subparsers: Any) -> None:
         type=parse_concurrency,
         default=8,
         help="concurrency limit for SBOM updates (non-zero integer)",
+    )
+    augment_oci_image_parser.add_argument(
+        "--release-id",
+        type=ReleaseId,
+        help="UUID4 release_id to associate with the SBOM file",
     )
 
     augment_oci_image_parser.set_defaults(func=augment.AugmentImageCommand)

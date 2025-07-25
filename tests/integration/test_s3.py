@@ -183,3 +183,25 @@ async def test_get_data_objects_nonexistent(
     result = await download_func(download_path, "nonexistent-release")
 
     assert result is False
+
+
+@pytest.mark.asyncio
+async def test_is_bucket_empty(s3_client: S3Client, tmp_path: Path) -> None:
+    """
+    Test checking if bucket is empty before and after adding objects.
+    """
+    # bucket cleared by fixture
+    assert await s3_client.is_bucket_empty() is True
+
+    test_data = {"test": "data"}
+    file_path = tmp_path / "test_file.json"
+    with open(file_path, "w") as f:
+        json.dump(test_data, f)
+
+    # add object to bucket and check not empty
+    await s3_client.upload_file(file_path)
+    assert await s3_client.is_bucket_empty() is False
+
+    # check that it's empty again after clearing it
+    await s3_client.clear_bucket()
+    assert await s3_client.is_bucket_empty() is True
