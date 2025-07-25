@@ -1964,6 +1964,24 @@ pytest = "==8.*"
 testing = ["pytest-asyncio (==0.24.*)", "pytest-cov (==6.*)"]
 
 [[package]]
+name = "pytest-reportlog"
+version = "0.4.0"
+description = "Replacement for the --resultlog option, focused in simplicity and extensibility"
+optional = false
+python-versions = ">=3.7"
+groups = ["dev"]
+files = [
+    {file = "pytest-reportlog-0.4.0.tar.gz", hash = "sha256:c9f2079504ee51f776d3118dcf5e4730f163d3dcf26ebc8f600c1fa307bf638c"},
+    {file = "pytest_reportlog-0.4.0-py3-none-any.whl", hash = "sha256:5db4d00586546d8c6b95c66466629f1e913440c36d97795a673d2e19c5cedd5c"},
+]
+
+[package.dependencies]
+pytest = "*"
+
+[package.extras]
+dev = ["pre-commit", "tox"]
+
+[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
@@ -3598,4 +3616,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "80181cc6e2bf16038b72c1fc97ed5deed96ab46e4d012695d0722054af4c9c86"
+content-hash = "dd6de39cd3c8f2441b7c8660b114294efa2ed9bfc79b254760cca3a7942324d6"
