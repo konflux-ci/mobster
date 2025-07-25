@@ -254,6 +254,7 @@ class TestGenerateProductCommand:
             [component.name for component in snapshot.components],
             release_notes,
             purls,
+            generate_product_command.cli_args.release_id,
         )
 
     @pytest.mark.asyncio
@@ -340,10 +341,12 @@ def verify_product_sbom(
     component_names: list[str],
     release_notes: ReleaseNotes,
     purls: list[str],
+    release_id: str,
 ) -> None:
     verify_creation_info(
         sbom_dict, f"{release_notes.product_name} {release_notes.product_version}"
     )
+    verify_release_id(sbom_dict, release_id)
     verify_cpe(sbom_dict, release_notes.cpe)
     verify_purls(sbom_dict, purls)
     verify_relationships(sbom_dict, component_names)
