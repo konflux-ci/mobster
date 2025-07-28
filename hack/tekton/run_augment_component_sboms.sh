@@ -14,7 +14,8 @@ data_dir="."
 snapshot_spec="snapshot.json"
 atlas_api_url="http://localhost:8080"
 retry_s3_bucket="sboms"
-release_id="d6ef854f-07a4-4537-a5c7-917d52b00463"
+release_id=$(python3 -c "from uuid import uuid4; print(uuid4())")
+echo "release_id=$release_id"
 
 export MOBSTER_TPA_SSO_ACCOUNT="dummy"
 export MOBSTER_TPA_SSO_TOKEN="dummy"
