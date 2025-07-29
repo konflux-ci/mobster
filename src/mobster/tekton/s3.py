@@ -104,31 +104,7 @@ class S3Client:
             ) as s3_client:
                 await s3_client.upload_file(str(path), self.bucket, key)
 
-    async def upload_snapshot(
-        self, snapshot: SnapshotModel, release_id: ReleaseId
-    ) -> None:
-        """
-        Upload a snapshot to S3 bucket with prefix.
-
-        Args:
-            snapshot: The snapshot model to upload.
-            release_id: The release ID to use as the object key.
-        """
-        await self._upload_input_data(snapshot, release_id)
-
-    async def upload_release_data(
-        self, data: ReleaseData, release_id: ReleaseId
-    ) -> None:
-        """
-        Upload release data to S3 bucket with prefix.
-
-        Args:
-            data: The release data to upload.
-            release_id: The release ID to use as the object key.
-        """
-        await self._upload_input_data(data, release_id)
-
-    async def _upload_input_data(
+    async def upload_input_data(
         self, obj: SnapshotModel | ReleaseData, release_id: ReleaseId
     ) -> None:
         """
