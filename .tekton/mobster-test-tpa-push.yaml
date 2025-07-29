@@ -544,7 +544,8 @@ spec:
       - name: IMAGE_DIGEST
         value: $(tasks.build-image-index.results.IMAGE_DIGEST)
       - name: ADDITIONAL_TAGS
-        value: latest
+        value:
+          - latest
       runAfter:
       - build-image-index
       taskRef:
