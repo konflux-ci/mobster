@@ -55,7 +55,7 @@ def parse_args() -> ProcessProductArgs:
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
         print_digests=args.print_digests,
-    )
+    )  # pylint:disable=duplicate-code
 
 
 def create_product_sbom(

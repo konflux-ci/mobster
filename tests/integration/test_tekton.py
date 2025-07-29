@@ -26,14 +26,24 @@ from tests.integration.oci_client import ReferrersTagOCIClient
 
 async def verify_sboms_in_tpa(
     tpa_client: TPAClient,
-    n_sboms: int,
+    digests: list[str],
 ) -> None:
     """
     Verify that n_sboms were uploaded to TPA.
     """
+    digest_set = set(digests)
     sbom_gen = tpa_client.list_sboms(query="", sort="ingested")
-    sboms = [sbom async for sbom in sbom_gen]
-    assert len(sboms) == n_sboms
+    async for sbom in sbom_gen:
+        digest_set.remove(sbom.sha256)
+
+    assert len(digest_set) == 0, f"Digests of SBOMs not found in TPA: {digest_set}"
+
+
+def parse_digests(process_stdout: bytes) -> list[str]:
+    """
+    Parse SBOM digests from stdout of process_* commands.
+    """
+    return process_stdout.decode("utf-8").splitlines()
 
 
 @pytest.mark.asyncio
@@ -86,7 +96,7 @@ async def test_create_product_sboms_ta_happypath(
     with open(data_dir / release_data_path, "w") as fp:
         json.dump(release_data, fp)
 
-    subprocess.run(
+    result = subprocess.run(
         [
             "process_product_sbom",
             "--data-dir",
@@ -101,9 +111,13 @@ async def test_create_product_sboms_ta_happypath(
             s3_sbom_bucket,
             "--release-id",
             str(release_id),
+            "--print-digests",
         ],
         check=True,
+        capture_output=True,
     )
+
+    sbom_digests = parse_digests(result.stdout)
 
     # check that an SBOM was created and contains what is expected
     with open(data_dir / "sbom" / "sbom.json") as fp:
@@ -116,7 +130,7 @@ async def test_create_product_sboms_ta_happypath(
             release_id,
         )
 
-    await verify_sboms_in_tpa(tpa_client, n_sboms=1)
+    await verify_sboms_in_tpa(tpa_client, sbom_digests)
 
     # check that no SBOMs were added to the bucket (TPA upload succeeded)
     assert await s3_client.is_bucket_empty() is True
@@ -282,7 +296,7 @@ async def test_process_component_sboms_happypath(
     with open(data_dir / snapshot_path, "w") as fp:
         json.dump(snapshot, fp)
 
-    subprocess.run(
+    result = subprocess.run(
         [
             "process_component_sboms",
             "--data-dir",
@@ -295,16 +309,19 @@ async def test_process_component_sboms_happypath(
             s3_sbom_bucket,
             "--release-id",
             str(release_id),
+            "--print-digests",
         ],
         check=True,
+        capture_output=True,
     )
+    sbom_digests = parse_digests(result.stdout)
 
     assert set((data_dir / "sbom").iterdir()) == {
         data_dir / "sbom" / image.digest,
         data_dir / "sbom" / index.digest,
     }
 
-    await verify_sboms_in_tpa(tpa_client, n_sboms=2)
+    await verify_sboms_in_tpa(tpa_client, sbom_digests)
 
     # check that no SBOMs were added to the bucket (TPA upload succeeded)
     assert await s3_client.is_bucket_empty() is True

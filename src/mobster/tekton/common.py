@@ -148,10 +148,10 @@ async def get_sha256_hexdigest(sbom: Path) -> str:
         str: sha256 digest of the SBOM in hex form
     """
     async with aiofiles.open(sbom, "rb") as fp:
-        hash = hashlib.sha256()
+        hash_func = hashlib.sha256()
         while content := await fp.read(8192):
-            hash.update(content)
-        return hash.hexdigest()
+            hash_func.update(content)
+        return f"sha256:{hash_func.hexdigest()}"
 
 
 async def print_digests(paths: list[Path]) -> None:
