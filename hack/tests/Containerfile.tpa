@@ -20,6 +20,7 @@ RUN curl -L https://github.com/trustification/trustify/releases/download/v${TRUS
 WORKDIR /app/trustd-pm-${TRUSTD_VERSION}-x86_64-unknown-linux-gnu/
 
 ENV AUTH_DISABLED=true
+
 ENV HTTP_SERVER_BIND_ADDR=::
 
 CMD ["./trustd-pm"]
