@@ -16,9 +16,7 @@ from mobster.tekton.common import (
     add_common_args,
     print_digests,
     upload_sboms,
-)
-from mobster.tekton.store_sbom_regeneration_data import (
-    store_sbom_input_data_releasedata_validated,
+    upload_snapshot,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -105,6 +103,9 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     sbom_dir.mkdir(exist_ok=True)
     sbom_path = sbom_dir / "sbom.json"
 
+    client = connect_with_s3(args.retry_s3_bucket)
+    await upload_snapshot(client, args.snapshot_spec, args.release_id)
+    await upload_release_data(client, args.release_data, args.release_id)
     create_product_sbom(
         sbom_path, args.snapshot_spec, args.release_data, args.release_id
     )
