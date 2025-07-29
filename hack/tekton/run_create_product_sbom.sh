@@ -32,6 +32,4 @@ process_product_sbom \
     --snapshot-spec "$snapshot_spec" \
     --release-data "$release_data" \
     --atlas-api-url "$atlas_api_url" \
-    --retry-s3-bucket "$retry_s3_bucket" \
-    --release-id "$release_id" \
-    --print-digests
+    --retry-s3-bucket "$retry_s3_bucket"

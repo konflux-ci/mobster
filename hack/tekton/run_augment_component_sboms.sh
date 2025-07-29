@@ -14,8 +14,12 @@ data_dir="."
 snapshot_spec="snapshot.json"
 atlas_api_url="http://localhost:8080"
 retry_s3_bucket="sboms"
+<<<<<<< HEAD
 release_id=$(python3 -c "from uuid import uuid4; print(uuid4())")
 echo "release_id=$release_id"
+=======
+release_id="test_id"
+>>>>>>> cb0a7c3 (feat(ISV-6005): Update the script according recent Mobster code migration.)
 
 export MOBSTER_TPA_SSO_ACCOUNT="dummy"
 export MOBSTER_TPA_SSO_TOKEN="dummy"
@@ -31,5 +35,9 @@ process_component_sboms \
     --snapshot-spec "$snapshot_spec" \
     --atlas-api-url "$atlas_api_url" \
     --retry-s3-bucket "$retry_s3_bucket" \
+<<<<<<< HEAD
     --release-id "$release_id" \
     --print-digests
+=======
+    --release-id "$release_id"
+>>>>>>> cb0a7c3 (feat(ISV-6005): Update the script according recent Mobster code migration.)
