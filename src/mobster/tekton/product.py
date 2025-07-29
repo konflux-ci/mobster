@@ -14,6 +14,7 @@ from mobster.release import ReleaseId
 from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
+    print_digests,
     upload_sboms,
 )
 
@@ -53,6 +54,7 @@ def parse_args() -> ProcessProductArgs:
         atlas_api_url=args.atlas_api_url,
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
+        print_digests=args.print_digests,
     )
 
 
@@ -103,6 +105,9 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     create_product_sbom(
         sbom_path, args.snapshot_spec, args.release_data, args.release_id
     )
+    if args.print_digests:
+        await print_digests([sbom_path])
+
     await upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
 
 
