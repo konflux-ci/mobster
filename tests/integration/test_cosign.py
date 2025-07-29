@@ -53,7 +53,8 @@ async def test_cosign_fetch_sbom_no_image() -> None:
     """
     Test fetching an SBOM from a non-existent image.
     """
-    cosign = CosignClient(Path(""))
-    image = Image(repository="no-repo", digest="sha256:deadbeef")
-    with pytest.raises(SBOMError):
-        await cosign.fetch_sbom(image)
+    raise AssertionError("Dummy test  fail")
+    # cosign = CosignClient(Path(""))
+    # image = Image(repository="no-repo", digest="sha256:deadbeef")
+    # with pytest.raises(SBOMError):
+    #     await cosign.fetch_sbom(image)
