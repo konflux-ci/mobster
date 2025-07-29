@@ -14,12 +14,11 @@ from mobster.release import ReleaseId
 from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
+    connect_with_s3,
+    upload_release_data,
     print_digests,
     upload_sboms,
     upload_snapshot,
-)
-from mobster.tekton.store_sbom_regeneration_data import (
-    store_sbom_input_data_releasedata_validated,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -115,10 +114,7 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     if args.print_digests:
         await print_digests([sbom_path])
 
-    await upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
-    await store_sbom_input_data_releasedata_validated(
-        args.release_data, args.release_id, args.retry_s3_bucket
-    )
+    await upload_sboms(client, sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
 
 
 def main() -> None:
