@@ -20,6 +20,9 @@ from mobster.tekton.common import (
     upload_sboms,
     upload_snapshot,
 )
+from mobster.tekton.store_sbom_regeneration_data import (
+    store_sbom_input_data_releasedata_validated,
+)
 
 LOGGER = logging.getLogger(__name__)
 
