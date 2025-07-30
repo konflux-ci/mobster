@@ -164,7 +164,7 @@ async def upload_to_s3(s3_client: S3Client | None, dirpath: Path) -> None:
 
 def validate_sbom_input_data(
     sbom_input_file: Path,
-    obj: Any,
+    obj: SnapshotModel | ReleaseData,
 ) -> Any:
     """
     Store SBOM Input data for release_data to S3 bucket.
@@ -194,7 +194,7 @@ async def upload_snapshot(
     """
     if s3_client is None:
         return
-    snapshot = validate_sbom_input_data(sbom_input_file, SnapshotModel)
+    snapshot = validate_sbom_input_data(sbom_input_file, SnapshotModel)  # type: ignore[arg-type]
     await s3_client.upload_input_data(snapshot, release_id)
 
 
@@ -211,7 +211,7 @@ async def upload_release_data(
     """
     if s3_client is None:
         return
-    release_data = validate_sbom_input_data(sbom_input_file, ReleaseData)
+    release_data = validate_sbom_input_data(sbom_input_file, ReleaseData)  # type: ignore[arg-type]
     await s3_client.upload_input_data(release_data, release_id)
 
 

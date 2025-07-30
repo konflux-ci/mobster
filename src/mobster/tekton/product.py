@@ -15,8 +15,8 @@ from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
     connect_with_s3,
-    upload_release_data,
     print_digests,
+    upload_release_data,
     upload_sboms,
     upload_snapshot,
 )
