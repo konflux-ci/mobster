@@ -80,12 +80,6 @@ spec:
       description: >
         The name of the S3 bucket used to store data for the retry mechanism.
 
-    - name: release_id
-      type: string
-      value: $(context.pipelinerun.uid)
-      description: >
-        Release ID to store in SBOM file.
-
     - name: atlasApiUrl
       type: string
       default: ""
