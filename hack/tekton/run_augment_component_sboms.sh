@@ -14,6 +14,8 @@ data_dir="."
 snapshot_spec="snapshot.json"
 atlas_api_url="http://localhost:8080"
 retry_s3_bucket="sboms"
+release_id=$(python3 -c "from uuid import uuid4; print(uuid4())")
+echo "release_id=$release_id"
 
 export MOBSTER_TPA_SSO_ACCOUNT="dummy"
 export MOBSTER_TPA_SSO_TOKEN="dummy"
@@ -28,4 +30,6 @@ process_component_sboms \
     --data-dir "$data_dir" \
     --snapshot-spec "$snapshot_spec" \
     --atlas-api-url "$atlas_api_url" \
-    --retry-s3-bucket "$retry_s3_bucket"
+    --retry-s3-bucket "$retry_s3_bucket" \
+    --release-id "$release_id" \
+    --print-digests

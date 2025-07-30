@@ -7,6 +7,7 @@ from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import pytest
 from packageurl import PackageURL
@@ -23,7 +24,7 @@ from mobster.cmd.generate.product import (
     parse_release_notes,
 )
 from mobster.image import Image, IndexImage
-from mobster.release import Component, Snapshot
+from mobster.release import Component, ReleaseId, Snapshot
 from mobster.sbom.spdx import get_mobster_tool_string
 from tests.conftest import awaitable, check_timestamp_isoformat
 
@@ -39,11 +40,11 @@ class Args:
     snapshot: Path
     release_data: Path
     output: Path
-    release_id: str
+    release_id: ReleaseId
 
 
 @pytest.fixture(
-    params=[(Path("product.json"), "release-id-1"), (None, None)],
+    params=[(Path("product.json"), uuid4()), (None, None)],
     ids=["file", "stdout"],
 )
 def generate_product_command_args(request: Any) -> Args:
@@ -249,19 +250,13 @@ class TestGenerateProductCommand:
         output.seek(0)
 
         sbom_dict = json.load(output)
-
-        verify_creation_info(
-            sbom_dict, f"{release_notes.product_name} {release_notes.product_version}"
+        verify_product_sbom(
+            sbom_dict,
+            [component.name for component in snapshot.components],
+            release_notes,
+            purls,
+            generate_product_command.cli_args.release_id,
         )
-        verify_cpe(sbom_dict, cpe)
-        verify_release_id(sbom_dict, generate_product_command.cli_args.release_id)
-        verify_purls(sbom_dict, purls)
-        verify_relationships(sbom_dict, snapshot.components)
-        verify_checksums(sbom_dict)
-        verify_supplier(sbom_dict)
-        verify_package_licenses(sbom_dict)
-
-        assert sbom_dict["dataLicense"] == "CC0-1.0"
 
     @pytest.mark.asyncio
     async def test_save(
@@ -342,6 +337,27 @@ def test_parse_release_notes(data: dict[str, Any], expected_rn: ReleaseNotes) ->
     assert expected_rn == actual
 
 
+def verify_product_sbom(
+    sbom_dict: Any,
+    component_names: list[str],
+    release_notes: ReleaseNotes,
+    purls: list[str],
+    release_id: ReleaseId | None,
+) -> None:
+    verify_creation_info(
+        sbom_dict, f"{release_notes.product_name} {release_notes.product_version}"
+    )
+    verify_release_id(sbom_dict, release_id)
+    verify_cpe(sbom_dict, release_notes.cpe)
+    verify_purls(sbom_dict, purls)
+    verify_relationships(sbom_dict, component_names)
+    verify_checksums(sbom_dict)
+    verify_supplier(sbom_dict)
+    verify_package_licenses(sbom_dict)
+
+    assert sbom_dict["dataLicense"] == "CC0-1.0"
+
+
 def verify_creation_info(sbom: Any, expected_name: str) -> None:
     """
     Verify that creationInfo fields match the expected values.
@@ -363,13 +379,13 @@ def verify_cpe(sbom: Any, expected_cpe: str | list[str]) -> None:
         } in sbom["packages"][0]["externalRefs"]
 
 
-def verify_release_id(sbom: Any, expected_release_id: str | None) -> None:
+def verify_release_id(sbom: Any, expected_release_id: ReleaseId | None) -> None:
     """
     Verify that release_id annotation match the expected values.
     """
     if expected_release_id:
         for annotation in sbom["annotations"]:
-            if "release_id=" in annotation["comment"]:
+            if f"release_id={expected_release_id}" in annotation["comment"]:
                 check_timestamp_isoformat(annotation["annotationDate"])
                 break
         else:
@@ -418,13 +434,13 @@ def verify_checksums(sbom: Any) -> None:
         assert actual_checksums == expected_checksums
 
 
-def verify_relationships(sbom: Any, components: list[Component]) -> None:
+def verify_relationships(sbom: Any, component_names: list[str]) -> None:
     """
     Verify that the correct relationships exist for each component and the product.
     """
-    for component in components:
+    for name in component_names:
         assert {
-            "spdxElementId": f"SPDXRef-component-{component.name}",
+            "spdxElementId": f"SPDXRef-component-{name}",
             "relatedSpdxElement": "SPDXRef-product",
             "relationshipType": "PACKAGE_OF",
         } in sbom["relationships"]

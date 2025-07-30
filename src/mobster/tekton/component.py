@@ -10,9 +10,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from mobster.log import setup_logging
+from mobster.release import ReleaseId
 from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
+    print_digests,
     upload_sboms,
 )
 
@@ -45,11 +47,12 @@ def parse_args() -> ProcessComponentArgs:
         atlas_api_url=args.atlas_api_url,
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
+        print_digests=args.print_digests,
     )
 
 
 def augment_component_sboms(
-    sbom_path: Path, snapshot_spec: Path, release_id: str
+    sbom_path: Path, snapshot_spec: Path, release_id: ReleaseId
 ) -> None:
     """
     Augment component SBOMs using the mobster augment command.
@@ -59,21 +62,20 @@ def augment_component_sboms(
         snapshot_spec: Path to snapshot specification file.
         release_id: Release ID to store in SBOM file.
     """
-    subprocess.run(
-        [
-            "mobster",
-            "--verbose",
-            "augment",
-            "--output",
-            sbom_path,
-            "oci-image",
-            "--snapshot",
-            snapshot_spec,
-            "--release-id",
-            release_id,
-        ],
-        check=True,
-    )
+    cmd = [
+        "mobster",
+        "--verbose",
+        "augment",
+        "--output",
+        str(sbom_path),
+        "oci-image",
+        "--snapshot",
+        str(snapshot_spec),
+        "--release-id",
+        str(release_id),
+    ]
+
+    subprocess.run(cmd, check=True)
 
 
 async def process_component_sboms(args: ProcessComponentArgs) -> None:
@@ -87,6 +89,9 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     sbom_dir.mkdir(exist_ok=True)
 
     augment_component_sboms(sbom_dir, args.snapshot_spec, args.release_id)
+    if args.print_digests:
+        await print_digests(list(sbom_dir.iterdir()))
+
     await upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
 
 

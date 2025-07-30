@@ -12,7 +12,7 @@ from mobster import get_mobster_version
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOMFormat
-from mobster.release import Component
+from mobster.release import Component, ReleaseId
 from mobster.sbom import cyclonedx
 from mobster.sbom.spdx import get_mobster_tool_string
 
@@ -186,7 +186,9 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
             creation_info["creators"].append(creator)
 
     @classmethod
-    def _augment_annotations_release_id(cls, sbom: Any, release_id: str | None) -> None:
+    def _augment_annotations_release_id(
+        cls, sbom: Any, release_id: ReleaseId | None
+    ) -> None:
         """
         Add release_id to the SBOM's annotations
         """
@@ -197,7 +199,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
             "annotationDate": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "annotationType": "OTHER",
             "annotator": get_mobster_tool_string(),
-            "comment": f"release_id={release_id}",
+            "comment": f"release_id={str(release_id)}",
         }
         sbom["annotations"].append(release_id_annotation)
 
@@ -268,7 +270,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
         component: Component,
         image: Image,
         sbom: Any,
-        release_id: str | None = None,
+        release_id: ReleaseId | None = None,
     ) -> None:
         """
         Update a build-time SBOM with release-time data.
@@ -298,7 +300,7 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         component: Component,
         image: Image,
         sbom: Any,
-        release_id: str | None = None,
+        release_id: ReleaseId | None = None,
     ) -> None:
         """
         Update an SBOM for an image based on a component.
@@ -399,14 +401,14 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         if not self._has_current_mobster_version(components):
             components.append(cyclonedx.get_tools_component_dict())
 
-    def _augment_properties_release_id(self, sbom: Any, release_id: str) -> None:
+    def _augment_properties_release_id(self, sbom: Any, release_id: ReleaseId) -> None:
         """
         Add release_id to SBOM's properties
         """
         if "properties" not in sbom:
             sbom["properties"] = []
 
-        release_id_property = {"name": "release_id", "value": release_id}
+        release_id_property = {"name": "release_id", "value": str(release_id)}
         sbom["properties"].append(release_id_property)
 
     def _has_current_mobster_version(self, components: list[Any]) -> bool:

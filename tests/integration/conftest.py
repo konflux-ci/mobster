@@ -39,20 +39,51 @@ def oci_client(registry_url: str) -> ReferrersTagOCIClient:
 
 
 @pytest.fixture
-def tpa_auth_env(monkeypatch: pytest.MonkeyPatch) -> None:
+def tpa_auth_env(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     """Set up environment variables needed to disable TPA authentication."""
-    monkeypatch.setenv("MOBSTER_TPA_AUTH_DISABLE", "true")
-    return None
+    vars = {
+        "MOBSTER_TPA_SSO_TOKEN_URL": "dummy",
+        "MOBSTER_TPA_SSO_ACCOUNT": "dummy",
+        "MOBSTER_TPA_SSO_TOKEN": "dummy",
+        "MOBSTER_TPA_AUTH_DISABLE": "true",
+    }
+    for key, val in vars.items():
+        monkeypatch.setenv(key, val)
+
+    return vars
+
+
+@pytest.fixture
+def s3_auth_env(
+    s3_endpoint_url: str, monkeypatch: pytest.MonkeyPatch
+) -> dict[str, str]:
+    # these are set in compose.yaml
+    vars = {
+        "AWS_ACCESS_KEY_ID": "minioAccessKey",
+        "AWS_SECRET_ACCESS_KEY": "minioSecretKey",
+        "AWS_ENDPOINT_URL": s3_endpoint_url,
+    }
+
+    for key, val in vars.items():
+        monkeypatch.setenv(key, val)
+
+    return vars
+
+
+@pytest.fixture()
+def s3_sbom_bucket() -> str:
+    return "sboms"
 
 
 @pytest_asyncio.fixture
-async def s3_client(s3_endpoint_url: str) -> AsyncGenerator[S3Client, None]:
+async def s3_client(s3_auth_env: dict[str, str]) -> AsyncGenerator[S3Client, None]:
     # these are set in compose.yaml
-    access_key = "minioAccessKey"
-    secret_key = "minioSecretKey"
+    access_key = s3_auth_env["AWS_ACCESS_KEY_ID"]
+    secret_key = s3_auth_env["AWS_SECRET_ACCESS_KEY"]
+    endpoint_url = s3_auth_env["AWS_ENDPOINT_URL"]
     bucket = "sboms"
 
-    client = S3Client(bucket, access_key, secret_key, endpoint_url=s3_endpoint_url)
+    client = S3Client(bucket, access_key, secret_key, endpoint_url=endpoint_url)
 
     yield client
     await client.clear_bucket()
