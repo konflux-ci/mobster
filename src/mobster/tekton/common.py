@@ -2,8 +2,6 @@
 Common utilities for Tekton tasks.
 """
 
-import asyncio
-import hashlib
 import os
 import subprocess
 from argparse import ArgumentParser
@@ -61,7 +59,10 @@ def add_common_args(parser: ArgumentParser) -> None:
 
 
 async def upload_sboms(
-    s3_client: S3Client, dirpath: Path, atlas_url: str, retry_s3_bucket: str | None
+    s3_client: S3Client | None,
+    dirpath: Path,
+    atlas_url: str,
+    retry_s3_bucket: str | None,
 ) -> None:
     """
     Upload SBOMs to Atlas with S3 fallback on transient errors.
@@ -122,7 +123,7 @@ def upload_to_atlas(dirpath: Path, atlas_url: str) -> None:
         raise AtlasUploadError() from err
 
 
-def connect_with_s3(retry_s3_bucket: str) -> S3Client:
+def connect_with_s3(retry_s3_bucket: str) -> S3Client | None:
     """
     Connect with AWS S3 using S3Client.
 
@@ -132,6 +133,8 @@ def connect_with_s3(retry_s3_bucket: str) -> S3Client:
     Returns:
         client: S3Client object
     """
+    if not retry_s3_bucket:
+        return None
     if not s3_credentials_exist():
         raise ValueError("Missing AWS authentication.")
     client = S3Client(
@@ -146,7 +149,7 @@ def connect_with_s3(retry_s3_bucket: str) -> S3Client:
     return client
 
 
-async def upload_to_s3(s3_client: S3Client, dirpath: Path) -> None:
+async def upload_to_s3(s3_client: S3Client | None, dirpath: Path) -> None:
     """
     Upload SBOMs to S3 bucket.
 
@@ -154,7 +157,8 @@ async def upload_to_s3(s3_client: S3Client, dirpath: Path) -> None:
         s3_client: S3Client object
         dirpath: Directory containing SBOMs to upload.
     """
-
+    if s3_client is None:
+        return
     await s3_client.upload_dir(dirpath)
 
 
@@ -178,7 +182,7 @@ def validate_sbom_input_data(
 
 
 async def upload_snapshot(
-    s3_client: S3Client, sbom_input_file: Path, release_id: str
+    s3_client: S3Client | None, sbom_input_file: Path, release_id: ReleaseId
 ) -> None:
     """
     Upload a snapshot to S3 bucket with prefix.
@@ -188,12 +192,14 @@ async def upload_snapshot(
         sbom_input_file: File path of SBOM input data
         release_id: The release ID to use as the object key.
     """
+    if s3_client is None:
+        return
     snapshot = validate_sbom_input_data(sbom_input_file, SnapshotModel)
     await s3_client.upload_input_data(snapshot, release_id)
 
 
 async def upload_release_data(
-    s3_client: S3Client, sbom_input_file: Path, release_id: str
+    s3_client: S3Client | None, sbom_input_file: Path, release_id: ReleaseId
 ) -> None:
     """
     Upload release data to S3 bucket with prefix.
@@ -203,6 +209,8 @@ async def upload_release_data(
         sbom_input_file: File path of SBOM input data
         release_id: The release ID to use as the object key.
     """
+    if s3_client is None:
+        return
     release_data = validate_sbom_input_data(sbom_input_file, ReleaseData)
     await s3_client.upload_input_data(release_data, release_id)
 

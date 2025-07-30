@@ -104,15 +104,13 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     sbom_dir = args.data_dir / "sbom"
     sbom_dir.mkdir(exist_ok=True)
     sbom_path = sbom_dir / "sbom.json"
-
     client = connect_with_s3(args.retry_s3_bucket)
+
     await upload_snapshot(client, args.snapshot_spec, args.release_id)
     await upload_release_data(client, args.release_data, args.release_id)
     create_product_sbom(
         sbom_path, args.snapshot_spec, args.release_data, args.release_id
     )
-    if args.print_digests:
-        await print_digests([sbom_path])
 
     await upload_sboms(client, sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
 

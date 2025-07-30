@@ -138,7 +138,9 @@ async def test_create_product_sboms_ta_happypath(
 
 @pytest.mark.asyncio
 @patch("mobster.tekton.common.upload_to_atlas", autospec=True)
+@patch("mobster.tekton.common.connect_with_s3")
 async def test_sbom_upload_fallback(
+    mock_connect_to_s3: MagicMock,
     mock_upload_to_atlas: AsyncMock,
     tmp_path: Path,
     tpa_base_url: str,
@@ -157,9 +159,11 @@ async def test_sbom_upload_fallback(
     with open(file_path, "w") as f:
         json.dump(test_data, f)
 
+    client = mock_connect_to_s3.return_value
+
     # mock the atlas upload to raise a transient error
     mock_upload_to_atlas.side_effect = AtlasTransientError
-    await upload_sboms(tmp_path, tpa_base_url, s3_sbom_bucket)
+    await upload_sboms(client, tmp_path, tpa_base_url, s3_sbom_bucket)
 
     # check that the fallback to s3 uploaded the object
     assert await s3_client.exists(key) is True
@@ -270,7 +274,7 @@ async def test_process_component_sboms_happypath(
     """
     data_dir = tmp_path
     snapshot_path = Path("snapshot.json")
-    release_id = ReleaseId.new()
+    ReleaseId.new()
 
     repo_name = "release"
     repo_with_registry = f"{registry_url.removeprefix('http://')}/{repo_name}"
