@@ -15,9 +15,10 @@ from pytest_lazy_fixtures import lf
 from mobster.cmd.generate.oci_index import GenerateOciIndexCommand
 from mobster.cmd.generate.product import ReleaseNotes
 from mobster.cmd.upload.tpa import TPAClient
+from mobster.cmd.upload.upload import TPAUploadReport
 from mobster.image import Image
 from mobster.release import ReleaseId
-from mobster.tekton.common import AtlasTransientError, upload_sboms
+from mobster.tekton.common import upload_sboms
 from mobster.tekton.s3 import S3Client
 from tests.cmd.generate.test_product import verify_product_sbom
 from tests.conftest import GenerateOciImageTestCase
@@ -57,6 +58,8 @@ async def test_create_product_sboms_ta_happypath(
     tmp_path: Path,
 ) -> None:
     data_dir = tmp_path
+    result_dir = tmp_path / "results"
+    result_dir.mkdir()
     snapshot_path = Path("snapshot.json")
     release_data_path = Path("data.json")
     release_id = ReleaseId.new()
@@ -103,6 +106,8 @@ async def test_create_product_sboms_ta_happypath(
             "process_product_sbom",
             "--data-dir",
             data_dir,
+            "--result-dir",
+            result_dir,
             "--snapshot-spec",
             snapshot_path,
             "--release-data",
@@ -118,7 +123,6 @@ async def test_create_product_sboms_ta_happypath(
         check=True,
         capture_output=True,
     )
-
     sbom_digests = parse_digests(result.stdout)
 
     # check that an SBOM was created and contains what is expected
@@ -163,8 +167,7 @@ async def test_sbom_upload_fallback(
     with open(file_path, "w") as f:
         json.dump(test_data, f)
 
-    # mock the atlas upload to raise a transient error
-    mock_upload_to_atlas.side_effect = AtlasTransientError
+    mock_upload_to_atlas.return_value = TPAUploadReport(success=[], failure=[file_path])
     await upload_sboms(tmp_path, tpa_base_url, s3_client)
 
     # check that the fallback to s3 uploaded the object
@@ -275,6 +278,8 @@ async def test_process_component_sboms_happypath(
     and verify results.
     """
     data_dir = tmp_path
+    result_dir = tmp_path / "results"
+    result_dir.mkdir()
     snapshot_path = Path("snapshot.json")
     release_id = ReleaseId.new()
 
@@ -308,6 +313,8 @@ async def test_process_component_sboms_happypath(
             "process_component_sboms",
             "--data-dir",
             data_dir,
+            "--result-dir",
+            result_dir,
             "--snapshot-spec",
             snapshot_path,
             "--atlas-api-url",
