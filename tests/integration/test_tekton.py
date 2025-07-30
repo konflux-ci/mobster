@@ -19,6 +19,12 @@ from mobster.cmd.upload.upload import TPAUploadReport
 from mobster.image import Image
 from mobster.release import ReleaseId
 from mobster.tekton.common import upload_sboms
+from mobster.tekton.report import (
+    COMPONENT_REPORT_NAME,
+    PRODUCT_REPORT_NAME,
+    ComponentReport,
+    ProductReport,
+)
 from mobster.tekton.s3 import S3Client
 from tests.cmd.generate.test_product import verify_product_sbom
 from tests.conftest import GenerateOciImageTestCase
@@ -27,17 +33,20 @@ from tests.integration.oci_client import ReferrersTagOCIClient
 
 async def verify_sboms_in_tpa(
     tpa_client: TPAClient,
-    digests: list[str],
+    report: TPAUploadReport,
 ) -> None:
     """
-    Verify that n_sboms were uploaded to TPA.
+    Verify that the SBOMs in the report exist in TPA.
     """
-    digest_set = set(digests)
+    urn_set = set()
+    for success in report.success:
+        urn_set.add(success.urn)
+
     sbom_gen = tpa_client.list_sboms(query="", sort="ingested")
     async for sbom in sbom_gen:
-        digest_set.remove(sbom.sha256)
+        urn_set.remove(sbom.id)
 
-    assert len(digest_set) == 0, f"Digests of SBOMs not found in TPA: {digest_set}"
+    assert len(urn_set) == 0, f"URNs of SBOMs not found in TPA: {urn_set}"
 
 
 def parse_digests(process_stdout: bytes) -> list[str]:
@@ -99,7 +108,7 @@ async def test_create_product_sboms_ta_happypath(
     with open(data_dir / release_data_path, "w") as fp:
         json.dump(release_data, fp)
 
-    result = subprocess.run(
+    subprocess.run(
         [
             "process_product_sbom",
             "--data-dir",
@@ -116,12 +125,9 @@ async def test_create_product_sboms_ta_happypath(
             s3_sbom_bucket,
             "--release-id",
             str(release_id),
-            "--print-digests",
         ],
         check=True,
-        capture_output=True,
     )
-    sbom_digests = parse_digests(result.stdout)
 
     # check that an SBOM was created and contains what is expected
     with open(data_dir / "sbom" / "sbom.json") as fp:
@@ -134,7 +140,14 @@ async def test_create_product_sboms_ta_happypath(
             release_id,
         )
 
-    await verify_sboms_in_tpa(tpa_client, sbom_digests)
+    report_path = result_dir / PRODUCT_REPORT_NAME
+    assert report_path.exists()
+    with open(report_path) as fp:
+        report = ProductReport.model_validate_json(fp.read())
+
+    # we expect one successful TPA upload
+    assert len(report.mobster_product_report.success) == 1
+    await verify_sboms_in_tpa(tpa_client, report.mobster_product_report)
 
     # check that no SBOMs were added to the bucket (TPA upload succeeded)
     assert await s3_client.is_bucket_empty() is True
@@ -301,7 +314,7 @@ async def test_process_component_sboms_happypath(
     with open(data_dir / snapshot_path, "w") as fp:
         json.dump(snapshot, fp)
 
-    result = subprocess.run(
+    subprocess.run(
         [
             "process_component_sboms",
             "--data-dir",
@@ -316,19 +329,22 @@ async def test_process_component_sboms_happypath(
             s3_sbom_bucket,
             "--release-id",
             str(release_id),
-            "--print-digests",
         ],
         check=True,
-        capture_output=True,
     )
-    sbom_digests = parse_digests(result.stdout)
-
     assert set((data_dir / "sbom").iterdir()) == {
         data_dir / "sbom" / image.digest,
         data_dir / "sbom" / index.digest,
     }
 
-    await verify_sboms_in_tpa(tpa_client, sbom_digests)
+    report_path = result_dir / COMPONENT_REPORT_NAME
+    assert report_path.exists()
+    with open(report_path) as fp:
+        report = ComponentReport.model_validate_json(fp.read())
+
+    # we expect two successful TPA uploads (image and index SBOMs)
+    assert len(report.mobster_component_report.success) == 2
+    await verify_sboms_in_tpa(tpa_client, report.mobster_component_report)
 
     # check that no SBOMs were added to the bucket (TPA upload succeeded)
     assert await s3_client.is_bucket_empty() is True

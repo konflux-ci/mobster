@@ -14,7 +14,6 @@ from mobster.release import ReleaseId
 from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
-    print_digests,
     upload_sboms,
 )
 from mobster.tekton.report import ComponentReport, write_report
@@ -49,7 +48,6 @@ def parse_args() -> ProcessComponentArgs:
         atlas_api_url=args.atlas_api_url,
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
-        print_digests=args.print_digests,
     )
 
 
@@ -91,8 +89,6 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     sbom_dir.mkdir(exist_ok=True)
 
     augment_component_sboms(sbom_dir, args.snapshot_spec, args.release_id)
-    if args.print_digests:
-        await print_digests(list(sbom_dir.iterdir()))
 
     report = await upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
     component_report = ComponentReport(mobster_component_report=report)

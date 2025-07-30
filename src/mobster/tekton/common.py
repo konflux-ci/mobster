@@ -3,14 +3,12 @@ Common utilities for Tekton tasks.
 """
 
 import asyncio
-import hashlib
 import os
 import subprocess
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path
 
-import aiofiles
 from pydantic import ValidationError
 
 from mobster.cmd.upload.upload import TPAUploadReport, UploadExitCode
@@ -40,7 +38,6 @@ class CommonArgs:
     atlas_api_url: str
     retry_s3_bucket: str
     release_id: ReleaseId
-    print_digests: bool
     result_dir: Path
 
 
@@ -57,7 +54,6 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument("--result-dir", type=Path, required=True)
     parser.add_argument("--atlas-api-url", type=str)
     parser.add_argument("--retry-s3-bucket", type=str)
-    parser.add_argument("--print-digests", action="store_true")
 
 
 async def upload_sboms(
@@ -169,28 +165,6 @@ async def upload_to_s3(report: TPAUploadReport, bucket: str) -> None:
     await asyncio.gather(
         *[client.upload_file(failed_sbom) for failed_sbom in report.failure]
     )
-
-
-async def get_sha256_hexdigest(sbom: Path) -> str:
-    """
-    Get sha256 digest of specified SBOM.
-
-    Returns:
-        str: sha256 digest of the SBOM in hex form
-    """
-    async with aiofiles.open(sbom, "rb") as fp:
-        hash_func = hashlib.sha256()
-        while content := await fp.read(8192):
-            hash_func.update(content)
-        return f"sha256:{hash_func.hexdigest()}"
-
-
-async def print_digests(paths: list[Path]) -> None:
-    """
-    Print sha256 hexdigests of SBOMs specified by paths one-per-line to stdout.
-    """
-    digests = await asyncio.gather(*[get_sha256_hexdigest(path) for path in paths])
-    print("\n".join(digests))
 
 
 def atlas_credentials_exist() -> bool:
