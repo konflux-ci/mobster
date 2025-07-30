@@ -13,16 +13,14 @@ from pathlib import Path
 from typing import Any
 
 import aiofiles
+from pydantic import ValidationError
 
 from mobster.cmd.generate.product import ReleaseData
+from mobster.cmd.upload.upload import TPAUploadReport, UploadExitCode
 from mobster.release import ReleaseId, SnapshotModel
 from mobster.tekton.s3 import S3Client
 
 LOGGER = logging.getLogger(__name__)
-
-
-class AtlasTransientError(Exception):
-    """Raised when a transient Atlas error occurs."""
 
 
 class AtlasUploadError(Exception):
@@ -36,6 +34,7 @@ class CommonArgs:
 
     Attributes:
         data_dir: main data directory defined in Tekton task
+        result_dir: path to directory to store results to
         snapshot_spec: path to snapshot spec file
         atlas_api_url: url of the TPA instance to use
         retry_s3_bucket: name of the S3 bucket to use for retries
@@ -49,6 +48,7 @@ class CommonArgs:
     release_id: ReleaseId
     print_digests: bool
     labels: str | None
+    result_dir: Path
 
 
 def add_common_args(parser: ArgumentParser) -> None:
@@ -60,9 +60,10 @@ def add_common_args(parser: ArgumentParser) -> None:
     """
     parser.add_argument("--data-dir", type=Path, required=True)
     parser.add_argument("--snapshot-spec", type=Path, required=True)
+    parser.add_argument("--release-id", type=ReleaseId, required=True)
+    parser.add_argument("--result-dir", type=Path, required=True)
     parser.add_argument("--atlas-api-url", type=str)
     parser.add_argument("--retry-s3-bucket", type=str)
-    parser.add_argument("--release-id", type=ReleaseId, required=True)
     parser.add_argument("--print-digests", action="store_true")
     parser.add_argument("--labels", type=str, help="Labels to attach to uploaded SBOMs")
 
@@ -73,7 +74,7 @@ async def upload_sboms(
     s3_client: S3Client | None,
     concurrency: int,
     labels: str | None = None,
-) -> None:
+) -> TPAUploadReport:
     """
     Upload SBOMs to Atlas with S3 fallback on transient errors.
 
@@ -91,20 +92,35 @@ async def upload_sboms(
     if not atlas_credentials_exist():
         raise ValueError("Missing Atlas authentication.")
 
-    try:
-        LOGGER.info("Starting SBOM upload to Atlas")
-        upload_to_atlas(dirpath, atlas_url, concurrency, labels)
-    except AtlasTransientError as e:
-        if s3_client:
-            if not s3_credentials_exist():
-                raise ValueError("Missing AWS authentication.") from e
-            LOGGER.warning("Encountered transient Atlas error, falling back to S3.")
-            await upload_to_s3(s3_client, dirpath)
+    LOGGER.info("Starting SBOM upload to Atlas")
+    report = upload_to_atlas(dirpath, atlas_url, concurrency, labels)
+    if report.has_failures() and s3_client is not None:
+        LOGGER.warning("Encountered transient Atlas error, falling back to S3.")
+        await handle_atlas_transient_errors(report, s3_client)
+        report.clear_failures()
+
+    return report
+
+
+async def handle_atlas_transient_errors(
+    report: TPAUploadReport, s3_client: S3Client
+) -> None:
+    """
+    Handle Atlas transient errors via the S3 retry mechanism.
+
+    Raises:
+        AtlasUploadError: if the retry_s3_bucket is not specified
+        ValueError: if S3 credentials aren't specified in env
+    """
+    if not s3_credentials_exist():
+        raise ValueError("Missing AWS authentication while attempting S3 retry.")
+
+    await upload_to_s3(report, s3_client)
 
 
 def upload_to_atlas(
     dirpath: Path, atlas_url: str, concurrency: int, labels: str | None
-) -> None:
+) -> TPAUploadReport:
     """
     Upload SBOMs to Atlas TPA instance.
 
@@ -115,35 +131,50 @@ def upload_to_atlas(
         labels: Labels to attach to uploaded SBOMs.
 
     Raises:
-        AtlasTransientError: If a transient error occurs (exit code 2).
         AtlasUploadError: If a non-transient error occurs.
+
+    Returns:
+        TPAUploadReport: Parsed upload report from the upload command.
     """
-    try:
-        cmd: list[str] = [
+    result = subprocess.run(
+        [
             "mobster",
             "--verbose",
             "upload",
             "tpa",
             "--tpa-base-url",
-            str(atlas_url),
+            atlas_url,
             "--from-dir",
-            str(dirpath),
-            "--report",
+            dirpath,
             "--workers",
-            str(concurrency),
-        ]
-        if labels:
-            cmd.extend(["--labels", labels])
+            "--report",
+        ],
+        check=False,
+        capture_output=True,
+    )
+    if result.returncode == 0:
+        return TPAUploadReport.model_validate_json(result.stdout)
 
-        subprocess.run(
-            cmd,
-            check=True,
-            stdout=subprocess.PIPE,
-        )
-    except subprocess.CalledProcessError as err:
-        if err.returncode == 2:
-            raise AtlasTransientError() from err
-        raise AtlasUploadError() from err
+    if result.returncode == UploadExitCode.TRANSIENT_ERROR.value:
+        # special case where all upload errors were only transient we can
+        # handle via the S3 retry mechanism
+        try:
+            return TPAUploadReport.model_validate_json(result.stdout)
+        except ValidationError as err:
+            raise AtlasUploadError(
+                "Atlas upload failed with transient errors and "
+                "the report could not be parsed." + result.stderr.decode("utf-8")
+            ) from err
+
+    # on all other errors, we signal a failure
+    raise AtlasUploadError(result.stderr)
+
+
+async def upload_to_s3(report: TPAUploadReport, client: S3Client) -> None:
+    """ """
+    await asyncio.gather(
+        *[client.upload_file(failed_sbom) for failed_sbom in report.failure]
+    )
 
 
 def connect_with_s3(retry_s3_bucket: str | None) -> S3Client | None:
@@ -174,17 +205,6 @@ def connect_with_s3(retry_s3_bucket: str | None) -> S3Client | None:
     )
 
     return client
-
-
-async def upload_to_s3(s3_client: S3Client, dirpath: Path) -> None:
-    """
-    Upload SBOMs to S3 bucket.
-
-    Args:
-        s3_client: S3Client object
-        dirpath: Directory containing SBOMs to upload.
-    """
-    await s3_client.upload_dir(dirpath)
 
 
 def validate_sbom_input_data(
