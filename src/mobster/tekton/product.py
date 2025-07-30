@@ -62,7 +62,6 @@ def parse_args() -> ProcessProductArgs:
         atlas_api_url=args.atlas_api_url,
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
-        print_digests=args.print_digests,
         concurrency=args.concurrency,
         labels=args.labels,
     )  # pylint:disable=duplicate-code
@@ -132,8 +131,6 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
         args.release_id,
         args.concurrency,
     )
-    if args.print_digests:
-        await print_digests([sbom_path])
 
     report = await upload_sboms(
         sbom_dir, args.atlas_api_url, s3, args.concurrency, args.labels

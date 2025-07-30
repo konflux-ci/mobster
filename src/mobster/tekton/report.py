@@ -1,8 +1,20 @@
+"""
+This module contains data structures used to serialize a Mobster report into
+the result directory. The release pipeline then merges all JSON files in the
+directory into one, so it can be verified for testing purposes.
+
+In the E2E tests, we deserialize the report and verify that there were no
+upload failures and all SBOMs have their Atlas URNs assigned.
+"""
+
 from pathlib import Path
 
 import pydantic
 
 from mobster.cmd.upload.upload import TPAUploadReport
+
+COMPONENT_REPORT_NAME = "mobster_component_report.json"
+PRODUCT_REPORT_NAME = "mobster_product_report.json"
 
 
 class ComponentReport(pydantic.BaseModel):
@@ -36,9 +48,9 @@ def write_report(report: ComponentReport | ProductReport, result_dir: Path) -> N
         result_dir: Path to directory where the report JSON will be written.
     """
     if isinstance(report, ComponentReport):
-        name = "mobster_component_report.json"
+        name = COMPONENT_REPORT_NAME
     else:
-        name = "mobster_product_report.json"
+        name = PRODUCT_REPORT_NAME
 
     with open(result_dir / name, "w", encoding="utf-8") as fp:
         fp.write(report.model_dump_json())
