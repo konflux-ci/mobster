@@ -20,6 +20,7 @@ from mobster.tekton.common import (
     upload_sboms,
     upload_snapshot,
 )
+from mobster.tekton.report import ProductReport, write_report
 
 LOGGER = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ def parse_args() -> ProcessProductArgs:
         data_dir=args.data_dir,
         snapshot_spec=args.data_dir / args.snapshot_spec,
         release_data=args.data_dir / args.release_data,
+        result_dir=args.data_dir / args.result_dir,
         atlas_api_url=args.atlas_api_url,
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
@@ -133,7 +135,11 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     if args.print_digests:
         await print_digests([sbom_path])
 
-    await upload_sboms(sbom_dir, args.atlas_api_url, s3, args.concurrency, args.labels)
+    report = await upload_sboms(
+        sbom_dir, args.atlas_api_url, s3, args.concurrency, args.labels
+    )
+    product_report = ProductReport(mobster_product_report=report)
+    write_report(product_report, args.result_dir)
 
 
 def main() -> None:

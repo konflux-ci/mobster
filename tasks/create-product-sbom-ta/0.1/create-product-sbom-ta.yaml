@@ -98,6 +98,10 @@ spec:
       default: "8"
       type: string
 
+    - name: resultsDirPath
+      type: string
+      description: Path to directory in the dataDir to store JSON task results to.
+
   workspaces:
     - name: data
       description: Used as a working directory.
@@ -203,6 +207,7 @@ spec:
 
         process_product_sbom \
           --data-dir "$(params.dataDir)" \
+          --result-dir "$(params.resultsDirPath)" \
           --snapshot-spec "$(params.snapshotSpec)" \
           --release-data "$(params.releaseData)" \
           --atlas-api-url "$(params.atlasApiUrl)" \

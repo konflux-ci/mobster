@@ -53,6 +53,18 @@ class TPAUploadReport(pydantic.BaseModel):
     success: list[TPAUploadSuccess]
     failure: list[Path]
 
+    def has_failures(self) -> bool:
+        """
+        Returns true if any uploads failed.
+        """
+        return len(self.failure) != 0
+
+    def clear_failures(self) -> None:
+        """
+        Clears the recorded failures.
+        """
+        self.failure = []
+
     @staticmethod
     def build_report(
         results: list[tuple[Path, BaseException | str]],

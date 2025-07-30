@@ -19,6 +19,7 @@ from mobster.tekton.common import (
     upload_sboms,
     upload_snapshot,
 )
+from mobster.tekton.report import ComponentReport, write_report
 
 LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ def parse_args() -> ProcessComponentArgs:
     # the path as relative to the dataDir
     return ProcessComponentArgs(
         data_dir=args.data_dir,
+        result_dir=args.data_dir / args.result_dir,
         snapshot_spec=args.data_dir / args.snapshot_spec,
         atlas_api_url=args.atlas_api_url,
         retry_s3_bucket=args.retry_s3_bucket,
@@ -117,9 +119,11 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     if args.print_digests:
         await print_digests(list(sbom_dir.iterdir()))
 
-    await upload_sboms(
+    report = await upload_sboms(
         sbom_dir, args.atlas_api_url, s3, args.upload_concurrency, args.labels
     )
+    component_report = ComponentReport(mobster_component_report=report)
+    write_report(component_report, args.result_dir)
 
 
 def main() -> None:
