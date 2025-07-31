@@ -13,9 +13,10 @@ from typing import Any
 
 import aiofiles
 
+from mobster.cmd.generate.product import ReleaseData
 from mobster.release import ReleaseId, SnapshotModel
 from mobster.tekton.s3 import S3Client
-from mobster.cmd.generate.product import ReleaseData
+
 
 class AtlasTransientError(Exception):
     """Raised when a transient Atlas error occurs."""
@@ -166,7 +167,7 @@ async def upload_to_s3(s3_client: S3Client | None, dirpath: Path) -> None:
 
 def validate_sbom_input_data(
     sbom_input_file: Path,
-    obj: SnapshotModel | ReleaseData,
+    obj: type[SnapshotModel] | type[ReleaseData],
 ) -> Any:
     """
     Store SBOM Input data for release_data to S3 bucket.
@@ -196,7 +197,7 @@ async def upload_snapshot(
     """
     if s3_client is None:
         return
-    snapshot = validate_sbom_input_data(sbom_input_file, SnapshotModel)  # type: ignore[arg-type]
+    snapshot = validate_sbom_input_data(sbom_input_file, SnapshotModel)
     await s3_client.upload_input_data(snapshot, release_id)
 
 
@@ -213,7 +214,7 @@ async def upload_release_data(
     """
     if s3_client is None:
         return
-    release_data = validate_sbom_input_data(sbom_input_file, ReleaseData)  # type: ignore[arg-type]
+    release_data = validate_sbom_input_data(sbom_input_file, ReleaseData)
     await s3_client.upload_input_data(release_data, release_id)
 
 

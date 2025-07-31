@@ -5,7 +5,6 @@ import pytest
 from pytest import MonkeyPatch
 
 from mobster.tekton.common import AtlasTransientError, upload_sboms
-from mobster.tekton.s3 import S3Client
 
 
 @patch("mobster.tekton.common.upload_to_s3")
