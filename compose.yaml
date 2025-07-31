@@ -3,7 +3,7 @@ services:
   zot:
     image: ghcr.io/project-zot/zot:latest
     ports:
-      - "9000:8080"
+      - "9000:9000"
     volumes:
       - ./hack/tests/zot.config.json:/etc/zot/config.json:ro
       - zot-data:/tmp/zot
@@ -19,9 +19,9 @@ services:
   minio:
     image: "quay.io/minio/minio:latest"
     ports:
-      - "9900:9000"
-      - "9901:9001"  # Web UI
-    command: ["server", "--console-address", ":9001", "/data"]
+      - "9900:9900"
+      - "9901:9901"  # Web UI
+    command: ["server", "--address", ":9900", "--console-address", ":9901", "/data"]
     environment:
       MINIO_ROOT_USER: minioAccessKey
       MINIO_ROOT_PASSWORD: minioSecretKey
@@ -33,9 +33,10 @@ services:
     restart: on-failure
     entrypoint: >
       /bin/sh -c "
-      sleep 5;
-      mc alias set minio http://minio:9000 minioAccessKey minioSecretKey && \
-        mc mb minio/sboms;
+      until mc alias set minio http://minio:9900 minioAccessKey minioSecretKey; do sleep 1; done;
+      until mc mb minio/sboms; do sleep 1; done;
+      echo "Created buckets";
+      exit 0;
       "
 
 volumes:

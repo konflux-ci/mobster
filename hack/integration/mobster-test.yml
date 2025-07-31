@@ -1,0 +1,147 @@
+---
+kind: Pipeline
+apiVersion: tekton.dev/v1beta1
+metadata:
+  name: mobster-test
+spec:
+  workspaces:
+    - name: relevant-data
+  params:
+    - description: 'Snapshot of the application'
+      name: SNAPSHOT
+      type: string
+  tasks:
+    - name: prepare-metadata
+      workspaces:
+        - workspace: relevant-data
+      params:
+        # SNAPSHOT is auto-injected by Konflux. See
+        # https://konflux-ci.dev/docs/testing/integration/creating/
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+      taskSpec:
+        params:
+          - name: SNAPSHOT
+          - name: component_name
+            type: string
+            default: "mobster-f7a65"
+        results:
+          - name: image_ref
+            description: Image reference
+        steps:
+          - name: parse-snapshot-clone-repo
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            env:
+              - name: SNAPSHOT
+                value: $(params.SNAPSHOT)
+            script: |
+              #!/bin/bash
+              set -e
+              dnf -y install jq git
+              image_ref=$(jq -r '.components[] | select(.name == "$(params.component_name)") | .containerImage' <<< "${SNAPSHOT}")
+              git_url=$(jq -r '.components[] | select(.name == "$(params.component_name)") | .source.git.url' <<< "${SNAPSHOT}")
+              revision=$(jq -r '.components[] | select(.name == "$(params.component_name)") | .source.git.revision' <<< "${SNAPSHOT}")
+              echo -n "${image_ref}" | tee $(results.image_ref.path)
+
+              git --version
+              git clone "${git_url}" $(workspaces.relevant-data.path)/SOURCE_CODE
+              cd $(workspaces.relevant-data.path)/SOURCE_CODE
+              git checkout "${revision}"
+
+
+    - name: test-mobster
+      runAfter:
+        - prepare-metadata
+      workspaces:
+        - workspace: relevant-data
+
+      taskSpec:
+        volumes:
+          - name: zot-data
+            emptyDir: {}
+        sidecars:
+          - name: minio
+            image: quay.io/minio/minio:latest
+            env:
+              - name: MINIO_ROOT_USER
+                value: minioAccessKey
+              - name: MINIO_ROOT_PASSWORD
+                value: minioSecretKey
+            command:
+              - "minio"
+              - "server"
+              - "--address"
+              - ":9900"
+              - "--console-address"
+              - ":9901"
+              - "/data"
+          - name: zot
+            image: ghcr.io/project-zot/zot:latest
+            volumeMounts:
+              - name: zot-data
+                mountPath: /tmp/zot
+              - name: $(workspaces.relevant-data.volume)
+                mountPath: $(workspaces.relevant-data.path)
+            args:
+              - "serve"
+              - "$(workspaces.relevant-data.path)/SOURCE_CODE/hack/tests/zot.config.json"
+
+          - name: tpa
+            image: quay.io/redhat-user-workloads/the-collective-tenant/mobster-test-tpa:latest
+
+          - name: createbuckets
+            image: quay.io/minio/mc:latest
+            command:
+              - "/bin/sh"
+              - "-c"
+              - >
+                  until mc alias set minio http://localhost:9900 minioAccessKey minioSecretKey; do sleep 1; done;
+                  until mc mb minio/sboms; do sleep 1; done;
+                  echo "Created buckets";
+                  exit 0;
+        results:
+          - name: TEST_OUTPUT
+            description: Test output
+        steps:
+          - name: deploy-mobster-tests
+            image: $(tasks.prepare-metadata.results.image_ref)
+            script: |
+              #!/bin/bash
+              set -e
+              cd "$(workspaces.relevant-data.path)/SOURCE_CODE"
+              python3 -m venv .venv
+              source .venv/bin/activate
+              python3 -m pip install poetry
+              poetry install
+              # We need to install mobster package as a dependency for some
+              # integration tests, but we don't want to change the script itself.
+              # Poetry installs both, so we need to remove the installed mobster
+              # script to use the original one.
+              rm -f $(which mobster)
+
+              echo "Using mobster application at $(which mobster)"
+              echo "Using pytest at $(which pytest)"
+              echo "Using python at $(which python3)"
+              echo "Mobster package at: $(python3 -c 'import mobster; print(mobster.__file__)')"
+
+              set +e
+              # The tests can fail, but we want to capture the results anyway
+
+              pytest -v --report-log=test-results.log tests/integration
+
+              if [ $? -eq 0 ]; then
+                RESULT="SUCCESS"
+              else
+                RESULT="FAILURE"
+              fi
+
+              test_calls=$(grep '"when": "call"' test-results.log)
+              failures=$(grep -c '"outcome": "failed"' <<< $test_calls)
+              successes=$(grep -c '"outcome": "passed"' <<< $test_calls)
+              warnings=$(grep -ic 'warning' test-results.log)
+
+              TEST_OUTPUT="{ \
+              \"result\": \"$RESULT\", \"timestamp\": \"$(date -u --iso-8601=seconds)\", \
+              \"failures\": $failures, \"successes\": $successes,\"warnings\": $warnings \
+              }"
+              echo -n "${TEST_OUTPUT}" | tee $(results.TEST_OUTPUT.path)

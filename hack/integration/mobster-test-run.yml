@@ -1,0 +1,24 @@
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: mobster-test-pipelinerun-
+spec:
+  pipelineRef:
+    resolver: git
+    params:
+      - name: url
+        value: https://github.com/konflux-ci/mobster
+      - name: revision
+        value: ISV-6092
+      - name: pathInRepo
+        value: hack/integration/mobster-test.yml
+  workspaces:
+    - name: relevant-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
