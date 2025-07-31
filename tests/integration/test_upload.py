@@ -13,7 +13,7 @@ TESTDATA_PATH = Path(__file__).parent.parent / "data"
 
 
 URN_PATTERN = re.compile(
-    r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+    r".*urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 )
 
 
@@ -30,7 +30,7 @@ def assert_report(actual: TPAUploadReport, expected: TPAUploadReport) -> None:
     assert set(map(get_path, actual.success)) == set(map(get_path, expected.success))
 
     for success in actual.success:
-        assert URN_PATTERN.match(success.urn) is not None
+        assert URN_PATTERN.match(success.url) is not None
 
 
 @pytest.mark.asyncio
@@ -48,7 +48,7 @@ async def test_upload_tpa_file_integration(
     )
 
     expected_report = TPAUploadReport(
-        success=[TPAUploadSuccess(path=test_sbom_path, urn="")],
+        success=[TPAUploadSuccess(path=test_sbom_path, url="")],
         failure=[],
     )
 
