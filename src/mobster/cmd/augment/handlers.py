@@ -42,6 +42,20 @@ class SPDXPackage:
         self.package["externalRefs"] = value
 
     @property
+    def arch(self) -> str | None:
+        """
+        Get the architecture of the package.
+
+        Returns:
+            str | None: The architecture of the package, or None if not specified.
+        """
+        refs = self.external_refs
+        for ref in refs:
+            if ref.get("referenceType") == "purl":
+                return get_purl_arch(ref["referenceLocator"])
+        return None
+
+    @property
     def spdxid(self) -> Any:
         """
         Return the SPDXID field value of the package.
@@ -263,6 +277,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
             image,
             component.repository,
             component.tags,
+            arch=image_package.arch,  # propagate the arch from the package
         )
 
     def update_sbom(
