@@ -62,7 +62,7 @@ async def test_upload_dir(s3_client: S3Client, tmp_path: Path) -> None:
                     )
                 ]
             ),
-            "upload_snapshot",
+            "upload_input_data",
             "snapshot_prefix",
             "test-release-123",
             id="snapshot",
@@ -75,7 +75,7 @@ async def test_upload_dir(s3_client: S3Client, tmp_path: Path) -> None:
                     cpe="cpe:/a:redhat:test_product:1.0.0",
                 )
             ),
-            "upload_release_data",
+            "upload_input_data",
             "release_data_prefix",
             "test-release-456",
             id="release_data",
