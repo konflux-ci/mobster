@@ -11,6 +11,9 @@ from pathlib import Path
 
 from mobster.log import setup_logging
 from mobster.release import ReleaseId
+from mobster.tekton.artifact import (
+    get_component_artifact,
+)
 from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
@@ -18,7 +21,6 @@ from mobster.tekton.common import (
     upload_sboms,
     upload_snapshot,
 )
-from mobster.tekton.report import ComponentReport, write_report
 
 LOGGER = logging.getLogger(__name__)
 
@@ -111,11 +113,15 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
 
     LOGGER.info("Starting SBOM augmentation")
+    augment_component_sboms(
+        sbom_dir, args.snapshot_spec, args.release_id, args.augment_concurrency
+    )
+
     report = await upload_sboms(
         sbom_dir, args.atlas_api_url, s3, args.upload_concurrency, args.labels
     )
-    component_report = ComponentReport(mobster_component_report=report)
-    write_report(component_report, args.result_dir)
+    artifact = get_component_artifact(report)
+    artifact.write_result(args.result_dir)
 
 
 def main() -> None:

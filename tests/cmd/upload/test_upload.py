@@ -233,7 +233,7 @@ async def test_execute_upload_mixed_results(
         success=[
             TPAUploadSuccess(
                 path=Path("/test/dir/file1.json"),
-                urn="urn:uuid:12345678-1234-5678-9012-123456789012",
+                url="https://test.tpa.url/sboms/urn:uuid:12345678-1234-5678-9012-123456789012",
             )
         ],
         failure=[Path("/test/dir/file2.json")],

@@ -11,16 +11,15 @@ from pathlib import Path
 
 from mobster.log import setup_logging
 from mobster.release import ReleaseId
+from mobster.tekton.artifact import get_product_artifact
 from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
     connect_with_s3,
-    print_digests,
     upload_release_data,
     upload_sboms,
     upload_snapshot,
 )
-from mobster.tekton.report import ProductReport, write_report
 
 LOGGER = logging.getLogger(__name__)
 
@@ -135,8 +134,8 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     report = await upload_sboms(
         sbom_dir, args.atlas_api_url, s3, args.concurrency, args.labels
     )
-    product_report = ProductReport(mobster_product_report=report)
-    write_report(product_report, args.result_dir)
+    artifact = get_product_artifact(report)
+    artifact.write_result(args.result_dir)
 
 
 def main() -> None:
