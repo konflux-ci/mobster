@@ -1,4 +1,5 @@
 ARG ALPINE_TAG=3.10
+ARG UBI_IMAGE="registry.access.redhat.com/ubi9/ubi:latest"
 
 FROM registry.access.redhat.com/ubi8/ubi:latest
 
@@ -15,7 +16,7 @@ FROM scratch AS nothing
 COPY --from=build --chown=nobody:nobody abc .
 RUN echo "foo"
 
-FROM registry.access.redhat.com/ubi9/ubi:latest AS foo
+FROM ${UBI_IMAGE} AS foo
 CMD ["echo hi"]
 
 FROM registry.access.redhat.com/ubi8/ubi:latest AS bar

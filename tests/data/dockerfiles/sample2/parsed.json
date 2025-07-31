@@ -5,6 +5,12 @@
       "DefaultValue": "3.10",
       "ProvidedValue": null,
       "Value": "3.10"
+    },
+    {
+      "Key": "UBI_IMAGE",
+      "DefaultValue": "\"registry.access.redhat.com/ubi9/ubi:latest\"",
+      "ProvidedValue": null,
+      "Value": "\"registry.access.redhat.com/ubi9/ubi:latest\""
     }
   ],
   "Stages": [
@@ -18,11 +24,11 @@
       "Location": [
         {
           "Start": {
-            "Line": 3,
+            "Line": 4,
             "Character": 0
           },
           "End": {
-            "Line": 3,
+            "Line": 4,
             "Character": 0
           }
         }
@@ -60,11 +66,11 @@
       "Location": [
         {
           "Start": {
-            "Line": 6,
+            "Line": 7,
             "Character": 0
           },
           "End": {
-            "Line": 6,
+            "Line": 7,
             "Character": 0
           }
         }
@@ -109,11 +115,11 @@
       "Location": [
         {
           "Start": {
-            "Line": 11,
+            "Line": 12,
             "Character": 0
           },
           "End": {
-            "Line": 11,
+            "Line": 12,
             "Character": 0
           }
         }
@@ -150,11 +156,11 @@
       "Location": [
         {
           "Start": {
-            "Line": 14,
+            "Line": 15,
             "Character": 0
           },
           "End": {
-            "Line": 14,
+            "Line": 15,
             "Character": 0
           }
         }
@@ -198,25 +204,25 @@
     {
       "Name": "foo",
       "OrigCmd": "FROM",
-      "BaseName": "registry.access.redhat.com/ubi9/ubi:latest",
+      "BaseName": "\"registry.access.redhat.com/ubi9/ubi:latest\"",
       "Platform": "",
       "Comment": "",
-      "SourceCode": "FROM registry.access.redhat.com/ubi9/ubi:latest AS foo",
+      "SourceCode": "FROM ${UBI_IMAGE} AS foo",
       "Location": [
         {
           "Start": {
-            "Line": 18,
+            "Line": 19,
             "Character": 0
           },
           "End": {
-            "Line": 18,
+            "Line": 19,
             "Character": 0
           }
         }
       ],
       "As": "foo",
       "From": {
-        "Image": "registry.access.redhat.com/ubi9/ubi:latest"
+        "Image": "\"registry.access.redhat.com/ubi9/ubi:latest\""
       },
       "Commands": [
         {
@@ -242,11 +248,11 @@
       "Location": [
         {
           "Start": {
-            "Line": 21,
+            "Line": 22,
             "Character": 0
           },
           "End": {
-            "Line": 21,
+            "Line": 22,
             "Character": 0
           }
         }

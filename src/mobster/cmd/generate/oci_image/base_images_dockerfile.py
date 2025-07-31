@@ -79,7 +79,7 @@ async def get_base_images_refs_from_dockerfile(
         base_name: str = stage.get("BaseName")
         if is_actually_image and base_name and not base_name.startswith("oci-archive:"):
             # flatpak archives are not real base images. So we skip them
-            base_images_pullspecs.append(base_name)
+            base_images_pullspecs.append(base_name.strip("'\""))
 
         # Don't include images after the target used for build
         alias = stage.get("As")
@@ -155,8 +155,8 @@ async def get_image_objects_from_file(base_images_digests: Path) -> dict[str, Im
     for line in get_base_images_digests_lines(base_images_digests):
         line = line.strip()
         image_ref, image_full_reference = re.split(r"\s+", line)
-        image_obj = Image.from_oci_artifact_reference(image_full_reference)
-        base_images_mapping[image_ref] = image_obj
+        image_obj = Image.from_oci_artifact_reference(image_full_reference.strip("'\""))
+        base_images_mapping[image_ref.strip("'\"")] = image_obj
     return base_images_mapping
 
 
