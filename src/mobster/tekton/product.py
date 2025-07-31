@@ -111,6 +111,8 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     create_product_sbom(
         sbom_path, args.snapshot_spec, args.release_data, args.release_id
     )
+    if args.print_digests:
+        await print_digests([sbom_path])
 
     await upload_sboms(client, sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
 

@@ -274,7 +274,7 @@ async def test_process_component_sboms_happypath(
     """
     data_dir = tmp_path
     snapshot_path = Path("snapshot.json")
-    ReleaseId.new()
+    release_id = ReleaseId.new()
 
     repo_name = "release"
     repo_with_registry = f"{registry_url.removeprefix('http://')}/{repo_name}"

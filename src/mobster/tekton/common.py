@@ -2,19 +2,20 @@
 Common utilities for Tekton tasks.
 """
 
+import asyncio
+import hashlib
 import os
 import subprocess
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from typing import Any
 
 import aiofiles
 
-from mobster.release import ReleaseId
+from mobster.release import ReleaseId, SnapshotModel
 from mobster.tekton.s3 import S3Client
-
+from mobster.cmd.generate.product import ReleaseData
 
 class AtlasTransientError(Exception):
     """Raised when a transient Atlas error occurs."""
@@ -214,28 +215,6 @@ async def upload_release_data(
         return
     release_data = validate_sbom_input_data(sbom_input_file, ReleaseData)  # type: ignore[arg-type]
     await s3_client.upload_input_data(release_data, release_id)
-
-
-async def get_sha256_hexdigest(sbom: Path) -> str:
-    """
-    Get sha256 digest of specified SBOM.
-
-    Returns:
-        str: sha256 digest of the SBOM in hex form
-    """
-    async with aiofiles.open(sbom, "rb") as fp:
-        hash_func = hashlib.sha256()
-        while content := await fp.read(8192):
-            hash_func.update(content)
-        return f"sha256:{hash_func.hexdigest()}"
-
-
-async def print_digests(paths: list[Path]) -> None:
-    """
-    Print sha256 hexdigests of SBOMs specified by paths one-per-line to stdout.
-    """
-    digests = await asyncio.gather(*[get_sha256_hexdigest(path) for path in paths])
-    print("\n".join(digests))
 
 
 async def get_sha256_hexdigest(sbom: Path) -> str:
