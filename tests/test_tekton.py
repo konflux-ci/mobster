@@ -67,13 +67,16 @@ class TestUploadToAtlas:
     def test_success(self, subprocess_mock: MagicMock) -> None:
         """Test that a succesful upload returns a report."""
         report = TPAUploadReport(
-            success=[TPAUploadSuccess(path=Path("dummy"), urn="urn")], failure=[]
+            success=[
+                TPAUploadSuccess(path=Path("dummy"), url="https://atlas.net/sboms/urn")
+            ],
+            failure=[],
         )
         subprocess_mock.returncode = 0
         subprocess_mock.stdout = report.model_dump_json().encode()
         subprocess_mock.stderr = b""
 
-        assert report == upload_to_atlas(Path("dummy"), "atlas_url")
+        assert report == upload_to_atlas(Path("dummy"), "https://atlas.net")
 
     def test_transient_error(self, subprocess_mock: MagicMock) -> None:
         """Test that a transient error returns a report."""
