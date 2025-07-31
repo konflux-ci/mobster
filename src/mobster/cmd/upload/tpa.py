@@ -31,7 +31,7 @@ class TPAClient(OIDCClientCredentialsClient):
             sbom_filepath(str): filepath to SBOM data to upload
 
         Returns:
-            Any: Response from API
+            str: URN of the uploaded SBOM
         """
         url = "api/v2/sbom"
         headers = {"content-type": "application/json"}

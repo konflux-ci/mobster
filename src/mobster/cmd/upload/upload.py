@@ -4,6 +4,7 @@ import asyncio
 import glob
 import logging
 import os
+import posixpath
 import time
 from enum import Enum
 from pathlib import Path
@@ -33,11 +34,11 @@ class TPAUploadSuccess(pydantic.BaseModel):
 
     Attributes:
         path: Filesystem path of the uploaded SBOM.
-        urn: Uniform Resource Name in TPA of the uploaded SBOM.
+        url: URL in TPA of the uploaded SBOM.
     """
 
     path: Path
-    urn: str
+    url: str
 
 
 class TPAUploadReport(pydantic.BaseModel):
@@ -66,6 +67,7 @@ class TPAUploadReport(pydantic.BaseModel):
 
     @staticmethod
     def build_report(
+        tpa_base_url: str,
         results: list[tuple[Path, BaseException | str]],
     ) -> "TPAUploadReport":
         """Build an upload report from upload results.
@@ -77,8 +79,12 @@ class TPAUploadReport(pydantic.BaseModel):
         Returns:
             TPAUploadReport instance with successful and failed uploads categorized.
         """
+        # it's quite the hack to use posixpath for url joining, but
+        # urllib.parse.urljoin has complex error-prone behaviour which is not
+        # needed here
+        sboms_url = posixpath.join(tpa_base_url, "sboms")
         success = [
-            TPAUploadSuccess(path=path, urn=urn)
+            TPAUploadSuccess(path=path, url=posixpath.join(sboms_url, urn))
             for path, urn in results
             if isinstance(urn, str)
         ]
@@ -148,6 +154,9 @@ class TPAUploadCommand(Command):
             tpa_url (str): Base URL for the TPA API
             semaphore (asyncio.Semaphore): A semaphore to limit the number
             of concurrent uploads
+
+        Returns:
+            str: URL of the uploaded SBOM
         """
         async with semaphore:
             client = TPAClient(
@@ -158,9 +167,9 @@ class TPAUploadCommand(Command):
             filename = sbom_file.name
             start_time = time.time()
             try:
-                resp = await client.upload_sbom(sbom_file)
+                urn = await client.upload_sbom(sbom_file)
                 LOGGER.info("Successfully uploaded %s to TPA", sbom_file)
-                return resp
+                return urn
             except Exception:  # pylint: disable=broad-except
                 LOGGER.exception(
                     "Error uploading %s and took %s", filename, time.time() - start_time
@@ -199,7 +208,9 @@ class TPAUploadCommand(Command):
         self.set_exit_code(results)
 
         LOGGER.info("Upload complete")
-        return TPAUploadReport.build_report(list(zip(sbom_files, results, strict=True)))
+        return TPAUploadReport.build_report(
+            tpa_url, list(zip(sbom_files, results, strict=True))
+        )
 
     def set_exit_code(self, results: list[BaseException | str]) -> None:
         """
