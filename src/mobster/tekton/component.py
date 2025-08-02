@@ -14,8 +14,10 @@ from mobster.release import ReleaseId
 from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
+    connect_with_s3,
     print_digests,
     upload_sboms,
+    upload_snapshot,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -87,12 +89,14 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     """
     sbom_dir = args.data_dir / "sbom"
     sbom_dir.mkdir(exist_ok=True)
+    client = connect_with_s3(args.retry_s3_bucket)
 
+    await upload_snapshot(client, args.snapshot_spec, args.release_id)
     augment_component_sboms(sbom_dir, args.snapshot_spec, args.release_id)
     if args.print_digests:
         await print_digests(list(sbom_dir.iterdir()))
 
-    await upload_sboms(sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
+    await upload_sboms(client, sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
 
 
 def main() -> None:
