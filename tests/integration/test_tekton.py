@@ -71,7 +71,6 @@ async def test_create_product_sboms_ta_happypath(
                 "containerImage": f"{repo_with_registry}@{image.digest}",
                 "rh-registry-repo": "registry.redhat.io/test",
                 "tags": ["latest"],
-                "repository": repo_with_registry,
             }
         ]
     }
@@ -292,7 +291,6 @@ async def test_process_component_sboms_happypath(
                 "containerImage": f"{repo_with_registry}@{index.digest}",
                 "rh-registry-repo": "registry.redhat.io/test",
                 "tags": ["latest", "1.0"],
-                "repository": repo_with_registry,
             }
         ]
     }

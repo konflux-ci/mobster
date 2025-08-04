@@ -306,7 +306,6 @@ def generate_and_store_snapshot(index_image: Image, output_dir: Path) -> Path:
                 "name": index_image.name,
                 "containerImage": index_image.reference,
                 "rh-registry-repo": "registry.redhat.io/sample/test-repo",
-                "repository": index_image.repository,
                 "tags": ["1.0", "latest"],
             }
         ]
