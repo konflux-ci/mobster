@@ -9,10 +9,12 @@ import subprocess
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import aiofiles
 
-from mobster.release import ReleaseId
+from mobster.cmd.generate.product import ReleaseData
+from mobster.release import ReleaseId, SnapshotModel
 from mobster.tekton.s3 import S3Client
 
 
@@ -60,12 +62,16 @@ def add_common_args(parser: ArgumentParser) -> None:
 
 
 async def upload_sboms(
-    dirpath: Path, atlas_url: str, retry_s3_bucket: str | None
+    s3_client: S3Client | None,
+    dirpath: Path,
+    atlas_url: str,
+    retry_s3_bucket: str | None,
 ) -> None:
     """
     Upload SBOMs to Atlas with S3 fallback on transient errors.
 
     Args:
+        s3_client: S3Client object
         dirpath: Directory containing SBOMs to upload.
         atlas_url: URL of the Atlas TPA instance.
         retry_s3_bucket: S3 bucket name for retry uploads.
@@ -83,7 +89,7 @@ async def upload_sboms(
         if retry_s3_bucket:
             if not s3_credentials_exist():
                 raise ValueError("Missing AWS authentication.") from e
-            await upload_to_s3(dirpath, retry_s3_bucket)
+            await upload_to_s3(s3_client, dirpath)
 
 
 def upload_to_atlas(dirpath: Path, atlas_url: str) -> None:
@@ -120,16 +126,22 @@ def upload_to_atlas(dirpath: Path, atlas_url: str) -> None:
         raise AtlasUploadError() from err
 
 
-async def upload_to_s3(dirpath: Path, bucket: str) -> None:
+def connect_with_s3(retry_s3_bucket: str) -> S3Client | None:
     """
-    Upload SBOMs to S3 bucket.
+    Connect with AWS S3 using S3Client.
 
     Args:
-        dirpath: Directory containing SBOMs to upload.
-        bucket: S3 bucket name.
+        retry_s3_bucket: S3 bucket name.
+
+    Returns:
+        client: S3Client object
     """
+    if not retry_s3_bucket:
+        return None
+    if not s3_credentials_exist():
+        raise ValueError("Missing AWS authentication.")
     client = S3Client(
-        bucket=bucket,
+        bucket=retry_s3_bucket,
         access_key=os.environ["AWS_ACCESS_KEY_ID"],
         secret_key=os.environ["AWS_SECRET_ACCESS_KEY"],
         endpoint_url=os.environ.get(
@@ -137,7 +149,73 @@ async def upload_to_s3(dirpath: Path, bucket: str) -> None:
         ),  # configurable for testing purposes
     )
 
-    await client.upload_dir(dirpath)
+    return client
+
+
+async def upload_to_s3(s3_client: S3Client | None, dirpath: Path) -> None:
+    """
+    Upload SBOMs to S3 bucket.
+
+    Args:
+        s3_client: S3Client object
+        dirpath: Directory containing SBOMs to upload.
+    """
+    if s3_client is None:
+        return
+    await s3_client.upload_dir(dirpath)
+
+
+def validate_sbom_input_data(
+    sbom_input_file: Path,
+    obj: type[SnapshotModel] | type[ReleaseData],
+) -> Any:
+    """
+    Validate SBOM Input data.
+
+    Args:
+        sbom_input_file: File path of SBOM input data
+        obj: The data model to validate the input data file.
+
+    Returns:
+        validated_data: The input data validated by Data Model
+    """
+    with open(sbom_input_file, encoding="utf-8") as fp:
+        validated_data = obj.model_validate_json(fp.read())
+    return validated_data
+
+
+async def upload_snapshot(
+    s3_client: S3Client | None, sbom_input_file: Path, release_id: ReleaseId
+) -> None:
+    """
+    Upload a snapshot to S3 bucket with prefix.
+
+    Args:
+        s3_client: S3Client object
+        sbom_input_file: File path of SBOM input data
+        release_id: The release ID to use as the object key.
+    """
+    if s3_client is None:
+        return
+    snapshot = validate_sbom_input_data(sbom_input_file, SnapshotModel)
+    await s3_client.upload_input_data(snapshot, release_id)
+
+
+async def upload_release_data(
+    s3_client: S3Client | None, sbom_input_file: Path, release_id: ReleaseId
+) -> None:
+    """
+    Upload release data to S3 bucket with prefix.
+
+    Args:
+        s3_client: S3Client object
+        sbom_input_file: File path of SBOM input data
+        release_id: The release ID to use as the object key.
+    """
+    if s3_client is None:
+        return
+    release_data = validate_sbom_input_data(sbom_input_file, ReleaseData)
+    await s3_client.upload_input_data(release_data, release_id)
 
 
 async def get_sha256_hexdigest(sbom: Path) -> str:

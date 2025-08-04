@@ -96,6 +96,9 @@ async def test_create_product_sboms_ta_happypath(
     with open(data_dir / release_data_path, "w") as fp:
         json.dump(release_data, fp)
 
+    assert not await s3_client.exists(f"snapshots/{release_id}")
+    assert not await s3_client.exists(f"release-data/{release_id}")
+
     result = subprocess.run(
         [
             "process_product_sbom",
@@ -133,7 +136,8 @@ async def test_create_product_sboms_ta_happypath(
     await verify_sboms_in_tpa(tpa_client, sbom_digests)
 
     # check that no SBOMs were added to the bucket (TPA upload succeeded)
-    assert await s3_client.is_bucket_empty() is True
+    assert await s3_client.exists(f"snapshots/{release_id}")
+    assert await s3_client.exists(f"release-data/{release_id}")
 
 
 @pytest.mark.asyncio
@@ -159,7 +163,7 @@ async def test_sbom_upload_fallback(
 
     # mock the atlas upload to raise a transient error
     mock_upload_to_atlas.side_effect = AtlasTransientError
-    await upload_sboms(tmp_path, tpa_base_url, s3_sbom_bucket)
+    await upload_sboms(s3_client, tmp_path, tpa_base_url, s3_sbom_bucket)
 
     # check that the fallback to s3 uploaded the object
     assert await s3_client.exists(key) is True
@@ -296,6 +300,8 @@ async def test_process_component_sboms_happypath(
     with open(data_dir / snapshot_path, "w") as fp:
         json.dump(snapshot, fp)
 
+    assert not await s3_client.exists(f"snapshots/{release_id}")
+
     result = subprocess.run(
         [
             "process_component_sboms",
@@ -324,4 +330,4 @@ async def test_process_component_sboms_happypath(
     await verify_sboms_in_tpa(tpa_client, sbom_digests)
 
     # check that no SBOMs were added to the bucket (TPA upload succeeded)
-    assert await s3_client.is_bucket_empty() is True
+    assert await s3_client.exists(f"snapshots/{release_id}")
