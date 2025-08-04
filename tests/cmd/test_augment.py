@@ -13,6 +13,7 @@ from packageurl import PackageURL
 
 from mobster.cmd.augment import (
     AugmentImageCommand,
+    get_sbom_to_filename_dict,
     update_sbom,
     verify_sbom,
 )
@@ -371,6 +372,32 @@ def load_provenance(prov_dir: Path, digest: str) -> Provenance02 | None:
             )
 
     return None
+
+
+def test_get_sbom_to_filename_dict_duplicate_prevention() -> None:
+    """
+    Test the get_sbom_to_filename_dict functions correctly handles SBOMs with
+    duplicate image references.
+    """
+    sbom1 = SBOM({}, "digest1", "quay.io/repo@sha256:aaaaaaaa")
+    sbom2 = SBOM({}, "digest2", "quay.io/repo@sha256:aaaaaaaa")
+    sbom3 = SBOM({}, "digest3", "quay.io/repo@sha256:aaaaaaaa")
+
+    sboms = [sbom1, sbom2, sbom3]
+    result = get_sbom_to_filename_dict(sboms)
+
+    assert len(result) == 3
+    assert sbom1 in result
+    assert sbom2 in result
+    assert sbom3 in result
+
+    # check that all filenames are unique despite same reference
+    filenames = list(result.values())
+    assert len(set(filenames)) == len(filenames)
+
+    # check that all filenames contain the same digest
+    for filename in filenames:
+        assert "sha256:aaaaaaaa" in filename
 
 
 class VerifyCycloneDX:

@@ -181,7 +181,7 @@ def is_main_package_present_in_other_sbom(
     all_purl_match: bool,
 ) -> bool:
     """
-    Check if and package that DESCRIBES the first SBOM is present in the other SBOM.
+    Check if a package that DESCRIBES the first SBOM is present in the other SBOM.
     The comparison is done based on PURLs in the external references of the packages.
 
     Args:
@@ -316,6 +316,30 @@ def generate_and_store_snapshot(index_image: Image, output_dir: Path) -> Path:
     return snapshot_file
 
 
+def get_index_and_image_paths(
+    dirpath: Path, index_digest: str, image_digest: str
+) -> tuple[Path, Path]:
+    """
+    Get a tuple containing paths to the index and its child image SBOM from
+    the specified directory. This is needed as we are attaching a unique suffix
+    to each SBOM to avoid writing two SBOMs into the same file.
+
+    Args:
+        dirpath: path to directory containing the augmented SBOMs
+        index_digest: digest of the index image
+        image_digest: digest of the child image
+
+    Returns:
+        tuple[Path, Path]: path to index and image SBOMs
+    """
+    sboms = list(dirpath.iterdir())
+    assert len(sboms) == 2  # only support index and its child image
+    index_path = [path for path in sboms if str(path.name).startswith(index_digest)][0]
+    image_path = [path for path in sboms if str(path.name).startswith(image_digest)][0]
+
+    return index_path, image_path
+
+
 @pytest.mark.asyncio
 async def test_consistent_reference(
     tpa_client: TPAClient,
@@ -365,12 +389,17 @@ async def test_consistent_reference(
 
     snapshot_path = generate_and_store_snapshot(index_image, tmp_path)
 
-    await augment_oci_image(snapshot_path, tmp_path)
+    component_path = tmp_path / "component"
+    component_path.mkdir()
+    await augment_oci_image(snapshot_path, component_path)
 
+    index_path, child_image_path = get_index_and_image_paths(
+        component_path, index_image.digest, child_image.digest
+    )
     assert is_main_package_present_in_other_sbom(
-        tmp_path / child_image.digest,
-        tmp_path / index_image.digest,
-        True,
+        component_path / child_image_path,
+        component_path / index_path,
+        all_purl_match=True,
     ), "Child image SBOM is not referenced in the augmented index SBOM"
 
     product_sbom_path = await generate_product_sbom(
@@ -380,7 +409,7 @@ async def test_consistent_reference(
     )
 
     assert is_main_package_present_in_other_sbom(
-        tmp_path / index_image.digest, product_sbom_path, True
+        component_path / index_path, product_sbom_path, all_purl_match=True
     ), "Product SBOM doesn't contain an augmented index image"
 
     sboms_to_upload = [
@@ -388,8 +417,7 @@ async def test_consistent_reference(
         child_sbom,
         index_sbom,
         # augmented SBOMs
-        tmp_path / child_image.digest,
-        tmp_path / index_image.digest,
+        *list(component_path.iterdir()),
         # product SBOM
         product_sbom_path,
     ]

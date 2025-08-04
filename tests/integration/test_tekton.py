@@ -320,10 +320,7 @@ async def test_process_component_sboms_happypath(
     )
     sbom_digests = parse_digests(result.stdout)
 
-    assert set((data_dir / "sbom").iterdir()) == {
-        data_dir / "sbom" / image.digest,
-        data_dir / "sbom" / index.digest,
-    }
+    assert len(list((data_dir / "sbom").iterdir())) == 2
 
     await verify_sboms_in_tpa(tpa_client, sbom_digests)
 

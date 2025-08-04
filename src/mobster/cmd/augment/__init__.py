@@ -5,6 +5,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import aiofiles
 
@@ -63,11 +64,13 @@ class AugmentImageCommand(Command):
         """
         Write all updated sboms to the output.
         """
-        destination = Path(self.cli_args.output)
+        output_dir = Path(self.cli_args.output)
+
+        sbom_to_filename = get_sbom_to_filename_dict(self.sboms)
 
         tasks = [
-            write_sbom(sbom.doc, destination.joinpath(sbom.reference.split("@", 1)[1]))
-            for sbom in self.sboms
+            write_sbom(sbom.doc, output_dir / filename)
+            for sbom, filename in sbom_to_filename.items()
         ]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -75,6 +78,45 @@ class AugmentImageCommand(Command):
             if isinstance(res, BaseException):
                 self.exit_code = 1
                 LOGGER.error("Error while writing SBOM %s: %s", sbom.reference, res)
+
+
+def get_sbom_to_filename_dict(sboms: list[SBOM]) -> dict[SBOM, str]:
+    """
+    Get a dictionary mapping SBOMs to file names. Uses uuids as suffixes,
+    ensuring no two SBOMs are written to the same file.
+
+    Args:
+        sboms: list of augmented SBOM objects
+
+    Returns:
+        dict[SBOM, str]: a mapping of SBOMs to file names
+    """
+
+    sbom_to_filename: dict[SBOM, str] = {}
+    for sbom in sboms:
+        while (
+            filename := get_randomized_sbom_filename(sbom)
+        ) in sbom_to_filename.values():
+            pass
+        sbom_to_filename[sbom] = filename
+
+    return sbom_to_filename
+
+
+def get_randomized_sbom_filename(sbom: SBOM) -> str:
+    """
+    Get a filename for an SBOM. Uses a uuid suffix to try and deduplicate SBOM
+    file names.
+
+    Args:
+        sbom: augmented SBOM object
+
+    Returns:
+        str: File name with uuid suffix to save the SBOM to
+    """
+    sbom_img_digest = sbom.reference.split("@", 1)[1]
+    suffix = uuid4().urn
+    return f"{sbom_img_digest}-{suffix}"
 
 
 async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:
