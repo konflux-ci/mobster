@@ -1,0 +1,79 @@
+{
+    "SPDXID": "SPDXRef-DOCUMENT",
+    "creationInfo": {
+        "created": "1970-01-01T00:00:00Z",
+        "creators": [
+            "Person: me (hello)"
+        ]
+    },
+    "dataLicense": "CC0-1.0",
+    "name": "Very important parent image SBOM",
+    "spdxVersion": "SPDX-2.3",
+    "documentNamespace": "https://example.url.konflux.dev/yes",
+    "packages": [
+        {
+            "SPDXID": "SPDXRef-1",
+            "downloadLocation": "NOASSERTION",
+            "externalRefs": [
+                {
+                    "referenceCategory": "PACKAGE_MANAGER",
+                    "referenceLocator": "pkg:oci/ubi@sha256:sha?repository_url=registry.access.redhat.com/ubi8/ubi",
+                    "referenceType": "purl"
+                }
+            ],
+            "filesAnalyzed": false,
+            "name": "yes"
+        },
+        {
+            "SPDXID": "SPDXRef-2",
+            "downloadLocation": "NOASSERTION",
+            "externalRefs": [
+                {
+                    "referenceCategory": "PACKAGE_MANAGER",
+                    "referenceLocator": "pkg:rpm/konflux/no@0.0.1?arch=amd64",
+                    "referenceType": "purl"
+                }
+            ],
+            "filesAnalyzed": false,
+            "name": "no"
+        },
+        {
+            "SPDXID": "SPDXRef-grandparent",
+            "annotations": [
+                {
+                    "annotationDate": "1970-01-01T00:00:00Z",
+                    "annotationType": "OTHER",
+                    "annotator": "Tool: konflux:jsonencoded",
+                    "comment": "{\"name\":\"konflux:container:is_base_image\",\"value\":\"true\"}"
+                }
+            ],
+            "downloadLocation": "NOASSERTION",
+            "externalRefs": [
+                {
+                    "referenceCategory": "PACKAGE_MANAGER",
+                    "referenceLocator": "pkg:oci/konflux/grandpa@0.0.3?arch=amd64",
+                    "referenceType": "purl"
+                }
+            ],
+            "filesAnalyzed": false,
+            "name": "le grandparent"
+        }
+    ],
+    "relationships": [
+        {
+            "spdxElementId": "SPDXRef-DOCUMENT",
+            "relatedSpdxElement": "SPDXRef-1",
+            "relationshipType": "DESCRIBES"
+        },
+        {
+            "spdxElementId": "SPDXRef-image-parent_sbom_legacy_with_builder.spdx.json",
+            "relatedSpdxElement": "SPDXRef-2",
+            "relationshipType": "CONTAINS"
+        },
+        {
+            "spdxElementId": "SPDXRef-image-parent_sbom_legacy_with_builder.spdx.json",
+            "relatedSpdxElement": "SPDXRef-grandparent",
+            "relationshipType": "DESCENDANT_OF"
+        }
+    ]
+}
