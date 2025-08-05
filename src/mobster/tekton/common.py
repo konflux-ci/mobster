@@ -167,7 +167,13 @@ def upload_to_atlas(
 
 
 async def upload_to_s3(report: TPAUploadReport, client: S3Client) -> None:
-    """ """
+    """
+    Upload failed SBOMs from the report to S3.
+
+    Args:
+        report: upload report containing the failed SBOMs
+        client: S3 client to use
+    """
     await asyncio.gather(
         *[client.upload_file(failed_sbom) for failed_sbom in report.failure]
     )
