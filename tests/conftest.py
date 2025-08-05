@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from spdx_tools.spdx.model.document import Document
+from spdx_tools.spdx.parser.parse_anything import parse_file
 
 from mobster import get_mobster_version
 from mobster.sbom.spdx import get_mobster_tool_string
@@ -181,6 +183,7 @@ class GenerateOciImageCommandArgs:
     additional_base_image: list[str]
     base_image_digest_file: Path | None = None
     output: Path | None = None
+    contextualize: bool = False
 
 
 @dataclass
@@ -293,3 +296,60 @@ def test_case_cyclonedx_with_additional() -> GenerateOciImageTestCase:
         ),
         expected_sbom_path=Path("tests/sbom/test_oci_generate_data/generated.cdx.json"),
     )
+
+
+@pytest.fixture(scope="session")
+def spdx_parent_sbom_bytes() -> bytes:
+    with open(
+        "tests/sbom/test_oci_generate_data/contextual/fake_parent_sbom/parent_sbom.spdx.json",
+        "rb",
+    ) as sbom_file:
+        return sbom_file.read()
+
+
+@pytest.fixture(scope="session")
+def inspected_parent_multiarch() -> bytes:
+    with open(
+        "tests/sbom/test_oci_generate_data/contextual/fake_image_inspect/inspect_multiarch.json",
+        "rb",
+    ) as inspect_file:
+        return inspect_file.read()
+
+
+@pytest.fixture(scope="session")
+def inspected_parent_singlearch() -> bytes:
+    with open(
+        "tests/sbom/test_oci_generate_data/contextual/fake_image_inspect/inspect_singlearch.json",
+        "rb",
+    ) as inspect_file:
+        return inspect_file.read()
+
+
+@pytest.fixture(scope="session")
+def spdx_parent_sbom() -> Document:
+    return parse_file(  # type: ignore[no-any-return]
+        "tests/sbom/test_oci_generate_data/contextual/fake_parent_sbom/parent_sbom_legacy_with_builder.spdx.json"
+    )
+
+
+@pytest.fixture(scope="session")
+def spdx_parent_sbom_builder_removed() -> Document:
+    return parse_file(  # type: ignore[no-any-return]
+        "tests/sbom/test_oci_generate_data/contextual/fake_parent_sbom/parent_sbom_legacy_builder_removed.spdx.json"
+    )
+
+
+@pytest.fixture(scope="session")
+def spdx_component_sbom() -> Document:
+    return parse_file(  # type: ignore[no-any-return]
+        "tests/sbom/test_oci_generate_data/contextual/fake_component_sbom/component_sbom.spdx.json"
+    )
+
+
+@pytest.fixture(scope="session")
+def spdx_parent_sbom_with_grandparent_json() -> dict[str, Any]:
+    with open(
+        "tests/sbom/test_oci_generate_data/contextual/fake_parent_sbom/parent_sbom_with_grandparent.json",
+        "rb",
+    ) as in_file:
+        return json.load(in_file)  # type: ignore[no-any-return]

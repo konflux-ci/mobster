@@ -15,6 +15,7 @@ from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
+from mobster.cmd.generate.oci_image.constants import IS_BASE_IMAGE_ANNOTATION
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.spdx_utils import find_spdx_root_packages_spdxid
 from mobster.image import Image
@@ -225,10 +226,7 @@ async def _get_images_and_their_annotations(
             )
             continue
         if index == len(base_images_refs) - 1:
-            component_annotation = {
-                "name": "konflux:container:is_base_image",
-                "value": "true",
-            }
+            component_annotation = IS_BASE_IMAGE_ANNOTATION
         else:
             component_annotation = {
                 "name": "konflux:container:is_builder_image:for_stage",
@@ -400,30 +398,22 @@ async def _extend_cdx_with_base_images(
 
 async def extend_sbom_with_base_images_from_dockerfile(
     sbom: CycloneDX1BomWrapper | Document,
-    parsed_dockerfile: dict[str, Any],
+    base_images_refs: list[str | None],
     base_images_objects: dict[str, Image] | None = None,
-    dockerfile_target_stage: str | None = None,
 ) -> None:
     """
     Extend the SBOM with the base images from the provided Dockerfile
     according to the build target stage.
     Args:
         sbom (CycloneDX1BomWrapper | spdx_tools.spdx.model.Document): SBOM to be edited.
-        parsed_dockerfile (dict[str, Any]):
+        base_images_refs (dict[str, Any]):
             The output of `dockerfile-json` command loaded into a dictionary.
         base_images_objects (dict[str, Image] | None):
             Pre-resolved map
-        dockerfile_target_stage (Optional[str]):
-            The build target for this build, determines which image is considered parent
-            and what images were not used at all.
 
     Returns:
         None: Nothing is returned, changes are performed in-place.
     """
-    # Loading information from Dockerfile
-    base_images_refs = await get_base_images_refs_from_dockerfile(
-        parsed_dockerfile, dockerfile_target_stage
-    )
     base_images = base_images_objects or await get_objects_for_base_images(
         base_images_refs
     )
