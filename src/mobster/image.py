@@ -166,8 +166,10 @@ class Image:  # pylint: disable=too-many-instance-attributes
             children = []
             for submanifest in manifest["manifests"]:
                 child_digest = submanifest["digest"]
-                children.append(Image(repository=repository, digest=child_digest))
-
+                child_arch = submanifest.get("platform", {}).get("architecture")
+                children.append(
+                    Image(repository=repository, digest=child_digest, arch=child_arch)
+                )
             return IndexImage(repository=repository, digest=digest, children=children)
 
         raise SBOMError(f"Unsupported mediaType: {media_type}")

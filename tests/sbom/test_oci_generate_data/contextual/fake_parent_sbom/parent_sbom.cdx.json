@@ -1,0 +1,42 @@
+{
+    "bomFormat": "CycloneDX",
+    "specVersion": "1.6",
+    "serialNumber": "urn:uuid:fc450d40-9073-4c03-a06b-c22defbf3772",
+    "version": 1,
+    "metadata": {
+        "timestamp": "1970-01-01T00:00:00Z",
+        "component": {
+            "bom-ref": "pkg:oci/konflux/yes@0.0.1?arch=x86_64",
+            "name": "yes",
+            "purl": "pkg:oci/konflux/yes@0.0.1?arch=x86_64",
+            "type": "container"
+        },
+        "supplier": {
+            "url": [
+                "https://example.url.konflux.dev"
+            ]
+        }
+    },
+    "dependencies": [
+        {
+            "ref": "pkg:oci/konflux/yes@0.0.1?arch=x86_64",
+            "dependsOn": [
+                "pkg:rpm/konflux/no@0.0.1?arch=x86_64"
+            ]
+        }
+    ],
+    "components": [
+        {
+            "name": "yes",
+            "bom-ref": "pkg:oci/konflux/yes@0.0.1?arch=x86_64",
+            "purl": "pkg:oci/konflux/yes@0.0.1?arch=x86_64",
+            "type": "container"
+        },
+        {
+            "name": "no",
+            "bom-ref": "pkg:rpm/konflux/no@0.0.1?arch=x86_64",
+            "purl": "pkg:rpm/konflux/no@0.0.1?arch=x86_64",
+            "type": "library"
+        }
+    ]
+}
