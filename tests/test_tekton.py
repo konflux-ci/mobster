@@ -30,5 +30,5 @@ async def test_upload_sboms_failure_tries_s3(
     with patch(
         "mobster.tekton.common.upload_to_atlas", side_effect=AtlasTransientError
     ):
-        await upload_sboms(client, Path("dir"), "atlas_url", "retry_bucket")
+        await upload_sboms(Path("dir"), "atlas_url", client)
         mock_upload_to_s3.assert_called_once()

@@ -89,14 +89,16 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     """
     sbom_dir = args.data_dir / "sbom"
     sbom_dir.mkdir(exist_ok=True)
-    client = connect_with_s3(args.retry_s3_bucket)
+    s3 = connect_with_s3(args.retry_s3_bucket)
 
-    await upload_snapshot(client, args.snapshot_spec, args.release_id)
+    if s3:
+        await upload_snapshot(s3, args.snapshot_spec, args.release_id)
+
     augment_component_sboms(sbom_dir, args.snapshot_spec, args.release_id)
     if args.print_digests:
         await print_digests(list(sbom_dir.iterdir()))
 
-    await upload_sboms(client, sbom_dir, args.atlas_api_url, args.retry_s3_bucket)
+    await upload_sboms(sbom_dir, args.atlas_api_url, s3)
 
 
 def main() -> None:
