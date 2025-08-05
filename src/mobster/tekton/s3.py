@@ -48,12 +48,13 @@ class S3Client:
         self.endpoint_url = endpoint_url
         self.semaphore = asyncio.Semaphore(concurrency_limit)
 
-    async def exists(self, key: str) -> bool:
+    async def exists(self, key: str, prefix: str | None = None) -> bool:
         """
         Check if an object with the given key exists in the bucket.
 
         Args:
             key: The S3 object key to check for existence.
+            prefix: Optional prefix to prepend to the key.
 
         Returns:
             True if the object exists, False otherwise.
@@ -61,16 +62,47 @@ class S3Client:
         Raises:
             ClientError: If an error other than 404 occurs during the check.
         """
+        full_key = f"{prefix}/{key}" if prefix else key
         async with self.session.client(
             "s3", endpoint_url=self.endpoint_url
         ) as s3_client:
             try:
-                await s3_client.head_object(Bucket=self.bucket, Key=key)
+                await s3_client.head_object(Bucket=self.bucket, Key=full_key)
                 return True
             except ClientError as e:
                 if S3Client._response_is_not_found(e):
                     return False
                 raise
+
+    async def release_data_exists(self, release_id: ReleaseId) -> bool:
+        """
+        Check if release data exists for the given release ID.
+
+        Args:
+            release_id: The release ID to check for.
+
+        Returns:
+            True if the release data exists, False otherwise.
+
+        Raises:
+            ClientError: If an error other than 404 occurs during the check.
+        """
+        return await self.exists(str(release_id), self.release_data_prefix)
+
+    async def snapshot_exists(self, release_id: ReleaseId) -> bool:
+        """
+        Check if snapshot exists for the given release ID.
+
+        Args:
+            release_id: The release ID to check for.
+
+        Returns:
+            True if the snapshot exists, False otherwise.
+
+        Raises:
+            ClientError: If an error other than 404 occurs during the check.
+        """
+        return await self.exists(str(release_id), self.snapshot_prefix)
 
     async def upload_dir(self, dirpath: Path) -> None:
         """
@@ -224,15 +256,28 @@ class S3Client:
                         Bucket=self.bucket, Delete={"Objects": objects}
                     )
 
-    async def is_bucket_empty(self) -> bool:
+    async def is_prefix_empty(self, prefix: str) -> bool:
         """
-        Check if the S3 bucket is empty.
+        Check if the specified prefix in the S3 bucket is empty.
+
+        Args:
+            prefix: The prefix to check. Use "/" to check only root-level objects
+                   (objects without any prefix), ignoring objects with prefixes.
 
         Returns:
-            True if the bucket is empty, False otherwise.
+            True if the prefix is empty, False otherwise.
         """
         async with self.session.client(
             "s3", endpoint_url=self.endpoint_url
         ) as s3_client:
-            response = await s3_client.list_objects_v2(Bucket=self.bucket)
+            if prefix == "/":
+                # check only root-level objects (no prefix)
+                response = await s3_client.list_objects_v2(
+                    Bucket=self.bucket, Delimiter="/"
+                )
+            else:
+                # check specific prefix
+                response = await s3_client.list_objects_v2(
+                    Bucket=self.bucket, Prefix=prefix
+                )
             return "Contents" not in response

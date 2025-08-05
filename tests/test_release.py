@@ -36,14 +36,12 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                     "name": "comp-1",
                     "containerImage": f"quay.io/repo1@{digest1}",
                     "rh-registry-repo": "registry.redhat.io/repo1",
-                    "repository": "quay.io/repo1",
                     "tags": ["1.0"],
                 },
                 {
                     "name": "comp-2",
                     "containerImage": f"quay.io/repo2@{digest2}",
                     "rh-registry-repo": "registry.redhat.io/repo2",
-                    "repository": "quay.io/repo2",
                     "tags": ["2.0", "latest"],
                 },
             ]
@@ -196,24 +194,21 @@ async def test_make_snapshot_specific(
 
 
 @pytest.mark.parametrize(
-    ["reference", "expected_digest"],
+    ["reference"],
     [
         pytest.param(
             "quay.io/repo@sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
-            "sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
         ),
         pytest.param(
             "quay.io/namespace/repo@sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
-            "sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
         ),
         pytest.param(
             "localhost:8000/repo@sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
-            "sha256:f1d71ba64b07ce65b60967c6ed0b2c628e63b34a16b6d6f4a5c9539fd096309d",
         ),
     ],
 )
-def test_is_valid_digest_reference_valid(reference: str, expected_digest: str) -> None:
-    assert expected_digest == ComponentModel.is_valid_digest_reference(reference)
+def test_is_valid_digest_reference_valid(reference: str) -> None:
+    assert reference == ComponentModel.is_valid_digest_reference(reference)
 
 
 @pytest.mark.parametrize(

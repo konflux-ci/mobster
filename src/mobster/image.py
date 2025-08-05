@@ -33,6 +33,32 @@ PULLSPEC_PATTERN = re.compile(
 )
 
 
+def parse_image_reference(reference: str) -> tuple[str, str]:
+    """
+    Parse an image reference into repository and digest parts.
+
+    Args:
+        reference (str): The full image reference with digest
+
+    Returns:
+        tuple[str, str]: repository and digest
+
+    Raises:
+        ValueError: If the image reference format is invalid or digest is unsupported
+    """
+    match = ARTIFACT_PATTERN.match(reference)
+    if not match:
+        raise ValueError("Image reference does not match the RE.")
+
+    repository = match.group("repository")
+
+    digest = match.group("digest")
+    if not digest.startswith("sha256:"):
+        raise ValueError("Only sha256 digests are supported")
+
+    return repository, digest
+
+
 @dataclass
 class Image:  # pylint: disable=too-many-instance-attributes
     """

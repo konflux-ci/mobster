@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pydantic as pdc
 
-from mobster.image import ARTIFACT_PATTERN, Image
+from mobster.image import Image, parse_image_reference
 
 
 class ReleaseId:
@@ -84,7 +84,7 @@ async def make_snapshot(snapshot_spec: Path, digest: str | None = None) -> Snaps
 
     def is_relevant(comp: "ComponentModel") -> bool:
         if digest is not None:
-            return comp.image_digest == digest
+            return digest in comp.image_reference
 
         return True
 
@@ -92,12 +92,13 @@ async def make_snapshot(snapshot_spec: Path, digest: str | None = None) -> Snaps
     for component_model in filter(is_relevant, snapshot_model.components):
         name = component_model.name
         release_repository = component_model.rh_registry_repo
-        repository = component_model.repository
-        image_digest = component_model.image_digest
+        img_repository, img_digest = parse_image_reference(
+            component_model.image_reference
+        )
         tags = component_model.tags
 
         component_tasks.append(
-            _make_component(name, repository, image_digest, tags, release_repository)
+            _make_component(name, img_repository, img_digest, tags, release_repository)
         )
 
     components = await asyncio.gather(*component_tasks)
@@ -131,27 +132,19 @@ class ComponentModel(pdc.BaseModel):
     """
 
     name: str
-    image_digest: str = pdc.Field(alias="containerImage")
+    image_reference: str = pdc.Field(alias="containerImage")
     rh_registry_repo: str = pdc.Field(alias="rh-registry-repo")
     tags: list[str]
-    repository: str
 
-    @pdc.field_validator("image_digest", mode="after")
+    @pdc.field_validator("image_reference", mode="after")
     @classmethod
     def is_valid_digest_reference(cls, value: str) -> str:
         """
         Validates that the digest reference is in the correct format and
         removes the repository part from the reference.
         """
-        match = ARTIFACT_PATTERN.match(value)
-        if not match:
-            raise ValueError("Image reference does not match the RE.")
-
-        digest = match.group("digest")
-        if not digest.startswith("sha256:"):
-            raise ValueError("Only sha256 digests are supported")
-
-        return digest
+        parse_image_reference(value)
+        return value
 
 
 class SnapshotModel(pdc.BaseModel):

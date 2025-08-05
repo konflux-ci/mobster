@@ -55,7 +55,6 @@ async def test_upload_dir(s3_client: S3Client, tmp_path: Path) -> None:
                 components=[
                     ComponentModel(
                         name="test-component",
-                        repository="quay.io/test/repo",
                         containerImage="quay.io/test/repo@sha256:abc123def456789012345678901234567890123456789012345678901234567890",
                         tags=["v1.0.0", "latest"],
                         **{"rh-registry-repo": "registry.redhat.io/test/repo"},
@@ -110,7 +109,6 @@ async def test_upload_data_objects(
                 components=[
                     ComponentModel(
                         name="test-component",
-                        repository="quay.io/test/repo",
                         containerImage="quay.io/test/repo@sha256:def456abc789012345678901234567890123456789012345678901234567890123",
                         tags=["v2.0.0"],
                         **{"rh-registry-repo": "registry.redhat.io/test/repo"},
@@ -186,12 +184,12 @@ async def test_get_data_objects_nonexistent(
 
 
 @pytest.mark.asyncio
-async def test_is_bucket_empty(s3_client: S3Client, tmp_path: Path) -> None:
+async def test_is_prefix_empty(s3_client: S3Client, tmp_path: Path) -> None:
     """
-    Test checking if bucket is empty before and after adding objects.
+    Test checking if prefix is empty before and after adding objects.
     """
     # bucket cleared by fixture
-    assert await s3_client.is_bucket_empty() is True
+    assert await s3_client.is_prefix_empty("/") is True
 
     test_data = {"test": "data"}
     file_path = tmp_path / "test_file.json"
@@ -200,8 +198,8 @@ async def test_is_bucket_empty(s3_client: S3Client, tmp_path: Path) -> None:
 
     # add object to bucket and check not empty
     await s3_client.upload_file(file_path)
-    assert await s3_client.is_bucket_empty() is False
+    assert await s3_client.is_prefix_empty("/") is False
 
     # check that it's empty again after clearing it
     await s3_client.clear_bucket()
-    assert await s3_client.is_bucket_empty() is True
+    assert await s3_client.is_prefix_empty("/") is True
