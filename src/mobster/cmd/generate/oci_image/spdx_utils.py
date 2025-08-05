@@ -11,14 +11,11 @@ from spdx_tools.spdx.model.package import (
     Package,
 )
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
+from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
+from mobster.cmd.generate.oci_image.constants import BUILDER_IMAGE_PROPERTY
 from mobster.image import Image
 from mobster.sbom.spdx import get_image_package, get_mobster_tool_string, get_namespace
-
-BUILDER_IMAGE_PROPERTY = {
-    "name": "konflux:container:is_builder_image:additional_builder_image",
-    "value": "script-runner-image",
-}
 
 
 async def normalize_actor(actor: str) -> str:
@@ -57,12 +54,16 @@ async def normalize_package(package: dict[str, Any]) -> None:
         package["supplier"] = await normalize_actor(supplier)
 
 
-async def normalize_sbom(sbom: dict[str, Any]) -> None:
+async def normalize_sbom(
+    sbom: dict[str, Any], append_mobster_creator: bool = True
+) -> None:
     """
     Adds necessary fields to an SPDX SBOM to be loaded by the
     SPDX library without validation issues.
     Args:
-        sbom (dict[str, Any]): The SBOM to be normalized.
+        sbom: The SBOM to be normalized.
+        append_mobster_creator: If Mobster should append its name as one of
+                               the creators of the SBOM.
 
     Returns:
         None: Nothing, changes are performed in-place.
@@ -83,12 +84,29 @@ async def normalize_sbom(sbom: dict[str, Any]) -> None:
         creation_info["created"] = "1970-01-01T00:00:00Z"
     creators = creation_info.get("creators", [])
     new_creators = [await normalize_actor(creator) for creator in creators]
-    new_creators.append(get_mobster_tool_string())
+    if append_mobster_creator:
+        new_creators.append(get_mobster_tool_string())
     creation_info["creators"] = new_creators
     sbom["creationInfo"] = creation_info
 
     for package in sbom.get("packages", []):
         await normalize_package(package)
+
+
+async def normalize_and_load_sbom(
+    sbom: dict[str, Any], append_mobster: bool = True
+) -> Document:
+    """
+    Normalize and load the SPDX SBOM.
+    Args:
+        sbom: The SBOM dict to normalize and load.
+        append_mobster: If Mobster should append its name as one of
+                               the creators of the SBOM.
+    Returns:
+        Loaded SPDX SBOM object.
+    """
+    await normalize_sbom(sbom, append_mobster)
+    return JsonLikeDictParser().parse(sbom)  # type: ignore[no-untyped-call]
 
 
 async def update_sbom_name_and_namespace(sbom: Document, image: Image) -> None:

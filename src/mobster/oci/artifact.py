@@ -101,6 +101,14 @@ class SBOMFormat(Enum):
     CDX_V1_5 = "1.5"
     CDX_V1_6 = "1.6"
 
+    def is_spdx2(self) -> bool:
+        """
+        Is this format SPDX of version 2.X?
+        Returns:
+            True if this is SPDX 2.X False otherwise.
+        """
+        return self.value.startswith("SPDX-2")
+
 
 class SBOM:
     """

@@ -1,9 +1,12 @@
+from json import JSONDecodeError
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from _pytest.logging import LogCaptureFixture
 
 from mobster import utils
+from mobster.utils import load_sbom_from_json
 
 
 def test_normalize_file_name() -> None:
@@ -23,6 +26,31 @@ def test_normalize_file_name() -> None:
         == "file_name_with_slashes.txt"
     )
     assert utils.normalize_file_name("") == ""
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(["fail"], [(True,), (False,)])
+@patch("mobster.utils.open")
+@patch("mobster.utils.json")
+async def test_load_sbom_from_json(
+    mock_json: MagicMock, mock_open: MagicMock, fail: bool, caplog: LogCaptureFixture
+) -> None:
+    mock_stream = MagicMock()
+    mock_stream.read.return_value = "foo"
+    mock_open.return_value.__enter__.return_value = mock_stream
+
+    if fail:
+        mock_json.loads.side_effect = JSONDecodeError("a", "b", 1)
+        with pytest.raises(JSONDecodeError):
+            await load_sbom_from_json(MagicMock())
+            assert (
+                "Expected a JSON SBOM. Found different file contents!"
+                in caplog.messages
+            )
+            assert "foo" in caplog.messages
+    else:
+        await load_sbom_from_json(MagicMock())
+        mock_json.loads.assert_called_once_with("foo")
 
 
 @pytest.mark.asyncio

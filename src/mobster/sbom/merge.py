@@ -2,7 +2,6 @@
 
 import functools
 import itertools
-import json
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
@@ -11,6 +10,8 @@ from typing import Any, Literal, TypeVar
 from urllib.parse import quote_plus
 
 from packageurl import PackageURL
+
+from mobster.utils import load_sbom_from_json
 
 T = TypeVar("T")
 
@@ -667,28 +668,26 @@ def _merge_sboms(
     return merger.merge(sbom_a, sbom_b)
 
 
-def merge_syft_and_hermeto_sboms(
+async def merge_syft_and_hermeto_sboms(
     syft_sbom_paths: list[Path], hermeto_sbom_path: Path
 ) -> dict[str, Any]:
     """
     Merge multiple Syft and 1 hermeto SBOMs.
     """
-    syft_sbom = merge_multiple_syft_sboms(syft_sbom_paths)
+    syft_sbom = await merge_multiple_syft_sboms(syft_sbom_paths)
 
-    with open(hermeto_sbom_path, encoding="UTF-8") as file:
-        hermeto_sbom = json.load(file)
+    hermeto_sbom = await load_sbom_from_json(hermeto_sbom_path)
 
     return _merge_sboms(syft_sbom, hermeto_sbom, merge_by_prefering_hermeto)
 
 
-def merge_multiple_syft_sboms(syft_sbom_paths: list[Path]) -> dict[str, Any]:
+async def merge_multiple_syft_sboms(syft_sbom_paths: list[Path]) -> dict[str, Any]:
     """
     Merge multiple Syft SBOMs.
     """
     sboms = []
     for path in syft_sbom_paths:
-        with open(path, encoding="UTF-8") as f:
-            sboms.append(json.load(f))
+        sboms.append(await load_sbom_from_json(path))
 
     merge = functools.partial(
         _merge_sboms,
@@ -698,7 +697,7 @@ def merge_multiple_syft_sboms(syft_sbom_paths: list[Path]) -> dict[str, Any]:
     return merged_sbom
 
 
-def merge_sboms(
+async def merge_sboms(
     syft_sbom_paths: list[Path], hermeto_sbom_path: Path | None = None
 ) -> dict[str, Any]:
     """
@@ -728,5 +727,5 @@ def merge_sboms(
                 "At least two Syft SBOM paths are required when no ",
                 "Hermeto SBOM is provided",
             )
-        return merge_multiple_syft_sboms(syft_sbom_paths)
-    return merge_syft_and_hermeto_sboms(syft_sbom_paths, hermeto_sbom_path)
+        return await merge_multiple_syft_sboms(syft_sbom_paths)
+    return await merge_syft_and_hermeto_sboms(syft_sbom_paths, hermeto_sbom_path)

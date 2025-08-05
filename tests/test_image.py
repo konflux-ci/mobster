@@ -107,12 +107,14 @@ def test_image_from_oci_artifact_reference() -> None:
         pytest.param(
             {
                 "mediaType": "application/vnd.oci.image.index.v1+json",
-                "manifests": [{"digest": "sha256:aaaaaaaa"}],
+                "manifests": [
+                    {"digest": "sha256:aaaaaaaa", "platform": {"architecture": "amd64"}}
+                ],
             },
             IndexImage(
                 "quay.io/repo",
                 "sha256:deadbeef",
-                children=[Image("quay.io/repo", "sha256:aaaaaaaa")],
+                children=[Image("quay.io/repo", "sha256:aaaaaaaa", arch="amd64")],
             ),
             id="multiarch",
         ),
