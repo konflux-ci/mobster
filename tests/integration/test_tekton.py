@@ -127,7 +127,7 @@ async def test_create_product_sboms_ta_happypath(
     assert not await s3_client.snapshot_exists(release_id)
     assert not await s3_client.release_data_exists(release_id)
 
-    result = subprocess.run(
+    subprocess.run(
         [
             "process_product_sbom",
             "--data-dir",
@@ -344,7 +344,7 @@ async def test_process_component_sboms_happypath(
 
     assert not await s3_client.snapshot_exists(release_id)
 
-    result = subprocess.run(
+    subprocess.run(
         [
             "process_component_sboms",
             "--data-dir",
