@@ -66,7 +66,7 @@ class Snapshot:
 
 
 async def make_snapshot(
-    snapshot_spec: Path, digest: str | None = None, concurrency_limit: int = 8
+    snapshot_spec: Path, digest: str | None = None, concurrency_limit: int = 20
 ) -> Snapshot:
     """
     Parse a snapshot spec from a JSON file and create an object representation

@@ -209,7 +209,7 @@ def generate_product_parser(subparsers: Any) -> None:
     product_parser.add_argument(
         "--concurrency",
         type=parse_concurrency,
-        default=8,
+        default=20,
         help="concurrency limit for snapshot parsing (non-zero integer)",
     )
 
@@ -337,7 +337,7 @@ def generate_augment_oci_image_parser(subparsers: Any) -> None:
     augment_oci_image_parser.add_argument(
         "--concurrency",
         type=parse_concurrency,
-        default=8,
+        default=20,
         help="concurrency limit for SBOM updates (non-zero integer)",
     )
     augment_oci_image_parser.add_argument(

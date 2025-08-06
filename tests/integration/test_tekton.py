@@ -332,3 +332,85 @@ async def test_process_component_sboms_happypath(
 
     # check regeneration data was pushed
     assert await s3_client.snapshot_exists(release_id)
+
+
+@pytest.mark.asyncio
+async def test_process_component_sboms_with_custom_concurrency(
+    s3_client: S3Client,
+    s3_sbom_bucket: str,
+    tpa_client: TPAClient,
+    tpa_base_url: str,
+    oci_client: ReferrersTagOCIClient,
+    registry_url: str,
+    tmp_path: Path,
+) -> None:
+    """
+    Test that the concurrency parameter is properly passed through to the
+    process_component_sboms command.
+    """
+    data_dir = tmp_path
+    snapshot_path = Path("snapshot.json")
+    release_id = ReleaseId.new()
+    custom_concurrency = 5
+
+    repo_name = "release"
+    repo_with_registry = f"{registry_url.removeprefix('http://')}/{repo_name}"
+
+    # Create a simple image for testing
+    image = await oci_client.create_image(repo_name, "latest")
+    # Create minimal SBOM for the image
+    minimal_sbom = {
+        "spdxVersion": "SPDX-2.3",
+        "creationInfo": {"creators": ["Tool: test"]},
+        "name": f"{repo_with_registry}@{image.digest}",
+        "packages": [],
+    }
+    import json
+
+    await oci_client.attach_sbom(image, "spdx", json.dumps(minimal_sbom).encode())
+
+    snapshot = {
+        "components": [
+            {
+                "name": "component",
+                "containerImage": f"{repo_with_registry}@{image.digest}",
+                "rh-registry-repo": "registry.redhat.io/test",
+                "tags": ["latest"],
+            }
+        ]
+    }
+
+    with open(data_dir / snapshot_path, "w") as fp:
+        json.dump(snapshot, fp)
+
+    # Test with custom concurrency parameter
+    result = subprocess.run(
+        [
+            "process_component_sboms",
+            "--data-dir",
+            data_dir,
+            "--snapshot-spec",
+            snapshot_path,
+            "--atlas-api-url",
+            tpa_base_url,
+            "--retry-s3-bucket",
+            s3_sbom_bucket,
+            "--release-id",
+            str(release_id),
+            "--concurrency",
+            str(custom_concurrency),
+            "--print-digests",
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+    # Verify the command succeeded
+    assert result.returncode == 0
+    sbom_digests = parse_digests(result.stdout)
+    assert len(sbom_digests) == 1
+
+    # Verify SBOM was created
+    assert len(list((data_dir / "sbom").iterdir())) == 1
+
+    await verify_sboms_in_tpa(tpa_client, sbom_digests)

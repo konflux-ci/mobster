@@ -306,18 +306,30 @@ async def update_sboms(
     """
     semaphore = asyncio.Semaphore(concurrency_limit)
 
-    results = await asyncio.gather(
-        *[
-            update_component_sboms(component, cosign, verify, semaphore, release_id)
-            for component in snapshot.components
-        ],
-    )
-
+    # Process components in batches to limit memory usage
+    batch_size = concurrency_limit
     all_ok = True
     all_sboms = []
-    for ok, sboms in results:
-        if not ok:
-            all_ok = False
-        all_sboms.extend(sboms)
+
+    for i in range(0, len(snapshot.components), batch_size):
+        batch = snapshot.components[i : i + batch_size]
+        LOGGER.info(
+            "Processing batch %d/%d (%d components)",
+            (i // batch_size) + 1,
+            (len(snapshot.components) + batch_size - 1) // batch_size,
+            len(batch),
+        )
+
+        batch_results = await asyncio.gather(
+            *[
+                update_component_sboms(component, cosign, verify, semaphore, release_id)
+                for component in batch
+            ],
+        )
+
+        for ok, sboms in batch_results:
+            if not ok:
+                all_ok = False
+            all_sboms.extend(sboms)
 
     return all_ok, all_sboms

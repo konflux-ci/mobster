@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from base64 import b64encode
 from collections.abc import Callable
@@ -15,6 +16,7 @@ from mobster.cmd.augment import (
     AugmentImageCommand,
     get_sbom_to_filename_dict,
     update_sbom,
+    update_sboms,
     verify_sbom,
 )
 from mobster.cmd.augment.handlers import CycloneDXVersion1, get_purl_digest
@@ -686,3 +688,130 @@ def test_cdx_update_sbom_raises_error_for_index_image() -> None:
         ValueError, match="CDX update SBOM does not support index images."
     ):
         handler.update_sbom(component, index_image, {})
+
+
+class TestUpdateSbomsBatching:
+    """Tests for the batching functionality in update_sboms."""
+
+    @pytest.fixture
+    def fake_cosign(self) -> "FakeCosign":
+        return FakeCosign.load()
+
+    @pytest.fixture
+    def mock_snapshot(self) -> Snapshot:
+        """Create a snapshot with multiple components for testing batching."""
+        components = []
+        for i in range(25):  # 25 components to test batching
+            components.append(
+                Component(
+                    name=f"component-{i}",
+                    image=Image("quay.io/repo", f"sha256:{'a' * 63}{i:01d}"),
+                    tags=["latest"],
+                    repository="registry.redhat.io/test",
+                )
+            )
+        return Snapshot(components=components)
+
+    @pytest.mark.asyncio
+    async def test_update_sboms_processes_in_batches(
+        self,
+        mock_snapshot: Snapshot,
+        fake_cosign: "FakeCosign",
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test that update_sboms processes components in batches."""
+        with patch("mobster.cmd.augment.update_component_sboms") as mock_update:
+            mock_update.return_value = (True, [])
+
+            # Use concurrency limit of 10 to create 3 batches (25 components)
+            concurrency_limit = 10
+            with caplog.at_level(logging.INFO, logger="mobster.cmd.augment"):
+                await update_sboms(mock_snapshot, fake_cosign, False, concurrency_limit)
+
+            # Verify batch logging
+            assert "Processing batch 1/3 (10 components)" in caplog.text
+            assert "Processing batch 2/3 (10 components)" in caplog.text
+            assert "Processing batch 3/3 (5 components)" in caplog.text
+
+            # Verify all components were processed
+            assert mock_update.call_count == 25
+
+    @pytest.mark.asyncio
+    async def test_update_sboms_batch_size_equals_concurrency(
+        self,
+        mock_snapshot: Snapshot,
+        fake_cosign: "FakeCosign",
+    ) -> None:
+        """Test that batch size equals concurrency limit."""
+        with patch("mobster.cmd.augment.update_component_sboms") as mock_update:
+            mock_update.return_value = (True, [])
+
+            concurrency_limit = 5
+            await update_sboms(mock_snapshot, fake_cosign, False, concurrency_limit)
+
+            # Should process in 5 batches of 5 components each
+            assert mock_update.call_count == 25
+
+    @pytest.mark.asyncio
+    async def test_update_sboms_handles_failures_across_batches(
+        self,
+        mock_snapshot: Snapshot,
+        fake_cosign: "FakeCosign",
+    ) -> None:
+        """Test that failures in one batch don't prevent processing other batches."""
+        with patch("mobster.cmd.augment.update_component_sboms") as mock_update:
+            # First batch succeeds, second batch has failures, third batch succeeds
+            mock_update.side_effect = (
+                [
+                    (True, [MagicMock()])
+                    for _ in range(10)  # First batch
+                ]
+                + [
+                    (False, [])
+                    for _ in range(10)  # Second batch fails
+                ]
+                + [
+                    (True, [MagicMock()])
+                    for _ in range(5)  # Third batch
+                ]
+            )
+
+            concurrency_limit = 10
+            all_ok, all_sboms = await update_sboms(
+                mock_snapshot, fake_cosign, False, concurrency_limit
+            )
+
+            # Should return False due to failures in second batch
+            assert not all_ok
+            # Should still have SBOMs from successful batches
+            assert len(all_sboms) == 15  # 10 from first + 5 from third batch
+
+    @pytest.mark.asyncio
+    async def test_update_sboms_single_batch_when_components_less_than_limit(
+        self,
+        fake_cosign: "FakeCosign",
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test that when components < concurrency limit, only one batch is created."""
+        # Create snapshot with only 3 components
+        components = [
+            Component(
+                name=f"component-{i}",
+                image=Image("quay.io/repo", f"sha256:{'b' * 63}{i:01d}"),
+                tags=["latest"],
+                repository="registry.redhat.io/test",
+            )
+            for i in range(3)
+        ]
+        snapshot = Snapshot(components=components)
+
+        with patch("mobster.cmd.augment.update_component_sboms") as mock_update:
+            mock_update.return_value = (True, [])
+
+            concurrency_limit = 10  # More than component count
+            with caplog.at_level(logging.INFO, logger="mobster.cmd.augment"):
+                await update_sboms(snapshot, fake_cosign, False, concurrency_limit)
+
+            # Should show only one batch
+            assert "Processing batch 1/1 (3 components)" in caplog.text
+            assert mock_update.call_count == 3

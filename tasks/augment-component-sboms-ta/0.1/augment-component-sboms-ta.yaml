@@ -86,6 +86,11 @@ spec:
       default: ""
       type: string
 
+    - name: concurrency
+      description: Maximum number of SBOMs to process concurrently.
+      default: "20"
+      type: string
+
   workspaces:
     - name: data
       description: Used as a working directory.
@@ -194,7 +199,8 @@ spec:
           --snapshot-spec "$(params.snapshotSpec)" \
           --atlas-api-url "$(params.atlasApiUrl)" \
           --retry-s3-bucket "$(params.retryS3Bucket)" \
-          --release-id "$release_id"
+          --release-id "$release_id" \
+          --concurrency "$(params.concurrency)"
 
     - name: create-trusted-artifact
       ref:

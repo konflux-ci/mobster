@@ -36,6 +36,9 @@ class CommonArgs:
         snapshot_spec: path to snapshot spec file
         atlas_api_url: url of the TPA instance to use
         retry_s3_bucket: name of the S3 bucket to use for retries
+        release_id: release ID to use for SBOM annotations
+        print_digests: whether to print SBOM digests
+        concurrency: maximum number of SBOMs to process concurrently
     """
 
     data_dir: Path
@@ -44,6 +47,7 @@ class CommonArgs:
     retry_s3_bucket: str
     release_id: ReleaseId
     print_digests: bool
+    concurrency: int
 
 
 def add_common_args(parser: ArgumentParser) -> None:
@@ -59,6 +63,7 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument("--retry-s3-bucket", type=str)
     parser.add_argument("--release-id", type=ReleaseId, required=True)
     parser.add_argument("--print-digests", action="store_true")
+    parser.add_argument("--concurrency", type=int, default=20)
 
 
 async def upload_sboms(
