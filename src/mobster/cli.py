@@ -206,6 +206,12 @@ def generate_product_parser(subparsers: Any) -> None:
         type=ReleaseId,
         help="UUID4 release_id to associate with the SBOM file",
     )
+    product_parser.add_argument(
+        "--concurrency",
+        type=parse_concurrency,
+        default=8,
+        help="concurrency limit for snapshot parsing (non-zero integer)",
+    )
 
     product_parser.set_defaults(func=product.GenerateProductCommand)
 

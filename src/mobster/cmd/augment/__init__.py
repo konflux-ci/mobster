@@ -48,11 +48,13 @@ class AugmentImageCommand(Command):
         if self.cli_args.reference:
             _, digest = self.cli_args.reference.split("@", 1)
 
-        snapshot = await make_snapshot(self.cli_args.snapshot, digest)
         verify = self.cli_args.verification_key is not None
         cosign = CosignClient(self.cli_args.verification_key)
         concurrency_limit = self.cli_args.concurrency
         release_id = self.cli_args.release_id
+        snapshot = await make_snapshot(
+            self.cli_args.snapshot, digest, concurrency_limit
+        )
 
         ok, self.sboms = await update_sboms(
             snapshot, cosign, verify, concurrency_limit, release_id

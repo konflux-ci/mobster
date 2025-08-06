@@ -65,7 +65,9 @@ class Snapshot:
     components: list[Component]
 
 
-async def make_snapshot(snapshot_spec: Path, digest: str | None = None) -> Snapshot:
+async def make_snapshot(
+    snapshot_spec: Path, digest: str | None = None, concurrency_limit: int = 8
+) -> Snapshot:
     """
     Parse a snapshot spec from a JSON file and create an object representation
     of it. Multiarch images are handled by fetching their index image manifests
@@ -78,6 +80,8 @@ async def make_snapshot(snapshot_spec: Path, digest: str | None = None) -> Snaps
     Args:
         snapshot_spec (Path): Path to a snapshot spec JSON file
         digest (str | None): Digest of the image to parse the snapshot for
+        concurrency_limit: Maximum number of concurrent manifest fetches,
+            defaults to 8
     """
     with open(snapshot_spec, encoding="utf-8") as snapshot_file:
         snapshot_model = SnapshotModel.model_validate_json(snapshot_file.read())
@@ -87,6 +91,8 @@ async def make_snapshot(snapshot_spec: Path, digest: str | None = None) -> Snaps
             return digest in comp.image_reference
 
         return True
+
+    semaphore = asyncio.Semaphore(concurrency_limit)
 
     component_tasks = []
     for component_model in filter(is_relevant, snapshot_model.components):
@@ -98,7 +104,9 @@ async def make_snapshot(snapshot_spec: Path, digest: str | None = None) -> Snaps
         tags = component_model.tags
 
         component_tasks.append(
-            _make_component(name, img_repository, img_digest, tags, release_repository)
+            _make_component(
+                name, img_repository, img_digest, tags, release_repository, semaphore
+            )
         )
 
     components = await asyncio.gather(*component_tasks)
@@ -111,6 +119,7 @@ async def _make_component(
     image_digest: str,
     tags: list[str],
     release_repository: str,
+    semaphore: asyncio.Semaphore,
 ) -> Component:
     """
     Creates a component object from input data.
@@ -122,7 +131,9 @@ async def _make_component(
         release_repository (str): repository the component is being
             released to (such as registry.redhat.io)
     """
-    image: Image = await Image.from_repository_digest_manifest(repository, image_digest)
+    image: Image = await Image.from_repository_digest_manifest(
+        repository, image_digest, semaphore
+    )
     return Component(name=name, image=image, repository=release_repository, tags=tags)
 
 
