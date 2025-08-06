@@ -8,25 +8,17 @@ import posixpath
 import time
 from dataclasses import dataclass
 from enum import Enum
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
 import pydantic
 
 from mobster.cmd.base import Command
-from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedException
-from mobster.cmd.upload.tpa import TPAClient
+from mobster.cmd.upload.oidc import OIDCClientCredentials
+from mobster.cmd.upload.tpa import TPAClient, TPATransientError
 
 LOGGER = logging.getLogger(__name__)
-
-
-class UploadExitCode(Enum):
-    """
-    Enumeration of possible exit codes from the upload command.
-    """
-
-    ERROR = 1
-    TRANSIENT_ERROR = 2
 
 
 class TPAUploadSuccess(pydantic.BaseModel):
@@ -42,6 +34,21 @@ class TPAUploadSuccess(pydantic.BaseModel):
     url: str
 
 
+class TPAUploadFailure(pydantic.BaseModel):
+    """
+    Object representing a failed TPA upload.
+
+    Attributes:
+        path: Filesystem path of the SBOM that failed to upload.
+        transient: Whether the failure was transient (retryable).
+        message: Error message describing the failure.
+    """
+
+    path: Path
+    transient: bool
+    message: str
+
+
 class TPAUploadReport(pydantic.BaseModel):
     """Upload report containing successful and failed uploads.
 
@@ -52,26 +59,63 @@ class TPAUploadReport(pydantic.BaseModel):
     """
 
     success: list[TPAUploadSuccess]
-    failure: list[Path]
+    failure: list[TPAUploadFailure]
+
+    @property
+    def transient_error_paths(self) -> list[Path]:
+        """
+        Get paths of files that failed with transient errors.
+
+        Returns:
+            List of Path objects for files that failed with transient errors.
+        """
+        return [failure.path for failure in self.failure if failure.transient]
+
+    def get_non_transient_errors(self) -> list[tuple[Path, str]]:
+        """
+        Get list of tuples containing paths of files that failed to be uploaded
+        and their error messages.
+        """
+        return [
+            (failure.path, failure.message)
+            for failure in self.failure
+            if not failure.transient
+        ]
+
+    def has_non_transient_failures(self) -> bool:
+        """
+        Check if there are any non-transient failures.
+
+        Returns:
+            True if any failures are non-transient, False otherwise.
+        """
+        return any(not failure.transient for failure in self.failure)
+
+    def has_transient_failures(self) -> bool:
+        """
+        Check if there are any transient failures.
+
+        Returns:
+            True if any failures are transient, False otherwise.
+        """
+        return any(failure.transient for failure in self.failure)
 
     def has_failures(self) -> bool:
         """
-        Returns true if any uploads failed.
+        Check if any uploads failed.
+
+        Returns:
+            True if any uploads failed, False otherwise.
         """
         return len(self.failure) != 0
-
-    def clear_failures(self) -> None:
-        """
-        Clears the recorded failures.
-        """
-        self.failure = []
 
     @staticmethod
     def build_report(
         tpa_base_url: str,
         results: list[tuple[Path, BaseException | str]],
     ) -> "TPAUploadReport":
-        """Build an upload report from upload results.
+        """
+        Build an upload report from upload results.
 
         Args:
             results: List of tuples containing file path and either an
@@ -89,9 +133,17 @@ class TPAUploadReport(pydantic.BaseModel):
             for path, urn in results
             if isinstance(urn, str)
         ]
-        failure = [
-            path for path, result in results if isinstance(result, BaseException)
-        ]
+
+        failure = []
+        for path, result in results:
+            if isinstance(result, TPATransientError):
+                failure.append(
+                    TPAUploadFailure(path=path, message=str(result), transient=True)
+                )
+            elif isinstance(result, BaseException):
+                failure.append(
+                    TPAUploadFailure(path=path, message=str(result), transient=False)
+                )
 
         return TPAUploadReport(success=success, failure=failure)
 
@@ -142,8 +194,11 @@ class TPAUploadCommand(Command):
             workers=workers,
             labels=self.cli_args.labels,
         )
+        report = await TPAUploadCommand.upload(
+            config,
+        )
 
-        report = await self.upload(config)
+        self.exit_code = 1 if report.has_failures() else 0
         if self.cli_args.report:
             print(report.model_dump_json())
 
@@ -204,8 +259,8 @@ class TPAUploadCommand(Command):
                 )
                 raise
 
+    @staticmethod
     async def upload(
-        self,
         config: UploadConfig,
     ) -> TPAUploadReport:
         """
@@ -216,6 +271,9 @@ class TPAUploadCommand(Command):
             tpa_url (str): Base URL for the TPA API
             sbom_files (list[Path]): List of SBOM file paths to upload
             workers (int): Number of concurrent workers for uploading
+
+        Returns:
+            tuple[TPAUploadReport, int]: Upload report and exit code
         """
 
         LOGGER.info("Found %s SBOMs to upload", len(config.paths))
@@ -223,7 +281,7 @@ class TPAUploadCommand(Command):
         semaphore = asyncio.Semaphore(config.workers)
 
         tasks = [
-            self.upload_sbom_file(
+            TPAUploadCommand.upload_sbom_file(
                 sbom_file=sbom_file,
                 auth=config.auth,
                 tpa_url=config.base_url,
@@ -234,33 +292,11 @@ class TPAUploadCommand(Command):
         ]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        self.set_exit_code(results)
 
         LOGGER.info("Upload complete")
         return TPAUploadReport.build_report(
             config.base_url, list(zip(config.paths, results, strict=True))
         )
-
-    def set_exit_code(self, results: list[BaseException | str]) -> None:
-        """
-        Set the exit code based on the upload results. If all exceptions found
-        are RetryExhaustedException, the exit code is
-        UploadExitCode.TransientError. If at least one exception is not the
-        RetryExhaustedException, the exit code is UploadExitCode.Error.
-
-        Args:
-            results: List of results from upload operations, either None for success
-                or BaseException for failure.
-        """
-        non_transient_error = False
-        for res in results:
-            if isinstance(res, RetryExhaustedException):
-                self.exit_code = UploadExitCode.TRANSIENT_ERROR.value
-            elif isinstance(res, BaseException):
-                non_transient_error = True
-
-        if non_transient_error:
-            self.exit_code = UploadExitCode.ERROR.value
 
     async def save(self) -> None:  # pragma: no cover
         """

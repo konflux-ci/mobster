@@ -16,7 +16,7 @@ from pytest_lazy_fixtures import lf
 from mobster.cmd.generate.oci_index import GenerateOciIndexCommand
 from mobster.cmd.generate.product import ReleaseNotes
 from mobster.cmd.upload.tpa import TPAClient
-from mobster.cmd.upload.upload import TPAUploadReport
+from mobster.cmd.upload.upload import TPAUploadFailure, TPAUploadReport
 from mobster.image import Image
 from mobster.release import ReleaseId
 from mobster.tekton.artifact import (
@@ -199,8 +199,12 @@ async def test_sbom_upload_fallback(
     with open(file_path, "w") as f:
         json.dump(test_data, f)
 
-    # mock the atlas upload to raise a transient error
-    mock_upload_to_atlas.return_value = TPAUploadReport(success=[], failure=[file_path])
+    mock_upload_to_atlas.return_value = TPAUploadReport(
+        success=[],
+        failure=[
+            TPAUploadFailure(path=file_path, transient=True, message="Transient error")
+        ],
+    )
     await upload_sboms(tmp_path, tpa_base_url, s3_client, concurrency=1)
 
     # check that the fallback to s3 uploaded the object
