@@ -116,7 +116,7 @@ def upload_to_atlas(dirpath: Path, atlas_url: str) -> None:
                 "--report",
             ],
             check=True,
-            capture_output=True,
+            stdout=subprocess.PIPE,
         )
     except subprocess.CalledProcessError as err:
         if err.returncode == 2:
