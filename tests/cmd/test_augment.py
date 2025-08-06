@@ -150,7 +150,7 @@ class TestAugmentCommand:
         cmd = AugmentImageCommand(cli_args=args)
 
         monkeypatch.setattr(
-            "mobster.cmd.augment.make_snapshot", lambda _, __: awaitable(None)
+            "mobster.cmd.augment.make_snapshot", lambda _, __, ___: awaitable(None)
         )
 
         with patch(

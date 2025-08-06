@@ -113,7 +113,7 @@ async def make_snapshot(
     return Snapshot(components=components)
 
 
-async def _make_component(
+async def _make_component(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     name: str,
     repository: str,
     image_digest: str,

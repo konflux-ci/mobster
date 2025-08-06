@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 from unittest.mock import patch
 
@@ -107,11 +108,12 @@ async def test_image_from_repo_digest(manifest: dict[Any, Any], image: Image) ->
     async def fake_get_image_manifest(_: Any) -> dict[Any, Any]:
         return manifest
 
+    semaphore = asyncio.Semaphore(1)
     with patch(
         "mobster.image.get_image_manifest", side_effect=fake_get_image_manifest
     ) as mock_get_image_manifest:
         assert image == await Image.from_repository_digest_manifest(
-            "quay.io/repo", "sha256:deadbeef"
+            "quay.io/repo", "sha256:deadbeef", semaphore
         )
         mock_get_image_manifest.assert_awaited_once_with(image.reference)
 
@@ -123,8 +125,9 @@ async def test_image_from_repo_digest_unsupported_manifest() -> None:
     async def fake_get_image_manifest(_: Any) -> dict[Any, Any]:
         return manifest
 
+    semaphore = asyncio.Semaphore(1)
     with patch("mobster.image.get_image_manifest", side_effect=fake_get_image_manifest):
         with pytest.raises(SBOMError):
             await Image.from_repository_digest_manifest(
-                "quay.io/repo", "sha256:deadbeef"
+                "quay.io/repo", "sha256:deadbeef", semaphore
             )

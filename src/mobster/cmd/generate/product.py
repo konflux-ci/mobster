@@ -49,8 +49,9 @@ class GenerateProductCommand(GenerateCommand):
     async def execute(self) -> None:
         """Generate an SBOM document for a product."""
         LOGGER.info("Starting product SBOM generation.")
-        concurrency_limit = self.cli_args.concurrency
-        snapshot = await make_snapshot(self.cli_args.snapshot, None, concurrency_limit)
+        snapshot = await make_snapshot(
+            self.cli_args.snapshot, None, self.cli_args.concurrency
+        )
 
         self.release_notes = parse_release_notes(self.cli_args.release_data)
         self.document = create_sbom(
