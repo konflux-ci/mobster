@@ -175,6 +175,12 @@ spec:
               optional: true
         - name: AWS_DEFAULT_REGION
           value: "us-east-1"
+      computeResources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 512Mi
+          cpu: 350m
       script: |
         #!/usr/bin/env bash
         set -eux
