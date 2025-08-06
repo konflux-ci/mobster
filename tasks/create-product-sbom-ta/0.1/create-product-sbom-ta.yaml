@@ -150,6 +150,12 @@ spec:
 
     - name: process-product-sbom
       image: quay.io/konflux-ci/mobster:7de0e88ed5cf00a77747d78ed401088a5ca0c988
+      computeResources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 512Mi
+          cpu: 350m
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
           valueFrom:
