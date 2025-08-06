@@ -13,9 +13,25 @@ import aiofiles
 import httpx
 
 from mobster.cmd.upload.model import PaginatedSbomSummaryResult, SbomSummary
-from mobster.cmd.upload.oidc import OIDCClientCredentials, OIDCClientCredentialsClient
+from mobster.cmd.upload.oidc import (
+    OIDCClientCredentials,
+    OIDCClientCredentialsClient,
+    RetryExhaustedException,
+)
 
 LOGGER = logging.getLogger(__name__)
+
+
+class TPAError(Exception):
+    """
+    Base exception for TPA-related errors.
+    """
+
+
+class TPATransientError(TPAError):
+    """
+    Exception for transient TPA errors that may be retried.
+    """
 
 
 class TPAClient(OIDCClientCredentialsClient):
@@ -32,6 +48,11 @@ class TPAClient(OIDCClientCredentialsClient):
         Args:
             sbom_filepath(str): filepath to SBOM data to upload
 
+        Raises:
+            TPAError: If the upload fails with a non-transient status code
+            TPATransientError: If the upload fails after exhausting retries for
+                transient errors
+
         Returns:
             str: URN of the uploaded SBOM
         """
@@ -47,14 +68,26 @@ class TPAClient(OIDCClientCredentialsClient):
         headers = {"content-type": "application/json"}
         async with aiofiles.open(sbom_filepath, "rb") as sbom_file:
             file_content = await sbom_file.read()
-            response = await self.post(
-                url,
-                content=file_content,
-                headers=headers,
-                params=params,
-            )
-            urn: str = json.loads(response.content)["id"]
-            return urn
+            try:
+                response = await self.post(
+                    url,
+                    content=file_content,
+                    headers=headers,
+                    params=params,
+                )
+                urn: str = json.loads(response.content)["id"]
+                return urn
+            except RetryExhaustedException as err:
+                raise TPATransientError(
+                    "Retries exhausted for transient TPA errors"
+                ) from err
+            except httpx.HTTPStatusError as err:
+                raise TPAError(
+                    f"Failed to upload to TPA with code: {err.response.status_code} and"
+                    f" message: {err.response.content.decode()}"
+                ) from err
+            except httpx.HTTPError as err:
+                raise TPAError("HTTP request for upload failed") from err
 
     async def list_sboms(
         self, query: str, sort: str, page_size: int = 50
