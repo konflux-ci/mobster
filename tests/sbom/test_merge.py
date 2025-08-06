@@ -550,6 +550,7 @@ def test__detect_sbom_type_invalid() -> None:
         _detect_sbom_type(invalid_sbom)
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "syft_sboms, hermeto_sbom",
     [
@@ -630,7 +631,7 @@ def test__detect_sbom_type_invalid() -> None:
         ),
     ],
 )
-def test_merge_syft_and_hermeto_sboms(
+async def test_merge_syft_and_hermeto_sboms(
     syft_sboms: list[Path],
     hermeto_sbom: Path,
     sbom_type: str,
@@ -639,7 +640,7 @@ def test_merge_syft_and_hermeto_sboms(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.chdir(data_dir / sbom_type)
-    result = merge_sboms(syft_sboms, hermeto_sbom)
+    result = await merge_sboms(syft_sboms, hermeto_sbom)
 
     with open("merged.bom.json", encoding="utf-8") as file:
         expected_sbom = json.load(file)
@@ -668,6 +669,7 @@ def test_merge_syft_and_hermeto_sboms(
         }
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "sbom_type, expect_diff",
     [
@@ -705,7 +707,7 @@ def test_merge_syft_and_hermeto_sboms(
         ),
     ],
 )
-def test_merge_multiple_syft_sboms(
+async def test_merge_multiple_syft_sboms(
     sbom_type: str,
     expect_diff: dict[str, int],
     data_dir: Path,
@@ -713,7 +715,7 @@ def test_merge_multiple_syft_sboms(
 ) -> None:
     monkeypatch.chdir(data_dir / sbom_type)
 
-    result = merge_sboms(
+    result = await merge_sboms(
         INDIVIDUAL_SYFT_SBOMS,
     )
 
@@ -746,6 +748,7 @@ def test_merge_multiple_syft_sboms(
         }
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "syft_sboms, hermeto_sbom",
     [
@@ -753,10 +756,10 @@ def test_merge_multiple_syft_sboms(
         ([Path("only-one-syft.bom.json")], None),
     ],
 )
-def test_merge_sboms_invalid(
+async def test_merge_sboms_invalid(
     syft_sboms: list[Path],
     hermeto_sbom: Path | None,
 ) -> None:
     """Test the merge_sboms function."""
     with pytest.raises(ValueError):
-        merge_sboms(syft_sboms, hermeto_sbom)
+        await merge_sboms(syft_sboms, hermeto_sbom)
