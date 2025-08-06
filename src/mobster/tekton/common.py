@@ -4,22 +4,21 @@ Common utilities for Tekton tasks.
 
 import asyncio
 import os
-import subprocess
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from pydantic import ValidationError
-
 from mobster.cmd.generate.product import ReleaseData
-from mobster.cmd.upload.upload import TPAUploadReport, UploadExitCode
+from mobster.cmd.upload.upload import TPAUploadCommand, TPAUploadReport
 from mobster.release import ReleaseId, SnapshotModel
 from mobster.tekton.s3 import S3Client
 
 
 class AtlasUploadError(Exception):
-    """Raised when a non-transient Atlas error occurs."""
+    """
+    Raised when a non-transient Atlas error occurs.
+    """
 
 
 @dataclass
@@ -74,35 +73,48 @@ async def upload_sboms(
     Raises:
         ValueError: If Atlas authentication credentials are missing or if S3
             client is provided but AWS authentication credentials are missing.
+        RuntimeError: If any SBOM failed to be pushed to Atlas with a
+            non-transient error
     """
     if not atlas_credentials_exist():
         raise ValueError("Missing Atlas authentication.")
 
-    report = upload_to_atlas(dirpath, atlas_url)
-    if report.has_failures() and s3_client is not None:
-        await handle_atlas_transient_errors(report, s3_client)
-        report.clear_failures()
+    report = await upload_to_atlas(dirpath, atlas_url)
+    if report.has_non_transient_failures():
+        raise RuntimeError(
+            "SBOMs failed to be uploaded to Atlas: \n"
+            + "\n".join(
+                [
+                    f"{path}: {message}"
+                    for path, message in report.get_non_transient_errors()
+                ]
+            )
+        )
+
+    if report.has_transient_failures() and s3_client is not None:
+        await handle_atlas_transient_errors(report.transient_error_paths, s3_client)
 
     return report
 
 
-async def handle_atlas_transient_errors(
-    report: TPAUploadReport, s3_client: S3Client
-) -> None:
+async def handle_atlas_transient_errors(paths: list[Path], s3_client: S3Client) -> None:
     """
     Handle Atlas transient errors via the S3 retry mechanism.
 
+    Args:
+        paths: List of file paths that failed with transient errors.
+        s3_client: S3 client to use for uploading failed files.
+
     Raises:
-        AtlasUploadError: if the retry_s3_bucket is not specified
-        ValueError: if S3 credentials aren't specified in env
+        ValueError: If S3 credentials aren't specified in env.
     """
     if not s3_credentials_exist():
         raise ValueError("Missing AWS authentication while attempting S3 retry.")
 
-    await upload_to_s3(report, s3_client)
+    await asyncio.gather(*[s3_client.upload_file(failed_sbom) for failed_sbom in paths])
 
 
-def upload_to_atlas(dirpath: Path, atlas_url: str) -> TPAUploadReport:
+async def upload_to_atlas(dirpath: Path, atlas_url: str) -> TPAUploadReport:
     """
     Upload SBOMs to Atlas TPA instance.
 
@@ -116,49 +128,12 @@ def upload_to_atlas(dirpath: Path, atlas_url: str) -> TPAUploadReport:
     Returns:
         TPAUploadReport: Parsed upload report from the upload command.
     """
-    result = subprocess.run(
-        [
-            "mobster",
-            "--verbose",
-            "upload",
-            "tpa",
-            "--tpa-base-url",
-            atlas_url,
-            "--from-dir",
-            dirpath,
-            "--report",
-        ],
-        check=False,
-        capture_output=True,
-    )
-    if result.returncode == 0:
-        return TPAUploadReport.model_validate_json(result.stdout)
-
-    if result.returncode == UploadExitCode.TRANSIENT_ERROR.value:
-        # special case where all upload errors were only transient we can
-        # handle via the S3 retry mechanism
-        try:
-            return TPAUploadReport.model_validate_json(result.stdout)
-        except ValidationError as err:
-            raise AtlasUploadError(
-                "Atlas upload failed with transient errors and "
-                "the report could not be parsed." + result.stderr.decode("utf-8")
-            ) from err
-
-    # on all other errors, we signal a failure
-    raise AtlasUploadError(result.stderr)
-
-
-async def upload_to_s3(report: TPAUploadReport, client: S3Client) -> None:
-    """
-    Upload failed SBOMs from the report to S3.
-
-    Args:
-        report: upload report containing the failed SBOMs
-        client: S3 client to use
-    """
-    await asyncio.gather(
-        *[client.upload_file(failed_sbom) for failed_sbom in report.failure]
+    auth = TPAUploadCommand.get_oidc_auth()
+    return await TPAUploadCommand.upload(
+        auth,
+        atlas_url,
+        list(dirpath.iterdir()),
+        8,
     )
 
 
