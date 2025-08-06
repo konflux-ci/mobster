@@ -1,5 +1,6 @@
 """An image module for representing OCI images."""
 
+import asyncio
 import hashlib
 import re
 from dataclasses import dataclass, field
@@ -135,11 +136,13 @@ class Image:  # pylint: disable=too-many-instance-attributes
         )
 
     @staticmethod
-    async def from_repository_digest_manifest(repository: str, digest: str) -> "Image":
+    async def from_repository_digest_manifest(
+        repository: str, digest: str, semaphore: asyncio.Semaphore
+    ) -> "Image":
         """
         Creates an Image or IndexImage object based on an image repository and
         digest. Performs a registry call for index images, to parse all their
-        child digests.
+        child digests. Limited by the provided semaphore.
 
         Args:
             repository (str): Image repository
@@ -149,7 +152,9 @@ class Image:  # pylint: disable=too-many-instance-attributes
             Image | IndexImage: The image object parsed from a manifest
         """
         image = Image(repository=repository, digest=digest)
-        manifest = await get_image_manifest(image.reference)
+        async with semaphore:
+            manifest = await get_image_manifest(image.reference)
+
         media_type = manifest["mediaType"]
 
         if media_type in {

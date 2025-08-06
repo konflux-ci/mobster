@@ -41,6 +41,7 @@ class Args:
     release_data: Path
     output: Path
     release_id: ReleaseId
+    concurrency: int
 
 
 @pytest.fixture(
@@ -53,6 +54,7 @@ def generate_product_command_args(request: Any) -> Args:
         release_data=Path("data.json"),
         output=request.param[0],
         release_id=request.param[1],
+        concurrency=8,
     )
 
 
