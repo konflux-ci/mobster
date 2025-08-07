@@ -215,10 +215,14 @@ async def _get_images_and_their_annotations(
             # This is a `FROM SCRATCH` image
             continue
         image_obj = base_images.get(image_ref)
-        assert image_obj, (
-            f"Cannot get information about base image "
-            f"{image_ref} mentioned in the Dockerfile!"
-        )
+        if not image_obj:
+            LOGGER.warning(
+                "Cannot get information about base image "
+                "%s mentioned in the Dockerfile! THIS MEANS "
+                "THE PRODUCED SBOM WILL BE INCOMPLETE!",
+                image_ref,
+            )
+            continue
         if index == len(base_images_refs) - 1:
             component_annotation = {
                 "name": "konflux:container:is_base_image",
