@@ -6,6 +6,7 @@ from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from _pytest.logging import LogCaptureFixture
 from cyclonedx.model.bom import Bom
 from cyclonedx.model.bom_ref import BomRef
 from cyclonedx.model.component import Component, ComponentType
@@ -16,6 +17,7 @@ from spdx_tools.spdx.model.package import Package
 
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.image import Image
 from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom
 
 
@@ -104,6 +106,48 @@ async def test_GenerateOciImageCommand_execute(
     sbom_dict = await GenerateOciImageCommand.dump_sbom_to_dict(sbom)
 
     compare_sbom_dicts(sbom_dict, expected_sbom)
+
+
+@pytest.mark.asyncio
+@patch(
+    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_refs_from_dockerfile"
+)
+@patch(
+    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_objects_for_base_images"
+)
+@patch(
+    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
+)
+async def test_test_GenerateOciImageCommand_execute_missing_digest(
+    mock_get_lines: MagicMock,
+    mock_get_images: AsyncMock,
+    mock_get_refs: AsyncMock,
+    caplog: LogCaptureFixture,
+) -> None:
+    args = MagicMock(
+        parsed_dockerfile_path="tests/data/dockerfiles/sample1/parsed.json",
+        base_image_digest_file="bar",
+        from_syft=[
+            Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")
+        ],
+        from_hermeto=None,
+        image_pullspec=None,
+        image_digest=None,
+        additional_base_images=[],
+    )
+    mock_get_refs.return_value = ["foo", "bar"]
+    mock_get_images.return_value = {
+        "foo": Image.from_image_index_url_and_digest(
+            "foo.bar/foo/ham:v1", "sha256:a", "amd64"
+        )
+    }
+    command = GenerateOciImageCommand(args)
+    await command.execute()
+    assert (
+        "Cannot get information about base image bar "
+        "mentioned in the Dockerfile! THIS MEANS THE "
+        "PRODUCED SBOM WILL BE INCOMPLETE!" in caplog.messages
+    )
 
 
 @pytest.mark.asyncio
