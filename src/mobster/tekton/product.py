@@ -58,6 +58,7 @@ def parse_args() -> ProcessProductArgs:
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
         print_digests=args.print_digests,
+        concurrency=args.concurrency,
     )  # pylint:disable=duplicate-code
 
 
@@ -66,6 +67,7 @@ def create_product_sbom(
     snapshot_spec: Path,
     release_data: Path,
     release_id: ReleaseId,
+    concurrency: int,
 ) -> None:
     """
     Create a product SBOM using the mobster generate command.
@@ -89,6 +91,8 @@ def create_product_sbom(
         str(release_data),
         "--release-id",
         str(release_id),
+        "--concurrency",
+        str(concurrency),
     ]
 
     subprocess.run(cmd, check=True)
@@ -111,7 +115,11 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
         await upload_release_data(s3, args.release_data, args.release_id)
 
     create_product_sbom(
-        sbom_path, args.snapshot_spec, args.release_data, args.release_id
+        sbom_path,
+        args.snapshot_spec,
+        args.release_data,
+        args.release_id,
+        args.concurrency,
     )
     if args.print_digests:
         await print_digests([sbom_path])

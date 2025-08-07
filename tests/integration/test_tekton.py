@@ -23,6 +23,8 @@ from tests.cmd.generate.test_product import verify_product_sbom
 from tests.conftest import GenerateOciImageTestCase
 from tests.integration.oci_client import ReferrersTagOCIClient
 
+CONCURRENCY = 8
+
 
 async def verify_sboms_in_tpa(
     tpa_client: TPAClient,
@@ -114,6 +116,8 @@ async def test_create_product_sboms_ta_happypath(
             "--release-id",
             str(release_id),
             "--print-digests",
+            "--concurrency",
+            str(CONCURRENCY),
         ],
         check=True,
         capture_output=True,
@@ -317,6 +321,8 @@ async def test_process_component_sboms_happypath(
             "--release-id",
             str(release_id),
             "--print-digests",
+            "--concurrency",
+            str(CONCURRENCY),
         ],
         check=True,
         capture_output=True,
