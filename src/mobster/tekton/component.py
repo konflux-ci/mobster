@@ -95,8 +95,10 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     s3 = connect_with_s3(args.retry_s3_bucket)
 
     if s3:
+        LOGGER.info("Uploading snapshot to S3 with release_id=%s", args.release_id)
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
 
+    LOGGER.info("Starting SBOM augmentation")
     augment_component_sboms(
         sbom_dir, args.snapshot_spec, args.release_id, args.concurrency
     )
