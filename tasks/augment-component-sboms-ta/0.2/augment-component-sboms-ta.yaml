@@ -3,17 +3,17 @@ apiVersion: tekton.dev/v1
 kind: Task
 
 metadata:
-  name: create-product-sbom-ta
+  name: augment-component-sboms-ta
   labels:
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: sbom
 
 spec:
   description: >-
-    Create product-level SBOM from release-time information and upload it to
-    Atlas and S3.
+    Update component-level SBOMs with release-time information, optionally
+    upload them to Atlas and S3.
   params:
     - name: ociStorage
       description: The OCI repository where the Trusted Artifacts are stored.
@@ -44,7 +44,7 @@ spec:
     - name: dataDir
       description: The location where data will be stored
       type: string
-      default: $(workspaces.data.path)
+      default: /var/workdir/release
 
     - name: taskGitUrl
       type: string
@@ -56,11 +56,7 @@ spec:
 
     - name: snapshotSpec
       type: string
-      description: Path to the mapped snapshot spec in the dataDir.
-
-    - name: releaseData
-      type: string
-      description: Path to the merged data file from collect-data in the dataDir.
+      description: Path to the mapped snapshot spec.
 
     - name: atlasSecretName
       type: string
@@ -90,10 +86,6 @@ spec:
       default: ""
       type: string
 
-  workspaces:
-    - name: data
-      description: Used as a working directory.
-
   results:
     - description: Produced trusted data artifact
       name: sourceDataArtifact
@@ -116,6 +108,22 @@ spec:
         value: "$(params.trustedArtifactsDebug)"
 
   steps:
+    - name: skip-trusted-artifact-operations
+      ref:
+        resolver: "git"
+        params:
+          - name: url
+            value: $(params.taskGitUrl)
+          - name: revision
+            value: $(params.taskGitRevision)
+          - name: pathInRepo
+            value: stepactions/skip-trusted-artifact-operations/skip-trusted-artifact-operations.yaml
+      params:
+        - name: ociStorage
+          value: $(params.ociStorage)
+        - name: workDir
+          value: $(params.dataDir)
+
     - name: use-trusted-artifact
       ref:
         resolver: "git"
@@ -132,14 +140,8 @@ spec:
         - name: sourceDataArtifact
           value: $(params.sourceDataArtifact)
 
-    - name: process-product-sbom
+    - name: process-component-sboms
       image: quay.io/konflux-ci/mobster@sha256:de2aa53c51e316ee96462186a1dc0e8c212b354afc1f50e3f4c8c8679881a069
-      computeResources:
-        limits:
-          memory: 512Mi
-        requests:
-          memory: 512Mi
-          cpu: 350m
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
           valueFrom:
@@ -169,6 +171,12 @@ spec:
               optional: true
         - name: AWS_DEFAULT_REGION
           value: "us-east-1"
+      computeResources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 512Mi
+          cpu: 350m
       script: |
         #!/usr/bin/env bash
         set -eux
@@ -177,10 +185,9 @@ spec:
         # script below will verify that the release_id has the correct format.
         release_id=$(dirname "$(params.snapshotSpec)")
 
-        process_product_sbom \
+        process_component_sboms \
           --data-dir "$(params.dataDir)" \
           --snapshot-spec "$(params.snapshotSpec)" \
-          --release-data "$(params.releaseData)" \
           --atlas-api-url "$(params.atlasApiUrl)" \
           --retry-s3-bucket "$(params.retryS3Bucket)" \
           --release-id "$release_id"
@@ -200,5 +207,21 @@ spec:
           value: $(params.ociStorage)
         - name: workDir
           value: $(params.dataDir)
+        - name: sourceDataArtifact
+          value: $(results.sourceDataArtifact.path)
+
+    - name: patch-source-data-artifact-result
+      ref:
+        resolver: "git"
+        params:
+          - name: url
+            value: $(params.taskGitUrl)
+          - name: revision
+            value: $(params.taskGitRevision)
+          - name: pathInRepo
+            value: stepactions/patch-source-data-artifact-result/patch-source-data-artifact-result.yaml
+      params:
+        - name: ociStorage
+          value: $(params.ociStorage)
         - name: sourceDataArtifact
           value: $(results.sourceDataArtifact.path)

@@ -5,7 +5,7 @@ kind: Task
 metadata:
   name: create-product-sbom-ta
   labels:
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: sbom
@@ -44,7 +44,7 @@ spec:
     - name: dataDir
       description: The location where data will be stored
       type: string
-      default: $(workspaces.data.path)
+      default: /var/workdir/release
 
     - name: taskGitUrl
       type: string
@@ -89,10 +89,6 @@ spec:
       description: URL of the SSO token issuer.
       default: ""
       type: string
-
-  workspaces:
-    - name: data
-      description: Used as a working directory.
 
   results:
     - description: Produced trusted data artifact
