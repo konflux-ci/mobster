@@ -111,6 +111,10 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     s3 = connect_with_s3(args.retry_s3_bucket)
 
     if s3:
+        LOGGER.info(
+            "Uploading snapshot and release data to S3 with release_id=%s",
+            args.release_id,
+        )
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
         await upload_release_data(s3, args.release_data, args.release_id)
 
