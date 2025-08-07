@@ -150,7 +150,7 @@ spec:
           value: $(params.sourceDataArtifact)
 
     - name: process-component-sboms
-      image: quay.io/redhat-user-workloads/the-collective-tenant/mobster-f7a65:on-pr-67ae51a02286f5c900e9bc8c3e7db7b68a4f6bc0
+      image: quay.io/redhat-user-workloads/the-collective-tenant/mobster-f7a65:on-pr-386b48cf8afe6df3e72210013092cc9e0b4a214f
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
           valueFrom:
