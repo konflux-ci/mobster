@@ -1,6 +1,7 @@
 """A module for augmenting SBOM documents."""
 
 import asyncio
+import gc
 import json
 import logging
 from dataclasses import dataclass
@@ -224,6 +225,12 @@ async def update_sbom(
                 raise SBOMError(f"Unsupported SBOM format for image {image}.")
             path = config.output_dir / get_randomized_sbom_filename(sbom)
             await write_sbom(sbom.doc, path)
+
+            # run garbage collection manually to make sure the object is
+            # cleaned up before we release the lock
+            del sbom
+            gc.collect()
+
             LOGGER.info("Successfully enriched SBOM for image %s", image)
             return True
         except Exception:  # pylint: disable=broad-except
