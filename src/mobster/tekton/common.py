@@ -4,6 +4,7 @@ Common utilities for Tekton tasks.
 
 import asyncio
 import hashlib
+import logging
 import os
 import subprocess
 from argparse import ArgumentParser
@@ -16,6 +17,8 @@ import aiofiles
 from mobster.cmd.generate.product import ReleaseData
 from mobster.release import ReleaseId, SnapshotModel
 from mobster.tekton.s3 import S3Client
+
+LOGGER = logging.getLogger(__name__)
 
 
 class AtlasTransientError(Exception):
@@ -36,6 +39,7 @@ class CommonArgs:
         snapshot_spec: path to snapshot spec file
         atlas_api_url: url of the TPA instance to use
         retry_s3_bucket: name of the S3 bucket to use for retries
+        concurrency: maximum number of concurrent operations
     """
 
     data_dir: Path
@@ -44,6 +48,7 @@ class CommonArgs:
     retry_s3_bucket: str
     release_id: ReleaseId
     print_digests: bool
+    concurrency: int
 
 
 def add_common_args(parser: ArgumentParser) -> None:
@@ -59,6 +64,7 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument("--retry-s3-bucket", type=str)
     parser.add_argument("--release-id", type=ReleaseId, required=True)
     parser.add_argument("--print-digests", action="store_true")
+    parser.add_argument("--concurrency", type=int, default="8")
 
 
 async def upload_sboms(
@@ -82,11 +88,13 @@ async def upload_sboms(
         raise ValueError("Missing Atlas authentication.")
 
     try:
+        LOGGER.info("Starting SBOM upload to Atlas")
         upload_to_atlas(dirpath, atlas_url)
     except AtlasTransientError as e:
         if s3_client:
             if not s3_credentials_exist():
                 raise ValueError("Missing AWS authentication.") from e
+            LOGGER.info("Encountered transient Atlas error, falling back to S3.")
             await upload_to_s3(s3_client, dirpath)
 
 

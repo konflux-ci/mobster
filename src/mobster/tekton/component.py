@@ -50,11 +50,12 @@ def parse_args() -> ProcessComponentArgs:
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
         print_digests=args.print_digests,
+        concurrency=args.concurrency,
     )
 
 
 def augment_component_sboms(
-    sbom_path: Path, snapshot_spec: Path, release_id: ReleaseId
+    sbom_path: Path, snapshot_spec: Path, release_id: ReleaseId, concurrency: int
 ) -> None:
     """
     Augment component SBOMs using the mobster augment command.
@@ -75,7 +76,9 @@ def augment_component_sboms(
         str(snapshot_spec),
         "--release-id",
         str(release_id),
-    ]
+        "--concurrency",
+        str(concurrency),
+    ]  # pylint: disable=duplicate-code
 
     subprocess.run(cmd, check=True)
 
@@ -92,9 +95,13 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     s3 = connect_with_s3(args.retry_s3_bucket)
 
     if s3:
+        LOGGER.info("Uploading snapshot to S3 with release_id=%s", args.release_id)
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
 
-    augment_component_sboms(sbom_dir, args.snapshot_spec, args.release_id)
+    LOGGER.info("Starting SBOM augmentation")
+    augment_component_sboms(
+        sbom_dir, args.snapshot_spec, args.release_id, args.concurrency
+    )
     if args.print_digests:
         await print_digests(list(sbom_dir.iterdir()))
 
