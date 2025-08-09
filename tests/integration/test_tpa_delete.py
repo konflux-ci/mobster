@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 
 from mobster.cmd.upload.tpa import TPAClient
-from tests.integration.utils import prepare_input_sbom, upload_test_sbom
+from tests.integration.utils import (
+    count_sboms_matching,
+    prepare_input_sbom,
+    upload_test_sbom,
+)
 
 TESTDATA_PATH = Path(__file__).parent.parent / "data"
 
@@ -37,22 +41,6 @@ def run_delete_command(
         cmd.append("--dry-run")
 
     return subprocess.run(cmd, capture_output=True, text=True)
-
-
-async def count_sboms_matching(tpa_client: TPAClient, query: str) -> int:
-    """
-    Count the number of SBOMs matching a query.
-
-    Args:
-        tpa_client: The TPA client to use for querying
-        query: The query string to match SBOMs
-
-    Returns:
-        Number of matching SBOMs
-    """
-    sboms = tpa_client.list_sboms(query=query, sort="ingested")
-    sbom_list = [sbom async for sbom in sboms]
-    return len(sbom_list)
 
 
 @pytest.mark.asyncio

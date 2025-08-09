@@ -46,3 +46,36 @@ async def upload_test_sbom(tpa_client: TPAClient, sbom_path: Path) -> None:
     """
     response = await tpa_client.upload_sbom(sbom_path)
     assert response.status_code == 201, f"Upload failed: {response.text}"
+
+
+async def count_sboms_matching(tpa_client: TPAClient, query: str) -> int:
+    """
+    Count the number of SBOMs matching a query.
+
+    Args:
+        tpa_client: The TPA client to use for querying
+        query: The query string to match SBOMs
+
+    Returns:
+        Number of matching SBOMs
+    """
+    sboms = tpa_client.list_sboms(query=query, sort="ingested")
+    sbom_list = [sbom async for sbom in sboms]
+    return len(sbom_list)
+
+
+async def verify_sboms_uploaded(tpa_client: TPAClient, sbom_names: list[str]) -> None:
+    """
+    Verify that SBOMs with the given names were uploaded to TPA.
+
+    Args:
+        tpa_client: The TPA client to use for querying
+        sbom_names: List of SBOM names to check for
+
+    Raises:
+        AssertionError: If any SBOM is not found or no SBOMs exist
+    """
+    specific_count = await count_sboms_matching(
+        tpa_client, "|".join(f"name={name}" for name in sbom_names)
+    )
+    assert specific_count > 0, "The expected count of SBOMs not found in TPA"
