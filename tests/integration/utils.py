@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from mobster.cmd.upload.tpa import TPAClient
+
 
 def prepare_input_sbom(
     source_file: Path, destination_dir: Path, dest_filename: str, sbom_name: str
@@ -32,3 +34,15 @@ def prepare_input_sbom(
         json.dump(original_content, file)
 
     return dest_path, original_content
+
+
+async def upload_test_sbom(tpa_client: TPAClient, sbom_path: Path) -> None:
+    """
+    Upload a test SBOM and verify it was successful.
+
+    Args:
+        tpa_client: The TPA client to use for upload
+        sbom_path: Path to the SBOM file to upload
+    """
+    response = await tpa_client.upload_sbom(sbom_path)
+    assert response.status_code == 201, f"Upload failed: {response.text}"
