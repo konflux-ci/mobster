@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 import pytest_asyncio
 
-from mobster.cmd.upload.tpa import TPAClient
+from mobster.cmd.upload.tpa import TPAClient, get_tpa_default_client
 from mobster.tekton.s3 import S3Client
 from tests.integration.oci_client import ReferrersTagOCIClient
 
@@ -110,20 +110,19 @@ async def s3_client(s3_auth_env: dict[str, str]) -> AsyncGenerator[S3Client, Non
 async def tpa_client(
     tpa_base_url: str, tpa_auth_env: Any
 ) -> AsyncGenerator[TPAClient, None]:
-    client = TPAClient(
+    async with get_tpa_default_client(
         base_url=tpa_base_url,
-        auth=None,
-    )
+    ) as client:
 
-    async def cleanup() -> None:
-        sboms = client.list_sboms(query="", sort="ingested")
-        async for sbom in sboms:
-            await client.delete_sbom(sbom.id)
+        async def cleanup() -> None:
+            sboms = client.list_sboms(query="", sort="ingested")
+            async for sbom in sboms:
+                await client.delete_sbom(sbom.id)
 
-    # Run cleanup before providing the client
-    await cleanup()
+        # Run cleanup before providing the client
+        await cleanup()
 
-    yield client
+        yield client
 
-    # Run cleanup after test completes
-    await cleanup()
+        # Run cleanup after test completes
+        await cleanup()

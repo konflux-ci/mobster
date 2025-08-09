@@ -2,6 +2,7 @@
 TPA API client
 """
 
+import contextlib
 import itertools
 import logging
 import os
@@ -20,7 +21,19 @@ LOGGER = logging.getLogger(__name__)
 class TPAClient(OIDCClientCredentialsClient):
     """
     TPA API client
+
+    WARNING: this client should not be initialized directly, but using an
+    "async with" statement. Only that guarantees proper clean up of the
+    internal HTTPX client used.
     """
+
+    async def __aenter__(self) -> "TPAClient":
+        self.client = httpx.AsyncClient(timeout=60)
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:  # type: ignore
+        if self.client:
+            await self.client.aclose()
 
     async def upload_sbom(self, sbom_filepath: Path) -> httpx.Response:
         """
@@ -115,9 +128,10 @@ class TPAClient(OIDCClientCredentialsClient):
         LOGGER.info("Successfully downloaded SBOM %s to %s", sbom_id, path)
 
 
-def get_tpa_default_client(
+@contextlib.asynccontextmanager
+async def get_tpa_default_client(
     base_url: str,
-) -> TPAClient:
+) -> AsyncGenerator[TPAClient, None]:
     """
     Get a default TPA client with OIDC credentials.
 
@@ -134,8 +148,9 @@ def get_tpa_default_client(
             client_id=os.environ["MOBSTER_TPA_SSO_ACCOUNT"],
             client_secret=os.environ["MOBSTER_TPA_SSO_TOKEN"],
         )
-    tpa_client = TPAClient(
+
+    async with TPAClient(
         base_url=base_url,
         auth=auth,
-    )
-    return tpa_client
+    ) as client:
+        yield client
