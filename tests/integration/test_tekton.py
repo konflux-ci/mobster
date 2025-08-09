@@ -7,6 +7,7 @@ import json
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -23,7 +24,7 @@ from tests.cmd.generate.test_product import verify_product_sbom
 from tests.conftest import GenerateOciImageTestCase
 from tests.integration.oci_client import ReferrersTagOCIClient
 
-CONCURRENCY = 8
+TESTDATA_PATH = Path(__file__).parent.parent / "data"
 
 
 async def verify_sboms_in_tpa(
@@ -342,6 +343,97 @@ async def test_process_component_sboms_happypath(
     sbom_digests = parse_digests(result.stdout)
 
     assert len(list((data_dir / "sbom").iterdir())) == 2
+
+    await verify_sboms_in_tpa(tpa_client, sbom_digests, test_id)
+
+    # check that no SBOMs were added to the bucket (TPA upload succeeded)
+    assert await s3_client.is_prefix_empty("/")
+
+    # check regeneration data was pushed
+    assert await s3_client.snapshot_exists(release_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.big_release
+async def test_process_component_sboms_big_release(
+    test_id: str,
+    s3_client: S3Client,
+    s3_sbom_bucket: str,
+    tpa_client: TPAClient,
+    tpa_base_url: str,
+    oci_client: ReferrersTagOCIClient,
+    registry_url: str,
+    tmp_path: Path,
+) -> None:
+    """
+    Create an image and an index with build-time SBOMs, run the augmentation
+    and verify results.
+    """
+    n_components = 20
+    data_dir = tmp_path
+    snapshot_path = Path("snapshot.json")
+    release_id = ReleaseId.new()
+
+    repo_name = "release"
+    repo_with_registry = f"{registry_url.removeprefix('http://')}/{repo_name}"
+
+    image = await oci_client.create_image(repo_name, "latest")
+    with open(TESTDATA_PATH / "integration" / "rhel_bootc.spdx.json") as fp:
+        sbom = fp.read()
+        sbom = sbom.replace(
+            "10b99add019c5bb363b999c7fea919e042deaaba0f44ae528bac843f4d849f0a",
+            image.digest.removeprefix("sha256:"),
+        )
+
+    await oci_client.attach_sbom(image, "spdx", sbom.encode())
+
+    index = await create_index_with_build_sbom(
+        oci_client, repo_with_registry, repo_name, [image], tmp_path
+    )
+
+    # We assign a unique tag to each component, so that we upload different
+    # SBOMs. TPA has trouble when uploading multiple identical large SBOMs
+    # concurrently. Based on the number of workers, the final state of TPA
+    # after the upload can be different.
+    snapshot: Any = {"components": []}
+    for i in range(n_components):
+        snapshot["components"].append(
+            {
+                "name": f"component-{i}",
+                "containerImage": f"{repo_with_registry}@{index.digest}",
+                "rh-registry-repo": "registry.redhat.io/test",
+                "tags": [str(i)],
+            }
+        )
+
+    with open(data_dir / snapshot_path, "w") as fp:
+        json.dump(snapshot, fp)
+
+    assert not await s3_client.snapshot_exists(release_id)
+
+    result = subprocess.run(
+        [
+            "process_component_sboms",
+            "--data-dir",
+            data_dir,
+            "--snapshot-spec",
+            snapshot_path,
+            "--atlas-api-url",
+            tpa_base_url,
+            "--retry-s3-bucket",
+            s3_sbom_bucket,
+            "--release-id",
+            str(release_id),
+            "--print-digests",
+            "--labels",
+            f"test_id={test_id}",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    sbom_digests = parse_digests(result.stdout)
+
+    assert len(list((data_dir / "sbom").iterdir())) == n_components * 2
 
     await verify_sboms_in_tpa(tpa_client, sbom_digests, test_id)
 
