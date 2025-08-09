@@ -8,9 +8,9 @@ from mobster.main import main, run
 LOGGER = logging.getLogger(__name__)
 
 
-@patch("mobster.main.run")
+@patch("mobster.main.asyncio.run")
 @patch("mobster.main.cli.setup_arg_parser")
-def test_main(mock_setup_args: MagicMock, mock_run: AsyncMock) -> None:
+def test_main(mock_setup_args: MagicMock, mock_asyncio_run: MagicMock) -> None:
     mock_args = mock_setup_args.return_value.parse_args.return_value
     mock_args.verbose = True
     main()
@@ -18,7 +18,7 @@ def test_main(mock_setup_args: MagicMock, mock_run: AsyncMock) -> None:
     mock_setup_args.assert_called_once()
     mock_setup_args.return_value.parse_args.assert_called_once()
 
-    mock_run.assert_called_once()
+    mock_asyncio_run.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -30,6 +30,10 @@ async def test_run(
     mock_args.func = MagicMock()
     mock_args.func.return_value.execute = AsyncMock()
     mock_args.func.return_value.save = AsyncMock()
+    mock_args.func.return_value.name = "test_command"
+
+    # Set logging level to DEBUG to capture the log_elapsed message
+    caplog.set_level(logging.DEBUG)
 
     monkeypatch.setattr("sys.exit", lambda _: None)
     await run(mock_args)

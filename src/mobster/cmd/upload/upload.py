@@ -221,9 +221,8 @@ class TPAUploadCommand(Command):
     @staticmethod
     async def upload_sbom_file(
         # pylint: disable=too-many-arguments,too-many-positional-arguments
+        tpa_client: TPAClient,
         sbom_file: Path,
-        auth: OIDCClientCredentials | None,
-        tpa_url: str,
         semaphore: asyncio.Semaphore,
         labels: dict[str, str],
         retries: int,
@@ -232,9 +231,8 @@ class TPAUploadCommand(Command):
         Upload a single SBOM file to TPA using HTTP client.
 
         Args:
+            tpa_client: TPA client object
             sbom_file: Absolute path to the SBOM file to upload
-            auth: Authentication object for the TPA API
-            tpa_url: Base URL for the TPA API
             semaphore: A semaphore to limit the number of concurrent uploads
             labels: A mapping of TPA label keys to label values for uploaded SBOMs
             retries: How many retries for SBOM upload will be performed before failing.
@@ -243,22 +241,20 @@ class TPAUploadCommand(Command):
             str: URL of the uploaded SBOM
         """
         async with semaphore:
-            client = TPAClient(
-                base_url=tpa_url,
-                auth=auth,
-            )
             LOGGER.info("Uploading %s to TPA", sbom_file)
             filename = sbom_file.name
             start_time = time.time()
             try:
-                urn = await client.upload_sbom(
+                urn = await tpa_client.upload_sbom(
                     sbom_file, labels=labels, retries=retries
                 )
                 LOGGER.info("Successfully uploaded %s to TPA", sbom_file)
                 return urn
             except Exception:  # pylint: disable=broad-except
                 LOGGER.exception(
-                    "Error uploading %s and took %s", filename, time.time() - start_time
+                    "Error uploading %s and took %s",
+                    filename,
+                    time.time() - start_time,
                 )
                 raise
 
@@ -280,19 +276,19 @@ class TPAUploadCommand(Command):
 
         semaphore = asyncio.Semaphore(config.workers)
 
-        tasks = [
-            TPAUploadCommand.upload_sbom_file(
-                sbom_file=sbom_file,
-                auth=config.auth,
-                tpa_url=config.base_url,
-                semaphore=semaphore,
-                labels=config.labels,
-                retries=config.retries,
-            )
-            for sbom_file in config.paths
-        ]
+        async with TPAClient(base_url=config.base_url, auth=config.auth) as client:
+            tasks = [
+                TPAUploadCommand.upload_sbom_file(
+                    tpa_client=client,
+                    sbom_file=sbom_file,
+                    semaphore=semaphore,
+                    labels=config.labels,
+                    retries=config.retries,
+                )
+                for sbom_file in config.paths
+            ]
 
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
 
         LOGGER.info("Upload complete")
         return TPAUploadReport.build_report(

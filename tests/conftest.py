@@ -1,18 +1,99 @@
+import contextlib
 import hashlib
 import json
 import random as rand
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.parser.parse_anything import parse_file
 
 from mobster import get_mobster_version
+from mobster.cmd.upload.tpa import TPAClient
 from mobster.sbom.spdx import get_mobster_tool_string
+
+
+@pytest.fixture
+def tpa_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Set up environment variables needed for TPA commands.
+    """
+    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN_URL", "https://test.token.url")
+    monkeypatch.setenv("MOBSTER_TPA_SSO_ACCOUNT", "test-account")
+    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN", "test-token")
+
+
+@pytest.fixture
+def mock_tpa_client() -> AsyncMock:
+    """
+    Create a mock TPA client that returns success for uploads.
+    """
+    mock = AsyncMock(spec=TPAClient)
+    mock.upload_sbom = AsyncMock(
+        return_value="urn:uuid:12345678-1234-5678-9012-123456789012"
+    )
+    mock.__aenter__ = AsyncMock(return_value=mock)
+    mock.__aexit__ = AsyncMock(return_value=None)
+    return mock
+
+
+@pytest.fixture
+def mock_tpa_client_with_http_response() -> AsyncMock:
+    """
+    Create a mock TPA client that returns HTTP response for delete/download operations.
+    """
+    mock = AsyncMock(spec=TPAClient)
+    mock.upload_sbom = AsyncMock(
+        return_value=httpx.Response(
+            200, request=httpx.Request("POST", "https://example.com")
+        )
+    )
+    mock.__aenter__ = AsyncMock(return_value=mock)
+    mock.__aexit__ = AsyncMock(return_value=None)
+    return mock
+
+
+@pytest.fixture
+def mock_sbom_factory() -> Callable[[str, str], MagicMock]:
+    """
+    Factory for creating mock SBOM objects with consistent structure.
+    """
+
+    def create_mock_sbom(sbom_id: str, name: str) -> MagicMock:
+        sbom = MagicMock()
+        sbom.id = sbom_id
+        sbom.name = name
+        return sbom
+
+    return create_mock_sbom
+
+
+def setup_mock_tpa_client_with_context_manager(
+    mock_get_client: MagicMock,
+    mock_tpa_client: AsyncMock,
+) -> None:
+    """
+    Utility function to setup TPA client mock with async context manager support.
+    This eliminates duplication in test setup code.
+
+    Args:
+        mock_get_client: The mock for get_tpa_default_client
+        mock_tpa_client: The mock TPA client instance
+    """
+    mock_tpa_client.__aenter__ = AsyncMock(return_value=mock_tpa_client)
+    mock_tpa_client.__aexit__ = AsyncMock(return_value=None)
+
+    @contextlib.asynccontextmanager
+    async def mock_client_ctx(base_url: str) -> Any:
+        yield mock_tpa_client
+
+    mock_get_client.side_effect = mock_client_ctx
 
 
 @pytest.fixture()
