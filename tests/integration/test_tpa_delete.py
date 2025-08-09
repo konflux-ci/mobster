@@ -2,30 +2,12 @@ import subprocess
 import time
 from pathlib import Path
 
-import httpx
 import pytest
 
 from mobster.cmd.upload.tpa import TPAClient
-from tests.integration.utils import prepare_input_sbom
+from tests.integration.utils import prepare_input_sbom, upload_test_sbom
 
 TESTDATA_PATH = Path(__file__).parent.parent / "data"
-
-
-async def upload_test_sbom(tpa_client: TPAClient, sbom_path: Path) -> httpx.Response:
-    """
-    Upload a test SBOM and verify it was successful.
-
-    Args:
-        tpa_client: The TPA client to use for upload
-        sbom_path: Path to the SBOM file to upload
-
-    Returns:
-        The HTTP response from the upload
-    """
-    response = await tpa_client.upload_sbom(sbom_path)
-    assert isinstance(response, httpx.Response)
-    assert response.status_code == 201, f"Upload failed: {response.text}"
-    return response
 
 
 def run_delete_command(
