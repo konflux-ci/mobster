@@ -1,30 +1,35 @@
 import json
+from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 import pytest
+import pytest_asyncio
 
 from mobster.cmd.upload.oidc import OIDCClientCredentials
 from mobster.cmd.upload.tpa import TPAClient
 
+BASE_URL = "https://api.example.com/v1/"
 
-def _get_valid_client() -> TPAClient:
+
+@pytest_asyncio.fixture
+async def tpa_client() -> AsyncGenerator[TPAClient, None]:
     token_url = "https://auth.example.com/oidc/token"
     proxy = "http://proxy.example.com:3128"
     auth = OIDCClientCredentials(
         token_url=token_url, client_id="abc", client_secret="xyz"
     )
-    tpa_client = TPAClient("https://api.example.com/v1/", auth, proxy=proxy)
-    return tpa_client
+    async with TPAClient(BASE_URL, auth, proxy=proxy) as client:
+        yield client
 
 
 @pytest.mark.asyncio
 @patch("aiofiles.open")
 @patch("mobster.cmd.upload.tpa.TPAClient.post")
 async def test_upload_sbom_success(
-    mock_post: AsyncMock, mock_aiofiles_open: AsyncMock
+    mock_post: AsyncMock, mock_aiofiles_open: AsyncMock, tpa_client: TPAClient
 ) -> None:
     sbom_filepath = Path("/path/to/sbom.json")
     file_content = b'{"sbom": "content"}'
@@ -38,8 +43,7 @@ async def test_upload_sbom_success(
     )
     mock_post.return_value = mock_response
 
-    client = _get_valid_client()
-    response = await client.upload_sbom(sbom_filepath)
+    response = await tpa_client.upload_sbom(sbom_filepath)
 
     mock_aiofiles_open.assert_called_once_with(sbom_filepath, "rb")
     mock_post.assert_called_once_with(
@@ -54,7 +58,7 @@ async def test_upload_sbom_success(
 @patch("aiofiles.open")
 @patch("mobster.cmd.upload.tpa.TPAClient.post")
 async def test_upload_sbom_error(
-    mock_post: AsyncMock, mock_aiofiles_open: AsyncMock
+    mock_post: AsyncMock, mock_aiofiles_open: AsyncMock, tpa_client: TPAClient
 ) -> None:
     sbom_filepath = Path("/path/to/sbom.json")
     file_content = b'{"sbom": "content"}'
@@ -69,9 +73,8 @@ async def test_upload_sbom_error(
         "Server Error", request=request, response=error_response
     )
 
-    client = _get_valid_client()
     with pytest.raises(httpx.HTTPStatusError):
-        await client.upload_sbom(sbom_filepath)
+        await tpa_client.upload_sbom(sbom_filepath)
 
     mock_aiofiles_open.assert_called_once_with(sbom_filepath, "rb")
     mock_post.assert_called_once()
@@ -79,7 +82,7 @@ async def test_upload_sbom_error(
 
 @pytest.mark.asyncio
 @patch("mobster.cmd.upload.tpa.TPAClient.get")
-async def test_list_sboms(mock_get: AsyncMock) -> None:
+async def test_list_sboms(mock_get: AsyncMock, tpa_client: TPAClient) -> None:
     """Test listing SBOMs from TPA API."""
     # Create mock response data that matches the expected model structure
     mock_sbom_data_1 = {
@@ -125,8 +128,7 @@ async def test_list_sboms(mock_get: AsyncMock) -> None:
 
     mock_get.side_effect = [page_one, page_two]
 
-    client = _get_valid_client()
-    response = client.list_sboms("query", "sort")
+    response = tpa_client.list_sboms("query", "sort")
 
     items = [item async for item in response]
 
@@ -139,9 +141,8 @@ async def test_list_sboms(mock_get: AsyncMock) -> None:
 
 @pytest.mark.asyncio
 @patch("mobster.cmd.upload.tpa.TPAClient.delete")
-async def test_delete_sbom(mock_delete: AsyncMock) -> None:
-    client = _get_valid_client()
-    response = await client.delete_sbom("123")
+async def test_delete_sbom(mock_delete: AsyncMock, tpa_client: TPAClient) -> None:
+    response = await tpa_client.delete_sbom("123")
 
     mock_delete.assert_awaited_once_with("api/v2/sbom/123")
     assert response == mock_delete.return_value
@@ -151,7 +152,7 @@ async def test_delete_sbom(mock_delete: AsyncMock) -> None:
 @patch("aiofiles.open")
 @patch("mobster.cmd.upload.tpa.TPAClient.stream")
 async def test_download_sbom(
-    mock_stream: AsyncMock, mock_aiofiles_open: AsyncMock
+    mock_stream: AsyncMock, mock_aiofiles_open: AsyncMock, tpa_client: TPAClient
 ) -> None:
     """Test downloading SBOM from TPA API."""
     sbom_id = "123"
@@ -166,8 +167,7 @@ async def test_download_sbom(
     mock_file = AsyncMock()
     mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
 
-    client = _get_valid_client()
-    await client.download_sbom(sbom_id, local_path)
+    await tpa_client.download_sbom(sbom_id, local_path)
 
     mock_stream.assert_called_once_with("GET", f"api/v2/sbom/{sbom_id}/download")
 
