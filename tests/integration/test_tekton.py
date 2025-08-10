@@ -369,7 +369,7 @@ async def test_process_component_sboms_big_release(
     Create an image and an index with build-time SBOMs, run the augmentation
     and verify results.
     """
-    n_components = 20
+    n_components = 200
     data_dir = tmp_path
     snapshot_path = Path("snapshot.json")
     release_id = ReleaseId.new()
