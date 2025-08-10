@@ -109,6 +109,13 @@ spec:
         steps:
           - name: deploy-mobster-tests
             image: $(tasks.prepare-metadata.results.image_ref)
+            resources:
+              limits:
+                cpu: 350m
+                memory: 512Mi
+              requests:
+                cpu: 350m
+                memory: 512Mi
             script: |
               #!/bin/bash
               set -xe
