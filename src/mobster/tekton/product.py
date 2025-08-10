@@ -128,7 +128,7 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     if args.print_digests:
         await print_digests([sbom_path])
 
-    await upload_sboms(sbom_dir, args.atlas_api_url, s3)
+    await upload_sboms(sbom_dir, args.atlas_api_url, s3, args.concurrency)
 
 
 def main() -> None:

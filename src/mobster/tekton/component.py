@@ -105,7 +105,7 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     if args.print_digests:
         await print_digests(list(sbom_dir.iterdir()))
 
-    await upload_sboms(sbom_dir, args.atlas_api_url, s3)
+    await upload_sboms(sbom_dir, args.atlas_api_url, s3, args.concurrency)
 
 
 def main() -> None:

@@ -68,9 +68,7 @@ def add_common_args(parser: ArgumentParser) -> None:
 
 
 async def upload_sboms(
-    dirpath: Path,
-    atlas_url: str,
-    s3_client: S3Client | None,
+    dirpath: Path, atlas_url: str, s3_client: S3Client | None, concurrency: int
 ) -> None:
     """
     Upload SBOMs to Atlas with S3 fallback on transient errors.
@@ -89,7 +87,7 @@ async def upload_sboms(
 
     try:
         LOGGER.info("Starting SBOM upload to Atlas")
-        upload_to_atlas(dirpath, atlas_url)
+        upload_to_atlas(dirpath, atlas_url, concurrency)
     except AtlasTransientError as e:
         if s3_client:
             if not s3_credentials_exist():
@@ -98,7 +96,7 @@ async def upload_sboms(
             await upload_to_s3(s3_client, dirpath)
 
 
-def upload_to_atlas(dirpath: Path, atlas_url: str) -> None:
+def upload_to_atlas(dirpath: Path, atlas_url: str, concurrency: int) -> None:
     """
     Upload SBOMs to Atlas TPA instance.
 
@@ -122,6 +120,8 @@ def upload_to_atlas(dirpath: Path, atlas_url: str) -> None:
                 "--from-dir",
                 dirpath,
                 "--report",
+                "--workers",
+                str(concurrency),
             ],
             check=True,
             stdout=subprocess.PIPE,
