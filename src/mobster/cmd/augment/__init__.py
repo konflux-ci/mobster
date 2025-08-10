@@ -118,7 +118,7 @@ def get_randomized_sbom_filename(sbom: SBOM) -> str:
         str: File name with uuid suffix to save the SBOM to
     """
     sbom_img_digest = sbom.reference.split("@", 1)[1]
-    suffix = uuid4().urn
+    suffix = uuid4().hex
     return f"{sbom_img_digest}-{suffix}"
 
 
