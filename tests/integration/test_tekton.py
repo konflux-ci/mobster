@@ -169,7 +169,7 @@ async def test_sbom_upload_fallback(
 
     # mock the atlas upload to raise a transient error
     mock_upload_to_atlas.side_effect = AtlasTransientError
-    await upload_sboms(tmp_path, tpa_base_url, s3_client)
+    await upload_sboms(tmp_path, tpa_base_url, s3_client, concurrency=1)
 
     # check that the fallback to s3 uploaded the object
     assert await s3_client.exists(key) is True
