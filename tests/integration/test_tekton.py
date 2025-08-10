@@ -338,7 +338,7 @@ async def test_process_component_sboms_happypath(
 
 
 @pytest.mark.asyncio
-@pytest.mark.big_release
+@pytest.mark.slow
 async def test_process_component_sboms_big_release(
     s3_client: S3Client,
     s3_sbom_bucket: str,
