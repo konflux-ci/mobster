@@ -27,7 +27,14 @@ LOGGER = logging.getLogger(__name__)
 class ProcessComponentArgs(CommonArgs):
     """
     Arguments for component SBOM processing.
+
+    Attributes:
+        augment_concurrency: maximum number of concurrent SBOM augmentation operations
+        upload_concurrency: maximum number of concurrent SBOM upload operations
     """
+
+    augment_concurrency: int
+    upload_concurrency: int
 
 
 def parse_args() -> ProcessComponentArgs:
@@ -39,6 +46,8 @@ def parse_args() -> ProcessComponentArgs:
     """
     parser = ap.ArgumentParser()
     add_common_args(parser)
+    parser.add_argument("--augment-concurrency", type=int, default=8)
+    parser.add_argument("--upload-concurrency", type=int, default=8)
     args = parser.parse_args()
 
     # the snapshot_spec is joined with the data_dir as previous tasks provide
@@ -50,7 +59,8 @@ def parse_args() -> ProcessComponentArgs:
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
         print_digests=args.print_digests,
-        concurrency=args.concurrency,
+        augment_concurrency=args.augment_concurrency,
+        upload_concurrency=args.upload_concurrency,
     )
 
 
@@ -64,6 +74,7 @@ def augment_component_sboms(
         sbom_path: Path where the SBOM will be saved.
         snapshot_spec: Path to snapshot specification file.
         release_id: Release ID to store in SBOM file.
+        concurrency: Maximum number of concurrent augmentation operations.
     """
     cmd = [
         "mobster",
@@ -100,12 +111,12 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
 
     LOGGER.info("Starting SBOM augmentation")
     augment_component_sboms(
-        sbom_dir, args.snapshot_spec, args.release_id, args.concurrency
+        sbom_dir, args.snapshot_spec, args.release_id, args.augment_concurrency
     )
     if args.print_digests:
         await print_digests(list(sbom_dir.iterdir()))
 
-    await upload_sboms(sbom_dir, args.atlas_api_url, s3, args.concurrency)
+    await upload_sboms(sbom_dir, args.atlas_api_url, s3, args.upload_concurrency)
 
 
 def main() -> None:

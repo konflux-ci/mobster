@@ -86,11 +86,19 @@ spec:
       default: ""
       type: string
 
-    - name: concurrency
+    - name: augmentConcurrency
       description: |
-        Maximum number of concurrent operations to perform. Higher limit will
-        speed up execution for larger snapshots, but will have higher memory
-        requirements.
+        Maximum number of SBOMs that will be augmented concurrently. Higher
+        limit will speed up execution for larger snapshots, but will have
+        higher memory requirements.
+      default: "8"
+      type: string
+
+    - name: uploadConcurrency
+      description: |
+        Maximum number of SBOMs that will be uploaded to Atlas concurrently.
+        Higher limit will speed up execution for larger snapshots, but will
+        have higher memory requirements.
       default: "8"
       type: string
 
@@ -203,7 +211,8 @@ spec:
           --atlas-api-url "$(params.atlasApiUrl)" \
           --retry-s3-bucket "$(params.retryS3Bucket)" \
           --release-id "$release_id" \
-          --concurrency "$(params.concurrency)"
+          --augment-concurrency "$(params.augmentConcurrency)" \
+          --upload-concurrency "$(params.uploadConcurrency)"
 
     - name: create-trusted-artifact
       ref:
