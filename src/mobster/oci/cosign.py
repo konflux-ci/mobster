@@ -5,6 +5,7 @@ client implementing the Cosign protocol.
 """
 
 import logging
+import tempfile
 import typing
 from pathlib import Path
 
@@ -42,7 +43,7 @@ class CosignClient(Cosign):
         verification_key: Path to public key used to verify attestations.
     """
 
-    def __init__(self, verification_key: Path) -> None:
+    def __init__(self, verification_key: Path | None = None) -> None:
         """
         Args:
             verification_key: Path to public key used to verify attestations.
@@ -60,14 +61,28 @@ class CosignClient(Cosign):
         with make_oci_auth_file(image.reference) as authfile:
             # We ignore the transparency log, because as of now, Konflux builds
             # don't publish to Rekor.
-            cmd = [
-                "cosign",
-                "verify-attestation",
-                f"--key={self.verification_key}",
-                "--type=slsaprovenance02",
-                "--insecure-ignore-tlog=true",
-                image.reference,
-            ]
+            if self.verification_key is not None:
+                cmd = [
+                    "cosign",
+                    "verify-attestation",
+                    f"--key={self.verification_key}",
+                    "--type=slsaprovenance02",
+                    "--insecure-ignore-tlog=true",
+                    image.reference,
+                ]
+            else:
+                logger.info(
+                    "Using `cosign download attestation` instead of "
+                    "`cosign verify-attestation` Because no public key "
+                    "for signature verification was provided."
+                )
+                cmd = [
+                    "cosign",
+                    "download",
+                    "attestation",
+                    "--predicate-type=slsaprovenance02",
+                    image.reference,
+                ]
             logger.debug("Fetching provenance for %s using '%s'", image, " ".join(cmd))
             code, stdout, stderr = await run_async_subprocess(
                 cmd,
@@ -96,15 +111,31 @@ class CosignClient(Cosign):
 
         Args:
             image (Image): Image to fetch the SBOM of.
+                This image MUST have a resolved hash!
         """
-        with make_oci_auth_file(image.reference) as authfile:
-            code, stdout, stderr = await run_async_subprocess(
-                ["cosign", "download", "sbom", image.reference],
-                env={"DOCKER_CONFIG": str(authfile.parent)},
-                retry_times=3,
-            )
+        provenance = await self.fetch_latest_provenance(image)
+        sbom_url = provenance.get_sbom_blob_url(image)
+        with tempfile.NamedTemporaryFile() as tmp_file:
+            with make_oci_auth_file(image.reference) as authfile:
+                oras_command = [
+                    "oras",
+                    "blob",
+                    "fetch",
+                    sbom_url,
+                    "--registry-config",
+                    str(authfile),
+                    "--output",
+                    tmp_file.name,
+                ]
+                logger.info(
+                    "Downloading SBOM using command '%s'", " ".join(oras_command)
+                )
 
-        if code != 0:
-            raise SBOMError(f"Failed to fetch SBOM {image}: {stderr.decode()}")
-
-        return SBOM.from_cosign_output(stdout, image.reference)
+                code, stdout, stderr = await run_async_subprocess(oras_command)
+            if code != 0:
+                raise SBOMError(
+                    f"Cannot fetch SBOM from url '{sbom_url}' for image '{image}'. "
+                    f"Raw STDOUT: '{stdout.decode()}' Raw STDERR: '{stderr.decode()}'"
+                )
+            sbom_data = tmp_file.read()
+        return SBOM.from_cosign_output(sbom_data, image.reference)
