@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -98,10 +99,18 @@ async def tpa_client(
         auth=None,
     )
 
+    async def delete_sbom(sem: asyncio.Semaphore, sbom_id: str) -> None:
+        async with sem:
+            await client.delete_sbom(sbom_id)
+
     async def cleanup() -> None:
         sboms = client.list_sboms(query="", sort="ingested")
+        ids = []
         async for sbom in sboms:
-            await client.delete_sbom(sbom.id)
+            ids.append(sbom.id)
+
+        sem = asyncio.Semaphore(16)
+        await asyncio.gather(*[delete_sbom(sem, id) for id in ids])
 
     # Run cleanup before providing the client
     await cleanup()
