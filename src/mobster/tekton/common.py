@@ -92,7 +92,7 @@ async def upload_sboms(
         if s3_client:
             if not s3_credentials_exist():
                 raise ValueError("Missing AWS authentication.") from e
-            LOGGER.info("Encountered transient Atlas error, falling back to S3.")
+            LOGGER.warning("Encountered transient Atlas error, falling back to S3.")
             await upload_to_s3(s3_client, dirpath)
 
 
