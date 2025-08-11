@@ -31,9 +31,11 @@ class ProcessProductArgs(CommonArgs):
 
     Attributes:
         release_data: Path to release data file.
+        concurrency: maximum number of concurrent operations
     """
 
     release_data: Path
+    concurrency: int
 
 
 def parse_args() -> ProcessProductArgs:
@@ -46,6 +48,7 @@ def parse_args() -> ProcessProductArgs:
     parser = ap.ArgumentParser()
     add_common_args(parser)
     parser.add_argument("--release-data", type=Path, required=True)
+    parser.add_argument("--concurrency", type=int, default=8)
     args = parser.parse_args()
 
     # the snapshot_spec and release_data are joined with the data_dir as
