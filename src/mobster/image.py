@@ -139,7 +139,7 @@ class Image:  # pylint: disable=too-many-instance-attributes
         """
         Creates an Image or IndexImage object based on an image repository and
         digest. Performs a registry call for index images, to parse all their
-        child digests. Limited by the provided semaphore.
+        child digests.
 
         Args:
             repository (str): Image repository

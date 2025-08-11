@@ -80,6 +80,7 @@ def create_product_sbom(
         snapshot_spec: Path to snapshot specification file.
         release_data: Path to release data file.
         release_id: Release ID to store in SBOM file.
+        concurrency: Maximum number of concurrent operations.
     """
     cmd = [
         "mobster",
