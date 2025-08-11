@@ -57,6 +57,7 @@ async def test_create_product_sboms_ta_happypath(
     oci_client: ReferrersTagOCIClient,
     registry_url: str,
     tmp_path: Path,
+    product_concurrency: int,
 ) -> None:
     data_dir = tmp_path
     snapshot_path = Path("snapshot.json")
@@ -117,7 +118,7 @@ async def test_create_product_sboms_ta_happypath(
             str(release_id),
             "--print-digests",
             "--concurrency",
-            str(CONCURRENCY),
+            str(product_concurrency),
         ],
         check=True,
         capture_output=True,
@@ -273,6 +274,8 @@ async def test_process_component_sboms_happypath(
     oci_client: ReferrersTagOCIClient,
     registry_url: str,
     tmp_path: Path,
+    augment_concurrency: int,
+    upload_concurrency: int,
 ) -> None:
     """
     Create an image and an index with build-time SBOMs, run the augmentation
@@ -322,9 +325,9 @@ async def test_process_component_sboms_happypath(
             str(release_id),
             "--print-digests",
             "--augment-concurrency",
-            str(CONCURRENCY),
+            str(augment_concurrency),
             "--upload-concurrency",
-            str(CONCURRENCY),
+            str(upload_concurrency),
         ],
         check=True,
         capture_output=True,
