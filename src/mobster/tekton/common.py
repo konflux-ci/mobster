@@ -74,6 +74,7 @@ async def upload_sboms(
         dirpath: Directory containing SBOMs to upload.
         atlas_url: URL of the Atlas TPA instance.
         s3_client: S3Client object for retry uploads, or None if no retries.
+        concurrency: Maximum number of concurrent upload operations.
 
     Raises:
         ValueError: If Atlas authentication credentials are missing or if S3
@@ -100,6 +101,7 @@ def upload_to_atlas(dirpath: Path, atlas_url: str, concurrency: int) -> None:
     Args:
         dirpath: Directory containing SBOMs to upload.
         atlas_url: URL of the Atlas TPA instance.
+        concurrency: Maximum number of concurrent upload operations.
 
     Raises:
         AtlasTransientError: If a transient error occurs (exit code 2).
