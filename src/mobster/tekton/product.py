@@ -31,9 +31,11 @@ class ProcessProductArgs(CommonArgs):
 
     Attributes:
         release_data: Path to release data file.
+        concurrency: maximum number of concurrent operations
     """
 
     release_data: Path
+    concurrency: int
 
 
 def parse_args() -> ProcessProductArgs:
@@ -46,6 +48,7 @@ def parse_args() -> ProcessProductArgs:
     parser = ap.ArgumentParser()
     add_common_args(parser)
     parser.add_argument("--release-data", type=Path, required=True)
+    parser.add_argument("--concurrency", type=int, default=8)
     args = parser.parse_args()
 
     # the snapshot_spec and release_data are joined with the data_dir as
@@ -58,6 +61,7 @@ def parse_args() -> ProcessProductArgs:
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
         print_digests=args.print_digests,
+        concurrency=args.concurrency,
     )  # pylint:disable=duplicate-code
 
 
@@ -66,6 +70,7 @@ def create_product_sbom(
     snapshot_spec: Path,
     release_data: Path,
     release_id: ReleaseId,
+    concurrency: int,
 ) -> None:
     """
     Create a product SBOM using the mobster generate command.
@@ -75,6 +80,7 @@ def create_product_sbom(
         snapshot_spec: Path to snapshot specification file.
         release_data: Path to release data file.
         release_id: Release ID to store in SBOM file.
+        concurrency: Maximum number of concurrent operations.
     """
     cmd = [
         "mobster",
@@ -89,6 +95,8 @@ def create_product_sbom(
         str(release_data),
         "--release-id",
         str(release_id),
+        "--concurrency",
+        str(concurrency),
     ]
 
     subprocess.run(cmd, check=True)
@@ -107,16 +115,24 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     s3 = connect_with_s3(args.retry_s3_bucket)
 
     if s3:
+        LOGGER.info(
+            "Uploading snapshot and release data to S3 with release_id=%s",
+            args.release_id,
+        )
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
         await upload_release_data(s3, args.release_data, args.release_id)
 
     create_product_sbom(
-        sbom_path, args.snapshot_spec, args.release_data, args.release_id
+        sbom_path,
+        args.snapshot_spec,
+        args.release_data,
+        args.release_id,
+        args.concurrency,
     )
     if args.print_digests:
         await print_digests([sbom_path])
 
-    await upload_sboms(sbom_dir, args.atlas_api_url, s3)
+    await upload_sboms(sbom_dir, args.atlas_api_url, s3, args.concurrency)
 
 
 def main() -> None:

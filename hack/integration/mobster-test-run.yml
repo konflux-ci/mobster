@@ -10,7 +10,7 @@ spec:
       - name: url
         value: https://github.com/konflux-ci/mobster
       - name: revision
-        value: main
+        value: ISV-6197
       - name: pathInRepo
         value: hack/integration/mobster-test.yml
   workspaces:

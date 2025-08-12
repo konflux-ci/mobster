@@ -1970,6 +1970,22 @@ pytest = ">=6.2.5"
 testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
+name = "pytest-fail-slow"
+version = "0.6.0"
+description = "Fail tests that take too long to run"
+optional = false
+python-versions = ">=3.8"
+groups = ["dev"]
+files = [
+    {file = "pytest_fail_slow-0.6.0-py3-none-any.whl", hash = "sha256:1658ad93b19e54c25142540f2808640c418ba000be87dc0c9b7aac6662d493cc"},
+    {file = "pytest_fail_slow-0.6.0.tar.gz", hash = "sha256:b367a5bdfadb0a4d35d4ef1c220737aa46bc8d6035256171004c67f7f2f5235c"},
+]
+
+[package.dependencies]
+pluggy = ">=1.1"
+pytest = ">=7.0"
+
+[[package]]
 name = "pytest-httpx"
 version = "0.35.0"
 description = "Send responses to httpx."
@@ -3659,4 +3675,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "c810c17e700f9d88d5d9cb97afa38c3426c54e9ef264508156a5abc226e45c89"
+content-hash = "9ea8f76e31e4398a2ccb0739d0d91af28797eb6030d48f0325ce6b73c5b42614"
