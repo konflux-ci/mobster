@@ -107,6 +107,7 @@ pytest-lazy-fixtures = "^1.3.2"
 pytest-reportlog = "^0.4.0"
 mkdocs = "^1.6.1"
 mkdocs-material = "^9.6.16"
+pytest-fail-slow = "^0.6.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
