@@ -157,7 +157,7 @@ spec:
           value: $(params.sourceDataArtifact)
 
     - name: process-product-sbom
-      image: quay.io/konflux-ci/mobster@sha256:de2aa53c51e316ee96462186a1dc0e8c212b354afc1f50e3f4c8c8679881a069
+      image: quay.io/konflux-ci/mobster@sha256:3785f754968dc1a7332698eaeaf1e0681d04f107fb9fd22868030ffb6e667fd1
       computeResources:
         limits:
           memory: 512Mi
