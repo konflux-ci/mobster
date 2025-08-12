@@ -4,6 +4,7 @@ Common utilities for Tekton tasks.
 
 import asyncio
 import hashlib
+import logging
 import os
 import subprocess
 from argparse import ArgumentParser
@@ -16,6 +17,8 @@ import aiofiles
 from mobster.cmd.generate.product import ReleaseData
 from mobster.release import ReleaseId, SnapshotModel
 from mobster.tekton.s3 import S3Client
+
+LOGGER = logging.getLogger(__name__)
 
 
 class AtlasTransientError(Exception):
@@ -62,9 +65,7 @@ def add_common_args(parser: ArgumentParser) -> None:
 
 
 async def upload_sboms(
-    dirpath: Path,
-    atlas_url: str,
-    s3_client: S3Client | None,
+    dirpath: Path, atlas_url: str, s3_client: S3Client | None, concurrency: int
 ) -> None:
     """
     Upload SBOMs to Atlas with S3 fallback on transient errors.
@@ -73,6 +74,7 @@ async def upload_sboms(
         dirpath: Directory containing SBOMs to upload.
         atlas_url: URL of the Atlas TPA instance.
         s3_client: S3Client object for retry uploads, or None if no retries.
+        concurrency: Maximum number of concurrent upload operations.
 
     Raises:
         ValueError: If Atlas authentication credentials are missing or if S3
@@ -82,21 +84,24 @@ async def upload_sboms(
         raise ValueError("Missing Atlas authentication.")
 
     try:
-        upload_to_atlas(dirpath, atlas_url)
+        LOGGER.info("Starting SBOM upload to Atlas")
+        upload_to_atlas(dirpath, atlas_url, concurrency)
     except AtlasTransientError as e:
         if s3_client:
             if not s3_credentials_exist():
                 raise ValueError("Missing AWS authentication.") from e
+            LOGGER.warning("Encountered transient Atlas error, falling back to S3.")
             await upload_to_s3(s3_client, dirpath)
 
 
-def upload_to_atlas(dirpath: Path, atlas_url: str) -> None:
+def upload_to_atlas(dirpath: Path, atlas_url: str, concurrency: int) -> None:
     """
     Upload SBOMs to Atlas TPA instance.
 
     Args:
         dirpath: Directory containing SBOMs to upload.
         atlas_url: URL of the Atlas TPA instance.
+        concurrency: Maximum number of concurrent upload operations.
 
     Raises:
         AtlasTransientError: If a transient error occurs (exit code 2).
@@ -114,6 +119,8 @@ def upload_to_atlas(dirpath: Path, atlas_url: str) -> None:
                 "--from-dir",
                 dirpath,
                 "--report",
+                "--workers",
+                str(concurrency),
             ],
             check=True,
             stdout=subprocess.PIPE,

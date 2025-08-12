@@ -38,6 +38,23 @@ def oci_client(registry_url: str) -> ReferrersTagOCIClient:
     return ReferrersTagOCIClient(registry_url)
 
 
+# WARNING: The concurrency settings MUST match production Tekton Task params.
+# Mismatched values will make memory usage tests unreliable.
+@pytest.fixture()
+def augment_concurrency() -> int:
+    return 8
+
+
+@pytest.fixture()
+def upload_concurrency() -> int:
+    return 8
+
+
+@pytest.fixture()
+def product_concurrency() -> int:
+    return 8
+
+
 @pytest.fixture
 def tpa_auth_env(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     """Set up environment variables needed to disable TPA authentication."""

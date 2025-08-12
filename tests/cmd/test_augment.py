@@ -6,12 +6,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from packageurl import PackageURL
 
 from mobster.cmd.augment import (
+    AugmentConfig,
     AugmentImageCommand,
     get_sbom_to_filename_dict,
     update_sbom,
@@ -76,6 +77,15 @@ class TestAugmentCommand:
             lambda _: fake_cosign,
         )
 
+    @pytest.fixture(autouse=True)
+    def mock_write_sbom(self, monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
+        """
+        Fixture to patch mobster.cmd.augment.write_sbom function.
+        """
+        mock = AsyncMock()
+        monkeypatch.setattr("mobster.cmd.augment.write_sbom", mock)
+        return mock
+
     @pytest.fixture()
     def prepare_sbom(self) -> Callable[[str], SBOM]:
         def _load_sbom(reference: str) -> SBOM:
@@ -97,11 +107,6 @@ class TestAugmentCommand:
         args.verification_key = Path("key.pub")
 
         cmd = make_augment_command(args, None)
-        cmd.sboms = [
-            SBOM({}, "", "quay.io/repo@sha256:aaaaaaaa"),
-            SBOM({}, "", "quay.io/repo@sha256:bbbbbbbb"),
-        ]
-
         return cmd
 
     @pytest.mark.asyncio
@@ -114,25 +119,6 @@ class TestAugmentCommand:
         Used by Splunk
         """
         assert augment_command_save.name == "AugmentImageCommand"
-
-    @pytest.mark.asyncio
-    async def test_augment_command_save(
-        self,
-        augment_command_save: AugmentImageCommand,
-    ) -> None:
-        with patch("mobster.cmd.augment.write_sbom") as mock_write_sbom:
-            await augment_command_save.save()
-            mock_write_sbom.assert_awaited()
-
-    @pytest.mark.asyncio
-    async def test_augment_command_save_failure(
-        self, augment_command_save: AugmentImageCommand
-    ) -> None:
-        with patch("mobster.cmd.augment.write_sbom") as mock_write_sbom:
-            mock_write_sbom.side_effect = ValueError
-            await augment_command_save.save()
-            assert augment_command_save.exit_code == 1
-            mock_write_sbom.assert_awaited()
 
     @pytest.mark.asyncio
     async def test_augment_execute_failure(
@@ -156,7 +142,7 @@ class TestAugmentCommand:
         with patch(
             "mobster.cmd.augment.update_sboms",
         ) as fake_update_sboms:
-            fake_update_sboms.return_value = (False, [])
+            fake_update_sboms.return_value = False
             await cmd.execute()
             assert cmd.exit_code == 1
 
@@ -165,6 +151,7 @@ class TestAugmentCommand:
         self,
         make_augment_command: MakeAugmentCommand,
         prepare_sbom: Callable[[str], SBOM],
+        mock_write_sbom: AsyncMock,
     ) -> None:
         reference = "quay.io/org/tenant/test@sha256:aaaaaaaa"
         repo, digest = reference.split("@", 1)
@@ -192,19 +179,19 @@ class TestAugmentCommand:
         )
 
         cmd = make_augment_command(args, snapshot)
-
-        await cmd.execute()
-
         expected = prepare_sbom(reference).doc
 
-        assert len(cmd.sboms) == 1
-        assert_spdx_sbom(cmd.sboms[0].doc, expected)
+        await cmd.execute()
+        write_calls = mock_write_sbom.call_args_list
+        written_doc = write_calls[0].args[0]
+        assert_spdx_sbom(written_doc, expected)
 
     @pytest.mark.asyncio
     async def test_augment_execute_multiarch(
         self,
         make_augment_command: MakeAugmentCommand,
         prepare_sbom: Callable[[str], SBOM],
+        mock_write_sbom: AsyncMock,
     ) -> None:
         index_reference = "quay.io/org/tenant/test@sha256:bbbbbbbb"
         index_repo, index_digest = index_reference.split("@", 1)
@@ -237,6 +224,7 @@ class TestAugmentCommand:
         cmd = make_augment_command(args, snapshot)
 
         await cmd.execute()
+        write_calls = mock_write_sbom.call_args_list
 
         expected_sboms = [
             prepare_sbom(
@@ -245,15 +233,16 @@ class TestAugmentCommand:
             prepare_sbom(image_reference),
         ]
 
-        assert len(expected_sboms) == len(cmd.sboms)
+        assert len(expected_sboms) == len(write_calls)
 
-        for actual, expected in zip(cmd.sboms, expected_sboms, strict=False):
-            assert_spdx_sbom(actual.doc, expected.doc)
+        for write_call, expected in zip(write_calls, expected_sboms, strict=False):
+            assert_spdx_sbom(write_call.args[0], expected.doc)
 
     @pytest.mark.asyncio
     async def test_augment_execute_cdx_singlearch(
         self,
         make_augment_command: MakeAugmentCommand,
+        mock_write_sbom: AsyncMock,
     ) -> None:
         reference = "quay.io/org/tenant/test@sha256:dddddddd"
         repo, digest = reference.split("@", 1)
@@ -282,10 +271,11 @@ class TestAugmentCommand:
         cmd = make_augment_command(args, snapshot)
 
         await cmd.execute()
+        write_calls = mock_write_sbom.call_args_list
 
-        assert len(cmd.sboms) == 1
-        sbom = cmd.sboms[0]
-        VerifyCycloneDX.verify_components_updated(snapshot, sbom.doc)
+        assert len(write_calls) == 1
+        written_sbom = write_calls[0].args[0]
+        VerifyCycloneDX.verify_components_updated(snapshot, written_sbom)
 
     @pytest.mark.asyncio
     async def test_verify_sbom_failure(
@@ -314,12 +304,13 @@ class TestAugmentCommand:
         with patch("mobster.cmd.augment.update_sbom_in_situ") as mock_update:
             mock_update.side_effect = SBOMError
             sem = asyncio.Semaphore(1)
-            assert (
-                await update_sbom(
-                    component, img, fake_cosign, verify=False, semaphore=sem
-                )
-                is None
+            config = AugmentConfig(
+                cosign=fake_cosign,
+                verify=False,
+                semaphore=sem,
+                output_dir=Path("/tmp"),
             )
+            assert await update_sbom(config, component, img) is False
 
 
 class FakeCosign(Cosign):
@@ -577,9 +568,13 @@ class TestUpdateFormatSupport:
         test_sbom = SBOM({"spdxVersion": version}, "digest", "ref")
         setup_load_sbom(test_sbom)
         with patch("mobster.cmd.augment.handlers.SPDXVersion2.update_sbom"):
-            result = await update_sbom(
-                component, component.image, mock_cosign, False, semaphore
+            config = AugmentConfig(
+                cosign=mock_cosign,
+                verify=False,
+                semaphore=semaphore,
+                output_dir=Path("/tmp"),
             )
+            result = await update_sbom(config, component, component.image)
             assert result is not None
 
     @pytest.mark.parametrize(
@@ -598,9 +593,13 @@ class TestUpdateFormatSupport:
         test_sbom = SBOM({"spdxVersion": version}, "digest", "ref")
         setup_load_sbom(test_sbom)
         with patch("mobster.cmd.augment.handlers.SPDXVersion2.update_sbom"):
-            result = await update_sbom(
-                index_component, index_component.image, mock_cosign, False, semaphore
+            config = AugmentConfig(
+                cosign=mock_cosign,
+                verify=False,
+                semaphore=semaphore,
+                output_dir=Path("/tmp"),
             )
+            result = await update_sbom(config, index_component, index_component.image)
             assert result is not None
 
     @pytest.mark.parametrize("version", ["1.4", "1.5", "1.6"])
@@ -618,13 +617,17 @@ class TestUpdateFormatSupport:
         )
         setup_load_sbom(test_sbom)
         with patch("mobster.cmd.augment.handlers.CycloneDXVersion1.update_sbom"):
-            result = await update_sbom(
-                component, component.image, mock_cosign, False, semaphore
+            config = AugmentConfig(
+                cosign=mock_cosign,
+                verify=False,
+                semaphore=semaphore,
+                output_dir=Path("/tmp"),
             )
+            result = await update_sbom(config, component, component.image)
             assert result is not None
 
     @pytest.mark.asyncio
-    async def test_cyclonedx_with_index_image_returns_none(
+    async def test_cyclonedx_with_index_image_fails(
         self,
         index_component: Component,
         mock_cosign: MagicMock,
@@ -635,13 +638,18 @@ class TestUpdateFormatSupport:
             {"bomFormat": "CycloneDX", "specVersion": "1.6"}, "digest", "ref"
         )
         setup_load_sbom(test_sbom)
-        result = await update_sbom(
-            index_component, index_component.image, mock_cosign, False, semaphore
+        config = AugmentConfig(
+            cosign=mock_cosign,
+            verify=False,
+            semaphore=semaphore,
+            output_dir=Path("/tmp"),
         )
-        assert result is None
+        assert (
+            await update_sbom(config, index_component, index_component.image) is False
+        )
 
     @pytest.mark.asyncio
-    async def test_unsupported_format_returns_none(
+    async def test_unsupported_format_fails(
         self,
         component: Component,
         mock_cosign: MagicMock,
@@ -650,10 +658,13 @@ class TestUpdateFormatSupport:
     ) -> None:
         test_sbom = SBOM({"unknown": "format"}, "digest", "ref")
         setup_load_sbom(test_sbom)
-        result = await update_sbom(
-            component, component.image, mock_cosign, False, semaphore
+        config = AugmentConfig(
+            cosign=mock_cosign,
+            verify=False,
+            semaphore=semaphore,
+            output_dir=Path("/tmp"),
         )
-        assert result is None
+        assert await update_sbom(config, component, component.image) is False
 
 
 def test_cdx_augment_metadata_tools_components_empty_metadata() -> None:
