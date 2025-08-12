@@ -3,7 +3,12 @@ from argparse import ArgumentParser
 
 import pytest
 
-from mobster.cli import generate_oci_image_parser, parse_concurrency, setup_arg_parser
+from mobster.cli import (
+    generate_oci_image_parser,
+    parse_concurrency,
+    parse_tpa_labels,
+    setup_arg_parser,
+)
 
 
 def test_setup_arg_parser() -> None:
@@ -68,3 +73,42 @@ def test_generate_oci_image_parser(command: list[str], success: bool) -> None:
     else:
         with pytest.raises(SystemExit):
             main_parser.parse_args(command)
+
+
+@pytest.mark.parametrize(
+    ["arg", "expected"],
+    [
+        ("key1=value1", {"key1": "value1"}),
+        ("key1=value1,key2=value2", {"key1": "value1", "key2": "value2"}),
+        ("foo=bar,baz=qux,spam=ham", {"foo": "bar", "baz": "qux", "spam": "ham"}),
+    ],
+)
+def test_parse_tpa_labels_valid(arg: str, expected: dict[str, str]) -> None:
+    """
+    Test parse_tpa_labels with valid inputs.
+    """
+    result = parse_tpa_labels(arg)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "arg",
+    [
+        "",
+        "key_without_value",
+        "key=value,invalid",
+        "=value",
+        "key==value",
+        "special=value=with=equals",
+        "key1=value1,key2",
+        "key1=value1,=",
+        "key1=value1,,key2=value2",
+        "empty=",
+    ],
+)
+def test_parse_tpa_labels_invalid(arg: str) -> None:
+    """
+    Test parse_tpa_labels with invalid inputs.
+    """
+    with pytest.raises(argparse.ArgumentTypeError):
+        parse_tpa_labels(arg)
