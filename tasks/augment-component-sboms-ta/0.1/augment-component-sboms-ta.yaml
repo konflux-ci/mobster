@@ -193,9 +193,9 @@ spec:
           value: "us-east-1"
       computeResources:
         limits:
-          memory: 512Mi
+          memory: 1Gi
         requests:
-          memory: 512Mi
+          memory: 1Gi
           cpu: 350m
       script: |
         #!/usr/bin/env bash
