@@ -112,10 +112,10 @@ spec:
             resources:
               limits:
                 cpu: 350m
-                memory: 512Mi
+                memory: 1Gi
               requests:
                 cpu: 350m
-                memory: 512Mi
+                memory: 1Gi
             script: |
               #!/bin/bash
               set -xe
