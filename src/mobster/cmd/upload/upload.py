@@ -5,6 +5,7 @@ import glob
 import logging
 import os
 import time
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -59,6 +60,26 @@ class UploadReport(pydantic.BaseModel):
         return UploadReport(success=success, failure=failure)
 
 
+@dataclass
+class UploadConfig:
+    """
+    Configuration to use when uploading SBOMs to TPA.
+
+    Attributes:
+        auth: Optional OIDCClientCredentials object
+        base_url: TPA base URL to use
+        workers: number of maximum concurrent uploads
+        labels: mapping of TPA label keys to label values for uploaded SBOMs
+        paths: list of paths to SBOMs to upload
+    """
+
+    auth: OIDCClientCredentials | None
+    base_url: str
+    workers: int
+    labels: dict[str, str]
+    paths: list[Path]
+
+
 class TPAUploadCommand(Command):
     """
     Command to upload a file to the TPA.
@@ -78,9 +99,15 @@ class TPAUploadCommand(Command):
 
         workers = self.cli_args.workers if self.cli_args.from_dir else 1
 
-        report = await self.upload(
-            auth, self.cli_args.tpa_base_url, sbom_files, workers
+        config = UploadConfig(
+            auth=auth,
+            base_url=self.cli_args.tpa_base_url,
+            paths=sbom_files,
+            workers=workers,
+            labels=self.cli_args.labels,
         )
+
+        report = await self.upload(config)
         if self.cli_args.report:
             print(report.model_dump_json())
 
@@ -108,6 +135,7 @@ class TPAUploadCommand(Command):
         auth: OIDCClientCredentials | None,
         tpa_url: str,
         semaphore: asyncio.Semaphore,
+        labels: dict[str, str],
     ) -> None:
         """
         Upload a single SBOM file to TPA using HTTP client.
@@ -128,7 +156,7 @@ class TPAUploadCommand(Command):
             filename = sbom_file.name
             start_time = time.time()
             try:
-                await client.upload_sbom(sbom_file)
+                await client.upload_sbom(sbom_file, labels=labels)
                 LOGGER.info("Successfully uploaded %s to TPA", sbom_file)
             except Exception:  # pylint: disable=broad-except
                 LOGGER.exception(
@@ -138,10 +166,7 @@ class TPAUploadCommand(Command):
 
     async def upload(
         self,
-        auth: OIDCClientCredentials | None,
-        tpa_url: str,
-        sbom_files: list[Path],
-        workers: int,
+        config: UploadConfig,
     ) -> UploadReport:
         """
         Upload SBOM files to TPA given a directory or a file.
@@ -153,22 +178,26 @@ class TPAUploadCommand(Command):
             workers (int): Number of concurrent workers for uploading
         """
 
-        LOGGER.info("Found %s SBOMs to upload", len(sbom_files))
+        LOGGER.info("Found %s SBOMs to upload", len(config.paths))
 
-        semaphore = asyncio.Semaphore(workers)
+        semaphore = asyncio.Semaphore(config.workers)
 
         tasks = [
             self.upload_sbom_file(
-                sbom_file=sbom_file, auth=auth, tpa_url=tpa_url, semaphore=semaphore
+                sbom_file=sbom_file,
+                auth=config.auth,
+                tpa_url=config.base_url,
+                semaphore=semaphore,
+                labels=config.labels,
             )
-            for sbom_file in sbom_files
+            for sbom_file in config.paths
         ]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
         self.set_exit_code(results)
 
         LOGGER.info("Upload complete")
-        return UploadReport.build_report(list(zip(sbom_files, results, strict=True)))
+        return UploadReport.build_report(list(zip(config.paths, results, strict=True)))
 
     def set_exit_code(self, results: list[BaseException | None]) -> None:
         """

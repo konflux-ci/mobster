@@ -386,6 +386,13 @@ def upload_tpa_parser(subparsers: Any) -> None:
         action="store_true",
         help="Print upload report to stdout",
     )
+    tpa_parser.add_argument(
+        "--labels",
+        type=parse_tpa_labels,
+        help='Comma-separated "key=value" pairs denoting '
+        "labels to attach to the uploaded SBOMs",
+        default={},
+    )
 
     # Create a mutually exclusive group and require one of the arguments
     source_group = tpa_parser.add_mutually_exclusive_group(required=True)
@@ -413,6 +420,39 @@ def parse_concurrency(val: str) -> int:
             "Concurrency limit must be a non-zero integer."
         )
     return num
+
+
+def parse_tpa_labels(val: str) -> dict[str, str]:
+    """
+    Parse and validate labels from command line argument.
+
+    Args:
+        val: String value from command line argument.
+
+    Returns:
+        Dictionary mapping label keys to label values.
+
+    Raises:
+        argparse.ArgumentTypeError: On incorrect format.
+    """
+    labels = {}
+    pairs = val.split(",")
+    for pair in pairs:
+        if pair.count("=") != 1:
+            raise argparse.ArgumentTypeError(
+                "Each key=value pair must contain exactly one '=' character."
+            )
+
+        key, value = pair.split("=")
+        if not key:
+            raise argparse.ArgumentTypeError("Label key cannot be empty.")
+
+        if not value:
+            raise argparse.ArgumentTypeError("Label value cannot be empty.")
+
+        labels[key] = value
+
+    return labels
 
 
 def download_command_parser(subparsers: Any) -> None:

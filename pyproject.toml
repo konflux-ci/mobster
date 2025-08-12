@@ -81,7 +81,7 @@ omit = [
 packages = [{ include = "mobster", from = "src" }]
 
 [tool.pytest.ini_options]
-asyncio_default_fixture_loop_scope = "function"
+asyncio_default_fixture_loop_scope = "session"
 
 [tool.poetry.group.dev.dependencies]
 pytest = {extras = ["pytest-reportlog"], version = "^8.4.1"}

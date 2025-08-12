@@ -61,6 +61,7 @@ def parse_args() -> ProcessComponentArgs:
         print_digests=args.print_digests,
         augment_concurrency=args.augment_concurrency,
         upload_concurrency=args.upload_concurrency,
+        labels=args.labels,
     )
 
 
@@ -116,7 +117,9 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     if args.print_digests:
         await print_digests(list(sbom_dir.iterdir()))
 
-    await upload_sboms(sbom_dir, args.atlas_api_url, s3, args.upload_concurrency)
+    await upload_sboms(
+        sbom_dir, args.atlas_api_url, s3, args.upload_concurrency, args.labels
+    )
 
 
 def main() -> None:
