@@ -121,3 +121,13 @@ data file with the components being released:
     ]
 }
 ```
+
+# Structure of the generated SBOM
+
+The generated SBOM has following structure:
+```
+ - SPDXRef-DOCUMENT
+    - SPDXRef-product (DESCRIBES)
+        - Component XYZ (PACKAGE_OF)
+        - Component ABC (PACKAGE_OF)
+```

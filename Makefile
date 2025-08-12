@@ -40,3 +40,13 @@ install:
 build-image:
 	@echo "Building Docker image"
 	podman build -t mobster:latest .
+
+@PHONY: serve-docs
+serve-docs:
+	@echo "Serving documentation"
+	mkdocs serve
+
+.PHONY: build-docs
+build-docs:
+	@echo "Building documentation"
+	mkdocs build

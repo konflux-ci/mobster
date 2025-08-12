@@ -1,0 +1,35 @@
+---
+name: "Documentation"
+
+on:
+  push:
+    paths:
+      - docs/**
+      - mkdocs.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate docs
+        run: |
+          pipx install mkdocs
+          pipx inject mkdocs \
+            mkdocs-material \
+            pymdown-extensions
+
+          # Replace /docs prefix from README.md
+          sed -i 's|(docs/|(./|' README.md
+
+          mkdocs build
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
