@@ -66,7 +66,9 @@ class Snapshot:
 
 
 async def make_snapshot(
-    snapshot_spec: Path, digest: str | None = None, concurrency_limit: int = 8
+    snapshot_spec: Path,
+    digest: str | None = None,
+    semaphore: asyncio.Semaphore | None = None,
 ) -> Snapshot:
     """
     Parse a snapshot spec from a JSON file and create an object representation
@@ -80,8 +82,9 @@ async def make_snapshot(
     Args:
         snapshot_spec (Path): Path to a snapshot spec JSON file
         digest (str | None): Digest of the image to parse the snapshot for
-        concurrency_limit: Maximum number of concurrent manifest fetches,
-            defaults to 8
+        semaphore: asyncio semaphore limiting the maximum number of concurrent
+            manifest fetches. If no semaphore is provided, creates an internal one
+            that defaults to 8 concurrent fetches.
     """
     with open(snapshot_spec, encoding="utf-8") as snapshot_file:
         snapshot_model = SnapshotModel.model_validate_json(snapshot_file.read())
@@ -92,7 +95,8 @@ async def make_snapshot(
 
         return True
 
-    semaphore = asyncio.Semaphore(concurrency_limit)
+    if semaphore is None:
+        semaphore = asyncio.Semaphore(8)
 
     component_tasks = []
     for component_model in filter(is_relevant, snapshot_model.components):
@@ -131,9 +135,10 @@ async def _make_component(  # pylint: disable=too-many-arguments,too-many-positi
         release_repository (str): repository the component is being
             released to (such as registry.redhat.io)
     """
-    image: Image = await Image.from_repository_digest_manifest(
-        repository, image_digest, semaphore
-    )
+    async with semaphore:
+        image: Image = await Image.from_repository_digest_manifest(
+            repository, image_digest
+        )
     return Component(name=name, image=image, repository=release_repository, tags=tags)
 
 
