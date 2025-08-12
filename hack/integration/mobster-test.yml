@@ -95,10 +95,10 @@ spec:
             resources:
               limits:
                 cpu: 1
-                memory: 3Gi
+                memory: 4Gi
               requests:
                 cpu: 1
-                memory: 3Gi
+                memory: 4Gi
 
           - name: createbuckets
             image: quay.io/minio/mc:latest
