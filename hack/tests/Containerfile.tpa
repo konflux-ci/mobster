@@ -1,6 +1,6 @@
 FROM registry.access.redhat.com/ubi9/ubi:latest
 
-ARG TRUSTD_VERSION=0.2.1
+ARG TRUSTD_VERSION=0.3.3
 
 USER root
 
