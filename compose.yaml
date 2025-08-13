@@ -6,7 +6,6 @@ services:
       - "9000:9000"
     volumes:
       - ./hack/tests/zot.config.json:/etc/zot/config.json:ro
-      - zot-data:/tmp/zot
     command: ["serve", "/etc/zot/config.json"]
 
   tpa:
@@ -38,6 +37,3 @@ services:
       echo "Created buckets";
       exit 0;
       "
-
-volumes:
-  zot-data:
