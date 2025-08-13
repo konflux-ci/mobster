@@ -1,5 +1,8 @@
 FROM registry.access.redhat.com/ubi9/ubi:latest
 
+# This needs to line up with the version we use for Atlas.
+# Check the following URL before changing:
+# https://gitlab.cee.redhat.com/service/app-interface/-/blob/master/data/services/atlas/atlas-release/saas/atlas-v2.yml?ref_type=heads
 ARG TRUSTD_VERSION=0.3.3
 
 USER root
