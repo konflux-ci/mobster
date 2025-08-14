@@ -403,7 +403,7 @@
   
   
   <span class="md-ellipsis">
-    Lifecyle
+    Lifecycle
     
   </span>
   
@@ -881,23 +881,23 @@
 
 <h1 id="sbom-formats">SBOM formats</h1>
 <p>SBOM documents can be represented in a variety of formats. Each format was designed
-to adress different use cases and requirements, but they all
+to address different use cases and requirements, but they all
 aim to provide a comprehensive view of the software components and their relationships.</p>
 <p>The most common formats are:</p>
 <ul>
 <li><a href="https://spdx.dev/">SPDX</a></li>
 <li><a href="https://cyclonedx.org/">CycloneDX</a></li>
 </ul>
-<p>A Mobster tool can generate SBOMs in both formats, allowing users to choose the one that best fits their needs.
-However, the SPDX format is preferred by the Konflxu project and Red Hat Product Security.</p>
+<p>Mobster can generate SBOMs in both formats, allowing users to choose the one that best fits their needs.
+However, the SPDX format is preferred by the Konflux project and Red Hat Product Security.</p>
 <h2 id="spdx">SPDX</h2>
 <p>A standardized format for describing software licenses, copyright, and component metadata for compliance and security.</p>
-<p>A Mobster tool uses the official <a href="https://pypi.org/project/spdx-tools/">spdx-tools Python library</a> to generate
+<p>Mobster uses the official <a href="https://pypi.org/project/spdx-tools/">spdx-tools Python library</a> to generate
 SBOMs in the SPDX format and validate them.</p>
 <p>A currently supported SPDX schema version is <a href="https://spdx.github.io/spdx-spec/v2.3/">2.3</a>.</p>
 <h2 id="cyclonedx">CycloneDX</h2>
 <p>A lightweight, security-focused BOM format for detailing components, dependencies, and vulnerabilities.</p>
-<p>A Mobster tool uses the official <a href="https://pypi.org/project/cyclonedx-python-lib/">cyclonedx-python-lib Python library</a>
+<p>Mobster uses the official <a href="https://pypi.org/project/cyclonedx-python-lib/">cyclonedx-python-lib Python library</a>
 to generate SBOMs in the CycloneDX format and validate them.</p>
 <p>A currently supported CycloneDX schema version is <a href="https://cyclonedx.org/docs/1.6/json/">1.6</a>.</p>
 

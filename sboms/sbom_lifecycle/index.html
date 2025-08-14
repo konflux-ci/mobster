@@ -22,7 +22,7 @@
     
     
       
-        <title>Lifecyle - Mobster - SBOM management tool</title>
+        <title>Lifecycle - Mobster - SBOM management tool</title>
       
     
     
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Lifecyle
+              Lifecycle
             
           </span>
         </div>
@@ -415,7 +415,7 @@
   
   
   <span class="md-ellipsis">
-    Lifecyle
+    Lifecycle
     
   </span>
   
@@ -428,7 +428,7 @@
   
   
   <span class="md-ellipsis">
-    Lifecyle
+    Lifecycle
     
   </span>
   
@@ -911,19 +911,19 @@ or upload SBOMs.</p>
 <li><code>mobster upload</code> - used to release SBOMs to target locations</li>
 </ul>
 <h2 id="build-phase">Build phase</h2>
-<p>In the build phase, the pipeline produces an software artifact from the source code.
+<p>In the build phase, the pipeline produces a software artifact from the source code.
 At this point Mobster generates an SBOM for given artifact based on its content
 type.
 At this moment Mobster supports SBOM generation for the following content types:</p>
 <ul>
-<li>OCI image</li>
-<li>OCI index image</li>
-<li>OCI artifact</li>
-<li>Modelcar</li>
+<li><a href="../oci_image/">OCI image</a></li>
+<li><a href="../oci_index_sbom/">OCI index image</a></li>
+<li><a href="../oci_artifact/">OCI artifact</a></li>
+<li><a href="../modelcar_sbom/">Modelcar</a></li>
 </ul>
 <p>Each of these content types has its own specific command to generate SBOM and
 also has its own specific structure and inputs.</p>
-<p>Generaly SBOMs are generated using following inputs based on the content type:</p>
+<p>Generally SBOMs are generated using following inputs based on the content type:</p>
 <ul>
 <li>Syft scan</li>
 <li>Hermeto SBOM</li>
@@ -933,20 +933,27 @@ also has its own specific structure and inputs.</p>
 <li>Modelcar image pullspecs</li>
 </ul>
 <h2 id="release-phase">Release phase</h2>
-<p>SBOM produced in the build phase are ussually not suitable for public consumption.
-In the build phase we don't know the final target of the artiface from where
+<p>SBOM produced in the build phase are usually not suitable for public consumption.
+In the build phase we don't know the final target of the artifact from where
 a customer will pull it.</p>
-<p>Due to this limiration, the SBOMs generated in the build phase are augmented
+<p>Due to this limitation, the SBOMs generated in the build phase are augmented
 in the release phase. The release phase is responsible for producing a final
 SBOM that is suitable for public consumption.</p>
 <p>The general process of the release phase is as follows:</p>
 <ol>
 <li>The SBOMs generated in the build phase are collected.</li>
-<li>The SBOMs are augmented with additional information such as:</li>
+<li>The SBOMs are augmented with additional information such as:<ul>
 <li>Image pullspec of published image</li>
+<li>Repository names</li>
+</ul>
+</li>
+<li>A <a href="../product/">product level SBOM</a> is generated that contains all the SBOMs
+   for the individual artifacts and product metadata such as:<ul>
 <li>Product name</li>
 <li>Product version</li>
 <li>CPE IDs</li>
+</ul>
+</li>
 </ol>
 <h2 id="incident-response">Incident response</h2>
 <p>At the end of both the build and release phases, the SBOMs are stored in a
