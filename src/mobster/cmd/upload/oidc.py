@@ -93,6 +93,19 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         if self.client:
             await self.client.aclose()
 
+    def _assert_client(self) -> None:
+        """
+        Raises a RuntimeError if the client was not initialized using an async
+        context manager.
+
+        Raises:
+            RuntimeError if the client attribute is None
+        """
+        if self.client is None:
+            raise RuntimeError(
+                "The client was not initialized using an async context manager."
+            )
+
     def _token_expired(self) -> bool:
         """
         Check if the current token should be renewed
@@ -119,8 +132,8 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         # and https://www.ietf.org/rfc/rfc6749.txt section 4.4 and 2.3.1
         LOGGER.debug("Fetching new token from %s", self._auth.token_url)
 
-        assert self.client is not None
-        resp = await self.client.post(
+        self._assert_client()
+        resp = await self.client.post(  # type: ignore[union-attr]
             self._auth.token_url,
             data={
                 "grant_type": "client_credentials",
@@ -158,8 +171,9 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         async with self._token_mutex:
             if self._token_expired():
                 await self._fetch_token()
-            assert self.client is not None
-            self.client.headers["Authorization"] = "Bearer " + self._token
+            self._assert_client()
+            auth_header = f"Bearer: {self._token}"
+            self.client.headers["Authorization"] = auth_header  # type: ignore[union-attr]
 
     # Mypy doesn't recognize that either a value is returned
     # or an exception is raised in all cases
@@ -207,11 +221,11 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         if status_forcelist is None:
             status_forcelist = [408, 429, 500, 502, 503, 504]
 
-        assert self.client is not None
+        self._assert_client()
         for attempt in range(retries):
             await self._ensure_valid_token()
             try:
-                resp = await self.client.request(
+                resp = await self.client.request(  # type:ignore[union-attr]
                     method,
                     effective_url,
                     content=content,
@@ -371,8 +385,8 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
 
         await self._ensure_valid_token()
 
-        assert self.client is not None
-        async with self.client.stream(
+        self._assert_client()
+        async with self.client.stream(  # type: ignore[union-attr]
             method, effective_url, params=params, headers=headers
         ) as response:
             response.raise_for_status()
