@@ -1,29 +1,34 @@
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from collections.abc import AsyncGenerator
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+import pytest_asyncio
+from pytest_httpx import HTTPXMock, IteratorStream
 
 from mobster.cmd.upload import oidc
-from mobster.cmd.upload.oidc import RetryExhaustedException
+from mobster.cmd.upload.oidc import OIDCClientCredentialsClient, RetryExhaustedException
 
 AUTHORIZATION_HEADER = {"Authorization": "Bearer asdfghjkl"}
 
+BASE_URL = "https://api.example.com/v1/"
 
-def _get_valid_client() -> oidc.OIDCClientCredentialsClient:
+
+@pytest_asyncio.fixture
+async def oidc_client() -> AsyncGenerator[oidc.OIDCClientCredentialsClient, None]:
     token_url = "https://auth.example.com/oidc/token"
     proxy = "http://proxy.example.com:3128"
     auth = oidc.OIDCClientCredentials(
         token_url=token_url, client_id="abc", client_secret="xyz"
     )
-    oidc_client = oidc.OIDCClientCredentialsClient(
-        "https://api.example.com/v1/", auth, proxy=proxy
-    )
-    return oidc_client
+    async with oidc.OIDCClientCredentialsClient(BASE_URL, auth, proxy=proxy) as client:
+        yield client
 
 
 @pytest.mark.asyncio
-async def test__fetch_token_success(httpx_mock: Any) -> None:
+async def test__fetch_token_success(
+    httpx_mock: HTTPXMock, oidc_client: OIDCClientCredentialsClient
+) -> None:
     form_encoded_content_type = {"Content-Type": "application/x-www-form-urlencoded"}
     token_url = "https://auth.example.com/oidc/token"
     token_response = {"access_token": "asdfghjkl", "expires_in": 600}
@@ -35,43 +40,41 @@ async def test__fetch_token_success(httpx_mock: Any) -> None:
         json=token_response,
     )
 
-    client = _get_valid_client()
-    await client._fetch_token()
-    assert client._token == "asdfghjkl"
-    assert client._token_expiration > 0
+    await oidc_client._fetch_token()
+    assert oidc_client._token == "asdfghjkl"
+    assert oidc_client._token_expiration > 0
 
 
 @pytest.mark.asyncio
 @patch("mobster.cmd.upload.oidc.LOGGER")
 @patch("httpx.AsyncClient.post")
 async def test__fetch_token_unable(
-    mock_post: AsyncMock, mock_logger: MagicMock
+    mock_post: AsyncMock,
+    mock_logger: MagicMock,
+    oidc_client: OIDCClientCredentialsClient,
 ) -> None:
-    auth = oidc.OIDCClientCredentials(
-        token_url="foo", client_id="abc", client_secret="xyz"
-    )
-    client = oidc.OIDCClientCredentialsClient("bar", auth)
     request = httpx.Request("POST", "foo")
     mock_post.return_value = httpx.Response(500, request=request)
 
     with pytest.raises(httpx.HTTPStatusError):
-        await client._fetch_token()
+        await oidc_client._fetch_token()
 
     mock_logger.error.assert_called_once_with(
         "Unable to fetch auth token. [%s] %s", 500, ""
     )
 
 
+# TODO: the following two tests can be parametrized
 @pytest.mark.asyncio
-async def test__fetch_token_failed(httpx_mock: Any) -> None:
+async def test__fetch_token_failed_unauthorized(
+    httpx_mock: HTTPXMock, oidc_client: OIDCClientCredentialsClient
+) -> None:
     form_encoded_content_type = {"Content-Type": "application/x-www-form-urlencoded"}
     token_error_url = "https://auth.example.com/oidc/fail/token"
     token_error_response = {
         "error": "unauthorized_client",
         "error_description": "Invalid client secret",
     }
-    token_invalid_url = "https://auth.example.com/oidc/invalid/token"
-    token_invalid_response = {"something": "else"}
 
     httpx_mock.add_response(
         url=token_error_url,
@@ -79,46 +82,57 @@ async def test__fetch_token_failed(httpx_mock: Any) -> None:
         headers=form_encoded_content_type,
         json=token_error_response,
     )
+    # error response
+    auth = oidc.OIDCClientCredentials(
+        token_url=token_error_url, client_id="abc", client_secret="xyz"
+    )
+    oidc_client._auth = auth
+
+    with pytest.raises(oidc.OIDCAuthenticationError) as exc:
+        await oidc_client._fetch_token()
+    assert "unauthorized_client" in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test__fetch_token_failed_invalid(
+    httpx_mock: HTTPXMock, oidc_client: OIDCClientCredentialsClient
+) -> None:
+    form_encoded_content_type = {"Content-Type": "application/x-www-form-urlencoded"}
+    token_invalid_url = "https://auth.example.com/oidc/invalid/token"
+    token_invalid_response = {"something": "else"}
+
     httpx_mock.add_response(
         url=token_invalid_url,
         method="post",
         headers=form_encoded_content_type,
         json=token_invalid_response,
     )
-    # error response
-    auth = oidc.OIDCClientCredentials(
-        token_url=token_error_url, client_id="abc", client_secret="xyz"
-    )
-    error_client = oidc.OIDCClientCredentialsClient("https://api.example.com/v1/", auth)
-
-    with pytest.raises(oidc.OIDCAuthenticationError) as exc:
-        await error_client._fetch_token()
-    assert "unauthorized_client" in str(exc.value)
-
     # invalid response
     auth = oidc.OIDCClientCredentials(
         token_url=token_invalid_url, client_id="abc", client_secret="xyz"
     )
-    error_client = oidc.OIDCClientCredentialsClient("https://api.example.com/v1/", auth)
+    oidc_client._auth = auth
     with pytest.raises(oidc.OIDCAuthenticationError) as exc:
-        await error_client._fetch_token()
+        await oidc_client._fetch_token()
     assert "Authentication server did not provide a token" in str(exc.value)
 
 
 @pytest.mark.asyncio
 @patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._fetch_token")
-async def test__request(mock_fetch_token: AsyncMock, httpx_mock: Any) -> None:
-    client = _get_valid_client()
-
+async def test__request(
+    mock_fetch_token: AsyncMock,
+    httpx_mock: HTTPXMock,
+    oidc_client: OIDCClientCredentialsClient,
+) -> None:
     httpx_mock.add_response(
-        url="https://api.example.com/v1/hello",
+        url=f"{BASE_URL}hello",
         method="put",
         headers=AUTHORIZATION_HEADER,
         status_code=200,
         text="Hello, world!",
     )
 
-    resp = await client._request(
+    resp = await oidc_client._request(
         "put",
         "hello",
         headers={"header": "test"},
@@ -133,17 +147,17 @@ async def test__request(mock_fetch_token: AsyncMock, httpx_mock: Any) -> None:
 @pytest.mark.asyncio
 @patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._fetch_token")
 async def test__request_not_on_force_list(
-    mock_fetch_token: AsyncMock, httpx_mock: Any
+    mock_fetch_token: AsyncMock,
+    httpx_mock: HTTPXMock,
+    oidc_client: OIDCClientCredentialsClient,
 ) -> None:
-    client = _get_valid_client()
-
     httpx_mock.add_response(
-        url="https://api.example.com/v1/hello",
+        url=f"{BASE_URL}hello",
         method="put",
         headers=AUTHORIZATION_HEADER,
         status_code=403,
     )
-    resp = await client._request(
+    resp = await oidc_client._request(
         "put",
         "hello",
         headers={"header": "test"},
@@ -159,20 +173,20 @@ async def test__request_not_on_force_list(
 @pytest.mark.asyncio
 @patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._fetch_token")
 async def test__request_fail_with_retry_on_status(
-    mock_fetch_token: AsyncMock, httpx_mock: Any
+    mock_fetch_token: AsyncMock,
+    httpx_mock: HTTPXMock,
+    oidc_client: OIDCClientCredentialsClient,
 ) -> None:
-    client = _get_valid_client()
-
     retries = 2
     for _ in range(retries):
         httpx_mock.add_response(
-            url="https://api.example.com/v1/hello",
+            url=f"{BASE_URL}hello",
             method="put",
             headers=AUTHORIZATION_HEADER,
             status_code=500,
         )
     with pytest.raises(RetryExhaustedException):
-        await client._request(
+        await oidc_client._request(
             "put",
             "hello",
             headers={"header": "test"},
@@ -191,12 +205,12 @@ async def test__request_fail_with_retry_on_status(
 async def test__request_fail_on_request(
     mock_fetch_token: AsyncMock,
     mock_httpx_request: AsyncMock,
+    oidc_client: OIDCClientCredentialsClient,
 ) -> None:
-    client = _get_valid_client()
     mock_httpx_request.side_effect = httpx.RequestError("Request failed")
 
     with pytest.raises(RetryExhaustedException):
-        await client._request(
+        await oidc_client._request(
             "post",
             "hello",
             headers={"header": "test"},
@@ -215,12 +229,12 @@ async def test__request_fail_on_request(
 async def test__request_fail_on_error(
     mock_fetch_token: AsyncMock,
     mock_httpx_request: AsyncMock,
+    oidc_client: OIDCClientCredentialsClient,
 ) -> None:
-    client = _get_valid_client()
     mock_httpx_request.side_effect = ZeroDivisionError("Error")
 
     with pytest.raises(ZeroDivisionError):
-        await client._request(
+        await oidc_client._request(
             "post",
             "hello",
             headers={"header": "test"},
@@ -233,16 +247,14 @@ async def test__request_fail_on_error(
 
 
 @pytest.mark.asyncio
-async def test_put() -> None:
-    client = _get_valid_client()
-
+async def test_put(oidc_client: OIDCClientCredentialsClient) -> None:
     with patch.object(
-        client,
+        oidc_client,
         "_request",
         new_callable=AsyncMock,
         return_value=MagicMock(),
     ) as mock_request:
-        await client.put("foo", '{"file": ""}', headers={"header": "test"})
+        await oidc_client.put("foo", '{"file": ""}', headers={"header": "test"})
 
         mock_request.assert_awaited_once_with(
             "put",
@@ -254,16 +266,14 @@ async def test_put() -> None:
 
 
 @pytest.mark.asyncio
-async def test_post() -> None:
-    client = _get_valid_client()
-
+async def test_post(oidc_client: OIDCClientCredentialsClient) -> None:
     with patch.object(
-        client,
+        oidc_client,
         "_request",
         new_callable=AsyncMock,
         return_value=MagicMock(),
     ) as mock_request:
-        await client.post("foo", '{"file": ""}', headers={"header": "test"})
+        await oidc_client.post("foo", '{"file": ""}', headers={"header": "test"})
 
         mock_request.assert_awaited_once_with(
             "post",
@@ -275,36 +285,37 @@ async def test_post() -> None:
 
 
 @pytest.mark.asyncio
-async def test__fetch_token_disabled_auth() -> None:
+async def test__fetch_token_disabled_auth(
+    oidc_client: OIDCClientCredentialsClient,
+) -> None:
     """
     Test that _fetch_token() returns early when auth is None.
     """
-    client = oidc.OIDCClientCredentialsClient("https://api.example.com", auth=None)
-    await client._fetch_token()  # Should not raise any exception
+    oidc_client._auth = None
+    await oidc_client._fetch_token()  # Should not raise any exception
 
 
 @pytest.mark.asyncio
-async def test__ensure_valid_token_disabled_auth() -> None:
+async def test__ensure_valid_token_disabled_auth(
+    oidc_client: OIDCClientCredentialsClient,
+) -> None:
     """
     Test that _ensure_valid_token() returns early when auth is None.
     """
-    client = oidc.OIDCClientCredentialsClient("https://api.example.com", auth=None)
-
+    oidc_client._auth = None
     # Should not raise any exception
-    await client._ensure_valid_token(None)  # type: ignore
+    await oidc_client._ensure_valid_token()
 
 
 @pytest.mark.asyncio
-async def test_get() -> None:
-    client = _get_valid_client()
-
+async def test_get(oidc_client: OIDCClientCredentialsClient) -> None:
     with patch.object(
-        client,
+        oidc_client,
         "_request",
         new_callable=AsyncMock,
         return_value=MagicMock(),
     ) as mock_request:
-        await client.get("foo", headers={"header": "test"})
+        await oidc_client.get("foo", headers={"header": "test"})
 
         mock_request.assert_awaited_once_with(
             "get",
@@ -315,16 +326,14 @@ async def test_get() -> None:
 
 
 @pytest.mark.asyncio
-async def test_delete() -> None:
-    client = _get_valid_client()
-
+async def test_delete(oidc_client: OIDCClientCredentialsClient) -> None:
     with patch.object(
-        client,
+        oidc_client,
         "_request",
         new_callable=AsyncMock,
         return_value=MagicMock(),
     ) as mock_request:
-        await client.delete("foo", headers={"header": "test"})
+        await oidc_client.delete("foo", headers={"header": "test"})
 
         mock_request.assert_awaited_once_with(
             "delete",
@@ -336,37 +345,15 @@ async def test_delete() -> None:
 
 @pytest.mark.asyncio
 @patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._ensure_valid_token")
-@patch("httpx.AsyncClient")
 async def test_stream(
-    mock_async_client_class: MagicMock, mock_ensure_valid_token: AsyncMock
+    mock_ensure_valid_token: AsyncMock,
+    oidc_client: OIDCClientCredentialsClient,
+    httpx_mock: HTTPXMock,
 ) -> None:
-    client = _get_valid_client()
+    httpx_mock.add_response(stream=IteratorStream([b"chunk1", b"chunk2"]))
 
-    # Mock the httpx.AsyncClient instance
-    mock_client_instance = MagicMock()
-    mock_client_instance.headers = {}
-
-    # Mock the response object
-    mock_response = AsyncMock()
-    mock_response.raise_for_status = Mock()
-
-    # Mock aiter_bytes to return an async iterator
-    async def mock_aiter_bytes() -> Any:
-        for chunk in [b"chunk1", b"chunk2"]:
-            yield chunk
-
-    mock_response.aiter_bytes = mock_aiter_bytes
-
-    # Mock the stream context manager
-    mock_stream_context = AsyncMock()
-    mock_stream_context.__aenter__.return_value = mock_response
-    mock_stream_context.__aexit__.return_value = None
-    mock_client_instance.stream.return_value = mock_stream_context
-    mock_async_client_class.return_value = mock_client_instance
-
-    # Call the stream method and collect results
     result_chunks = []
-    async for chunk in client.stream(
+    async for chunk in oidc_client.stream(
         "GET",
         "api/v2/sbom/123/download",
         headers={"custom-header": "value"},
@@ -374,21 +361,18 @@ async def test_stream(
     ):
         result_chunks.append(chunk)
 
-    # Verify httpx.AsyncClient was created with correct parameters
-    mock_async_client_class.assert_called_once_with(proxy=client._proxies, timeout=60)
-
-    # Verify token was ensured
-    mock_ensure_valid_token.assert_awaited_once_with(mock_client_instance)
-
-    # Verify the stream method was called with correct parameters
-    mock_client_instance.stream.assert_called_once_with(
-        "GET",
-        "https://api.example.com/v1/api/v2/sbom/123/download",
-        params={"param1": "value1"},
-    )
-
-    # Verify response status was checked
-    mock_response.raise_for_status.assert_called_once()
-
-    # Verify we got the expected chunks
+    mock_ensure_valid_token.assert_awaited_once()
     assert result_chunks == [b"chunk1", b"chunk2"]
+
+
+def test__assert_client_raises_when_client_is_none() -> None:
+    """
+    Test that _assert_client() raises RuntimeError when client is None.
+    """
+    client = OIDCClientCredentialsClient(BASE_URL, None)
+
+    with pytest.raises(
+        RuntimeError,
+        match="The client was not initialized using an async context manager",
+    ):
+        client._assert_client()
