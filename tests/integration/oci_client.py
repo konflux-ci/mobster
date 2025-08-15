@@ -8,6 +8,7 @@ import httpx
 
 from mobster.image import Image
 from mobster.oci import run_async_subprocess
+from mobster.oci.artifact import Provenance02
 
 
 @dataclass
@@ -194,7 +195,11 @@ class ReferrersTagOCIClient:
         return stdout.decode().strip()
 
     async def attach_sbom(
-        self, image: Image, format: Literal["spdx", "cyclonedx"], sbom: bytes
+        self,
+        image: Image,
+        format: Literal["spdx", "cyclonedx"],
+        sbom: bytes,
+        include_attestation: bool = False,
     ) -> None:
         """
         Attach an SBOM to an image as a referrer.
@@ -203,6 +208,9 @@ class ReferrersTagOCIClient:
             image: The image to attach the SBOM to.
             format: The SBOM format (spdx or cyclonedx).
             sbom: The SBOM content as bytes.
+            include_attestation: For integration test purposes
+                also push an attestation with SBOM_BLOB_URL
+                Provenance. Default is False.
         """
         derived_tag = image.digest.replace(":", "-") + ".sbom"
 
@@ -219,12 +227,51 @@ class ReferrersTagOCIClient:
                 media_type=media_type,
                 digest=sbom_blob_digest,
                 size=sbom_length,
-            )
+            ),
         ]
         # the config is not used in any way but must be specified to conform
         # with spec
         config_digest = await self._push_blob(image.name, b"")
         await self._push_manifest(image.name, derived_tag, config_digest, layers)
+        if include_attestation:
+            provenance = Provenance02(
+                {
+                    "buildConfig": {
+                        "tasks": [
+                            {
+                                "finishedOn": "1970-01-01T00:00:00Z",
+                                "results": [
+                                    {
+                                        "name": "SBOM_BLOB_URL",
+                                        "value": image.repository
+                                        + ":"
+                                        + derived_tag
+                                        + "@"
+                                        + sbom_blob_digest,
+                                    },
+                                    {"name": "IMAGE_DIGEST", "value": image.digest},
+                                ],
+                            }
+                        ]
+                    }
+                }
+            )
+            attestation_bytes = provenance.to_raw_attestation()
+            provenance_blob_digest = await self._push_blob(
+                image.name, attestation_bytes
+            )
+            await self._push_manifest(
+                image.name,
+                image.digest.replace(":", "-") + ".att",
+                config_digest,
+                [
+                    Layer(
+                        media_type="application/vnd.in-toto+json",
+                        digest=provenance_blob_digest,
+                        size=len(attestation_bytes),
+                    )
+                ],
+            )
 
     async def _push_blob(self, name: str, blob: bytes) -> str:
         """
