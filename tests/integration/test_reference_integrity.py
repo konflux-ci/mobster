@@ -384,12 +384,8 @@ async def test_consistent_reference(
         "Child image SBOM is not referenced in the index SBOM"
     )
 
-    await oci_client.attach_sbom(
-        child_image, "spdx", child_sbom.read_bytes(), include_attestation=True
-    )
-    await oci_client.attach_sbom(
-        index_image, "spdx", index_sbom.read_bytes(), include_attestation=True
-    )
+    await oci_client.attach_sbom(child_image, "spdx", child_sbom.read_bytes())
+    await oci_client.attach_sbom(index_image, "spdx", index_sbom.read_bytes())
 
     snapshot_path = generate_and_store_snapshot(index_image, tmp_path)
 

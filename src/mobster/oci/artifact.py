@@ -62,7 +62,7 @@ class Provenance02:
 
         return datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
 
-    def get_sbom_blob_url(self, image: Image) -> str:
+    def get_sbom_digest(self, image: Image) -> str:
         """
         Find the SBOM_BLOB_URL value in the provenance for the supplied image.
         """
@@ -82,48 +82,8 @@ class Provenance02:
         blob_url = sbom_blob_urls.get(image.digest)
         if blob_url is None:
             raise SBOMError(f"No SBOM_BLOB_URL found in attestation for image {image}.")
-        return blob_url
 
-    def get_sbom_digest(self, image: Image) -> str:
-        """
-        Find the SBOM_BLOB_URL value in the provenance for the supplied image
-        and return its digest.
-        """
-        return self.get_sbom_blob_url(image).split("@", 1)[1]
-
-    def to_base64(self) -> str:
-        """
-        Return the provenance encapsulated in 'in-toto Statement'
-        and encoded by base64.
-
-        Returns:
-            str: base64-encoded encapsulated Provenance.
-        """
-        return base64.b64encode(
-            json.dumps(
-                {
-                    "predicate": self.predicate,
-                    "predicateType": self.predicate_type,
-                    "_type": "https://in-toto.io/Statement/v0.1",
-                    "subject": [{}],
-                }
-            ).encode("utf-8")
-        ).decode()
-
-    def to_raw_attestation(self) -> bytes:
-        """
-        Return the provenance encapsulated in 'in-toto Statement'
-        encoded by base64, encapsulated in an attestation.
-        Returns:
-            bytes: The raw attestation containing this Provenance.
-        """
-        return json.dumps(
-            {
-                "payloadType": "application/vnd.in-toto+json",
-                "payload": self.to_base64(),
-                "signatures": [],
-            }
-        ).encode()
+        return blob_url.split("@", 1)[1]
 
 
 class SBOMFormat(Enum):
@@ -196,7 +156,6 @@ class SBOM:
         try:
             doc = json.loads(raw)
         except json.JSONDecodeError as err:
-            logger.debug("RAW SBOM: %s", raw)
             raise SBOMError("Could not decode SBOM.") from err
 
         hexdigest = f"sha256:{hashlib.sha256(raw).hexdigest()}"

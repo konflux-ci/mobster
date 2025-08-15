@@ -220,7 +220,7 @@ async def create_image_with_build_sbom(
     """
     image = await oci_client.create_image(repo, "latest")
     sbom = get_sbom_from_test_case(case, image.digest)
-    await oci_client.attach_sbom(image, "spdx", sbom, include_attestation=True)
+    await oci_client.attach_sbom(image, "spdx", sbom)
     return image
 
 
@@ -251,7 +251,7 @@ async def create_index_with_build_sbom(
         digest=index.digest,
     )
 
-    await oci_client.attach_sbom(index, "spdx", sbom, include_attestation=True)
+    await oci_client.attach_sbom(index, "spdx", sbom)
     return index
 
 
