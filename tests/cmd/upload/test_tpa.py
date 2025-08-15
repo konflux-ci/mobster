@@ -46,6 +46,7 @@ async def test_upload_sbom_success(
         "api/v2/sbom",
         content=file_content,
         headers={"content-type": "application/json"},
+        params={},
     )
     assert response == mock_response
 

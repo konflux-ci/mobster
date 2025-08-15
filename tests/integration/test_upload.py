@@ -13,7 +13,10 @@ TESTDATA_PATH = Path(__file__).parent.parent / "data"
 
 @pytest.mark.asyncio
 async def test_upload_tpa_file_integration(
-    tpa_base_url: str, tpa_client: TPAClient, tmp_path: Path
+    tpa_base_url: str,
+    tpa_client: TPAClient,
+    tmp_path: Path,
+    test_id: str,
 ) -> None:
     sbom_file = TESTDATA_PATH / "index_manifest_sbom.spdx.json"
 
@@ -37,6 +40,8 @@ async def test_upload_tpa_file_integration(
             "--file",
             str(test_sbom_path),
             "--report",
+            "--labels",
+            f"test_id={test_id}",
         ],
         capture_output=True,
     )
@@ -44,8 +49,7 @@ async def test_upload_tpa_file_integration(
     assert result.returncode == 0, (
         f"Command failed with stderr: {result.stderr.decode()}"
     )
-    tpa_client.list_sboms(query=f"name={temporary_sbom_name}", sort="ingested")
-    sboms = tpa_client.list_sboms(query="", sort="ingested")
+    sboms = tpa_client.list_sboms(query=f"labels:test_id={test_id}", sort="ingested")
     all_sboms = [sbom async for sbom in sboms]
     assert len(all_sboms) > 0, "No SBOMs found in TPA after upload"
     assert any(sbom.name == temporary_sbom_name for sbom in all_sboms), (

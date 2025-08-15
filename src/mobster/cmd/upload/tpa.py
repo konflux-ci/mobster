@@ -22,7 +22,9 @@ class TPAClient(OIDCClientCredentialsClient):
     TPA API client
     """
 
-    async def upload_sbom(self, sbom_filepath: Path) -> httpx.Response:
+    async def upload_sbom(
+        self, sbom_filepath: Path, labels: dict[str, str] | None = None
+    ) -> httpx.Response:
         """
         Upload SBOM via API.
 
@@ -32,7 +34,15 @@ class TPAClient(OIDCClientCredentialsClient):
         Returns:
             Any: Response from API
         """
+        if not labels:
+            labels = {}
+
         url = "api/v2/sbom"
+        params = {}
+
+        if labels_params := TPAClient._get_labels_params(labels):
+            params.update(labels_params)
+
         headers = {"content-type": "application/json"}
         async with aiofiles.open(sbom_filepath, "rb") as sbom_file:
             file_content = await sbom_file.read()
@@ -40,6 +50,7 @@ class TPAClient(OIDCClientCredentialsClient):
                 url,
                 content=file_content,
                 headers=headers,
+                params=params,
             )
             return response
 
@@ -113,6 +124,14 @@ class TPAClient(OIDCClientCredentialsClient):
                 await f.write(chunk)
 
         LOGGER.info("Successfully downloaded SBOM %s to %s", sbom_id, path)
+
+    @staticmethod
+    def _get_labels_params(labels: dict[str, str]) -> dict[str, str]:
+        """
+        Transform a mapping of label keys to label values to a form that httpx
+        can parse and use.
+        """
+        return {f"labels.{key}": val for key, val in labels.items()}
 
 
 def get_tpa_default_client(

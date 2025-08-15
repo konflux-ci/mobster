@@ -1,4 +1,4 @@
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
 import pytest
@@ -7,6 +7,17 @@ import pytest_asyncio
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.tekton.s3 import S3Client
 from tests.integration.oci_client import ReferrersTagOCIClient
+
+
+@pytest.fixture(scope="session")
+def monkeysession() -> Generator[pytest.MonkeyPatch, None, None]:
+    """
+    Helper fixture to create a monkeypatch object with session scope.
+
+    https://github.com/pytest-dev/pytest/issues/363#issuecomment-1335631998
+    """
+    with pytest.MonkeyPatch.context() as mp:
+        yield mp
 
 
 def pytest_addoption(parser: Any) -> None:
@@ -23,7 +34,7 @@ def registry_url(request: Any) -> str:
     return request.config.getoption("--registry-url")  # type: ignore
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def tpa_base_url(request: Any) -> str:
     return request.config.getoption("--tpa-base-url")  # type: ignore
 
@@ -55,8 +66,8 @@ def product_concurrency() -> int:
     return 8
 
 
-@pytest.fixture
-def tpa_auth_env(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
+@pytest.fixture(scope="session")
+def tpa_auth_env(monkeysession: pytest.MonkeyPatch) -> dict[str, str]:
     """Set up environment variables needed to disable TPA authentication."""
     vars = {
         "MOBSTER_TPA_SSO_TOKEN_URL": "dummy",
@@ -65,14 +76,14 @@ def tpa_auth_env(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
         "MOBSTER_TPA_AUTH_DISABLE": "true",
     }
     for key, val in vars.items():
-        monkeypatch.setenv(key, val)
+        monkeysession.setenv(key, val)
 
     return vars
 
 
 @pytest.fixture
 def s3_auth_env(
-    s3_endpoint_url: str, monkeypatch: pytest.MonkeyPatch
+    s3_endpoint_url: str, monkeysession: pytest.MonkeyPatch
 ) -> dict[str, str]:
     # these are set in compose.yaml
     vars = {
@@ -82,7 +93,7 @@ def s3_auth_env(
     }
 
     for key, val in vars.items():
-        monkeypatch.setenv(key, val)
+        monkeysession.setenv(key, val)
 
     return vars
 
@@ -106,7 +117,7 @@ async def s3_client(s3_auth_env: dict[str, str]) -> AsyncGenerator[S3Client, Non
     await client.clear_bucket()
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="session")
 async def tpa_client(
     tpa_base_url: str, tpa_auth_env: Any
 ) -> AsyncGenerator[TPAClient, None]:
@@ -120,10 +131,14 @@ async def tpa_client(
         async for sbom in sboms:
             await client.delete_sbom(sbom.id)
 
-    # Run cleanup before providing the client
     await cleanup()
-
     yield client
 
-    # Run cleanup after test completes
-    await cleanup()
+
+@pytest.fixture
+def test_id(request: pytest.FixtureRequest) -> str:
+    """
+    Id uniquely identifying a test case. Used as an SBOM label in TPA tests,
+    removing the need for clearing TPA after each test case.
+    """
+    return str(request.node.name)
