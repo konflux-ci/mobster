@@ -116,7 +116,7 @@ class CosignClient(Cosign):
         provenance = await self.fetch_latest_provenance(image)
         sbom_url = provenance.get_sbom_blob_url(image)
         with tempfile.NamedTemporaryFile() as tmp_file:
-            with make_oci_auth_file(image.reference) as authfile:
+            with make_oci_auth_file(sbom_url) as authfile:
                 oras_command = [
                     "oras",
                     "blob",

@@ -1,0 +1,51 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "creationInfo": {
+    "created": "1970-01-01T00:00:00Z",
+    "creators": [
+      "Person: me (hello)"
+    ]
+  },
+  "name": "Very important parent image SBOM",
+  "documentNamespace": "https://example.url.konflux.dev/yes",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-1",
+      "name": "yes",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:oci/konflux/yes@0.0.1?arch=x86_64"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-2",
+      "name": "no",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:rpm/konflux/no@0.0.1?arch=x86_64"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-1",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-2"
+    }
+  ]
+}

@@ -810,9 +810,6 @@ async def test__extend_cdx_with_base_images(
 
 @pytest.mark.asyncio
 @patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_refs_from_dockerfile"
-)
-@patch(
     "mobster.cmd.generate.oci_image.base_images_dockerfile.get_objects_for_base_images"
 )
 @patch(
@@ -843,33 +840,26 @@ async def test_extend_sbom_with_base_images_from_dockerfile(
     mock__extend_spdx_with_base_images: AsyncMock,
     mock__extend_cdx_with_base_images: AsyncMock,
     mock_get_objects_for_base_images: AsyncMock,
-    mock_get_base_images_refs_from_dockerfile: AsyncMock,
     input_sbom_object: CycloneDX1BomWrapper | Document,
 ) -> None:
-    mock_parsed_dockerfile = MagicMock()
     mock_base_images_objects = None
-    mock_dockerfile_target = MagicMock()
+    mock_image_refs = ["foo", None]
+
     await extend_sbom_with_base_images_from_dockerfile(
         input_sbom_object,
-        mock_parsed_dockerfile,
+        mock_image_refs,
         mock_base_images_objects,
-        mock_dockerfile_target,
     )
-    mock_get_base_images_refs_from_dockerfile.assert_awaited_once_with(
-        mock_parsed_dockerfile, mock_dockerfile_target
-    )
-    mock_get_objects_for_base_images.assert_awaited_once_with(
-        mock_get_base_images_refs_from_dockerfile.return_value
-    )
+    mock_get_objects_for_base_images.assert_awaited_once_with(mock_image_refs)
     if isinstance(input_sbom_object, CycloneDX1BomWrapper):
         mock__extend_cdx_with_base_images.assert_awaited_once_with(
             input_sbom_object,
-            mock_get_base_images_refs_from_dockerfile.return_value,
+            mock_image_refs,
             mock_get_objects_for_base_images.return_value,
         )
     else:
         mock__extend_spdx_with_base_images.assert_awaited_once_with(
             input_sbom_object,
-            mock_get_base_images_refs_from_dockerfile.return_value,
+            mock_image_refs,
             mock_get_objects_for_base_images.return_value,
         )
