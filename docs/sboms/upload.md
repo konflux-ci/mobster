@@ -1,4 +1,4 @@
-# SBOM for Image Index
+# Uploading SBOMs with Mobster
 
 The Mobster tool is capable of uploading SBOMs to multiple locations.
 
@@ -15,10 +15,15 @@ MOBSTER_TPA_SSO_TOKEN=example-account-token
 
 After that you can either upload a single SBOM:
 ```shell
-mobster upload tpa --tpa-base-url https://your-tpa-instance.com --file /path/to/your/sbom.json
+mobster upload tpa \
+    --tpa-base-url https://your-tpa-instance.com \
+    --file /path/to/your/sbom.json
 ```
 
 Or multiple SBOM files from a directory with an option to set a number of parallel workers:
 ```shell
-mobster upload tpa --tpa-base-url https://your-tpa-instance.com --from-dir /path/to/sbom_directory --workers 4
+mobster upload tpa \
+    --tpa-base-url https://your-tpa-instance.com \
+    --from-dir /path/to/sbom_directory \
+    --workers 4
 ```

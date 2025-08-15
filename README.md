@@ -44,6 +44,7 @@ file to set up your development environment.
 
 ## Contributing
 We welcome contributions to the Mobster project! If you would like to contribute, please follow these steps:
+
 1. Fork the repository
 2. Create a new branch for your feature or bug fix
 3. Make your changes and commit them with a clear message (following the
@@ -57,10 +58,12 @@ We welcome contributions to the Mobster project! If you would like to contribute
 
 ## Release process
 The release process is automated using GitHub Actions and Konflux. The process
-is described in detail in the [release.md](docs/release.md) file.
+is described in detail in the [release.md](./release.md) file.
 
 ## Documentation
-The documentation for the Mobster project is available in the [docs](/docs/) directory.
+The documentation for the Mobster project is available
+at the [Mobster Gitbub pages](https://konflux-ci.dev/mobster/).
 
 ## License
-This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0. See the
+[LICENSE](https://github.com/konflux-ci/mobster/blob/main/LICENSE) file for details.

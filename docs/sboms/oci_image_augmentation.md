@@ -8,7 +8,7 @@ Examples include OCI image tags or the image's release repository.
 
 You can perform the augmentation via the mobster command: `augment oci-image`.
 
-## augment oci-image
+## Augment oci-image
 You can either augment a specific OCI image by providing the optional
 `--reference` argument, or augment SBOMs for all images in the supplied
 snapshot:

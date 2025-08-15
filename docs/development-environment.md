@@ -24,6 +24,7 @@ configure Gitleaks on your computer.
 
 ## Package management
 The project uses Poetry for package management. You can use the following commands to manage packages:
+
 - `poetry add <package>`: Add a package to the project
 - `poetry add --group dev <package>`: Add a package to the development group
 - `poetry remove <package>`: Remove a package from the project
@@ -36,6 +37,7 @@ The Petry project uses `poetry.lock` file to lock the dependencies to their curr
 ## Tox
 
 The project uses Tox for testing and linting. You can use the following commands to run Tox:
+
 - `tox`: Run all tests and linters
 - `tox -e <env>`: Run a specific environment (e.g. `tox -e test` to run tests )
 - `tox -e <env> -- <args>`: Run a specific environment with additional arguments (e.g. `tox -e test -- -v` to run tests for with verbose output)
@@ -49,6 +51,7 @@ We highly recommend to configure your IDE to run Ruff on save. This will help yo
 
 ### Testing
 The project uses Pytest for testing. You can use the following commands to run tests:
+
 - `tox -e test`: Run all tests
 - `tox -e test -- -v`: Run all tests with verbose output
 - `tox -e test -- -k <test_name>`: Run a specific test (e.g. `tox -e test -- -k test_example` to run the test named `test_example`)

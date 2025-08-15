@@ -1,0 +1,33 @@
+---
+site_name: Mobster - SBOM management tool
+site_description: Mobster is a tool for managing Software Bill of Materials (SBOMs)
+repo_name: mobster
+repo_url: https://github.com/Konflux-ci/mobster
+nav:
+  - "Overview": README.md
+  - "SBOM lifecyle":
+      - "Lifecycle": sboms/sbom_lifecycle.md
+      - "Augmentation": sboms/oci_image_augmentation.md
+      - "Upload": sboms/upload.md
+      - "Download": sboms/download.md
+  - "SBOM content types":
+      - "OCI image": "sboms/oci_image.md"
+      - "OCI index image": "sboms/oci_index_sbom.md"
+      - "OCI artifact": "sboms/oci_artifact.md"
+      - "Modelcar": "sboms/modelcar_sbom.md"
+      - "Product": "sboms/product.md"
+  - "SBOM formats": "sboms/formats.md"
+  - "Admin & developer guides":
+      - "Development environment": "development-environment.md"
+      - "Integration testing": "integration-testing.md"
+      - "Release": "release.md"
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - toc.integrate
+
+plugins:
+  - search
