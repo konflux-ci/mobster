@@ -473,23 +473,6 @@ def test_provenance_bad_predicate_type() -> None:
         Provenance02.from_cosign_output(raw)
 
 
-def test_provenance_to_base64() -> None:
-    predicate = {"foo": "bar"}
-    provenance = Provenance02(predicate)
-    output = provenance.to_base64()
-    assert json.loads(base64.b64decode(output))["predicate"] == predicate
-
-
-def test_provenance_to_raw_attestation() -> None:
-    predicate = {"foo": "bar"}
-    provenance = Provenance02(predicate)
-    output = provenance.to_raw_attestation()
-    assert (
-        json.loads(base64.b64decode(json.loads(output)["payload"]))["predicate"]
-        == predicate
-    )
-
-
 def test_provenance_no_sbom_blob_url(provenances_path: Path) -> None:
     prov = load_provenance(provenances_path, "sha256:aaaaaaaa")
     assert prov is not None
@@ -635,52 +618,10 @@ class TestCosignClient:
         with pytest.raises(SBOMError):
             await client.fetch_latest_provenance(image)
 
-    @pytest.mark.asyncio
-    async def test_fetch_latest_provenance_no_verification(
-        self,
-        image: Image,
-        monkeypatch: pytest.MonkeyPatch,
-        make_provenance_raw: Callable[[datetime.datetime | None], bytes],
-        make_provenance_predicate: Callable[[datetime.datetime | None], dict[str, Any]],
-    ) -> None:
-        old_date = isoparse("2023-01-01T12:05:30Z")
-        new_date = isoparse("2025-01-01T12:05:30Z")
-
-        async def mock_run_async_subprocess(
-            cmd: Any, env: Any, retry_times: Any
-        ) -> tuple[int, bytes, bytes]:
-            no_date = make_provenance_raw(None)
-            old = make_provenance_raw(old_date)
-            new = make_provenance_raw(new_date)
-            return 0, (old + b"\n" + new + b"\n" + no_date), b""
-
-        monkeypatch.setattr(
-            "mobster.oci.cosign.run_async_subprocess", mock_run_async_subprocess
-        )
-        # Client without a verification key
-        client = CosignClient()
-        prov = await client.fetch_latest_provenance(image)
-        assert prov.predicate == make_provenance_predicate(new_date)
-
     @pytest.fixture
     def sbom_raw(self, sboms_path: Path) -> bytes:
         with open(sboms_path.joinpath("sha256:aaaaaaaa"), "rb") as fp:
             return fp.read()
-
-    @pytest.fixture
-    def provenance_raw(self, provenance_path: Path) -> bytes:
-        """Gets rid of formatting of the file"""
-        with open(provenance_path, "rb") as fp:
-            return json.dumps(json.load(fp)).encode()
-
-    @pytest.fixture
-    def cosign_download_att_output(self, provenance_raw: bytes) -> bytes:
-        return json.dumps(
-            {
-                "payloadType": "application/vnd.in-toto+json",
-                "payload": base64.b64encode(provenance_raw).decode("utf-8"),
-            }
-        ).encode()
 
     @pytest.fixture
     def sbom_doc(self, sbom_raw: bytes) -> dict[str, Any]:
@@ -689,29 +630,22 @@ class TestCosignClient:
     @pytest.mark.asyncio
     async def test_fetch_sbom(
         self,
+        image: Image,
         client: CosignClient,
         monkeypatch: pytest.MonkeyPatch,
         sbom_raw: bytes,
-        cosign_download_att_output: bytes,
         sbom_doc: dict[str, Any],
     ) -> None:
         async def mock_run_async_subprocess(
-            cmd: Any, env: Any = None, retry_times: Any = 0
+            cmd: Any, env: Any, retry_times: Any
         ) -> tuple[int, bytes, bytes]:
-            if cmd[0] == "cosign":
-                return 0, cosign_download_att_output, b""
-            if cmd[0] == "oras":
-                file_to_write = cmd[-1]
-                with open(file_to_write, "wb") as out_file:
-                    out_file.write(sbom_raw)
-                return 0, b"I guess I wrote something to a file", b""
-            return 1, b"", b"Unknown command used"
+            return 0, sbom_raw, b""
 
         monkeypatch.setattr(
             "mobster.oci.cosign.run_async_subprocess", mock_run_async_subprocess
         )
 
-        sbom = await client.fetch_sbom(Image("quay.io/test/repo", "sha256:aaaaaaaa"))
+        sbom = await client.fetch_sbom(image)
 
         assert sbom.doc == sbom_doc
 
@@ -725,24 +659,19 @@ class TestCosignClient:
     )
     async def test_fetch_sbom_failure(
         self,
+        image: Image,
         client: CosignClient,
-        provenance_raw: bytes,
         monkeypatch: pytest.MonkeyPatch,
         code: int,
     ) -> None:
-        async def mock_fetch_latest_provenance(*_: Any) -> Provenance02:
-            return Provenance02(json.loads(provenance_raw)["predicate"])
-
-        async def mock_run_async_subprocess(*_: Any) -> tuple[int, bytes, bytes]:
+        async def mock_run_async_subprocess(
+            cmd: Any, env: Any, retry_times: Any
+        ) -> tuple[int, bytes, bytes]:
             return code, b"", b""
 
         monkeypatch.setattr(
             "mobster.oci.cosign.run_async_subprocess", mock_run_async_subprocess
         )
-        monkeypatch.setattr(
-            "mobster.oci.cosign.CosignClient.fetch_latest_provenance",
-            mock_fetch_latest_provenance,
-        )
 
         with pytest.raises(SBOMError):
-            await client.fetch_sbom(Image("quay.io/test/repo", "sha256:aaaaaaaa"))
+            await client.fetch_sbom(image)
