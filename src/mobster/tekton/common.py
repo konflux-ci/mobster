@@ -39,6 +39,7 @@ class CommonArgs:
         snapshot_spec: path to snapshot spec file
         atlas_api_url: url of the TPA instance to use
         retry_s3_bucket: name of the S3 bucket to use for retries
+        labels: labels to attach to uploaded SBOMs
     """
 
     data_dir: Path
@@ -47,6 +48,7 @@ class CommonArgs:
     retry_s3_bucket: str
     release_id: ReleaseId
     print_digests: bool
+    labels: str | None
 
 
 def add_common_args(parser: ArgumentParser) -> None:
@@ -62,10 +64,15 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument("--retry-s3-bucket", type=str)
     parser.add_argument("--release-id", type=ReleaseId, required=True)
     parser.add_argument("--print-digests", action="store_true")
+    parser.add_argument("--labels", type=str, help="Labels to attach to uploaded SBOMs")
 
 
 async def upload_sboms(
-    dirpath: Path, atlas_url: str, s3_client: S3Client | None, concurrency: int
+    dirpath: Path,
+    atlas_url: str,
+    s3_client: S3Client | None,
+    concurrency: int,
+    labels: str | None = None,
 ) -> None:
     """
     Upload SBOMs to Atlas with S3 fallback on transient errors.
@@ -75,6 +82,7 @@ async def upload_sboms(
         atlas_url: URL of the Atlas TPA instance.
         s3_client: S3Client object for retry uploads, or None if no retries.
         concurrency: Maximum number of concurrent upload operations.
+        labels: Labels to attach to uploaded SBOMs.
 
     Raises:
         ValueError: If Atlas authentication credentials are missing or if S3
@@ -85,7 +93,7 @@ async def upload_sboms(
 
     try:
         LOGGER.info("Starting SBOM upload to Atlas")
-        upload_to_atlas(dirpath, atlas_url, concurrency)
+        upload_to_atlas(dirpath, atlas_url, concurrency, labels)
     except AtlasTransientError as e:
         if s3_client:
             if not s3_credentials_exist():
@@ -94,7 +102,9 @@ async def upload_sboms(
             await upload_to_s3(s3_client, dirpath)
 
 
-def upload_to_atlas(dirpath: Path, atlas_url: str, concurrency: int) -> None:
+def upload_to_atlas(
+    dirpath: Path, atlas_url: str, concurrency: int, labels: str | None
+) -> None:
     """
     Upload SBOMs to Atlas TPA instance.
 
@@ -102,26 +112,31 @@ def upload_to_atlas(dirpath: Path, atlas_url: str, concurrency: int) -> None:
         dirpath: Directory containing SBOMs to upload.
         atlas_url: URL of the Atlas TPA instance.
         concurrency: Maximum number of concurrent upload operations.
+        labels: Labels to attach to uploaded SBOMs.
 
     Raises:
         AtlasTransientError: If a transient error occurs (exit code 2).
         AtlasUploadError: If a non-transient error occurs.
     """
     try:
+        cmd: list[str] = [
+            "mobster",
+            "--verbose",
+            "upload",
+            "tpa",
+            "--tpa-base-url",
+            str(atlas_url),
+            "--from-dir",
+            str(dirpath),
+            "--report",
+            "--workers",
+            str(concurrency),
+        ]
+        if labels:
+            cmd.extend(["--labels", labels])
+
         subprocess.run(
-            [
-                "mobster",
-                "--verbose",
-                "upload",
-                "tpa",
-                "--tpa-base-url",
-                atlas_url,
-                "--from-dir",
-                dirpath,
-                "--report",
-                "--workers",
-                str(concurrency),
-            ],
+            cmd,
             check=True,
             stdout=subprocess.PIPE,
         )

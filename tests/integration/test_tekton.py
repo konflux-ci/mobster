@@ -29,12 +29,13 @@ CONCURRENCY = 8
 async def verify_sboms_in_tpa(
     tpa_client: TPAClient,
     digests: list[str],
+    test_id: str,
 ) -> None:
     """
     Verify that n_sboms were uploaded to TPA.
     """
     digest_set = set(digests)
-    sbom_gen = tpa_client.list_sboms(query="", sort="ingested")
+    sbom_gen = tpa_client.list_sboms(query=f"labels:test_id={test_id}", sort="ingested")
     async for sbom in sbom_gen:
         digest_set.remove(sbom.sha256)
 
@@ -50,6 +51,7 @@ def parse_digests(process_stdout: bytes) -> list[str]:
 
 @pytest.mark.asyncio
 async def test_create_product_sboms_ta_happypath(
+    test_id: str,
     s3_client: S3Client,
     s3_sbom_bucket: str,
     tpa_client: TPAClient,
@@ -119,6 +121,8 @@ async def test_create_product_sboms_ta_happypath(
             "--print-digests",
             "--concurrency",
             str(product_concurrency),
+            "--labels",
+            f"test_id={test_id}",
         ],
         check=True,
         capture_output=True,
@@ -137,7 +141,7 @@ async def test_create_product_sboms_ta_happypath(
             release_id,
         )
 
-    await verify_sboms_in_tpa(tpa_client, sbom_digests)
+    await verify_sboms_in_tpa(tpa_client, sbom_digests, test_id)
 
     # check that no SBOMs were added to the bucket (TPA upload succeeded)
     assert await s3_client.is_prefix_empty("/")
@@ -266,6 +270,7 @@ async def create_index_with_build_sbom(
     ],
 )
 async def test_process_component_sboms_happypath(
+    test_id: str,
     generate_oci_image_case: GenerateOciImageTestCase,
     s3_client: S3Client,
     s3_sbom_bucket: str,
@@ -328,6 +333,8 @@ async def test_process_component_sboms_happypath(
             str(augment_concurrency),
             "--upload-concurrency",
             str(upload_concurrency),
+            "--labels",
+            f"test_id={test_id}",
         ],
         check=True,
         capture_output=True,
@@ -336,7 +343,7 @@ async def test_process_component_sboms_happypath(
 
     assert len(list((data_dir / "sbom").iterdir())) == 2
 
-    await verify_sboms_in_tpa(tpa_client, sbom_digests)
+    await verify_sboms_in_tpa(tpa_client, sbom_digests, test_id)
 
     # check that no SBOMs were added to the bucket (TPA upload succeeded)
     assert await s3_client.is_prefix_empty("/")
