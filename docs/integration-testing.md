@@ -2,7 +2,45 @@
 
 This repository automatically deploys [integration tests within Konflux on contributions][1].
 The tekton Pipeline responsible for running integration tests in located in
-`hack/integration/mobster-test.yml`.
+`hack/integration/mobster-test.yml`. The pytest instance run in the pipeline
+can be customized by providing the `PYTEST_OPTS` parameter in the
+`IntegrationTestScenario` custom resource.
+
+## Existing Mobster integration tests
+These are the two custom integration tests that Konflux currently executes for
+Mobster.
+
+For the `mobster-test-*` tests, the pipelinerun spins up sidecars needed for
+integration testing:
+  - Zot is used as an OCI registry
+  - TPA to test SBOM manipulation
+  - MinIO to provide a testing S3 bucket
+
+### mobster-test
+This test runs on every commit pushed to the Mobster repository. It executes
+all Mobster integration tests, with the exception of slow tests (tests marked
+with the `slow` pytest marker).
+
+### mobster-test-slow
+This test only runs on commits to the main branch, as it's slow and requires a
+lot of resources to finish. It reuses the same pipelinerun to run the tests,
+but specifies the `PYTEST_OPTS` param with `-m slow` to only run tests with the
+`slow` pytest marker.
+
+Currently this test only contains one test:
+`test_process_component_sboms_big_release`. This performs an SBOM augmentation
+for a large release. It's configured to augment 200 components with each SBOM
+being large (5MiB).
+
+This test is used to catch regressions in memory usage and augmentation speed.
+For this reason it's critical that it's configured identically to the actual
+SBOM augmentation Tekton task. The concurrency settings in the integration test
+[conftest.py](../tests/integration/conftest.py) must match the concurrency used
+in the [Tekton tasks](../tasks/) themselves.
+
+Further, the resource requests and limits defined in the
+[mobster-test](../hack/integration/mobster-test.yml) pipeline must match those
+used in the Tekton tasks.
 
 ## Integration tests as a Pipeline
 
@@ -14,7 +52,7 @@ the SNAPSHOT and the cloned source code.
 
 To correctly provision a Pipeline with a Workspace, this test must also define
 a PipelineRun (`hack/integration/mobster-test-run.yml`). However, the default Konflux
-integration test accounts for executing a Pipeline, therefore we have to modify 
+integration test accounts for executing a Pipeline, therefore we have to modify
 the IntegrationTestScenario object, to [change `spec.resolverRef.resourceKind` to
 value `pipelinerun`][2].
 
