@@ -365,6 +365,8 @@ async def test_process_component_sboms_big_release(
     oci_client: ReferrersTagOCIClient,
     registry_url: str,
     tmp_path: Path,
+    augment_concurrency: int,
+    upload_concurrency: int,
 ) -> None:
     """
     Create an image and an index with build-time SBOMs, run the augmentation
@@ -426,6 +428,10 @@ async def test_process_component_sboms_big_release(
             "--release-id",
             str(release_id),
             "--print-digests",
+            "--augment-concurrency",
+            str(augment_concurrency),
+            "--upload-concurrency",
+            str(upload_concurrency),
             "--labels",
             f"test_id={test_id}",
         ],
