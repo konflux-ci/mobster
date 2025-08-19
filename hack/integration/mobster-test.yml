@@ -10,6 +10,10 @@ spec:
     - description: 'Snapshot of the application'
       name: SNAPSHOT
       type: string
+    - description: Options to add to the pytest call
+      name: PYTEST_OPTS
+      type: string
+      default: ""
   tasks:
     - name: prepare-metadata
       workspaces:
@@ -88,6 +92,13 @@ spec:
 
           - name: tpa
             image: quay.io/redhat-user-workloads/the-collective-tenant/mobster-test-tpa:latest
+            resources:
+              limits:
+                cpu: 1
+                memory: 4Gi
+              requests:
+                cpu: 1
+                memory: 4Gi
 
           - name: createbuckets
             image: quay.io/minio/mc:latest
@@ -105,9 +116,16 @@ spec:
         steps:
           - name: deploy-mobster-tests
             image: $(tasks.prepare-metadata.results.image_ref)
+            resources:
+              limits:
+                cpu: 1
+                memory: 1Gi
+              requests:
+                cpu: 1
+                memory: 1Gi
             script: |
               #!/bin/bash
-              set -e
+              set -xe
               cd "$(workspaces.relevant-data.path)/SOURCE_CODE"
               python3 -m venv .venv
               source .venv/bin/activate
@@ -127,8 +145,7 @@ spec:
               set +e
               # The tests can fail, but we want to capture the results anyway
 
-              pytest -v --report-log=test-results.log tests/integration
-
+              pytest $(params.PYTEST_OPTS) -v --report-log=test-results.log tests/integration
               if [ $? -eq 0 ]; then
                 RESULT="SUCCESS"
               else
