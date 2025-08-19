@@ -53,6 +53,22 @@ def test_image() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ["repository", "expected_id"],
+    [
+        ("repo/name", "SPDXRef-image-name"),
+        ("repo/name2", "SPDXRef-image-name2"),
+        ("repo/name_stupid", "SPDXRef-image-name-stupid"),
+        ("repo/name@weird", "SPDXRef-image-name-weird"),
+    ],
+)
+def test_image_spdx_id(repository: str, expected_id: str) -> None:
+    image = Image(repository=repository, digest="sha256:aaaa")
+    # drop the last 65 chars - purl digest and separator
+    actual = image.propose_spdx_id()[:-65]
+    assert actual == expected_id
+
+
 def test_image_from_oci_artifact_reference() -> None:
     """
     Test the from_oci_artifact_reference method of the Image class.
