@@ -219,6 +219,14 @@ class Image:  # pylint: disable=too-many-instance-attributes
         """
         return self.repository.rsplit("/", 1)[-1]
 
+    @property
+    def normalized_name(self) -> str:
+        """
+        Name of the image normalized to contain only alphanumeric characters
+        and hyphens.
+        """
+        return re.sub(r"[^0-9a-zA-Z\.\-\+]", "-", self.name)
+
     def purl(self) -> PackageURL:
         """
         A package URL representation of the image in string format.
@@ -257,7 +265,7 @@ class Image:  # pylint: disable=too-many-instance-attributes
             str: A proposed SPDX ID for the image.
         """
         purl_hex_digest = hashlib.sha256(self.purl_str().encode()).hexdigest()
-        return f"SPDXRef-image-{self.name}-{purl_hex_digest}"
+        return f"SPDXRef-image-{self.normalized_name}-{purl_hex_digest}"
 
     def propose_cyclonedx_bom_ref(self) -> str:
         """
@@ -269,7 +277,7 @@ class Image:  # pylint: disable=too-many-instance-attributes
             str: A proposed CycloneDX BOM reference for the image.
         """
         purl_hex_digest = hashlib.sha256(self.purl_str().encode()).hexdigest()
-        return f"BomRef.{self.name}-{purl_hex_digest}"
+        return f"BomRef.{self.normalized_name}-{purl_hex_digest}"
 
     def propose_sbom_name(self) -> str:
         """
