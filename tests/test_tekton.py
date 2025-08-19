@@ -37,10 +37,11 @@ async def test_upload_sboms_transient_failure_tries_s3(
         mock_upload.return_value = TPAUploadReport(
             success=[],
             failure=[
-                TPAUploadFailure(path=Path("dummy"), message="error", transient=False)
+                TPAUploadFailure(path=Path("dummy"), message="error", transient=True)
             ],
         )
-        await upload_sboms(Path("dir"), "atlas_url", client, concurrency=1)
+        await upload_sboms(Path("dir"), "atlas_url", client, concurrency=1, labels={})
+        mock_handle_atlas_transient_errors.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -65,4 +66,6 @@ async def test_upload_sboms_failure(
             ],
         )
         with pytest.raises(RuntimeError):
-            await upload_sboms(Path("dir"), "atlas_url", s3_client=None, concurrency=1)
+            await upload_sboms(
+                Path("dir"), "atlas_url", s3_client=None, concurrency=1, labels={}
+            )

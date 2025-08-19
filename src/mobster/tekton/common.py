@@ -10,8 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from pytest import fail
-
+from mobster.cli import parse_tpa_labels
 from mobster.cmd.generate.product import ReleaseData
 from mobster.cmd.upload.upload import TPAUploadCommand, TPAUploadReport, UploadConfig
 from mobster.release import ReleaseId, SnapshotModel
@@ -45,7 +44,7 @@ class CommonArgs:
     atlas_api_url: str
     retry_s3_bucket: str
     release_id: ReleaseId
-    labels: str | None
+    labels: dict[str, str]
     result_dir: Path
 
 
@@ -62,7 +61,13 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument("--result-dir", type=Path, required=True)
     parser.add_argument("--atlas-api-url", type=str)
     parser.add_argument("--retry-s3-bucket", type=str)
-    parser.add_argument("--labels", type=str, help="Labels to attach to uploaded SBOMs")
+    parser.add_argument(
+        "--labels",
+        type=parse_tpa_labels,
+        help='Comma-separated "key=value" pairs denoting '
+        "labels to attach to the uploaded SBOMs",
+        default={},
+    )
 
 
 async def upload_sboms(
@@ -70,7 +75,7 @@ async def upload_sboms(
     atlas_url: str,
     s3_client: S3Client | None,
     concurrency: int,
-    labels: str | None = None,
+    labels: dict[str, str],
 ) -> TPAUploadReport:
     """
     Upload SBOMs to Atlas with S3 fallback on transient errors.
@@ -129,7 +134,7 @@ async def handle_atlas_transient_errors(paths: list[Path], s3_client: S3Client) 
 
 
 async def upload_to_atlas(
-    dirpath: Path, atlas_url: str, concurrency: int, labels: str | None
+    dirpath: Path, atlas_url: str, concurrency: int, labels: dict[str, str]
 ) -> TPAUploadReport:
     """
     Upload SBOMs to Atlas TPA instance.
@@ -151,7 +156,7 @@ async def upload_to_atlas(
         paths=list(dirpath.iterdir()),
         auth=auth,
         base_url=atlas_url,
-        labels=labels,  # FIXME:
+        labels=labels,
         workers=concurrency,
     )
     return await TPAUploadCommand.upload(

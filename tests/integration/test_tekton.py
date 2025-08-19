@@ -205,7 +205,7 @@ async def test_sbom_upload_fallback(
             TPAUploadFailure(path=file_path, transient=True, message="Transient error")
         ],
     )
-    await upload_sboms(tmp_path, tpa_base_url, s3_client, concurrency=1)
+    await upload_sboms(tmp_path, tpa_base_url, s3_client, concurrency=1, labels={})
 
     # check that the fallback to s3 uploaded the object
     assert await s3_client.exists(key) is True
