@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.16">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.17">
     
     
       
@@ -807,6 +807,39 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#existing-mobster-integration-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Existing Mobster integration tests
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Existing Mobster integration tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mobster-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      mobster-test
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mobster-test-slow" class="md-nav__link">
+    <span class="md-ellipsis">
+      mobster-test-slow
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#integration-tests-as-a-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       Integration tests as a Pipeline
@@ -903,7 +936,38 @@
 <h1 id="integration-testing-in-konflux">Integration testing in Konflux</h1>
 <p>This repository automatically deploys <a href="https://konflux-ci.dev/docs/testing/integration/">integration tests within Konflux on contributions</a>.
 The tekton Pipeline responsible for running integration tests in located in
-<code>hack/integration/mobster-test.yml</code>.</p>
+<code>hack/integration/mobster-test.yml</code>. The pytest instance run in the pipeline
+can be customized by providing the <code>PYTEST_OPTS</code> parameter in the
+<code>IntegrationTestScenario</code> custom resource.</p>
+<h2 id="existing-mobster-integration-tests">Existing Mobster integration tests</h2>
+<p>These are the two custom integration tests that Konflux currently executes for
+Mobster.</p>
+<p>For the <code>mobster-test-*</code> tests, the pipelinerun spins up sidecars needed for
+integration testing:
+  - Zot is used as an OCI registry
+  - TPA to test SBOM manipulation
+  - MinIO to provide a testing S3 bucket</p>
+<h3 id="mobster-test">mobster-test</h3>
+<p>This test runs on every commit pushed to the Mobster repository. It executes
+all Mobster integration tests, with the exception of slow tests (tests marked
+with the <code>slow</code> pytest marker).</p>
+<h3 id="mobster-test-slow">mobster-test-slow</h3>
+<p>This test only runs on commits to the main branch, as it's slow and requires a
+lot of resources to finish. It reuses the same pipelinerun to run the tests,
+but specifies the <code>PYTEST_OPTS</code> param with <code>-m slow</code> to only run tests with the
+<code>slow</code> pytest marker.</p>
+<p>Currently this test only contains one test:
+<code>test_process_component_sboms_big_release</code>. This performs an SBOM augmentation
+for a large release. It's configured to augment 200 components with each SBOM
+being large (5MiB).</p>
+<p>This test is used to catch regressions in memory usage and augmentation speed.
+For this reason it's critical that it's configured identically to the actual
+SBOM augmentation Tekton task. The concurrency settings in the integration test
+<a href="../tests/integration/conftest.py">conftest.py</a> must match the concurrency used
+in the <a href="../tasks/">Tekton tasks</a> themselves.</p>
+<p>Further, the resource requests and limits defined in the
+<a href="../hack/integration/mobster-test.yml">mobster-test</a> pipeline must match those
+used in the Tekton tasks.</p>
 <h2 id="integration-tests-as-a-pipeline">Integration tests as a Pipeline</h2>
 <p>The integration test Pipeline uses Sidecars for dependencies (to reduce config needed).
 To properly configure the Sidecars, the Pipeline first parses the Konflux SNAPSHOT,
@@ -912,7 +976,7 @@ a folder <code>SOURCE_CODE</code>. Tests are then performed using the image refe
 the SNAPSHOT and the cloned source code.</p>
 <p>To correctly provision a Pipeline with a Workspace, this test must also define
 a PipelineRun (<code>hack/integration/mobster-test-run.yml</code>). However, the default Konflux
-integration test accounts for executing a Pipeline, therefore we have to modify 
+integration test accounts for executing a Pipeline, therefore we have to modify
 the IntegrationTestScenario object, to <a href="https://konflux-ci.dev/docs/testing/integration/creating/#customize-pipelinerun-definition">change <code>spec.resolverRef.resourceKind</code> to
 value <code>pipelinerun</code></a>.</p>
 <p><strong>CAUTION</strong>:
@@ -989,10 +1053,10 @@ duration of your testing.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "toc.integrate"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "toc.integrate"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.50899def.min.js"></script>
+      <script src="../assets/javascripts/bundle.92b07e13.min.js"></script>
       
     
   </body>
