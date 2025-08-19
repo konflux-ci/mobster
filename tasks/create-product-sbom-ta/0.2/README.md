@@ -21,6 +21,7 @@ Create a product-level SBOM from release-time information and upload it to Atlas
 | `retryS3bucket`           | string | `""`                        | The name of the S3 bucket used to store data for the retry mechanism.                                                               |
 | `atlasApiUrl`             | string | `""`                        | URL of the Atlas API host.                                                                                                          |
 | `ssoTokenUrl`             | string | `""`                        | URL of the SSO token issuer.                                                                                                        |
+| `resultsDirPath`          | string |                             | Path to directory in the dataDir to store JSON task results to.                                                                     |
 
 ## Secrets
 The create-product-sbom-ta Task optionally depends on two secrets. If they

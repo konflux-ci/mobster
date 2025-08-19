@@ -98,6 +98,9 @@ spec:
       default: "8"
       type: string
 
+    - name: resultsDirPath
+      type: string
+      description: Path to directory in the dataDir to store JSON task results to.
 
   results:
     - description: Produced trusted data artifact
@@ -189,7 +192,8 @@ spec:
           --atlas-api-url "$(params.atlasApiUrl)" \
           --retry-s3-bucket "$(params.retryS3Bucket)" \
           --release-id "$release_id" \
-          --concurrency "$(params.concurrency)"
+          --concurrency "$(params.concurrency)" \
+          --result-dir "$(params.resultsDirPath)"
 
     - name: create-trusted-artifact
       ref:

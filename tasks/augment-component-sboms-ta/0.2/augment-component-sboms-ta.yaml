@@ -102,6 +102,10 @@ spec:
       default: "8"
       type: string
 
+    - name: resultsDirPath
+      type: string
+      description: Path to directory in the dataDir to store JSON task results to.
+
   results:
     - description: Produced trusted data artifact
       name: sourceDataArtifact
@@ -192,7 +196,8 @@ spec:
           --retry-s3-bucket "$(params.retryS3Bucket)" \
           --release-id "$release_id" \
           --augment-concurrency "$(params.augmentConcurrency)" \
-          --upload-concurrency "$(params.uploadConcurrency)"
+          --upload-concurrency "$(params.uploadConcurrency)" \
+          --result-dir "$(params.resultsDirPath)"
 
     - name: create-trusted-artifact
       ref:
