@@ -64,13 +64,6 @@ async def verify_sboms_in_tpa(
     assert len(urn_set) == 0, f"URNs of SBOMs not found in TPA: {urn_set}"
 
 
-def parse_digests(process_stdout: bytes) -> list[str]:
-    """
-    Parse SBOM digests from stdout of process_* commands.
-    """
-    return process_stdout.decode("utf-8").splitlines()
-
-
 @pytest.mark.asyncio
 async def test_create_product_sboms_ta_happypath(
     test_id: str,
@@ -412,6 +405,8 @@ async def test_process_component_sboms_big_release(
     data_dir = tmp_path
     snapshot_path = Path("snapshot.json")
     release_id = ReleaseId.new()
+    result_dir = tmp_path / "results"
+    result_dir.mkdir()
 
     repo_name = "release"
     repo_with_registry = f"{registry_url.removeprefix('http://')}/{repo_name}"
@@ -450,11 +445,13 @@ async def test_process_component_sboms_big_release(
 
     assert not await s3_client.snapshot_exists(release_id)
 
-    result = subprocess.run(
+    subprocess.run(
         [
             "process_component_sboms",
             "--data-dir",
             data_dir,
+            "--result-dir",
+            result_dir,
             "--snapshot-spec",
             snapshot_path,
             "--atlas-api-url",
@@ -463,7 +460,6 @@ async def test_process_component_sboms_big_release(
             s3_sbom_bucket,
             "--release-id",
             str(release_id),
-            "--print-digests",
             "--augment-concurrency",
             str(augment_concurrency),
             "--upload-concurrency",
@@ -472,13 +468,15 @@ async def test_process_component_sboms_big_release(
             f"test_id={test_id}",
         ],
         check=True,
-        capture_output=True,
     )
-    sbom_digests = parse_digests(result.stdout)
-
     assert len(list((data_dir / "sbom").iterdir())) == n_components * 2
 
-    await verify_sboms_in_tpa(tpa_client, sbom_digests, test_id)
+    artifact_path = result_dir / COMPONENT_ARTIFACT_NAME
+    assert artifact_path.exists()
+    with open(artifact_path) as fp:
+        artifact = SBOMArtifact.model_validate_json(fp.read())
+
+    await verify_sboms_in_tpa(tpa_client, test_id, artifact, n_sboms=n_components * 2)
 
     # check that no SBOMs were added to the bucket (TPA upload succeeded)
     assert await s3_client.is_prefix_empty("/")
