@@ -9,6 +9,7 @@ from mobster.cmd import augment
 from mobster.cmd.delete import delete_tpa
 from mobster.cmd.download import download_tpa
 from mobster.cmd.generate import modelcar, oci_artifact, oci_image, oci_index, product
+from mobster.cmd.regenerate import product as prod_regen, component as comp_regen
 from mobster.cmd.upload import upload
 from mobster.image import ARTIFACT_PATTERN, PULLSPEC_PATTERN
 from mobster.release import ReleaseId
@@ -36,10 +37,94 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     download_command_parser(subparsers)
     # Delete command
     delete_command_parser(subparsers)
+    # Regenerate command
+    regenerate_command_parser(subparsers)
 
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output.")
 
     return parser
+
+
+def regenerate_command_parser(subparsers: Any) -> None:
+    """
+    Create the command parser for regenerating SBOM documents.
+    """
+    regenerate_parser = subparsers.add_parser(
+        "regenerate", help="Regenerate an SBOM document"
+    )
+    regenerate_subparsers = regenerate_parser.add_subparsers(dest="type", required=True)
+
+    regenerate_parser.add_argument(
+        "--tpa-base-url",
+        type=str,
+        required=True,
+        help="URL of the TPA server",
+    )
+
+    regenerate_parser.add_argument(
+        "--mobster-versions",
+        type=str,
+        required=True,
+        help="Comma separated list of mobster versions to query for "
+             "(e.g.:  0.2.1,0.5.0",
+    )
+
+    regenerate_parser.add_argument(
+        "--s3-bucket-url",
+        type=str,
+        required=True,
+        help="AWS S3 bucket URL",
+    )
+
+    regenerate_parser.add_argument(
+        "--concurrency",
+        type=parse_concurrency,
+        default=8,
+        help="concurrency limit for S3 client (non-zero integer)",
+    )
+
+    regenerate_parser.add_argument(
+        "--output",
+        type=Path,
+        help="Path to the output file. If not provided, the output will be printed"
+        "to stdout.",
+    )
+
+    regenerate_parser.add_argument(
+        "--dry-run",
+        type=bool,
+        default=False,
+        help="Run in 'dry run' only mode (skips destructive TPA IO)",
+    )
+
+    regenerate_product_parser(regenerate_subparsers)
+    # TODO:
+    # regenerate_component_parser(generate_subparsers)
+    # ...
+
+
+def regenerate_product_parser(subparsers: Any) -> None:
+    """
+    Re-generate the command parser for the product level SBOM.
+    """
+
+    regen_product_parser = subparsers.add_parser(
+        "product", help="regenerate SBOM document(s) for product"
+    )
+
+    regen_product_parser.set_defaults(func=prod_regen.RegenerateProductCommand)
+
+
+def regenerate_component_parser(subparsers: Any) -> None:
+    """
+    Re-generate the command parser for the component SBOM.
+    """
+
+    regen_product_parser = subparsers.add_parser(
+        "component", help="regenerate SBOM document(s) for component"
+    )
+
+    regen_product_parser.set_defaults(func=comp_regen.RegenerateComponentCommand)
 
 
 def generate_command_parser(subparsers: Any) -> None:
