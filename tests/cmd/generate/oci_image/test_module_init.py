@@ -18,7 +18,7 @@ from spdx_tools.spdx.model.package import Package
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.image import Image
-from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom
+from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom, assert_spdx_sbom
 
 
 @pytest.fixture()
@@ -68,38 +68,9 @@ async def test_GenerateOciImageCommand_execute(
     with open(test_case.expected_sbom_path) as expected_file_stream:
         expected_sbom = json.load(expected_file_stream)
 
-    def compare_spdx_sbom_dicts(
-        actual: dict[str, Any], expected: dict[str, Any]
-    ) -> None:
-        for index, package in enumerate(actual["packages"]):
-            for key, value in package.items():
-                if key == "annotations":
-                    for annotation_idx, annotation in enumerate(value):
-                        for annotation_key in (
-                            "annotationType",
-                            "annotator",
-                            "comment",
-                            # Ignore annotationDate
-                        ):
-                            try:
-                                assert (
-                                    annotation[annotation_key]
-                                    == expected["packages"][index]["annotations"][
-                                        annotation_idx
-                                    ][annotation_key]
-                                )
-                            except (KeyError, IndexError):
-                                raise AssertionError(
-                                    f"Cannot match package {package} with the"
-                                    f" expected value {expected['packages'][index]}"
-                                ) from None
-                else:
-                    assert package[key] == expected["packages"][index][key]
-        assert actual["relationships"] == expected["relationships"]
-
     def compare_sbom_dicts(actual: dict[str, Any], expected: dict[str, Any]) -> None:
         if "spdxVersion" in actual and "spdxVersion" in expected:
-            return compare_spdx_sbom_dicts(actual, expected)
+            return assert_spdx_sbom(actual, expected)
         return assert_cdx_sbom(actual, expected)
 
     sbom = await command.execute()
@@ -331,8 +302,8 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
 
     mock_file = MagicMock()
     mock_open.return_value.__enter__.return_value = mock_file
-    mock_json_load.side_effect = (
-        lambda _: mock_syft_data if hermeto_bom is None else mock_hermeto_data
+    mock_json_load.side_effect = lambda _: (
+        mock_syft_data if hermeto_bom is None else mock_hermeto_data
     )
     mock_merge.return_value = mock_merged_data
 

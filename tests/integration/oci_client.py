@@ -7,7 +7,7 @@ from typing import Any, Literal
 import httpx
 
 from mobster.image import Image
-from mobster.oci import run_async_subprocess
+from mobster.utils import run_async_subprocess
 
 
 @dataclass

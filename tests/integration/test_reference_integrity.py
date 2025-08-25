@@ -7,7 +7,7 @@ import pytest
 
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.image import Image
-from mobster.oci import run_async_subprocess
+from mobster.utils import run_async_subprocess
 from tests.integration.oci_client import ReferrersTagOCIClient
 
 TESTDATA_PATH = Path(__file__).parent.parent / "data"
@@ -182,7 +182,9 @@ def is_main_package_present_in_other_sbom(
 ) -> bool:
     """
     Check if a package that DESCRIBES the first SBOM is present in the other SBOM.
-    The comparison is done based on PURLs in the external references of the packages.
+    The comparison is done in 2 stages:
+    - first, the package name needs to match
+    - then, the PURLs of the package need to match
 
     Args:
         sbom_with_main_pkg_path (Path): A path to the SBOM that contains the main
@@ -210,6 +212,10 @@ def is_main_package_present_in_other_sbom(
     # Iterate through the packages in the other SBOM and check for matches.
     for package in other_sbom.get("packages", []):
         child_purls_in_index = _get_pkg_purls(package)
+
+        package_name_match = package.get("name") == main_pkg.get("name")
+        if not package_name_match:
+            continue
 
         if all_purl_match:
             if set(main_pkg_purls) == set(child_purls_in_index):

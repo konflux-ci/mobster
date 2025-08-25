@@ -41,6 +41,8 @@ def assert_spdx_sbom(actual: Any, expected: Any) -> None:
         for creator in actual["creationInfo"]["creators"]
         if "Mobster" not in creator
     ]
+    patch_annotation_date(actual, "2025-07-21T08:37:50Z")
+    patch_annotation_date(expected, "2025-07-21T08:37:50Z")
 
     # Verify annotations only if it's expected.
     if "annotations" in expected:
@@ -57,6 +59,20 @@ def assert_spdx_sbom(actual: Any, expected: Any) -> None:
         expected.pop("annotations")
 
     assert actual == expected
+
+
+def patch_annotation_date(sbom: Any, value: str) -> None:
+    """
+    Patch the dynamicaly generated annotation date in the SBOM with a fixed value.
+
+    Args:
+        sbom (Any): An SBOM dictionary to patch.
+        value (str): A fixed date value to set in the SBOM.
+    """
+    for package in sbom["packages"]:
+        for annotation in package.get("annotations", []):
+            if "annotationDate" in annotation:
+                annotation["annotationDate"] = value
 
 
 def assert_cdx_sbom(actual: Any, expected: Any) -> None:

@@ -90,7 +90,7 @@ class GenerateOciIndexCommand(GenerateCommand):
                 digest=manifest["digest"],
                 tag=index_image.tag,
                 repository=index_image.repository,
-                arch=None,
+                arch=arch,
             )
             spdx_id = arch_image.propose_spdx_id()
             package = spdx.get_image_package(
