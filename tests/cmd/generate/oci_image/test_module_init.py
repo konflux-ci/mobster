@@ -80,9 +80,7 @@ async def test_GenerateOciImageCommand_execute(
 
 
 @pytest.mark.asyncio
-@patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_refs_from_dockerfile"
-)
+@patch("mobster.cmd.generate.oci_image.get_base_images_refs_from_dockerfile")
 @patch(
     "mobster.cmd.generate.oci_image.base_images_dockerfile.get_objects_for_base_images"
 )
@@ -133,22 +131,20 @@ async def test_test_GenerateOciImageCommand_execute_missing_digest(
     ],
 )
 @patch("mobster.cmd.generate.oci_image.LOGGER")
-@patch("mobster.cmd.generate.oci_image.json")
 @patch("mobster.cmd.generate.oci_image.extend_sbom_with_image_reference")
 @patch("mobster.cmd.generate.oci_image.get_digest_for_image_ref")
-@patch("mobster.cmd.generate.oci_image.open")
+@patch("mobster.cmd.generate.oci_image.load_sbom_from_json")
 async def test_GenerateOciImageCommand_execute_handle_pullspec(
-    mock_open: MagicMock,
+    mock_load_sbom: AsyncMock,
     mock_get_digest: AsyncMock,
     mock_extend_sbom: AsyncMock,
-    mock_json: MagicMock,
     mock_logger: MagicMock,
     pullspec: str | None,
     digest: str | None,
     oras_response: str | None,
     expected_action: Literal["run", "warning", "error", "nothing", "ask-oras"],
 ) -> None:
-    mock_json.load.return_value = {"spdxVersion": "SPDX-2.3"}
+    mock_load_sbom.return_value = {"spdxVersion": "SPDX-2.3"}
     mock_get_digest.return_value = oras_response
 
     args = MagicMock()
@@ -180,13 +176,12 @@ async def test_GenerateOciImageCommand_execute_handle_pullspec(
 
 
 @pytest.mark.asyncio
-@patch("mobster.cmd.generate.oci_image.open")
-@patch("mobster.cmd.generate.oci_image.json")
+@patch("mobster.cmd.generate.oci_image.load_sbom_from_json")
 async def test_GenerateOciImageCommand_execute_unknown_sbom(
-    mock_json: MagicMock, mock_open: MagicMock
+    mock_load_sbom: AsyncMock,
 ) -> None:
     args = MagicMock()
-    mock_json.load.return_value = {"foo": "bar"}
+    mock_load_sbom.return_value = {"foo": "bar"}
     args.from_syft = [Path("foo")]
     args.from_hermeto = None
     args.image_pullspec = None
@@ -283,51 +278,138 @@ async def test_GenerateOciImageCommand__soft_validate_content_cdx(
         (None, Path("hermeto.json"), "load_hermeto"),
     ],
 )
-@patch("builtins.open")
-@patch("json.load")
+@patch("mobster.cmd.generate.oci_image.load_sbom_from_json")
 @patch("mobster.cmd.generate.oci_image.merge_sboms")
 async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_merge: MagicMock,
-    mock_json_load: MagicMock,
-    mock_open: MagicMock,
-    syft_boms: list[Path] | None,
+    mock_load_sbom: AsyncMock,
+    syft_boms: list[Path],
     hermeto_bom: Path | None,
     expected_action: Literal["raise_error", "load_syft", "load_hermeto", "merge"],
 ) -> None:
     command = GenerateOciImageCommand(MagicMock())
+    command.cli_args.from_hermeto = hermeto_bom
+    command.cli_args.from_syft = syft_boms
 
     mock_syft_data = {"name": "syft_data"}
     mock_hermeto_data = {"name": "hermeto_data"}
     mock_merged_data = {"name": "merged_data"}
 
-    mock_file = MagicMock()
-    mock_open.return_value.__enter__.return_value = mock_file
-    mock_json_load.side_effect = lambda _: (
+    mock_load_sbom.side_effect = lambda _: (
         mock_syft_data if hermeto_bom is None else mock_hermeto_data
     )
     mock_merge.return_value = mock_merged_data
 
     if expected_action == "raise_error":
         with pytest.raises(ArgumentError):
-            command._handle_bom_inputs(syft_boms, hermeto_bom)
+            await command._handle_bom_inputs()
     else:
-        result = command._handle_bom_inputs(syft_boms, hermeto_bom)
+        result = await command._handle_bom_inputs()
 
         if expected_action == "load_syft":
             assert syft_boms is not None
             assert hermeto_bom is None
-            mock_open.assert_called_once()
+            mock_load_sbom.assert_awaited_once()
             assert result == mock_syft_data
             mock_merge.assert_not_called()
 
         elif expected_action == "load_hermeto":
             assert hermeto_bom is not None
             assert syft_boms is None
-            mock_open.assert_called_once()
+            mock_load_sbom.assert_awaited_once()
             assert result == mock_hermeto_data
             mock_merge.assert_not_called()
 
         elif expected_action == "merge":
             mock_merge.assert_called_once_with(syft_boms, hermeto_bom)
             assert result == mock_merged_data
-            mock_open.assert_not_called()
+            mock_load_sbom.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.generate.oci_image.create_contextual_sbom")
+@patch("mobster.cmd.generate.oci_image.calculate_component_only_content")
+@patch("mobster.cmd.generate.oci_image.download_parent_image_sbom")
+async def test_GenerateOciImageCommand__execute_contextual_workflow(
+    mock_download_parent: AsyncMock,
+    mock_calculate_component_only_content: AsyncMock,
+    mock_create_contextual_sbom: AsyncMock,
+    spdx_parent_sbom_with_grandparent_json: dict[str, Any],
+    spdx_component_sbom: Document,
+) -> None:
+    """
+    This test mostly just hits code statements to make coverage happy,
+    this needs to be rewritten after contextual SBOM is implemented!
+    """
+
+    mock_create_contextual_sbom.side_effect = lambda *args: args
+    mock_calculate_component_only_content.side_effect = lambda *args: args[1]
+    mock_download_parent.return_value = spdx_parent_sbom_with_grandparent_json
+
+    command = GenerateOciImageCommand(MagicMock())
+    parent_sbom, component_only = await command._execute_contextual_workflow(  # type: ignore[misc]
+        spdx_component_sbom,
+        Image("registry.access.redhat.com/ubi8/ubi", "sha256:sha"),
+        "amd64",
+    )
+    with open(
+        "tests/sbom/test_oci_generate_data/contextual/output/expected_out_parent.spdx.json",
+    ) as in_file:
+        assert await command.dump_sbom_to_dict(parent_sbom) == json.load(in_file)
+    with open(
+        "tests/sbom/test_oci_generate_data/contextual/output/expected_out_component.spdx.json",
+    ) as in_file:
+        assert await command.dump_sbom_to_dict(component_only) == json.load(in_file)
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.generate.oci_image.download_parent_image_sbom")
+async def test_GenerateOciImageCommand__execute_contextual_workflow_no_downloaded_sbom(
+    mock_download_sbom: AsyncMock,
+) -> None:
+    mock_download_sbom.return_value = None
+    command = GenerateOciImageCommand(MagicMock(from_hermeto=None))
+    assert (
+        await command._execute_contextual_workflow(
+            MagicMock(), Image("foo", "sha256:1"), "bar"
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand._execute_contextual_workflow"
+)
+async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow(
+    mock_execute_contextual: AsyncMock,
+) -> None:
+    command = GenerateOciImageCommand(MagicMock())
+    command._contextualize = True
+    await command._assess_and_dispatch_contextual_workflow(
+        MagicMock(spec=Document),
+        ["foo:latest"],
+        {"foo:latest": Image("foo:latest", "sha256:1")},
+        "amd64",
+    )
+    mock_execute_contextual.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand._execute_contextual_workflow"
+)
+async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_fail(
+    mock_execute_contextual: AsyncMock, caplog: LogCaptureFixture
+) -> None:
+    command = GenerateOciImageCommand(MagicMock())
+    command._contextualize = True
+    mock_execute_contextual.side_effect = ValueError("a")
+    await command._assess_and_dispatch_contextual_workflow(
+        MagicMock(spec=Document),
+        ["foo:latest"],
+        {"foo:latest": Image("foo:latest", "sha256:1")},
+        "amd64",
+    )
+    mock_execute_contextual.assert_awaited_once()
+    assert "Could not create contextual SBOM!" in caplog.messages
