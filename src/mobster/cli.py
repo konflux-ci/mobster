@@ -484,6 +484,12 @@ def upload_tpa_parser(subparsers: Any) -> None:
         "labels to attach to the uploaded SBOMs",
         default={},
     )
+    tpa_parser.add_argument(
+        "--retries",
+        type=int,
+        help="How many retries will be attempted to upload to TPA before failing.",
+        default=3,
+    )
 
     # Create a mutually exclusive group and require one of the arguments
     source_group = tpa_parser.add_mutually_exclusive_group(required=True)

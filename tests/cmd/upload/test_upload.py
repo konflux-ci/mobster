@@ -109,6 +109,7 @@ async def test_execute_upload_single_file(
     args.tpa_base_url = "https://test.tpa.url"
     args.workers = 2
     args.labels = {}
+    args.retries = 1
     command = TPAUploadCommand(args)
 
     await command.execute()
@@ -120,7 +121,7 @@ async def test_execute_upload_single_file(
 
     # Verify upload_sbom was called once with the correct file
     mock_tpa_client.upload_sbom.assert_called_once_with(
-        Path("/test/single_file.json"), labels={}
+        Path("/test/single_file.json"), labels={}, retries=1
     )
 
     # Verify the command's exit_code is 0 since upload succeeded

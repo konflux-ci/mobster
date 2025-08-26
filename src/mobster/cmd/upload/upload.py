@@ -164,6 +164,7 @@ class UploadConfig:
     workers: int
     labels: dict[str, str]
     paths: list[Path]
+    retries: int
 
 
 class TPAUploadCommand(Command):
@@ -191,6 +192,7 @@ class TPAUploadCommand(Command):
             paths=sbom_files,
             workers=workers,
             labels=self.cli_args.labels,
+            retries=self.cli_args.retries,
         )
         report = await TPAUploadCommand.upload(config)
 
@@ -218,21 +220,24 @@ class TPAUploadCommand(Command):
 
     @staticmethod
     async def upload_sbom_file(
+        # pylint: disable=too-many-arguments,too-many-positional-arguments
         sbom_file: Path,
         auth: OIDCClientCredentials | None,
         tpa_url: str,
         semaphore: asyncio.Semaphore,
         labels: dict[str, str],
+        retries: int,
     ) -> str:
         """
         Upload a single SBOM file to TPA using HTTP client.
 
         Args:
-            sbom_file (Path): Absolute path to the SBOM file to upload
-            auth (OIDCClientCredentials): Authentication object for the TPA API
-            tpa_url (str): Base URL for the TPA API
-            semaphore (asyncio.Semaphore): A semaphore to limit the number
-            of concurrent uploads
+            sbom_file: Absolute path to the SBOM file to upload
+            auth: Authentication object for the TPA API
+            tpa_url: Base URL for the TPA API
+            semaphore: A semaphore to limit the number of concurrent uploads
+            labels: A mapping of TPA label keys to label values for uploaded SBOMs
+            retries: How many retries for SBOM upload will be performed before failing.
 
         Returns:
             str: URL of the uploaded SBOM
@@ -246,7 +251,9 @@ class TPAUploadCommand(Command):
             filename = sbom_file.name
             start_time = time.time()
             try:
-                urn = await client.upload_sbom(sbom_file, labels=labels)
+                urn = await client.upload_sbom(
+                    sbom_file, labels=labels, retries=retries
+                )
                 LOGGER.info("Successfully uploaded %s to TPA", sbom_file)
                 return urn
             except Exception:  # pylint: disable=broad-except
@@ -263,10 +270,7 @@ class TPAUploadCommand(Command):
         Upload SBOM files to TPA given a directory or a file.
 
         Args:
-            auth (OIDCClientCredentials | None): Authentication object for the TPA API
-            tpa_url (str): Base URL for the TPA API
-            sbom_files (list[Path]): List of SBOM file paths to upload
-            workers (int): Number of concurrent workers for uploading
+            config: Configuration for the command.
 
         Returns:
             tuple[TPAUploadReport, int]: Upload report and exit code
@@ -283,6 +287,7 @@ class TPAUploadCommand(Command):
                 tpa_url=config.base_url,
                 semaphore=semaphore,
                 labels=config.labels,
+                retries=config.retries,
             )
             for sbom_file in config.paths
         ]
