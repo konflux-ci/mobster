@@ -36,7 +36,6 @@ class ProcessComponentArgs(CommonArgs):
     """
 
     augment_concurrency: int
-    upload_concurrency: int
 
 
 def parse_args() -> ProcessComponentArgs:
@@ -64,6 +63,7 @@ def parse_args() -> ProcessComponentArgs:
         augment_concurrency=args.augment_concurrency,
         upload_concurrency=args.upload_concurrency,
         labels=args.labels,
+        tpa_retries=args.tpa_retries,
     )
 
 
@@ -104,8 +104,6 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     Args:
         args: Arguments containing data directory and configuration.
     """
-    sbom_dir = args.data_dir / "sbom"
-    sbom_dir.mkdir(exist_ok=True)
     s3 = connect_with_s3(args.retry_s3_bucket)
 
     if s3:
@@ -114,11 +112,16 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
 
     LOGGER.info("Starting SBOM augmentation")
     augment_component_sboms(
-        sbom_dir, args.snapshot_spec, args.release_id, args.augment_concurrency
+        args.ensured_sbom_dir(),
+        args.snapshot_spec,
+        args.release_id,
+        args.augment_concurrency,
     )
+    config = args.to_upload_config()
 
     report = await upload_sboms(
-        sbom_dir, args.atlas_api_url, s3, args.upload_concurrency, args.labels
+        config,
+        s3,
     )
     artifact = get_component_artifact(report)
     artifact.write_result(args.result_dir)

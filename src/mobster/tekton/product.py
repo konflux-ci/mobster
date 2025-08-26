@@ -61,8 +61,10 @@ def parse_args() -> ProcessProductArgs:
         atlas_api_url=args.atlas_api_url,
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
+        upload_concurrency=args.concurrency,
         concurrency=args.concurrency,
         labels=args.labels,
+        tpa_retries=args.tpa_retries,
     )  # pylint:disable=duplicate-code
 
 
@@ -110,9 +112,7 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     Args:
         args: Arguments containing data directory and configuration.
     """
-    sbom_dir = args.data_dir / "sbom"
-    sbom_dir.mkdir(exist_ok=True)
-    sbom_path = sbom_dir / "sbom.json"
+    sbom_path = args.ensured_sbom_dir() / "sbom.json"
     s3 = connect_with_s3(args.retry_s3_bucket)
 
     if s3:
@@ -132,7 +132,8 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     )
 
     report = await upload_sboms(
-        sbom_dir, args.atlas_api_url, s3, args.concurrency, args.labels
+        args.to_upload_config(),
+        s3,
     )
     artifact = get_product_artifact(report)
     artifact.write_result(args.result_dir)

@@ -12,7 +12,7 @@ from typing import Any
 from urllib.parse import urljoin
 
 import httpx
-from httpx import Proxy
+from httpx import Proxy, Timeout
 
 LOGGER = logging.getLogger(__name__)
 
@@ -148,10 +148,11 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
     # Mypy doesn't recognize that either a value is returned
     # or an exception is raised in all cases
     async def _request(  # type: ignore[return]
-        # pylint: disable=too-many-arguments,too-many-positional-arguments
+        # pylint: disable=too-many-arguments
         self,
         method: str,
         url: str,
+        *,
         headers: Any = None,
         content: Any = None,
         params: Any = None,
@@ -165,15 +166,15 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         with forcelist of statuses that should be retried.
 
         Args:
-            method (str): HTTP method (GET, POST, ...)
-            url (str): Relative URL of the endpoint. Will be combined with the base URL.
-            headers(Any): headers to add to the request. Defaults to None.
-            content (Any, optional): data to send in the request. Defaults to None.
-            params (Any, optional): Parameters to add to the request. Defaults to None.
-            retries (int): Maximum number of retries. Default to 10.
-            backoff_factor (float): A backoff factor to apply between attempts.
+            method: HTTP method (GET, POST, ...)
+            url: Relative URL of the endpoint. Will be combined with the base URL.
+            headers: headers to add to the request. Defaults to None.
+            content: data to send in the request. Defaults to None.
+            params: Parameters to add to the request. Defaults to None.
+            retries: Maximum number of retries. Default to 10.
+            backoff_factor: A backoff factor to apply between attempts.
                 Default to 1.
-            status_forcelist (List[int]): A set of HTTP status codes that we should
+            status_forcelist: A set of HTTP status codes that we should
                 force a retry on.
 
         Returns:
@@ -186,13 +187,14 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
                 transient error
         """
         effective_url = urljoin(self._base_url, url)
-        LOGGER.debug("HTTP %s %s", method, effective_url)
+        LOGGER.debug("HTTP %s %s, retrying %d times", method, effective_url, retries)
 
         if status_forcelist is None:
             status_forcelist = [408, 429, 500, 502, 503, 504]
 
-        # fresh client for each request
-        client = httpx.AsyncClient(proxy=self._proxies, timeout=60)
+        # fresh client for each request, make timeout longer only if
+        # connection is successful (5.0 is the default in httpx)
+        client = httpx.AsyncClient(proxy=self._proxies, timeout=Timeout(60, connect=5))
         if headers:
             client.headers.update(headers)
 
@@ -218,9 +220,22 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
                     return resp
                 except (httpx.RequestError, httpx.HTTPStatusError) as exc:
                     # retry on problems with request and forcelist status codes
-                    LOGGER.exception("HTTP %s request failed: %s", method, exc)
                     if attempt < retries - 1:
-                        await sleep(backoff_factor * (2**attempt))
+                        delta_to_next_att = backoff_factor * (2**attempt)
+                        LOGGER.exception(
+                            "HTTP %s request to %s failed: %s. "
+                            "Next attempt in %f seconds, remaining retries: %d",
+                            method,
+                            effective_url,
+                            exc,
+                            delta_to_next_att,
+                            retries - attempt,
+                            extra={
+                                "mobster_httpx_request_params": params,
+                                "mobster_httpx_request_headers": headers,
+                            },
+                        )
+                        await sleep(delta_to_next_att)
                     else:
                         raise RetryExhaustedException(
                             f"Retries exhausted for "
@@ -234,72 +249,95 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
     async def get(
         self,
         url: str,
+        *,
         headers: dict[str, str] | None = None,
         params: dict[str, Any] | None = None,
+        retries: int = 10,
     ) -> httpx.Response:
         """
         Issue a JSON GET request
 
         Args:
-            url (str): endpoint to call
-            headers(dict[str, Any] | None): headers to add to the request.
-            Defaults to None.
-            params (dict[str, Any] | None, optional): Parameters to add to the request.
-            Defaults to None.
+            url: endpoint to call
+            headers: headers to add to the request.
+                Defaults to None.
+            params: Parameters to add to the request.
+                Defaults to None.
+            retries: Maximum number of retries. Default to 10.
 
         Returns:
             Any: JSON response from PUT request
         """
-        response = await self._request("get", url, headers=headers, params=params)
+        response = await self._request(
+            "get", url, headers=headers, params=params, retries=retries
+        )
         response.raise_for_status()
         return response
 
     async def put(
-        self, url: str, content: Any, headers: Any = None, params: Any = None
+        # pylint: disable=too-many-arguments
+        self,
+        url: str,
+        content: Any,
+        *,
+        headers: Any = None,
+        params: Any = None,
+        retries: int = 10,
     ) -> httpx.Response:
         """
         Issue a JSON PUT request
 
         Args:
-            url (str): endpoint to call
-            content (Any): data to send in request body
-            headers(dict[str, Any] | None): headers to add to the request.
-            Defaults to None.
-            params (dict[str, Any] | None, optional): Parameters to add to the request.
-            Defaults to None.
+            url: endpoint to call
+            content: data to send in request body
+            headers: headers to add to the request.
+                Defaults to None.
+            params: Parameters to add to the request.
+                Defaults to None.
+            retries: Maximum number of retries. Default to 10.
 
         Returns:
             Any: JSON response from PUT request
         """
         response = await self._request(
-            "put", url, content=content, headers=headers, params=params
+            "put", url, content=content, headers=headers, params=params, retries=retries
         )
         response.raise_for_status()
         return response
 
     async def post(
+        # pylint: disable=too-many-arguments
         self,
         url: str,
         content: Any,
+        *,
         headers: dict[str, str] | None = None,
         params: dict[str, Any] | None = None,
+        retries: int = 10,
     ) -> httpx.Response:
         """
         Issue a JSON POST request
 
         Args:
-            url (str): endpoint to call
-            content (Any): data to send in request body
-            headers(dict[str, Any] | None): headers to add to the request.
-            Defaults to None.
-            params (dict[str, Any] | None, optional): Parameters to add to the request.
-            Defaults to None.
+            url: endpoint to call
+            content: data to send in request body
+            headers: headers to add to the request.
+                Defaults to None.
+            params: Parameters to add to the request.
+                Defaults to None.
+            retries: Maximum number of retries. Default to 10.
+
 
         Returns:
             Any: JSON response from POST request
         """
         response = await self._request(
-            "post", url, content=content, headers=headers, params=params
+            "post",
+            url,
+            content=content,
+            headers=headers,
+            params=params,
+            retries=retries,
         )
         response.raise_for_status()
         return response
@@ -307,23 +345,28 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
     async def delete(
         self,
         url: str,
+        *,
         headers: dict[str, str] | None = None,
         params: dict[str, Any] | None = None,
+        retries: int = 10,
     ) -> httpx.Response:
         """
         Issue a JSON POST request
 
         Args:
-            url (str): endpoint to call
-            headers(dict[str, Any] | None): headers to add to the request.
-            Defaults to None.
-            params (dict[str, Any] | None, optional): Parameters to add to the request.
-            Defaults to None.
+            url: endpoint to call
+            headers: headers to add to the request.
+                Defaults to None.
+            params: Parameters to add to the request.
+                Defaults to None.
+            retries: Maximum number of retries. Default to 10.
 
         Returns:
             Any: JSON response from POST request
         """
-        response = await self._request("delete", url, headers=headers, params=params)
+        response = await self._request(
+            "delete", url, headers=headers, params=params, retries=retries
+        )
         response.raise_for_status()
         return response
 
@@ -331,6 +374,7 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         self,
         method: str,
         url: str,
+        *,
         headers: dict[str, str] | None = None,
         params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[
