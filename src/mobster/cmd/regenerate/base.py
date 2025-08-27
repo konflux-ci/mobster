@@ -1,5 +1,6 @@
 """A command execution module for regenerating SBOM documents."""
 
+import json
 import logging
 import os
 from abc import ABC
@@ -26,6 +27,7 @@ class RegenerateCommand(Command, ABC):
         self.tpa_base_url: str | None = None
         self.s3_bucket_url: str | None = None
         self.mobster_versions: str | None = None
+        self.component_purl: str | None = None
         self.concurrency: int | None = None
         self.output: str
         self.dry_run: bool = False
@@ -67,40 +69,54 @@ class RegenerateCommand(Command, ABC):
                     f"{self.count_sboms_success + self.count_sboms_failed} "
                     f"product-level SBOMs.")
 
-    async def regenerate_sbom(self, sbom: SbomSummary) -> bool:
+    async def regenerate_sbom(self, sbom_sum: SbomSummary) -> bool:
         """
         regenerate the given sbom (re-create it, upload it, then delete old version)
         """
         # ensure sbom name is a valid filename
-        name = utils.normalize_file_name(sbom.name)
+        name = utils.normalize_file_name(sbom_sum.name)
         local_path_original = self.output / f"{name}.original.json"
         local_path_regenerated = self.output / f"{name}.regenerated.json"
         # download sbom
-        LOGGER.info(f"downloading SBOM: {sbom.id} to: {local_path_original}")
-        await self.tpa_client.download_sbom(sbom.id, local_path_original)
+        LOGGER.info(f"downloading SBOM: {sbom_sum.id} to: {local_path_original}")
+        await self.tpa_client.download_sbom(sbom_sum.id, local_path_original)
+        try:
+            with open(local_path_original) as f:
+                sbom = json.load(f)
+        except FileNotFoundError:
+            LOGGER.error(f"'{local_path_original}' not found.")
+            return False
+        except json.JSONDecodeError:
+            LOGGER.error("Error: Invalid JSON in '{local_path_original}'.")
+            return False
+        # check for package, if applicable
+        if (self.component_purl and
+                not self.contains_package_ref(sbom, self.component_purl)):
+            LOGGER.info(f"purl: {self.component_purl} not in SBOM: {sbom_sum.id}")
+            return False
         # re-create
         release_id = self.extract_release_id(sbom)
         if not release_id:
-            LOGGER.info(f"No release_id found for SBOM: {sbom.id} ({sbom.name})")
+            LOGGER.info(f"No release_id in SBOM: {sbom_sum.id} ({sbom_sum.name})")
             return False
         # gather related data from s3 bucket
         path_snapshot, path_release_data = await self.gather_s3_input_data(release_id)
         if not path_snapshot:
-            LOGGER.info(f"No S3 snapshot found for SBOM: {sbom.id} ({sbom.name})")
+            LOGGER.info(f"No S3 snapshot found for {sbom_sum.id} ({sbom_sum.name})")
             return False
-        LOGGER.info(f"proceeding to regenerate SBOM: {sbom.id}  ({sbom.name})")
+        LOGGER.info(f"proceeding to regenerate SBOM: {sbom_sum.id}  ({sbom_sum.name})")
         release_notes = parse_release_notes(path_release_data)
-        document = create_sbom(
-            release_notes, path_snapshot, release_id
-        )
+        document = create_sbom(release_notes, path_snapshot, release_id)
         # write to file
         with open(local_path_regenerated, "w", encoding="utf-8") as stream:
             spdx_json_writer.write_document_to_stream(
                 document=document, stream=stream, validate=True
             )
         if self.dry_run:
-            LOGGER.info(f"*Dry Run 'upload' regenerated SBOM: {sbom.id} ({sbom.name})")
-            LOGGER.info(f"*Dry Run 'delete' original SBOM: {sbom.id} ({sbom.name})")
+            LOGGER.info(f"*Dry Run 'upload' regenerated SBOM: "
+                        f"{sbom_sum.id} ({sbom_sum.name})")
+            LOGGER.info(f"*Dry Run 'delete' original SBOM: "
+                        f"{sbom_sum.id} ({sbom_sum.name})")
             return False
         # upload
         response_upload = await self.tpa_client.upload_sbom(local_path_regenerated)
@@ -111,17 +127,17 @@ class RegenerateCommand(Command, ABC):
                          f"{response_upload.status_code}, for SBOM: {name}, "
                          f"with message: {response_upload.text}")
             return False
-        LOGGER.info(f"Success: uploaded regenerated SBOM: {sbom.id} ({sbom.name})")
+        LOGGER.info(f"Success: uploaded regen SBOM: {sbom_sum.id} ({sbom_sum.name})")
         # delete
-        response_delete = await self.tpa_client.delete(sbom.id)
+        response_delete = await self.tpa_client.delete(sbom_sum.id)
         # check delete status
         if response_delete.status_code != 200:
             # delete failed, log and abort regeneration for this SBOM
-            LOGGER.error(f"delete SBOM failed for SBOM: {sbom.id}, "
+            LOGGER.error(f"delete SBOM failed for SBOM: {sbom_sum.id}, "
                          f"status: {response_upload.status_code}, "
                          f"message: {response_upload.text}")
             return False
-        LOGGER.info(f"Success: deleted original SBOM: {sbom.id} ({sbom.name})")
+        LOGGER.info(f"Success: deleted original SBOM: {sbom_sum.id} ({sbom_sum.name})")
         return True
 
     @staticmethod
@@ -133,6 +149,18 @@ class RegenerateCommand(Command, ABC):
         # no release_id found
         LOGGER.info(f"no release_id found in SBOM: {sbom.id}")
         return None
+
+    @staticmethod
+    def contains_package_ref(self, sbom: SbomSummary, purl: str) -> bool:
+        if "packages" in sbom:
+            for package in sbom["packages"]:
+                if "externalRefs" in package:
+                    for externalRef in package["externalRefs"]:
+                        if externalRef["referenceType"] == "purl" and \
+                                externalRef["referenceLocator"] == purl:
+                            return True
+        # no matching package ref found
+        return False
 
     def get_s3_client(self) -> S3Client:
         s3_client = S3Client(
@@ -175,6 +203,7 @@ class RegenerateCommand(Command, ABC):
     def setup_cli_args(self) -> None:
         self.tpa_base_url = self.cli_args.tpa_base_url
         self.mobster_versions = self.cli_args.mobster_versions
+        self.component_purl = self.cli_args.component_purl
         self.s3_bucket_url = self.cli_args.s3_bucket_url
         self.concurrency = self.cli_args.concurrency
         self.output = self.cli_args.output

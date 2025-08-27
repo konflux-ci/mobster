@@ -98,9 +98,7 @@ def regenerate_command_parser(subparsers: Any) -> None:
     )
 
     regenerate_product_parser(regenerate_subparsers)
-    # TODO:
-    # regenerate_component_parser(generate_subparsers)
-    # ...
+    regenerate_component_parser(regenerate_subparsers)
 
 
 def regenerate_product_parser(subparsers: Any) -> None:
@@ -120,11 +118,18 @@ def regenerate_component_parser(subparsers: Any) -> None:
     Re-generate the command parser for the component SBOM.
     """
 
-    regen_product_parser = subparsers.add_parser(
+    regen_component_parser = subparsers.add_parser(
         "component", help="regenerate SBOM document(s) for component"
     )
 
-    regen_product_parser.set_defaults(func=comp_regen.RegenerateComponentCommand)
+    regen_component_parser.add_argument(
+        "--component-purl",
+        type=str,
+        required=True,
+        help="Component PURL",
+    )
+
+    regen_component_parser.set_defaults(func=comp_regen.RegenerateComponentCommand)
 
 
 def generate_command_parser(subparsers: Any) -> None:
