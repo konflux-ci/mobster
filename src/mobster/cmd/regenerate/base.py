@@ -147,7 +147,7 @@ class RegenerateCommand(Command, ABC):
                 if "release_id=" in annotation["comment"]:
                     return annotation["comment"].partition("release_id=")[2]
         # no release_id found
-        LOGGER.info(f"no release_id found in SBOM: {sbom.id}")
+        LOGGER.info("no release_id found in SBOM")
         return None
 
     @staticmethod
@@ -203,7 +203,8 @@ class RegenerateCommand(Command, ABC):
     def setup_cli_args(self) -> None:
         self.tpa_base_url = self.cli_args.tpa_base_url
         self.mobster_versions = self.cli_args.mobster_versions
-        self.component_purl = self.cli_args.component_purl
+        if "component_purl" in self.cli_args:
+            self.component_purl = self.cli_args.component_purl
         self.s3_bucket_url = self.cli_args.s3_bucket_url
         self.concurrency = self.cli_args.concurrency
         self.output = self.cli_args.output
