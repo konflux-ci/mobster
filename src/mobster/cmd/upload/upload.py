@@ -192,9 +192,7 @@ class TPAUploadCommand(Command):
             workers=workers,
             labels=self.cli_args.labels,
         )
-        report = await TPAUploadCommand.upload(
-            config,
-        )
+        report = await TPAUploadCommand.upload(config)
 
         self.exit_code = 1 if report.has_failures() else 0
         if self.cli_args.report:

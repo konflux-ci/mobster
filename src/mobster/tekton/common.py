@@ -159,9 +159,7 @@ async def upload_to_atlas(
         labels=labels,
         workers=concurrency,
     )
-    return await TPAUploadCommand.upload(
-        config,
-    )
+    return await TPAUploadCommand.upload(config)
 
 
 async def upload_to_s3(report: TPAUploadReport, client: S3Client) -> None:
