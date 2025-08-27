@@ -1,13 +1,16 @@
 from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 
-from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedException
-from mobster.cmd.upload.tpa import TPAClient
-from mobster.cmd.upload.upload import TPAUploadCommand, UploadExitCode, UploadReport
+from mobster.cmd.upload.oidc import OIDCClientCredentials
+from mobster.cmd.upload.tpa import TPAClient, TPAError, TPATransientError
+from mobster.cmd.upload.upload import (
+    TPAUploadCommand,
+    TPAUploadFailure,
+    TPAUploadReport,
+    TPAUploadSuccess,
+)
 
 
 @pytest.fixture
@@ -23,9 +26,7 @@ def mock_tpa_client() -> AsyncMock:
     """Create a mock TPA client that returns success for uploads."""
     mock = AsyncMock(spec=TPAClient)
     mock.upload_sbom = AsyncMock(
-        return_value=httpx.Response(
-            200, request=httpx.Request("POST", "https://example.com")
-        )
+        return_value="urn:uuid:12345678-1234-5678-9012-123456789012"
     )
     return mock
 
@@ -56,8 +57,8 @@ async def test_execute_upload_from_directory(
 ) -> None:
     """Test uploading SBOMs from a directory."""
     mock_tpa_client_class.return_value = mock_tpa_client
-    mock_tpa_client.upload_sbom.return_value = httpx.Response(
-        200, request=httpx.Request("POST", "https://example.com")
+    mock_tpa_client.upload_sbom.return_value = (
+        "urn:uuid:12345678-1234-5678-9012-123456789012"
     )
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
 
@@ -96,8 +97,8 @@ async def test_execute_upload_single_file(
 ) -> None:
     """Test uploading a single SBOM file."""
     mock_tpa_client_class.return_value = mock_tpa_client
-    mock_tpa_client.upload_sbom.return_value = httpx.Response(
-        200, request=httpx.Request("POST", "https://example.com")
+    mock_tpa_client.upload_sbom.return_value = (
+        "urn:uuid:12345678-1234-5678-9012-123456789012"
     )
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
 
@@ -158,7 +159,7 @@ async def test_execute_upload_failure(
     assert mock_tpa_client.upload_sbom.call_count == len(file_list)
 
     # Verify the command's exit_code is 1 since all uploads failed
-    assert command.exit_code == UploadExitCode.ERROR.value
+    assert command.exit_code == 1
 
 
 @pytest.mark.asyncio
@@ -191,56 +192,7 @@ async def test_execute_upload_exception(
     mock_tpa_client.upload_sbom.assert_called_once()
 
     # Verify the command's exit_code is 1 since upload failed
-    assert command.exit_code == UploadExitCode.ERROR.value
-
-
-@pytest.mark.asyncio
-@patch("mobster.cmd.upload.upload.TPAUploadCommand.gather_sboms")
-@patch("mobster.cmd.upload.upload.TPAClient")
-@patch("mobster.cmd.upload.upload.OIDCClientCredentials")
-async def test_execute_upload_mixed_results(
-    mock_oidc: MagicMock,
-    mock_tpa_client_class: MagicMock,
-    mock_gather_sboms: MagicMock,
-    mock_env_vars: MagicMock,
-    capsys: Any,
-) -> None:
-    mock_tpa_client = AsyncMock(spec=TPAClient)
-    # First upload succeeds, second one fails
-    mock_tpa_client.upload_sbom.side_effect = [
-        httpx.Response(200, request=httpx.Request("POST", "https://example.com")),
-        Exception("Upload failed"),  # Failure
-    ]
-    mock_tpa_client_class.return_value = mock_tpa_client
-    mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
-
-    file_list = [Path("/test/dir/file1.json"), Path("/test/dir/file2.json")]
-    mock_gather_sboms.return_value = file_list
-
-    args = MagicMock()
-    args.from_dir = Path("/test/dir")
-    args.file = None
-    args.tpa_base_url = "https://test.tpa.url"
-    args.workers = 1
-    args.report = True
-    command = TPAUploadCommand(args)
-
-    await command.execute()
-
-    expected_report = UploadReport(
-        success=[Path("/test/dir/file1.json")],
-        failure=[Path("/test/dir/file2.json")],
-    )
-
-    out, _ = capsys.readouterr()
-    actual_report = UploadReport.model_validate_json(out)
-    assert actual_report == expected_report
-
-    # Verify upload_sbom was called for each file
-    assert mock_tpa_client.upload_sbom.call_count == len(file_list)
-
-    # Verify the command's exit_code is 1 since at least one upload failed
-    assert command.exit_code == UploadExitCode.ERROR.value
+    assert command.exit_code == 1
 
 
 def test_gather_sboms(tmp_path: Path) -> None:
@@ -261,35 +213,6 @@ def test_gather_sboms(tmp_path: Path) -> None:
 def test_gather_sboms_nonexistent() -> None:
     with pytest.raises(FileNotFoundError):
         TPAUploadCommand.gather_sboms(Path("/nonexistent"))
-
-
-@pytest.mark.parametrize(
-    "results,expected_exit_code,description",
-    [
-        ([], 0, "empty results list"),
-        ([None, None], 0, "all successful uploads"),
-        (
-            [RetryExhaustedException()],
-            UploadExitCode.TRANSIENT_ERROR.value,
-            "only retry exhausted exceptions",
-        ),
-        ([ValueError()], UploadExitCode.ERROR.value, "only non-transient exceptions"),
-        (
-            [RetryExhaustedException(), ValueError()],
-            UploadExitCode.ERROR.value,
-            "mixed exception types",
-        ),
-    ],
-)
-def test_set_exit_code(
-    results: list[BaseException | None], expected_exit_code: int, description: str
-) -> None:
-    """
-    Test set_exit_code function with various result combinations.
-    """
-    command = TPAUploadCommand(MagicMock())
-    command.set_exit_code(results)
-    assert command.exit_code == expected_exit_code
 
 
 def test_get_oidc_auth_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -315,3 +238,193 @@ def test_get_oidc_auth_enabled_false(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.token_url == "https://test.token.url"
     assert result.client_id == "test-account"
     assert result.client_secret == "test-token"
+
+
+class TestTPAUploadReport:
+    """
+    Test class for TPAUploadReport methods.
+    """
+
+    def test_get_non_transient_errors_empty(self) -> None:
+        """
+        Test get_non_transient_errors returns empty list when no failures.
+        """
+        report = TPAUploadReport(success=[], failure=[])
+        result = report.get_non_transient_errors()
+        assert result == []
+
+    def test_get_non_transient_errors_only_transient(self) -> None:
+        """
+        Test get_non_transient_errors returns empty list when only transient failures.
+        """
+        failures = [
+            TPAUploadFailure(
+                path=Path("/test/file1.json"),
+                transient=True,
+                message="Transient error 1",
+            ),
+            TPAUploadFailure(
+                path=Path("/test/file2.json"),
+                transient=True,
+                message="Transient error 2",
+            ),
+        ]
+        report = TPAUploadReport(success=[], failure=failures)
+        result = report.get_non_transient_errors()
+        assert result == []
+
+    def test_get_non_transient_errors_only_non_transient(self) -> None:
+        """
+        Test get_non_transient_errors returns all non-transient failures.
+        """
+        failures = [
+            TPAUploadFailure(
+                path=Path("/test/file1.json"),
+                transient=False,
+                message="Non-transient error 1",
+            ),
+            TPAUploadFailure(
+                path=Path("/test/file2.json"),
+                transient=False,
+                message="Non-transient error 2",
+            ),
+        ]
+        report = TPAUploadReport(success=[], failure=failures)
+        result = report.get_non_transient_errors()
+
+        expected = [
+            (Path("/test/file1.json"), "Non-transient error 1"),
+            (Path("/test/file2.json"), "Non-transient error 2"),
+        ]
+        assert result == expected
+
+    def test_get_non_transient_errors_mixed(self) -> None:
+        """
+        Test get_non_transient_errors returns only non-transient failures when mixed.
+        """
+        failures = [
+            TPAUploadFailure(
+                path=Path("/test/file1.json"), transient=True, message="Transient error"
+            ),
+            TPAUploadFailure(
+                path=Path("/test/file2.json"),
+                transient=False,
+                message="Non-transient error 1",
+            ),
+            TPAUploadFailure(
+                path=Path("/test/file3.json"),
+                transient=True,
+                message="Another transient error",
+            ),
+            TPAUploadFailure(
+                path=Path("/test/file4.json"),
+                transient=False,
+                message="Non-transient error 2",
+            ),
+        ]
+        report = TPAUploadReport(success=[], failure=failures)
+        result = report.get_non_transient_errors()
+
+        expected = [
+            (Path("/test/file2.json"), "Non-transient error 1"),
+            (Path("/test/file4.json"), "Non-transient error 2"),
+        ]
+        assert result == expected
+
+    def test_build_report_all_success(self) -> None:
+        """
+        Test build_report with all successful uploads.
+        """
+        results: list[tuple[Path, BaseException | str]] = [
+            (Path("/test/file1.json"), "urn:uuid:1234"),
+            (Path("/test/file2.json"), "urn:uuid:5678"),
+        ]
+
+        expected = TPAUploadReport(
+            success=[
+                TPAUploadSuccess(
+                    path=Path("/test/file1.json"),
+                    url="https://tpa.example.com/sboms/urn:uuid:1234",
+                ),
+                TPAUploadSuccess(
+                    path=Path("/test/file2.json"),
+                    url="https://tpa.example.com/sboms/urn:uuid:5678",
+                ),
+            ],
+            failure=[],
+        )
+
+        report = TPAUploadReport.build_report("https://tpa.example.com", results)
+        assert report == expected
+
+    def test_build_report_all_failures(self) -> None:
+        """
+        Test build_report with all failed uploads.
+        """
+        results: list[tuple[Path, BaseException | str]] = [
+            (Path("/test/file1.json"), TPAError("Regular error")),
+            (Path("/test/file2.json"), TPATransientError("Transient error")),
+        ]
+
+        expected = TPAUploadReport(
+            success=[],
+            failure=[
+                TPAUploadFailure(
+                    path=Path("/test/file1.json"),
+                    message="Regular error",
+                    transient=False,
+                ),
+                TPAUploadFailure(
+                    path=Path("/test/file2.json"),
+                    message="Transient error",
+                    transient=True,
+                ),
+            ],
+        )
+
+        report = TPAUploadReport.build_report("https://tpa.example.com", results)
+        assert report == expected
+
+    def test_build_report_mixed(self) -> None:
+        """
+        Test build_report with mixed success and failure results.
+        """
+        results: list[tuple[Path, BaseException | str]] = [
+            (Path("/test/success.json"), "urn:uuid:success"),
+            (Path("/test/transient_fail.json"), TPATransientError("Network timeout")),
+            (Path("/test/permanent_fail.json"), TPAError("Invalid format")),
+        ]
+
+        expected = TPAUploadReport(
+            success=[
+                TPAUploadSuccess(
+                    path=Path("/test/success.json"),
+                    url="https://tpa.example.com/sboms/urn:uuid:success",
+                ),
+            ],
+            failure=[
+                TPAUploadFailure(
+                    path=Path("/test/transient_fail.json"),
+                    message="Network timeout",
+                    transient=True,
+                ),
+                TPAUploadFailure(
+                    path=Path("/test/permanent_fail.json"),
+                    message="Invalid format",
+                    transient=False,
+                ),
+            ],
+        )
+
+        report = TPAUploadReport.build_report("https://tpa.example.com", results)
+        assert report == expected
+
+    def test_build_report_empty(self) -> None:
+        """
+        Test build_report with empty results.
+        """
+        results: list[tuple[Path, BaseException | str]] = []
+        expected = TPAUploadReport(success=[], failure=[])
+
+        report = TPAUploadReport.build_report("https://tpa.example.com", results)
+        assert report == expected

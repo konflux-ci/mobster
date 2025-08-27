@@ -11,11 +11,13 @@ from pathlib import Path
 
 from mobster.log import setup_logging
 from mobster.release import ReleaseId
+from mobster.tekton.artifact import (
+    get_component_artifact,
+)
 from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
     connect_with_s3,
-    print_digests,
     upload_sboms,
     upload_snapshot,
 )
@@ -54,11 +56,11 @@ def parse_args() -> ProcessComponentArgs:
     # the path as relative to the dataDir
     return ProcessComponentArgs(
         data_dir=args.data_dir,
+        result_dir=args.data_dir / args.result_dir,
         snapshot_spec=args.data_dir / args.snapshot_spec,
         atlas_api_url=args.atlas_api_url,
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
-        print_digests=args.print_digests,
         augment_concurrency=args.augment_concurrency,
         upload_concurrency=args.upload_concurrency,
         labels=args.labels,
@@ -114,12 +116,12 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     augment_component_sboms(
         sbom_dir, args.snapshot_spec, args.release_id, args.augment_concurrency
     )
-    if args.print_digests:
-        await print_digests(list(sbom_dir.iterdir()))
 
-    await upload_sboms(
+    report = await upload_sboms(
         sbom_dir, args.atlas_api_url, s3, args.upload_concurrency, args.labels
     )
+    artifact = get_component_artifact(report)
+    artifact.write_result(args.result_dir)
 
 
 def main() -> None:

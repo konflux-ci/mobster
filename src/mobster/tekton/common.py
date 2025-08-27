@@ -3,30 +3,26 @@ Common utilities for Tekton tasks.
 """
 
 import asyncio
-import hashlib
 import logging
 import os
-import subprocess
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import aiofiles
-
+from mobster.cli import parse_tpa_labels
 from mobster.cmd.generate.product import ReleaseData
+from mobster.cmd.upload.upload import TPAUploadCommand, TPAUploadReport, UploadConfig
 from mobster.release import ReleaseId, SnapshotModel
 from mobster.tekton.s3 import S3Client
 
 LOGGER = logging.getLogger(__name__)
 
 
-class AtlasTransientError(Exception):
-    """Raised when a transient Atlas error occurs."""
-
-
 class AtlasUploadError(Exception):
-    """Raised when a non-transient Atlas error occurs."""
+    """
+    Raised when a non-transient Atlas error occurs.
+    """
 
 
 @dataclass
@@ -36,6 +32,7 @@ class CommonArgs:
 
     Attributes:
         data_dir: main data directory defined in Tekton task
+        result_dir: path to directory to store results to
         snapshot_spec: path to snapshot spec file
         atlas_api_url: url of the TPA instance to use
         retry_s3_bucket: name of the S3 bucket to use for retries
@@ -47,8 +44,8 @@ class CommonArgs:
     atlas_api_url: str
     retry_s3_bucket: str
     release_id: ReleaseId
-    print_digests: bool
-    labels: str | None
+    labels: dict[str, str]
+    result_dir: Path
 
 
 def add_common_args(parser: ArgumentParser) -> None:
@@ -60,11 +57,17 @@ def add_common_args(parser: ArgumentParser) -> None:
     """
     parser.add_argument("--data-dir", type=Path, required=True)
     parser.add_argument("--snapshot-spec", type=Path, required=True)
+    parser.add_argument("--release-id", type=ReleaseId, required=True)
+    parser.add_argument("--result-dir", type=Path, required=True)
     parser.add_argument("--atlas-api-url", type=str)
     parser.add_argument("--retry-s3-bucket", type=str)
-    parser.add_argument("--release-id", type=ReleaseId, required=True)
-    parser.add_argument("--print-digests", action="store_true")
-    parser.add_argument("--labels", type=str, help="Labels to attach to uploaded SBOMs")
+    parser.add_argument(
+        "--labels",
+        type=parse_tpa_labels,
+        help='Comma-separated "key=value" pairs denoting '
+        "labels to attach to the uploaded SBOMs",
+        default={},
+    )
 
 
 async def upload_sboms(
@@ -72,8 +75,8 @@ async def upload_sboms(
     atlas_url: str,
     s3_client: S3Client | None,
     concurrency: int,
-    labels: str | None = None,
-) -> None:
+    labels: dict[str, str],
+) -> TPAUploadReport:
     """
     Upload SBOMs to Atlas with S3 fallback on transient errors.
 
@@ -87,24 +90,52 @@ async def upload_sboms(
     Raises:
         ValueError: If Atlas authentication credentials are missing or if S3
             client is provided but AWS authentication credentials are missing.
+        RuntimeError: If any SBOM failed to be pushed to Atlas with a
+            non-transient error
     """
     if not atlas_credentials_exist():
         raise ValueError("Missing Atlas authentication.")
 
-    try:
-        LOGGER.info("Starting SBOM upload to Atlas")
-        upload_to_atlas(dirpath, atlas_url, concurrency, labels)
-    except AtlasTransientError as e:
-        if s3_client:
-            if not s3_credentials_exist():
-                raise ValueError("Missing AWS authentication.") from e
-            LOGGER.warning("Encountered transient Atlas error, falling back to S3.")
-            await upload_to_s3(s3_client, dirpath)
+    LOGGER.info("Starting SBOM upload to Atlas")
+    report = await upload_to_atlas(dirpath, atlas_url, concurrency, labels)
+    if report.has_non_transient_failures():
+        raise RuntimeError(
+            "SBOMs failed to be uploaded to Atlas: \n"
+            + "\n".join(
+                [
+                    f"{path}: {message}"
+                    for path, message in report.get_non_transient_errors()
+                ]
+            )
+        )
+
+    if report.has_transient_failures() and s3_client is not None:
+        LOGGER.warning("Encountered transient Atlas error, falling back to S3.")
+        await handle_atlas_transient_errors(report.transient_error_paths, s3_client)
+
+    return report
 
 
-def upload_to_atlas(
-    dirpath: Path, atlas_url: str, concurrency: int, labels: str | None
-) -> None:
+async def handle_atlas_transient_errors(paths: list[Path], s3_client: S3Client) -> None:
+    """
+    Handle Atlas transient errors via the S3 retry mechanism.
+
+    Args:
+        paths: List of file paths that failed with transient errors.
+        s3_client: S3 client to use for uploading failed files.
+
+    Raises:
+        ValueError: If S3 credentials aren't specified in env.
+    """
+    if not s3_credentials_exist():
+        raise ValueError("Missing AWS authentication while attempting S3 retry.")
+
+    await asyncio.gather(*[s3_client.upload_file(failed_sbom) for failed_sbom in paths])
+
+
+async def upload_to_atlas(
+    dirpath: Path, atlas_url: str, concurrency: int, labels: dict[str, str]
+) -> TPAUploadReport:
     """
     Upload SBOMs to Atlas TPA instance.
 
@@ -115,35 +146,33 @@ def upload_to_atlas(
         labels: Labels to attach to uploaded SBOMs.
 
     Raises:
-        AtlasTransientError: If a transient error occurs (exit code 2).
         AtlasUploadError: If a non-transient error occurs.
-    """
-    try:
-        cmd: list[str] = [
-            "mobster",
-            "--verbose",
-            "upload",
-            "tpa",
-            "--tpa-base-url",
-            str(atlas_url),
-            "--from-dir",
-            str(dirpath),
-            "--report",
-            "--workers",
-            str(concurrency),
-        ]
-        if labels:
-            cmd.extend(["--labels", labels])
 
-        subprocess.run(
-            cmd,
-            check=True,
-            stdout=subprocess.PIPE,
-        )
-    except subprocess.CalledProcessError as err:
-        if err.returncode == 2:
-            raise AtlasTransientError() from err
-        raise AtlasUploadError() from err
+    Returns:
+        TPAUploadReport: Parsed upload report from the upload command.
+    """
+    auth = TPAUploadCommand.get_oidc_auth()
+    config = UploadConfig(
+        paths=list(dirpath.iterdir()),
+        auth=auth,
+        base_url=atlas_url,
+        labels=labels,
+        workers=concurrency,
+    )
+    return await TPAUploadCommand.upload(config)
+
+
+async def upload_to_s3(report: TPAUploadReport, client: S3Client) -> None:
+    """
+    Upload failed SBOMs from the report to S3.
+
+    Args:
+        report: upload report containing the failed SBOMs
+        client: S3 client to use
+    """
+    await asyncio.gather(
+        *[client.upload_file(failure.path) for failure in report.failure]
+    )
 
 
 def connect_with_s3(retry_s3_bucket: str | None) -> S3Client | None:
@@ -174,17 +203,6 @@ def connect_with_s3(retry_s3_bucket: str | None) -> S3Client | None:
     )
 
     return client
-
-
-async def upload_to_s3(s3_client: S3Client, dirpath: Path) -> None:
-    """
-    Upload SBOMs to S3 bucket.
-
-    Args:
-        s3_client: S3Client object
-        dirpath: Directory containing SBOMs to upload.
-    """
-    await s3_client.upload_dir(dirpath)
 
 
 def validate_sbom_input_data(
@@ -234,28 +252,6 @@ async def upload_release_data(
     """
     release_data = validate_sbom_input_data(sbom_input_file, ReleaseData)
     await s3_client.upload_input_data(release_data, release_id)
-
-
-async def get_sha256_hexdigest(sbom: Path) -> str:
-    """
-    Get sha256 digest of specified SBOM.
-
-    Returns:
-        str: sha256 digest of the SBOM in hex form
-    """
-    async with aiofiles.open(sbom, "rb") as fp:
-        hash_func = hashlib.sha256()
-        while content := await fp.read(8192):
-            hash_func.update(content)
-        return f"sha256:{hash_func.hexdigest()}"
-
-
-async def print_digests(paths: list[Path]) -> None:
-    """
-    Print sha256 hexdigests of SBOMs specified by paths one-per-line to stdout.
-    """
-    digests = await asyncio.gather(*[get_sha256_hexdigest(path) for path in paths])
-    print("\n".join(digests))
 
 
 def atlas_credentials_exist() -> bool:

@@ -11,11 +11,11 @@ from pathlib import Path
 
 from mobster.log import setup_logging
 from mobster.release import ReleaseId
+from mobster.tekton.artifact import get_product_artifact
 from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
     connect_with_s3,
-    print_digests,
     upload_release_data,
     upload_sboms,
     upload_snapshot,
@@ -57,10 +57,10 @@ def parse_args() -> ProcessProductArgs:
         data_dir=args.data_dir,
         snapshot_spec=args.data_dir / args.snapshot_spec,
         release_data=args.data_dir / args.release_data,
+        result_dir=args.data_dir / args.result_dir,
         atlas_api_url=args.atlas_api_url,
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
-        print_digests=args.print_digests,
         concurrency=args.concurrency,
         labels=args.labels,
     )  # pylint:disable=duplicate-code
@@ -130,10 +130,12 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
         args.release_id,
         args.concurrency,
     )
-    if args.print_digests:
-        await print_digests([sbom_path])
 
-    await upload_sboms(sbom_dir, args.atlas_api_url, s3, args.concurrency, args.labels)
+    report = await upload_sboms(
+        sbom_dir, args.atlas_api_url, s3, args.concurrency, args.labels
+    )
+    artifact = get_product_artifact(report)
+    artifact.write_result(args.result_dir)
 
 
 def main() -> None:

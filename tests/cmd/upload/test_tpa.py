@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import pytest
 
-from mobster.cmd.upload.oidc import OIDCClientCredentials
-from mobster.cmd.upload.tpa import TPAClient
+from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedException
+from mobster.cmd.upload.tpa import TPAClient, TPAError, TPATransientError
 
 
 def _get_valid_client() -> TPAClient:
@@ -34,7 +34,9 @@ async def test_upload_sbom_success(
     mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
 
     mock_response = httpx.Response(
-        200, request=httpx.Request("POST", "https://api.example.com/v1/api/v2/sbom")
+        200,
+        request=httpx.Request("POST", "https://api.example.com/v1/api/v2/sbom"),
+        content=b'{"id": "urn:uuid:12345678-1234-5678-9012-123456789012"}',
     )
     mock_post.return_value = mock_response
 
@@ -48,7 +50,7 @@ async def test_upload_sbom_success(
         headers={"content-type": "application/json"},
         params={},
     )
-    assert response == mock_response
+    assert response == "urn:uuid:12345678-1234-5678-9012-123456789012"
 
 
 @pytest.mark.asyncio
@@ -71,11 +73,51 @@ async def test_upload_sbom_error(
     )
 
     client = _get_valid_client()
-    with pytest.raises(httpx.HTTPStatusError):
+    with pytest.raises(TPAError):
         await client.upload_sbom(sbom_filepath)
 
     mock_aiofiles_open.assert_called_once_with(sbom_filepath, "rb")
     mock_post.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("aiofiles.open")
+@patch("mobster.cmd.upload.tpa.TPAClient.post")
+async def test_upload_sbom_retry_exhausted_error(
+    mock_post: AsyncMock, mock_aiofiles_open: AsyncMock
+) -> None:
+    sbom_filepath = Path("/path/to/sbom.json")
+    file_content = b'{"sbom": "content"}'
+
+    mock_file = AsyncMock()
+    mock_file.read.return_value = file_content
+    mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
+
+    mock_post.side_effect = RetryExhaustedException("Retries exhausted")
+
+    client = _get_valid_client()
+    with pytest.raises(TPATransientError):
+        await client.upload_sbom(sbom_filepath)
+
+
+@pytest.mark.asyncio
+@patch("aiofiles.open")
+@patch("mobster.cmd.upload.tpa.TPAClient.post")
+async def test_upload_sbom_http_error(
+    mock_post: AsyncMock, mock_aiofiles_open: AsyncMock
+) -> None:
+    sbom_filepath = Path("/path/to/sbom.json")
+    file_content = b'{"sbom": "content"}'
+
+    mock_file = AsyncMock()
+    mock_file.read.return_value = file_content
+    mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
+
+    mock_post.side_effect = httpx.HTTPError("Connection failed")
+
+    client = _get_valid_client()
+    with pytest.raises(TPAError):
+        await client.upload_sbom(sbom_filepath)
 
 
 @pytest.mark.asyncio
