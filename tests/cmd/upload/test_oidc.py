@@ -250,6 +250,7 @@ async def test_put() -> None:
             content='{"file": ""}',
             headers={"header": "test"},
             params=None,
+            retries=10,
         )
 
 
@@ -271,6 +272,7 @@ async def test_post() -> None:
             content='{"file": ""}',
             headers={"header": "test"},
             params=None,
+            retries=10,
         )
 
 
@@ -311,6 +313,7 @@ async def test_get() -> None:
             "foo",
             headers={"header": "test"},
             params=None,
+            retries=10,
         )
 
 
@@ -331,6 +334,7 @@ async def test_delete() -> None:
             "foo",
             headers={"header": "test"},
             params=None,
+            retries=10,
         )
 
 

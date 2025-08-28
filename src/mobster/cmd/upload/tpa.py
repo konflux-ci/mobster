@@ -40,13 +40,19 @@ class TPAClient(OIDCClientCredentialsClient):
     """
 
     async def upload_sbom(
-        self, sbom_filepath: Path, labels: dict[str, str] | None = None
+        self,
+        sbom_filepath: Path,
+        labels: dict[str, str] | None = None,
+        retries: int = 3,
     ) -> str:
         """
         Upload SBOM via API.
 
         Args:
-            sbom_filepath(str): filepath to SBOM data to upload
+            sbom_filepath: filepath to SBOM data to upload
+            labels: mapping of TPA label keys to label values for uploaded SBOMs
+            retries: how many attempts for SBOM upload will be performed before failing,
+                defaults to 3
 
         Raises:
             TPAError: If the upload fails with a non-transient status code
@@ -74,6 +80,7 @@ class TPAClient(OIDCClientCredentialsClient):
                     content=file_content,
                     headers=headers,
                     params=params,
+                    retries=retries,
                 )
                 urn: str = json.loads(response.content)["id"]
                 return urn

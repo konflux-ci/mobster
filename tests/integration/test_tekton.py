@@ -16,7 +16,12 @@ from pytest_lazy_fixtures import lf
 from mobster.cmd.generate.oci_index import GenerateOciIndexCommand
 from mobster.cmd.generate.product import ReleaseNotes
 from mobster.cmd.upload.tpa import TPAClient
-from mobster.cmd.upload.upload import TPAUploadFailure, TPAUploadReport
+from mobster.cmd.upload.upload import (
+    TPAUploadCommand,
+    TPAUploadFailure,
+    TPAUploadReport,
+    UploadConfig,
+)
 from mobster.image import Image
 from mobster.release import ReleaseId
 from mobster.tekton.artifact import (
@@ -198,7 +203,18 @@ async def test_sbom_upload_fallback(
             TPAUploadFailure(path=file_path, transient=True, message="Transient error")
         ],
     )
-    await upload_sboms(tmp_path, tpa_base_url, s3_client, concurrency=1, labels={})
+    auth = TPAUploadCommand.get_oidc_auth()
+    await upload_sboms(
+        UploadConfig(
+            auth=auth,
+            base_url=tpa_base_url,
+            labels={},
+            retries=1,
+            workers=1,
+            paths=[file_path],
+        ),
+        s3_client,
+    )
 
     # check that the fallback to s3 uploaded the object
     assert await s3_client.exists(key) is True

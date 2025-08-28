@@ -49,6 +49,7 @@ async def test_upload_sbom_success(
         content=file_content,
         headers={"content-type": "application/json"},
         params={},
+        retries=3,
     )
     assert response == "urn:uuid:12345678-1234-5678-9012-123456789012"
 

@@ -5,10 +5,28 @@ import pytest
 from pytest import MonkeyPatch
 
 from mobster.cmd.upload.upload import (
+    TPAUploadCommand,
     TPAUploadFailure,
     TPAUploadReport,
+    UploadConfig,
 )
 from mobster.tekton.common import upload_sboms
+
+
+@pytest.fixture(scope="function")
+def upload_config(monkeypatch: MonkeyPatch) -> UploadConfig:
+    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN", "dummy")
+    monkeypatch.setenv("MOBSTER_TPA_SSO_ACCOUNT", "dummy")
+    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN_URL", "dummy")
+    auth = TPAUploadCommand.get_oidc_auth()
+    return UploadConfig(
+        auth=auth,
+        base_url="atlas_url",
+        workers=1,
+        labels={},
+        retries=1,
+        paths=[Path("dir")],
+    )
 
 
 @patch("mobster.tekton.common.handle_atlas_transient_errors")
@@ -17,15 +35,13 @@ from mobster.tekton.common import upload_sboms
 async def test_upload_sboms_transient_failure_tries_s3(
     mock_connect_to_s3: MagicMock,
     mock_handle_atlas_transient_errors: AsyncMock,
+    upload_config: UploadConfig,
     monkeypatch: MonkeyPatch,
 ) -> None:
     """
     Verify that an S3 retry is attempted when upload_to_atlas returns a report
     with transient failures.
     """
-    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN", "dummy")
-    monkeypatch.setenv("MOBSTER_TPA_SSO_ACCOUNT", "dummy")
-    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN_URL", "dummy")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "dummy")
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "dummy")
 
@@ -40,21 +56,21 @@ async def test_upload_sboms_transient_failure_tries_s3(
                 TPAUploadFailure(path=Path("dummy"), message="error", transient=True)
             ],
         )
-        await upload_sboms(Path("dir"), "atlas_url", client, concurrency=1, labels={})
+        await upload_sboms(
+            upload_config,
+            client,
+        )
         mock_handle_atlas_transient_errors.assert_awaited()
 
 
 @pytest.mark.asyncio
 async def test_upload_sboms_failure(
-    monkeypatch: MonkeyPatch,
+    upload_config: UploadConfig,
 ) -> None:
     """
     Verify that the upload_to_atlas function fails with a runtime error when
     upload_to_atlas returns a report with non-transient failures.
     """
-    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN", "dummy")
-    monkeypatch.setenv("MOBSTER_TPA_SSO_ACCOUNT", "dummy")
-    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN_URL", "dummy")
 
     with patch(
         "mobster.tekton.common.upload_to_atlas",
@@ -67,5 +83,6 @@ async def test_upload_sboms_failure(
         )
         with pytest.raises(RuntimeError):
             await upload_sboms(
-                Path("dir"), "atlas_url", s3_client=None, concurrency=1, labels={}
+                upload_config,
+                s3_client=None,
             )

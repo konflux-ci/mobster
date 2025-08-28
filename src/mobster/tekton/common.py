@@ -37,8 +37,11 @@ class CommonArgs:
         atlas_api_url: url of the TPA instance to use
         retry_s3_bucket: name of the S3 bucket to use for retries
         labels: labels to attach to uploaded SBOMs
+        tpa_retries: how many retries for SBOM upload will be
+            performed before failing
     """
 
+    # pylint: disable=too-many-instance-attributes
     data_dir: Path
     snapshot_spec: Path
     atlas_api_url: str
@@ -46,6 +49,34 @@ class CommonArgs:
     release_id: ReleaseId
     labels: dict[str, str]
     result_dir: Path
+    tpa_retries: int
+    upload_concurrency: int
+
+    def ensured_sbom_dir(self) -> Path:
+        """
+        Get the 'sbom' subdir, create it if not present.
+        Returns:
+            The Path object reference to the sbom subdir.
+        """
+        sbom_dir = self.data_dir / "sbom"
+        sbom_dir.mkdir(exist_ok=True)
+        return sbom_dir
+
+    def to_upload_config(self) -> UploadConfig:
+        """
+        Creates UploadConfig from the common args.
+        Returns:
+            The populated UploadConfig object.
+        """
+        auth = TPAUploadCommand.get_oidc_auth()
+        return UploadConfig(
+            auth=auth,
+            base_url=self.atlas_api_url,
+            retries=self.tpa_retries,
+            workers=self.upload_concurrency,
+            paths=list(self.ensured_sbom_dir().iterdir()),
+            labels=self.labels,
+        )
 
 
 def add_common_args(parser: ArgumentParser) -> None:
@@ -68,24 +99,25 @@ def add_common_args(parser: ArgumentParser) -> None:
         "labels to attach to the uploaded SBOMs",
         default={},
     )
+    parser.add_argument(
+        "--tpa-retries",
+        type=int,
+        default=1,
+        help="How many retries for SBOM upload will be performed "
+        "before falling back to S3.",
+    )
 
 
 async def upload_sboms(
-    dirpath: Path,
-    atlas_url: str,
+    config: UploadConfig,
     s3_client: S3Client | None,
-    concurrency: int,
-    labels: dict[str, str],
 ) -> TPAUploadReport:
     """
     Upload SBOMs to Atlas with S3 fallback on transient errors.
 
     Args:
-        dirpath: Directory containing SBOMs to upload.
-        atlas_url: URL of the Atlas TPA instance.
+        config: TPA upload configuration object.
         s3_client: S3Client object for retry uploads, or None if no retries.
-        concurrency: Maximum number of concurrent upload operations.
-        labels: Labels to attach to uploaded SBOMs.
 
     Raises:
         ValueError: If Atlas authentication credentials are missing or if S3
@@ -97,7 +129,7 @@ async def upload_sboms(
         raise ValueError("Missing Atlas authentication.")
 
     LOGGER.info("Starting SBOM upload to Atlas")
-    report = await upload_to_atlas(dirpath, atlas_url, concurrency, labels)
+    report = await upload_to_atlas(config)
     if report.has_non_transient_failures():
         raise RuntimeError(
             "SBOMs failed to be uploaded to Atlas: \n"
@@ -134,16 +166,13 @@ async def handle_atlas_transient_errors(paths: list[Path], s3_client: S3Client) 
 
 
 async def upload_to_atlas(
-    dirpath: Path, atlas_url: str, concurrency: int, labels: dict[str, str]
+    config: UploadConfig,
 ) -> TPAUploadReport:
     """
     Upload SBOMs to Atlas TPA instance.
 
     Args:
-        dirpath: Directory containing SBOMs to upload.
-        atlas_url: URL of the Atlas TPA instance.
-        concurrency: Maximum number of concurrent upload operations.
-        labels: Labels to attach to uploaded SBOMs.
+        config: Atlas SBOM upload configuration.
 
     Raises:
         AtlasUploadError: If a non-transient error occurs.
@@ -151,14 +180,6 @@ async def upload_to_atlas(
     Returns:
         TPAUploadReport: Parsed upload report from the upload command.
     """
-    auth = TPAUploadCommand.get_oidc_auth()
-    config = UploadConfig(
-        paths=list(dirpath.iterdir()),
-        auth=auth,
-        base_url=atlas_url,
-        labels=labels,
-        workers=concurrency,
-    )
     return await TPAUploadCommand.upload(config)
 
 
