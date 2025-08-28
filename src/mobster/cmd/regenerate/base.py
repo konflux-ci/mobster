@@ -81,7 +81,7 @@ class RegenerateCommand(Command, ABC):
         LOGGER.info(f"downloading SBOM: {sbom_sum.id} to: {local_path_original}")
         try:
             await self.tpa_client.download_sbom(sbom_sum.id, local_path_original)
-        except Error:
+        except Exception:
             LOGGER.error(f"Unable to download SBOM: {sbom_sum.id}")
             return False
         try:
