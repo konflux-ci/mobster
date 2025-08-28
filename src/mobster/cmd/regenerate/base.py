@@ -79,7 +79,11 @@ class RegenerateCommand(Command, ABC):
         local_path_regenerated = self.output / f"{name}.regenerated.json"
         # download sbom
         LOGGER.info(f"downloading SBOM: {sbom_sum.id} to: {local_path_original}")
-        await self.tpa_client.download_sbom(sbom_sum.id, local_path_original)
+        try:
+            await self.tpa_client.download_sbom(sbom_sum.id, local_path_original)
+        except Error:
+            LOGGER.error(f"Unable to download SBOM: {sbom_sum.id}")
+            return False
         try:
             with open(local_path_original) as f:
                 sbom = json.load(f)
@@ -141,11 +145,11 @@ class RegenerateCommand(Command, ABC):
         return True
 
     @staticmethod
-    def extract_release_id(sbom: SbomSummary):
+    def extract_release_id(sbom: SbomSummary) -> ReleaseId | None:
         if "annotations" in sbom:
             for annotation in sbom["annotations"]:
                 if "release_id=" in annotation["comment"]:
-                    return annotation["comment"].partition("release_id=")[2]
+                    return ReleaseId(annotation["comment"].partition("release_id=")[2])
         # no release_id found
         LOGGER.info("no release_id found in SBOM")
         return None
@@ -172,18 +176,18 @@ class RegenerateCommand(Command, ABC):
         return s3_client
 
     async def gather_s3_input_data(self, release_id: ReleaseId) \
-            -> tuple[str, str] | None:
-        if self.s3_client.snapshot_exists(release_id) and \
-                self.s3_client.release_data_exists(release_id):
+            -> tuple[str, str] | tuple[None, None]:
+        if await self.s3_client.snapshot_exists(release_id) and \
+                await self.s3_client.release_data_exists(release_id):
             path_snapshot = self.output / f"{release_id.id}.snapshot.json"
             path_release_data = self.output / f"{release_id.id}.release_data.json"
-            await self.s3_client.get_snapshot(release_id)
-            await self.s3_client.get_release_data(release_id)
+            await self.s3_client.get_snapshot(path_snapshot, release_id)
+            await self.s3_client.get_release_data(path_release_data, release_id)
             LOGGER.info(f"input data gathered from S3 bucket, "
                         f"for release_id: {release_id}")
             return path_snapshot, path_release_data
         LOGGER.error(f"no input data found in S3 bucket, for release_id: {release_id}")
-        return None
+        return None, None
 
     def construct_query(self):
         versions = "|".join(f"Tool: Mobster-{str(v).strip()}"
