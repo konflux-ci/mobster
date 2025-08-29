@@ -6,6 +6,7 @@
   ],
   "dependencyDashboard": false,
   "tekton": {
+    "schedule": ["at any time"],
     "fileMatch": [
       "\\.yaml$",
       "\\.yml$"
@@ -16,6 +17,7 @@
   },
   "packageRules": [
     {
+      "schedule": ["at any time"],
       "groupName": "tekton-tasks",
       "matchFileNames": [
         "tasks/**"
