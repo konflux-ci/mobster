@@ -11,10 +11,10 @@ import spdx_tools.spdx.writer.json.json_writer as spdx_json_writer
 from mobster import utils
 from mobster.cmd.base import Command
 from mobster.cmd.download.download_tpa import get_tpa_default_client
-from mobster.cmd.generate.product import create_sbom, parse_release_notes
+from mobster.cmd.generate.product import create_sbom, ReleaseNotes, ReleaseData
 from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.tpa import TPAClient
-from mobster.release import ReleaseId
+from mobster.release import ReleaseId, Snapshot
 from mobster.tekton.s3 import S3Client
 
 LOGGER = logging.getLogger(__name__)
@@ -24,14 +24,13 @@ class RegenerateCommand(Command, ABC):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        self.output_path: str
         self.tpa_base_url: str | None = None
         self.s3_bucket_url: str | None = None
         self.mobster_versions: str | None = None
         self.component_purl: str | None = None
         self.concurrency: int | None = None
-        self.output: str
         self.dry_run: bool = False
-        self.tpa_base_url: str | None = None
         self.tpa_client: TPAClient | None = None
         self.s3_client: S3Client | None = None
         # accounting
@@ -75,8 +74,8 @@ class RegenerateCommand(Command, ABC):
         """
         # ensure sbom name is a valid filename
         name = utils.normalize_file_name(sbom_sum.name)
-        local_path_original = self.output / f"{name}.original.json"
-        local_path_regenerated = self.output / f"{name}.regenerated.json"
+        local_path_original = self.output_path / f"{name}.original.json"
+        local_path_regenerated = self.output_path / f"{name}.regenerated.json"
         # download sbom
         LOGGER.info(f"downloading SBOM: {sbom_sum.id} to: {local_path_original}")
         try:
@@ -104,13 +103,13 @@ class RegenerateCommand(Command, ABC):
             LOGGER.info(f"No release_id in SBOM: {sbom_sum.id} ({sbom_sum.name})")
             return False
         # gather related data from s3 bucket
-        path_snapshot, path_release_data = await self.gather_s3_input_data(release_id)
-        if not path_snapshot:
-            LOGGER.info(f"No S3 snapshot found for {sbom_sum.id} ({sbom_sum.name})")
+        snapshot, release_data = await self.gather_s3_input_data(release_id)
+        if not snapshot or not release_data:
+            LOGGER.info(f"Incomplete S3 data for {sbom_sum.id} ({sbom_sum.name})")
             return False
         LOGGER.info(f"proceeding to regenerate SBOM: {sbom_sum.id}  ({sbom_sum.name})")
-        release_notes = parse_release_notes(path_release_data)
-        document = create_sbom(release_notes, path_snapshot, release_id)
+        release_notes = self.parse_release_notes(release_data)
+        document = create_sbom(release_notes, snapshot, release_id)
         # write to file
         with open(local_path_regenerated, "w", encoding="utf-8") as stream:
             spdx_json_writer.write_document_to_stream(
@@ -145,6 +144,11 @@ class RegenerateCommand(Command, ABC):
         return True
 
     @staticmethod
+    def parse_release_notes(release_notes_json: str) -> ReleaseNotes:
+        """Parse the supplied json into a ReleaseNotes object."""
+        return ReleaseData.model_validate_json(release_notes_json).release_notes
+
+    @staticmethod
     def extract_release_id(sbom: SbomSummary) -> ReleaseId | None:
         if "annotations" in sbom:
             for annotation in sbom["annotations"]:
@@ -176,16 +180,36 @@ class RegenerateCommand(Command, ABC):
         return s3_client
 
     async def gather_s3_input_data(self, release_id: ReleaseId) \
-            -> tuple[str, str] | tuple[None, None]:
+            -> tuple[Snapshot, ReleaseData] | tuple[None, None]:
         if await self.s3_client.snapshot_exists(release_id) and \
                 await self.s3_client.release_data_exists(release_id):
-            path_snapshot = self.output / f"{release_id.id}.snapshot.json"
-            path_release_data = self.output / f"{release_id.id}.release_data.json"
+            path_snapshot = self.output_path / f"{release_id.id}.snapshot.json"
+            path_release_data = self.output_path / f"{release_id.id}.release_data.json"
             await self.s3_client.get_snapshot(path_snapshot, release_id)
             await self.s3_client.get_release_data(path_release_data, release_id)
+            try:
+                with open(path_snapshot, encoding="utf-8") as file_snapshot:
+                    snapshot_json = json.load(file_snapshot)
+                    snapshot = Snapshot(**snapshot_json)
+            except FileNotFoundError:
+                LOGGER.error(f"'{path_snapshot}' not found.")
+                return None, None
+            except json.JSONDecodeError:
+                LOGGER.error(f"Error: Invalid JSON in '{path_snapshot}'.")
+                return None, None
+            try:
+                with open(path_release_data, encoding="utf-8") as file_release_data:
+                    release_data_json = json.load(file_release_data)
+                    release_data = ReleaseData(**release_data_json)
+            except FileNotFoundError:
+                LOGGER.error(f"'{path_release_data}' not found.")
+                return None, None
+            except json.JSONDecodeError:
+                LOGGER.error(f"Error: Invalid JSON in '{path_release_data}'.")
+                return None, None
             LOGGER.info(f"input data gathered from S3 bucket, "
                         f"for release_id: {release_id}")
-            return path_snapshot, path_release_data
+            return snapshot, release_data
         LOGGER.error(f"no input data found in S3 bucket, for release_id: {release_id}")
         return None, None
 
@@ -202,16 +226,14 @@ class RegenerateCommand(Command, ABC):
             self.exit_code = 1
             return
         self.setup_clents()
-        self.print_runtime_config()
 
     def setup_cli_args(self) -> None:
         self.tpa_base_url = self.cli_args.tpa_base_url
         self.mobster_versions = self.cli_args.mobster_versions
-        if "component_purl" in self.cli_args:
-            self.component_purl = self.cli_args.component_purl
+        self.component_purl = self.cli_args.component_purl
         self.s3_bucket_url = self.cli_args.s3_bucket_url
         self.concurrency = self.cli_args.concurrency
-        self.output = self.cli_args.output
+        self.output_path = self.cli_args.output
         self.dry_run = self.cli_args.dry_run
 
     def validate_cli_args(self) -> bool:
@@ -225,10 +247,3 @@ class RegenerateCommand(Command, ABC):
         self.tpa_client = get_tpa_default_client(self.tpa_base_url)
         self.s3_client = self.get_s3_client()
 
-    def print_runtime_config(self) -> None:
-        print(f"tpa_base_url: {self.tpa_base_url}")
-        print(f"mobster_versions: {self.mobster_versions}")
-        print(f"s3_bucket_url: {self.s3_bucket_url}")
-        print(f"concurrency: {self.concurrency}")
-        print(f"output: {self.output}")
-        print(f"dry_run: {self.dry_run}")
