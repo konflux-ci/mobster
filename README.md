@@ -67,3 +67,5 @@ at the [Mobster Gitbub pages](https://konflux-ci.dev/mobster/).
 ## License
 This project is licensed under the Apache License 2.0. See the
 [LICENSE](https://github.com/konflux-ci/mobster/blob/main/LICENSE) file for details.
+
+foo
