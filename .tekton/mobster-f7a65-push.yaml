@@ -9,7 +9,7 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: '3'
     pipelinesascode.tekton.dev/on-event: "[push]"
     pipelinesascode.tekton.dev/on-target-branch: "[main]"
-    pipelinesascode.tekton.dev/on-path-changed-ignore: "[tasks/**]"
+    pipelinesascode.tekton.dev/on-path-change-ignore: "[tasks/***]"
   creationTimestamp:
   labels:
     appstudio.openshift.io/application: mobster
