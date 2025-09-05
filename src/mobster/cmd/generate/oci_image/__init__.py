@@ -24,13 +24,10 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     get_image_objects_from_file,
 )
 from mobster.cmd.generate.oci_image.contextual_parent_content import (
-    adjust_parent_image_relationship_in_legacy_sbom,
-    adjust_parent_image_spdx_element_ids,
-    calculate_component_only_content,
-    create_contextual_sbom,
     download_parent_image_sbom,
-    get_used_parent_image_from_legacy_sbom,
-    remove_parent_image_builder_records,
+    get_descendant_of_relationships_packages_from_used_parent,
+    get_parent_spdx_id_from_component,
+    map_parent_to_component_and_modify_component,
 )
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.spdx_utils import (
@@ -132,29 +129,29 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 The contextual SBOM if the workflow was successful.
                 None otherwise.
         """
-
         parent_image_sbom = await download_parent_image_sbom(parent_image_ref, arch)
         if not parent_image_sbom:
             return None
         parent_sbom_doc = await normalize_and_load_sbom(
             parent_image_sbom, append_mobster=False
         )
+        parent_spdx_id_from_component = get_parent_spdx_id_from_component(
+            component_sbom_doc
+        )
+        descendant_of_rels_pkgs_annots_from_used_parent = (
+            get_descendant_of_relationships_packages_from_used_parent(
+                parent_sbom_doc, parent_spdx_id_from_component
+            )
+        )
 
-        component_only_sbom_doc = await calculate_component_only_content(
-            parent_sbom_doc, component_sbom_doc
+        contextual_sbom = await map_parent_to_component_and_modify_component(
+            parent_sbom_doc,
+            component_sbom_doc,
+            parent_spdx_id_from_component,
+            descendant_of_rels_pkgs_annots_from_used_parent,
         )
-        grandparent_spdx_id = await get_used_parent_image_from_legacy_sbom(
-            parent_sbom_doc
-        )
-        parent_sbom_doc = await adjust_parent_image_relationship_in_legacy_sbom(
-            parent_sbom_doc, grandparent_spdx_id
-        )
-        parent_sbom_doc = await adjust_parent_image_spdx_element_ids(
-            parent_sbom_doc, component_sbom_doc, grandparent_spdx_id
-        )
-        parent_sbom_doc = await remove_parent_image_builder_records(parent_sbom_doc)
 
-        return await create_contextual_sbom(parent_sbom_doc, component_only_sbom_doc)
+        return contextual_sbom
 
     async def _assess_and_dispatch_contextual_workflow(
         self,
