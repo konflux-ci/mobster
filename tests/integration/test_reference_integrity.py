@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 from mobster.cmd.upload.tpa import TPAClient
-from mobster.image import Image
+from mobster.image import Image, IndexImage
 from mobster.utils import run_async_subprocess
 from tests.integration.oci_client import ReferrersTagOCIClient
 
@@ -36,7 +36,7 @@ async def create_child_image(
 
 async def create_index_image(
     oci_client: ReferrersTagOCIClient, repository: str, tag: str, child_image: Image
-) -> Image:
+) -> IndexImage:
     """
     Create an OCI image index that contains the child image.
 
@@ -294,18 +294,16 @@ async def generate_product_sbom(
     return sbom_file
 
 
+def _generate_and_store_snapshot_dict(
+    snapshot_dict: dict[str, Any], output_dir: Path
+) -> Path:
+    snapshot_file = output_dir / "snapshot.json"
+    with open(snapshot_file, "w", encoding="utf-8") as file:
+        json.dump(snapshot_dict, file, indent=2)
+    return snapshot_file
+
+
 def generate_and_store_snapshot(index_image: Image, output_dir: Path) -> Path:
-    """
-    Generate a snapshot file for the index image and store it in the specified
-    output directory.
-
-    Args:
-        index_image (Image): An index image for which the snapshot will be generated.
-        output_dir (Path): A directory where the snapshot will be saved.
-
-    Returns:
-        Path: A path to the generated snapshot file.
-    """
     content = {
         "components": [
             {
@@ -313,18 +311,25 @@ def generate_and_store_snapshot(index_image: Image, output_dir: Path) -> Path:
                 "containerImage": index_image.reference,
                 "rh-registry-repo": "registry.redhat.io/sample/test-repo",
                 "tags": ["1.0", "latest"],
+                "repositories": [
+                    {
+                        "rh-registry-repo": "registry.redhat.io/sample/test-repo",
+                        "tags": ["1.0", "latest"],
+                    },
+                    {
+                        "rh-registry-repo": "registry.redhat.io/elpmas/oper-tset",
+                        "tags": ["1.0", "latest"],
+                    },
+                ],
             }
         ]
     }
-    snapshot_file = output_dir / "snapshot.json"
-    with open(snapshot_file, "w", encoding="utf-8") as file:
-        json.dump(content, file, indent=2)
-    return snapshot_file
+    return _generate_and_store_snapshot_dict(content, output_dir)
 
 
 def get_index_and_image_paths(
-    dirpath: Path, index_digest: str, image_digest: str
-) -> tuple[Path, Path]:
+    dirpath: Path, index_image: IndexImage
+) -> dict[str, dict[str, Path]]:
     """
     Get a tuple containing paths to the index and its child image SBOM from
     the specified directory. This is needed as we are attaching a unique suffix
@@ -332,18 +337,22 @@ def get_index_and_image_paths(
 
     Args:
         dirpath: path to directory containing the augmented SBOMs
-        index_digest: digest of the index image
-        image_digest: digest of the child image
+        index_image: index image object
 
     Returns:
         tuple[Path, Path]: path to index and image SBOMs
     """
-    sboms = list(dirpath.iterdir())
-    assert len(sboms) == 2  # only support index and its child image
-    index_path = [path for path in sboms if str(path.name).startswith(index_digest)][0]
-    image_path = [path for path in sboms if str(path.name).startswith(image_digest)][0]
+    repo_to_type_mapping: dict[str, dict[str, Path]] = {}
+    for sbom_file in dirpath.iterdir():
+        sanitized_repo, digest_and_suffix = sbom_file.name.split("@")
+        digest, _ = digest_and_suffix.split("-")
+        repo_dict = repo_to_type_mapping.setdefault(sanitized_repo, {})
+        if digest == index_image.digest:
+            repo_dict["index"] = sbom_file
+        else:
+            repo_dict["image"] = sbom_file
 
-    return index_path, image_path
+    return repo_to_type_mapping
 
 
 @pytest.mark.asyncio
@@ -399,34 +408,39 @@ async def test_consistent_reference(
     component_path.mkdir()
     await augment_oci_image(snapshot_path, component_path)
 
-    index_path, child_image_path = get_index_and_image_paths(
-        component_path, index_image.digest, child_image.digest
-    )
-    assert is_main_package_present_in_other_sbom(
-        component_path / child_image_path,
-        component_path / index_path,
-        all_purl_match=True,
-    ), "Child image SBOM is not referenced in the augmented index SBOM"
-
+    path_mapping = get_index_and_image_paths(component_path, index_image)
     product_sbom_path = await generate_product_sbom(
         TESTDATA_PATH / "integration" / "consistency_check_release_data.json",
         snapshot_path,
         tmp_path,
     )
+    for release_repo in path_mapping:
+        child_image_path = path_mapping[release_repo]["image"]
+        index_path = path_mapping[release_repo]["index"]
+        assert is_main_package_present_in_other_sbom(
+            child_image_path,
+            index_path,
+            all_purl_match=True,
+        ), "Child image SBOM is not referenced in the augmented index SBOM"
 
-    assert is_main_package_present_in_other_sbom(
-        component_path / index_path, product_sbom_path, all_purl_match=True
-    ), "Product SBOM doesn't contain an augmented index image"
+        is_released_to_one_repo = len(path_mapping) == 1
+        assert is_main_package_present_in_other_sbom(
+            # The PURLs are the same only if the product is only released to
+            # a single repository, otherwise the product has more PURLs
+            index_path,
+            product_sbom_path,
+            all_purl_match=is_released_to_one_repo,
+        ), "Product SBOM doesn't contain an augmented index image"
 
-    sboms_to_upload = [
-        # original SBOMs
-        child_sbom,
-        index_sbom,
-        # augmented SBOMs
-        *list(component_path.iterdir()),
-        # product SBOM
-        product_sbom_path,
-    ]
-    for sbom in sboms_to_upload:
-        assert sbom.exists(), f"SBOM file {sbom} does not exist"
-        await tpa_client.upload_sbom(sbom)
+        sboms_to_upload = [
+            # original SBOMs
+            child_sbom,
+            index_sbom,
+            # augmented SBOMs
+            *list(component_path.iterdir()),
+            # product SBOM
+            product_sbom_path,
+        ]
+        for sbom in sboms_to_upload:
+            assert sbom.exists(), f"SBOM file {sbom} does not exist"
+            await tpa_client.upload_sbom(sbom)

@@ -98,11 +98,19 @@ async def test_create_product_sboms_ta_happypath(
                 "containerImage": f"{repo_with_registry}@{image.digest}",
                 "rh-registry-repo": "registry.redhat.io/test",
                 "tags": ["latest"],
+                "repositories": [
+                    {"rh-registry-repo": "registry.redhat.io/test", "tags": ["latest"]},
+                    {
+                        "rh-registry-repo": "registry.redhat.io/anothertest",
+                        "tags": ["latest"],
+                    },
+                ],
             }
         ]
     }
     expected_purls = [
-        f"pkg:oci/test@{image.digest}?repository_url=registry.redhat.io/test&tag=latest"
+        f"pkg:oci/test@{image.digest}?repository_url=registry.redhat.io/test&tag=latest",
+        f"pkg:oci/anothertest@{image.digest}?repository_url=registry.redhat.io/anothertest&tag=latest",
     ]
 
     with open(data_dir / snapshot_path, "w") as fp:
@@ -348,6 +356,16 @@ async def test_process_component_sboms_happypath(
                 "containerImage": f"{repo_with_registry}@{index.digest}",
                 "rh-registry-repo": "registry.redhat.io/test",
                 "tags": ["latest", "1.0"],
+                "repositories": [
+                    {
+                        "rh-registry-repo": "registry.redhat.io/test",
+                        "tags": ["latest", "1.0"],
+                    },
+                    {
+                        "rh-registry-repo": "registry.redhat.io/anothertest",
+                        "tags": ["1.0"],
+                    },
+                ],
             }
         ]
     }
@@ -382,14 +400,14 @@ async def test_process_component_sboms_happypath(
         check=True,
     )
 
-    assert len(list((data_dir / "sbom").iterdir())) == 2
+    assert len(list((data_dir / "sbom").iterdir())) == 4  # 2 for each repo
 
     artifact_path = result_dir / COMPONENT_ARTIFACT_NAME
     assert artifact_path.exists()
     with open(artifact_path) as fp:
         artifact = SBOMArtifact.model_validate_json(fp.read())
 
-    await verify_sboms_in_tpa(tpa_client, test_id, artifact, n_sboms=2)
+    await verify_sboms_in_tpa(tpa_client, test_id, artifact, n_sboms=4)
 
     # check that no SBOMs were added to the bucket (TPA upload succeeded)
     assert await s3_client.is_prefix_empty("/")
@@ -453,6 +471,9 @@ async def test_process_component_sboms_big_release(
                 "containerImage": f"{repo_with_registry}@{index.digest}",
                 "rh-registry-repo": "registry.redhat.io/test",
                 "tags": [str(i)],
+                "repositories": [
+                    {"rh-registry-repo": "registry.redhat.io/test", "tags": [str(i)]}
+                ],
             }
         )
 

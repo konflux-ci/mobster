@@ -12,7 +12,7 @@ from mobster import get_mobster_version
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOMFormat
-from mobster.release import Component, ReleaseId
+from mobster.release import ReleaseId, ReleaseRepository
 from mobster.sbom import cyclonedx
 from mobster.sbom.spdx import get_mobster_tool_string
 
@@ -219,12 +219,12 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
 
     @classmethod
     def _update_index_image_sbom(
-        cls, component: Component, index: IndexImage, sbom: Any
+        cls, repository: ReleaseRepository, index: IndexImage, sbom: Any
     ) -> None:
         """
         Update the SBOM of an index image in a repository.
         """
-        sbom["name"] = f"{component.repository}@{index.digest}"
+        sbom["name"] = f"{repository.repo_url}@{index.digest}"
 
         index_package = cls._find_image_package(sbom, index)
         if not index_package:
@@ -232,8 +232,8 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
 
         index_package.update_external_refs(
             index,
-            component.repository,
-            component.tags,
+            repository.repo_url,
+            repository.tags,
         )
 
         for image in index.children:
@@ -255,17 +255,19 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
             arch = get_purl_arch(original_purl)
             package.update_external_refs(
                 image,
-                component.repository,
-                component.tags,
+                repository.repo_url,
+                repository.tags,
                 arch=arch,
             )
 
     @classmethod
-    def _update_image_sbom(cls, component: Component, image: Image, sbom: Any) -> None:
+    def _update_image_sbom(
+        cls, repository: ReleaseRepository, image: Image, sbom: Any
+    ) -> None:
         """
         Update the SBOM of single-arch image in a repository.
         """
-        sbom["name"] = f"{component.repository}@{image.digest}"
+        sbom["name"] = f"{repository.repo_url}@{image.digest}"
 
         image_package = cls._find_image_package(sbom, image)
         if not image_package:
@@ -275,14 +277,14 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
 
         image_package.update_external_refs(
             image,
-            component.repository,
-            component.tags,
+            repository.repo_url,
+            repository.tags,
             arch=image_package.arch,  # propagate the arch from the package
         )
 
     def update_sbom(
         self,
-        component: Component,
+        repository: ReleaseRepository,
         image: Image,
         sbom: Any,
         release_id: ReleaseId | None = None,
@@ -294,9 +296,9 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
         if release_id:
             self._augment_annotations_release_id(sbom, release_id)
         if isinstance(image, IndexImage):
-            SPDXVersion2._update_index_image_sbom(component, image, sbom)
+            SPDXVersion2._update_index_image_sbom(repository, image, sbom)
         elif isinstance(image, Image):
-            SPDXVersion2._update_image_sbom(component, image, sbom)
+            SPDXVersion2._update_image_sbom(repository, image, sbom)
 
 
 class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
@@ -312,7 +314,7 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
 
     def update_sbom(
         self,
-        component: Component,
+        release_repository: ReleaseRepository,
         image: Image,
         sbom: Any,
         release_id: ReleaseId | None = None,
@@ -326,7 +328,7 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         self._bump_version(sbom)
         if release_id:
             self._augment_properties_release_id(sbom, release_id)
-        self._update_metadata_component(component, image, sbom)
+        self._update_metadata_component(release_repository, image, sbom)
 
         for cdx_component in sbom.get("components", []):
             if cdx_component.get("type") != "container":
@@ -337,7 +339,7 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
                 continue
 
             self._update_container_component(
-                component, image, cdx_component, update_tags=True
+                release_repository, image, cdx_component, update_tags=True
             )
 
     def _bump_version(self, sbom: Any) -> None:
@@ -357,17 +359,17 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
 
     def _update_component_purl_identity(
         self,
-        kflx_component: Component,
+        release_repo: ReleaseRepository,
         image: Image,
         arch: str | None,
         cdx_component: Any,
     ) -> None:
-        if len(kflx_component.tags) <= 1:
+        if len(release_repo.tags) <= 1:
             return
 
         new_identity = []
-        for tag in kflx_component.tags:
-            purl = construct_purl(image, kflx_component.repository, arch=arch, tag=tag)
+        for tag in release_repo.tags:
+            purl = construct_purl(image, release_repo.repo_url, arch=arch, tag=tag)
             new_identity.append({"field": "purl", "concludedValue": purl})
 
         if cdx_component.get("evidence") is None:
@@ -386,7 +388,7 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
 
     def _update_container_component(
         self,
-        kflx_component: Component,
+        release_repo: ReleaseRepository,
         image: Image,
         cdx_component: Any,
         update_tags: bool,
@@ -396,13 +398,13 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
             return
 
         arch = get_purl_arch(purl)
-        tag = kflx_component.tags[0] if kflx_component.tags else None
-        new_purl = construct_purl(image, kflx_component.repository, arch=arch, tag=tag)
+        tag = release_repo.tags[0] if release_repo.tags else None
+        new_purl = construct_purl(image, release_repo.repo_url, arch=arch, tag=tag)
         cdx_component["purl"] = new_purl
 
         if update_tags:
             self._update_component_purl_identity(
-                kflx_component, image, arch, cdx_component
+                release_repo, image, arch, cdx_component
             )
 
     def _augment_metadata_tools_components(self, metadata: Any) -> None:
@@ -437,13 +439,13 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
 
     def _update_metadata_component(
         self,
-        kflx_component: Component,
+        release_repository: ReleaseRepository,
         image: Image,
         sbom: Any,
     ) -> None:
         component = sbom.get("metadata", {}).get("component", {})
         self._update_container_component(
-            kflx_component, image, component, update_tags=False
+            release_repository, image, component, update_tags=False
         )
 
         if "metadata" in sbom:

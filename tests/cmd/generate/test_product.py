@@ -24,7 +24,7 @@ from mobster.cmd.generate.product import (
     parse_release_notes,
 )
 from mobster.image import Image, IndexImage
-from mobster.release import Component, ReleaseId, Snapshot
+from mobster.release import Component, ReleaseId, ReleaseRepository, Snapshot
 from mobster.sbom.spdx import get_mobster_tool_string
 from tests.conftest import awaitable, check_timestamp_isoformat
 
@@ -138,8 +138,12 @@ class TestGenerateProductCommand:
                             image=Image(
                                 repository="quay.io/repo", digest=DIGESTS.single_arch
                             ),
-                            tags=["1.0", "latest"],
-                            repository="registry.redhat.io/repo",
+                            release_repositories=[
+                                ReleaseRepository(
+                                    repo_url="registry.redhat.io/repo",
+                                    tags=["1.0", "latest"],
+                                )
+                            ],
                         )
                     ]
                 ),
@@ -166,8 +170,12 @@ class TestGenerateProductCommand:
                                 ],
                                 repository="quay.io/repo",
                             ),
-                            tags=["1.0", "latest"],
-                            repository="registry.redhat.io/repo",
+                            release_repositories=[
+                                ReleaseRepository(
+                                    repo_url="registry.redhat.io/repo",
+                                    tags=["1.0", "latest"],
+                                )
+                            ],
                         )
                     ]
                 ),
@@ -194,8 +202,12 @@ class TestGenerateProductCommand:
                                     ),
                                 ],
                             ),
-                            tags=["1.0", "latest"],
-                            repository="registry.redhat.io/repo",
+                            release_repositories=[
+                                ReleaseRepository(
+                                    repo_url="registry.redhat.io/repo",
+                                    tags=["1.0", "latest"],
+                                )
+                            ],
                         ),
                         Component(
                             name="singlearch-component",
@@ -203,8 +215,12 @@ class TestGenerateProductCommand:
                                 repository="quay.io/another-repo",
                                 digest=DIGESTS.single_arch,
                             ),
-                            tags=["2.0", "production"],
-                            repository="registry.redhat.io/another-repo",
+                            release_repositories=[
+                                ReleaseRepository(
+                                    repo_url="registry.redhat.io/another-repo",
+                                    tags=["2.0", "production"],
+                                )
+                            ],
                         ),
                     ]
                 ),

@@ -17,7 +17,13 @@ from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM
 from mobster.oci.cosign import Cosign, CosignClient
-from mobster.release import Component, ReleaseId, Snapshot, make_snapshot
+from mobster.release import (
+    Component,
+    ReleaseId,
+    ReleaseRepository,
+    Snapshot,
+    make_snapshot,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -117,9 +123,8 @@ def get_randomized_sbom_filename(sbom: SBOM) -> str:
     Returns:
         str: File name with uuid suffix to save the SBOM to
     """
-    sbom_img_digest = sbom.reference.split("@", 1)[1]
     suffix = uuid4().hex
-    return f"{sbom_img_digest}-{suffix}"
+    return f"{sbom.reference.replace('/', '-')}-{suffix}"
 
 
 async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:
@@ -171,21 +176,24 @@ async def write_sbom(sbom: Any, path: Path) -> None:
 
 
 def update_sbom_in_situ(
-    component: Component, image: Image, sbom: SBOM, release_id: ReleaseId | None = None
+    repository: ReleaseRepository,
+    image: Image,
+    sbom: SBOM,
+    release_id: ReleaseId | None = None,
 ) -> bool:
     """
     Determine the matching SBOM handler and update the SBOM with release-time
     information in situ.
 
     Args:
-        component (Component): The component the image belongs to.
+        repository (Component): The repository the image is released to.
         image (Image): Object representing an image being released.
         sbom (dict): SBOM parsed as dictionary.
         release_id: release id to be added to the SBOM's annotations, optional
     """
 
     if sbom.format in SPDXVersion2.supported_versions:
-        SPDXVersion2().update_sbom(component, image, sbom.doc, release_id)
+        SPDXVersion2().update_sbom(repository, image, sbom.doc, release_id)
         return True
 
     # The CDX handler does not support updating SBOMs for index images, as those
@@ -193,7 +201,7 @@ def update_sbom_in_situ(
     if sbom.format in CycloneDXVersion1.supported_versions and not isinstance(
         image, IndexImage
     ):
-        CycloneDXVersion1().update_sbom(component, image, sbom.doc, release_id)
+        CycloneDXVersion1().update_sbom(repository, image, sbom.doc, release_id)
         return True
 
     return False
@@ -201,7 +209,7 @@ def update_sbom_in_situ(
 
 async def update_sbom(
     config: AugmentConfig,
-    component: Component,
+    repository: ReleaseRepository,
     image: Image,
 ) -> bool:
     """
@@ -211,7 +219,7 @@ async def update_sbom(
 
     Args:
         config: Configuration for SBOM augmentation.
-        component: The component the image belongs to.
+        repository: The repository the image is released to.
         image: Object representing an image or an index image being released.
 
     Returns:
@@ -221,8 +229,9 @@ async def update_sbom(
     async with config.semaphore:
         try:
             sbom = await load_sbom(image, config.cosign, config.verify)
-            if not update_sbom_in_situ(component, image, sbom, config.release_id):
+            if not update_sbom_in_situ(repository, image, sbom, config.release_id):
                 raise SBOMError(f"Unsupported SBOM format for image {image}.")
+            sbom.reference = repository.repo_url + "@" + image.digest
             path = config.output_dir / get_randomized_sbom_filename(sbom)
             await write_sbom(sbom.doc, path)
 
@@ -262,22 +271,27 @@ async def update_component_sboms(
         # for both the index image and the child single arch images.
         index = component.image
         update_tasks = [
-            update_sbom(config, component, index),
+            update_sbom(config, repo, index) for repo in component.release_repositories
         ]
         for child in index.children:
-            update_tasks.append(update_sbom(config, component, child))
+            update_tasks.extend(
+                [
+                    update_sbom(config, repo, child)
+                    for repo in component.release_repositories
+                ]
+            )
 
-        results = await asyncio.gather(*update_tasks)
     else:
         # Single arch image
-        results = [
-            await update_sbom(
+        update_tasks = [
+            update_sbom(
                 config,
-                component,
+                repo,
                 component.image,
             )
+            for repo in component.release_repositories
         ]
-
+    results = await asyncio.gather(*update_tasks)
     return all(results)
 
 
