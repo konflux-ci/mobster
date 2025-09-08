@@ -50,6 +50,8 @@ COPY --from=builder /app /app
 # Copy needed binaries for SBOM augmentation
 COPY --from=oras /usr/bin/oras /usr/bin/oras
 COPY --from=cosign /usr/local/bin/cosign /usr/bin/cosign
+# Copy license to the container
+COPY LICENSE /licenses/
 
 ENV PATH=/app/.venv/bin:$PATH
 ENV PATH=/app/bin:$PATH
