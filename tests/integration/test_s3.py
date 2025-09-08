@@ -57,7 +57,7 @@ async def test_upload_dir(s3_client: S3Client, tmp_path: Path) -> None:
                         name="test-component",
                         containerImage="quay.io/test/repo@sha256:abc123def456789012345678901234567890123456789012345678901234567890",
                         tags=["v1.0.0", "latest"],
-                        **{"rh-registry-repo": "registry.redhat.io/test/repo"},
+                        **{"rh-registry-repo": "registry.redhat.io/test/repo"},  # type: ignore[arg-type]
                     )
                 ]
             ),
@@ -111,7 +111,7 @@ async def test_upload_data_objects(
                         name="test-component",
                         containerImage="quay.io/test/repo@sha256:def456abc789012345678901234567890123456789012345678901234567890123",
                         tags=["v2.0.0"],
-                        **{"rh-registry-repo": "registry.redhat.io/test/repo"},
+                        **{"rh-registry-repo": "registry.redhat.io/test/repo"},  # type: ignore[arg-type]
                     )
                 ]
             ),

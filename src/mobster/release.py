@@ -33,15 +33,44 @@ class ReleaseId:
 
 
 @dataclass
+class ReleaseRepository:
+    """
+    A repository that a component is being released to.
+
+    Attributes:
+        repo_url: The URL of the repository (image name included)
+        tags: The tags used for the release of this image.
+    """
+
+    repo_url: str
+    tags: list[str]
+
+    @property
+    def repo_name(self) -> str:
+        """Get the name of an OCI repository from full repository.
+
+        Returns:
+            The repository name.
+
+        Example:
+            >>> ReleaseRepository(
+            >>>     "registry.redhat.io/org/suborg/rhel",
+            >>>     ["latest"]
+            >>> ).repo_name
+            "rhel"
+        """
+        return self.repo_url.split("/")[-1]
+
+
+@dataclass
 class Component:
     """
     Representation of a Konflux Component that is being released.
 
     Attributes:
-        name (str): Name of the component.
-        image (str): The component image being released.
-        tags (list[str]): List of tags under which the image is being released.
-        repository (str): The OCI repository the image is being released to.
+        name: Name of the component.
+        image: The component image being released.
+        release_repositories: The OCI repositories the image is being released to.
             Note that this may be different from image.repository, because that
             points to the "hidden" repository (e.g. quay.io/redhat-prod/ubi9)
             and this is the "public" repository (e.g. registry.redhat.io/ubi9).
@@ -49,8 +78,7 @@ class Component:
 
     name: str
     image: Image
-    tags: list[str]
-    repository: str
+    release_repositories: list[ReleaseRepository]
 
 
 @dataclass
@@ -100,46 +128,30 @@ async def make_snapshot(
 
     component_tasks = []
     for component_model in filter(is_relevant, snapshot_model.components):
-        name = component_model.name
-        release_repository = component_model.rh_registry_repo
-        img_repository, img_digest = parse_image_reference(
-            component_model.image_reference
-        )
-        tags = component_model.tags
-
-        component_tasks.append(
-            _make_component(
-                name, img_repository, img_digest, tags, release_repository, semaphore
-            )
-        )
+        component_tasks.append(component_model.to_component(semaphore))
 
     components = await asyncio.gather(*component_tasks)
     return Snapshot(components=components)
 
 
-async def _make_component(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    name: str,
-    repository: str,
-    image_digest: str,
-    tags: list[str],
-    release_repository: str,
-    semaphore: asyncio.Semaphore,
-) -> Component:
+class ComponentRepositoryModel(pdc.BaseModel):
     """
-    Creates a component object from input data.
+    Pydantic model representing one of the repository objects in a component
+    of a Snapshot.
+    """
 
-    Args:
-        name (str): name of the component
-        repository (str): repository of the component's image
-        image_digest (str): digest of the component image
-        release_repository (str): repository the component is being
-            released to (such as registry.redhat.io)
-    """
-    async with semaphore:
-        image: Image = await Image.from_repository_digest_manifest(
-            repository, image_digest
-        )
-    return Component(name=name, image=image, repository=release_repository, tags=tags)
+    rh_registry_repo: str = pdc.Field(alias="rh-registry-repo")
+    tags: list[str]
+
+    def to_repository(self) -> ReleaseRepository:
+        """
+        Dump this ComponentRepositoryModel (Snapshot representation)
+        to Repository (Mobster's representation).
+        Returns:
+            Mobster's inner representation of this Konflux Component's
+            release repository.
+        """
+        return ReleaseRepository(repo_url=self.rh_registry_repo, tags=self.tags)
 
 
 class ComponentModel(pdc.BaseModel):
@@ -149,8 +161,9 @@ class ComponentModel(pdc.BaseModel):
 
     name: str
     image_reference: str = pdc.Field(alias="containerImage")
-    rh_registry_repo: str = pdc.Field(alias="rh-registry-repo")
-    tags: list[str]
+    rh_registry_repo: str | None = pdc.Field(alias="rh-registry-repo", default=None)
+    tags: list[str] | None = pdc.Field(default=None)
+    repositories: list[ComponentRepositoryModel] = pdc.Field(default_factory=list)
 
     @pdc.field_validator("image_reference", mode="after")
     @classmethod
@@ -161,6 +174,38 @@ class ComponentModel(pdc.BaseModel):
         """
         parse_image_reference(value)
         return value
+
+    async def to_component(self, semaphore: asyncio.Semaphore) -> Component:
+        """
+        Dump this ComponentModel (Snapshot representation) to Component
+        (Mobster's representation).
+        Args:
+            semaphore: The semaphore which throttles the concurrency of this process.
+
+        Returns:
+            The Mobster's inner representation of the Konflux Component.
+        """
+        all_release_repos: list[ReleaseRepository] = [
+            model.to_repository() for model in self.repositories
+        ]
+        # First we try to search within the new schema (.repositories).
+        # If that fails, we fall back to the previous schema. According to
+        # Konflux release team, the data is replicated between the legacy
+        # and the new part of the schema, so we have to make sure not to
+        # duplicate the data on reading it.
+        if not all_release_repos and self.rh_registry_repo and self.tags:
+            all_release_repos.append(
+                ReleaseRepository(repo_url=self.rh_registry_repo, tags=self.tags)
+            )
+
+        img_repository, img_digest = parse_image_reference(self.image_reference)
+        async with semaphore:
+            image: Image = await Image.from_repository_digest_manifest(
+                img_repository, img_digest
+            )
+        return Component(
+            name=self.name, image=image, release_repositories=all_release_repos
+        )
 
 
 class SnapshotModel(pdc.BaseModel):

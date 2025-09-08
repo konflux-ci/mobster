@@ -23,7 +23,7 @@ from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM, Provenance02
 from mobster.oci.cosign import Cosign
-from mobster.release import Component, ReleaseId, Snapshot
+from mobster.release import Component, ReleaseId, ReleaseRepository, Snapshot
 from mobster.sbom import cyclonedx
 from tests.conftest import assert_spdx_sbom, awaitable
 
@@ -172,8 +172,12 @@ class TestAugmentCommand:
                         repo,
                         digest,
                     ),
-                    tags=["1.0", "latest"],
-                    repository="registry.redhat.io/org/tenant/test",
+                    release_repositories=[
+                        ReleaseRepository(
+                            repo_url="registry.redhat.io/org/tenant/test",
+                            tags=["1.0", "latest"],
+                        )
+                    ],
                 ),
             ],
         )
@@ -215,8 +219,12 @@ class TestAugmentCommand:
                         index_digest,
                         children=[Image(image_repo, image_digest)],
                     ),
-                    tags=["1.0", "latest"],
-                    repository="registry.redhat.io/org/tenant/test",
+                    release_repositories=[
+                        ReleaseRepository(
+                            repo_url="registry.redhat.io/org/tenant/test",
+                            tags=["1.0", "latest"],
+                        )
+                    ],
                 ),
             ],
         )
@@ -262,8 +270,12 @@ class TestAugmentCommand:
                         repo,
                         digest,
                     ),
-                    tags=["1.0", "latest"],
-                    repository="registry.redhat.io/org/tenant/cdx-singlearch",
+                    release_repositories=[
+                        ReleaseRepository(
+                            repo_url="registry.redhat.io/org/tenant/cdx-singlearch",
+                            tags=["1.0", "latest"],
+                        )
+                    ],
                 ),
             ],
         )
@@ -294,12 +306,7 @@ class TestAugmentCommand:
         fake_cosign: "FakeCosign",
     ) -> None:
         img = Image("quay.io/repo", "sha256:aaaaaaaa")
-        component = Component(
-            "comp",
-            image=img,
-            tags=[],
-            repository="quay.io/repo",
-        )
+        repo = ReleaseRepository(repo_url="quay.io/repo", tags=[])
 
         with patch("mobster.cmd.augment.update_sbom_in_situ") as mock_update:
             mock_update.side_effect = SBOMError
@@ -310,7 +317,7 @@ class TestAugmentCommand:
                 semaphore=sem,
                 output_dir=Path("/tmp"),
             )
-            assert await update_sbom(config, component, img) is False
+            assert await update_sbom(config, repo, img) is False
 
 
 class FakeCosign(Cosign):
@@ -393,10 +400,12 @@ def test_get_sbom_to_filename_dict_duplicate_prevention() -> None:
 
 class VerifyCycloneDX:
     @staticmethod
-    def verify_purl(purl: PackageURL, repository: str) -> None:
+    def verify_purl(purl: PackageURL, repositories: list[ReleaseRepository]) -> None:
+        repo_urls = {repo.repo_url for repo in repositories}
+        repo_names = {repo.repo_url.split("/")[-1] for repo in repositories}
         assert purl.qualifiers is not None
-        assert purl.qualifiers.get("repository_url") == repository  # type: ignore
-        assert purl.name == repository.split("/")[-1]
+        assert purl.qualifiers.get("repository_url") in repo_urls  # type: ignore
+        assert purl.name in repo_names
 
     @staticmethod
     def verify_tags(kflx_component: Component, cdx_component: Any) -> None:
@@ -404,15 +413,23 @@ class VerifyCycloneDX:
         Verify that all tags are present in PURLs in the evidence.identity field
         if there are more than one.
         """
-        if len(kflx_component.tags) == 1:
+        if (
+            len(kflx_component.release_repositories) == 1
+            and len(kflx_component.release_repositories[0].tags) == 1
+        ):
             # in this case, we don't populate the evidence.identity field so
             # let's make sure we add the tag to the component.purl field
             purl = PackageURL.from_string(cdx_component["purl"])
             assert purl.qualifiers is not None
-            assert purl.qualifiers.get("tag") == kflx_component.tags[0]  # type: ignore
+            assert (
+                purl.qualifiers.get("tag")  # type: ignore
+                == kflx_component.release_repositories[0].tags[0]
+            )
             return
 
-        tags = set(kflx_component.tags)
+        tags = set()
+        for repo in kflx_component.release_repositories:
+            tags.update(repo.tags)
 
         try:
             identity = cdx_component["evidence"]["identity"]
@@ -425,11 +442,11 @@ class VerifyCycloneDX:
             if id_item.get("field") != "purl":
                 continue
             purl = PackageURL.from_string(id_item["concludedValue"])
-            VerifyCycloneDX.verify_purl(purl, kflx_component.repository)
+            VerifyCycloneDX.verify_purl(purl, kflx_component.release_repositories)
 
             purl_tag = purl.qualifiers.get("tag")  # type: ignore
             assert isinstance(purl_tag, str), f"Missing tag in identity purl {purl}."
-            tags.remove(purl_tag)
+            tags.discard(purl_tag)
 
         assert len(tags) == 0, (
             f"Not all tags present in identity purls, missing {tags}."
@@ -462,7 +479,7 @@ class VerifyCycloneDX:
             return
 
         VerifyCycloneDX.verify_purl(
-            PackageURL.from_string(purl_str), kflx_component.repository
+            PackageURL.from_string(purl_str), kflx_component.release_repositories
         )
 
         if verify_tags:
@@ -516,8 +533,12 @@ class TestUpdateFormatSupport:
         return Component(
             name="test",
             image=Image("quay.io/test", "sha256:abc123"),
-            tags=["latest"],
-            repository="registry.redhat.io/test",
+            release_repositories=[
+                ReleaseRepository(
+                    repo_url="registry.redhat.io/test",
+                    tags=["latest"],
+                )
+            ],
         )
 
     @pytest.fixture
@@ -529,8 +550,12 @@ class TestUpdateFormatSupport:
                 "sha256:def456",
                 children=[Image("quay.io/test", "sha256:child123")],
             ),
-            tags=["latest"],
-            repository="registry.redhat.io/test",
+            release_repositories=[
+                ReleaseRepository(
+                    repo_url="registry.redhat.io/test",
+                    tags=["latest"],
+                )
+            ],
         )
 
     @pytest.fixture
@@ -574,7 +599,9 @@ class TestUpdateFormatSupport:
                 semaphore=semaphore,
                 output_dir=Path("/tmp"),
             )
-            result = await update_sbom(config, component, component.image)
+            result = await update_sbom(
+                config, component.release_repositories[0], component.image
+            )
             assert result is not None
 
     @pytest.mark.parametrize(
@@ -599,7 +626,9 @@ class TestUpdateFormatSupport:
                 semaphore=semaphore,
                 output_dir=Path("/tmp"),
             )
-            result = await update_sbom(config, index_component, index_component.image)
+            result = await update_sbom(
+                config, index_component.release_repositories[0], index_component.image
+            )
             assert result is not None
 
     @pytest.mark.parametrize("version", ["1.4", "1.5", "1.6"])
@@ -623,7 +652,9 @@ class TestUpdateFormatSupport:
                 semaphore=semaphore,
                 output_dir=Path("/tmp"),
             )
-            result = await update_sbom(config, component, component.image)
+            result = await update_sbom(
+                config, component.release_repositories[0], component.image
+            )
             assert result is not None
 
     @pytest.mark.asyncio
@@ -645,7 +676,10 @@ class TestUpdateFormatSupport:
             output_dir=Path("/tmp"),
         )
         assert (
-            await update_sbom(config, index_component, index_component.image) is False
+            await update_sbom(
+                config, index_component.release_repositories[0], index_component.image
+            )
+            is False
         )
 
     @pytest.mark.asyncio
@@ -664,7 +698,12 @@ class TestUpdateFormatSupport:
             semaphore=semaphore,
             output_dir=Path("/tmp"),
         )
-        assert await update_sbom(config, component, component.image) is False
+        assert (
+            await update_sbom(
+                config, component.release_repositories[0], component.image
+            )
+            is False
+        )
 
 
 def test_cdx_augment_metadata_tools_components_empty_metadata() -> None:
@@ -687,13 +726,14 @@ def test_cdx_update_sbom_raises_error_for_index_image() -> None:
     handler = CycloneDXVersion1()
 
     index_image = IndexImage("quay.io/repo", "sha256:test", children=[])
-    component = Component(
-        "test",
-        image=Image("quay.io/repo", "sha256:other"),
-        tags=[],
-        repository="quay.io/repo",
-    )
     with pytest.raises(
         ValueError, match="CDX update SBOM does not support index images."
     ):
-        handler.update_sbom(component, index_image, {})
+        handler.update_sbom(
+            ReleaseRepository(
+                repo_url="quay.io/repo",
+                tags=["latest"],
+            ),
+            index_image,
+            {},
+        )

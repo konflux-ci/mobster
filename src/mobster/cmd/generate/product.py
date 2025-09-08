@@ -188,22 +188,6 @@ def without_sha_header(digest: str) -> str:
     return digest.split(":", 1)[1]
 
 
-def get_repo_name(repository: str) -> str:
-    """Get the name of an OCI repository from full repository.
-
-    Args:
-        repository: The full repository string.
-
-    Returns:
-        str: The repository name.
-
-    Example:
-        >>> get_repo_name("registry.redhat.io/org/suborg/rhel")
-        "rhel"
-    """
-    return repository.split("/")[-1]
-
-
 def get_component_packages(components: list[Component]) -> list[Package]:
     """Get a list of SPDX packages - one per each component.
 
@@ -218,26 +202,31 @@ def get_component_packages(components: list[Component]) -> list[Package]:
     packages = []
     for component in components:
         checksum = without_sha_header(component.image.digest)
-        repo_name = get_repo_name(component.repository)
+        external_refs = []
+        for repository in component.release_repositories:
+            purls = [
+                PackageURL(
+                    type="oci",
+                    name=repository.repo_name,
+                    version=component.image.digest,
+                    qualifiers={
+                        "repository_url": repository.repo_url,
+                        "tag": tag,
+                    },
+                ).to_string()
+                for tag in repository.tags
+            ]
 
-        purls = [
-            PackageURL(
-                type="oci",
-                name=repo_name,
-                version=component.image.digest,
-                qualifiers={"repository_url": component.repository, "tag": tag},
-            ).to_string()
-            for tag in component.tags
-        ]
-
-        external_refs = [
-            ExternalPackageRef(
-                category=ExternalPackageRefCategory.PACKAGE_MANAGER,
-                reference_type="purl",
-                locator=purl,
+            external_refs.extend(
+                [
+                    ExternalPackageRef(
+                        category=ExternalPackageRefCategory.PACKAGE_MANAGER,
+                        reference_type="purl",
+                        locator=purl,
+                    )
+                    for purl in purls
+                ]
             )
-            for purl in purls
-        ]
 
         checksums = [Checksum(algorithm=ChecksumAlgorithm.SHA256, value=checksum)]
 
