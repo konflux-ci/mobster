@@ -94,7 +94,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-image-registry.access.redhat.com/ubi8",
+      "SPDXID": "SPDXRef-used-parent",
       "name": "registry.access.redhat.com/ubi9/ubi",
       "downloadLocation": "NOASSERTION",
       "externalRefs": [
@@ -148,7 +148,7 @@
     {
       "spdxElementId": "SPDXRef-this-component",
       "relationshipType": "DESCENDANT_OF",
-      "relatedSpdxElement": "SPDXRef-image-registry.access.redhat.com/ubi8"
+      "relatedSpdxElement": "SPDXRef-used-parent"
     }
   ]
 }

@@ -12,9 +12,9 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.oci_image.contextual_parent_content import (
     download_parent_image_sbom,
-    get_descendant_of_relationships_packages_from_used_parent,
+    get_descendant_of_items_from_used_parent,
+    get_grandparent_from_legacy_sbom,
     get_parent_spdx_id_from_component,
-    get_used_parent_image_from_legacy_sbom,
 )
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
@@ -22,7 +22,7 @@ from mobster.oci.artifact import SBOM
 
 
 @pytest.mark.asyncio
-def test_get_used_parent_image_from_legacy_sbom() -> None:
+def test_get_grandparent_from_legacy_sbom() -> None:
     mock_doc = MagicMock()
     base_annotation = Annotation(
         "SPDXRef-spam-parent",
@@ -50,14 +50,14 @@ def test_get_used_parent_image_from_legacy_sbom() -> None:
         "SPDXRef-spam-parent", RelationshipType.BUILD_TOOL_OF, "SPDXRef-spam"
     )
     mock_doc.relationships = [base_relationship]
-    pkg, annot, rel = get_used_parent_image_from_legacy_sbom(mock_doc)
+    pkg, annot, rel = get_grandparent_from_legacy_sbom(mock_doc)
     assert pkg == base_package
     assert annot == base_annotation
     assert rel == base_relationship
 
 
 @pytest.mark.asyncio
-def test_get_descendant_of_relationships_packages_from_used_parent_scratch_or_oci_arch(
+def test_get_descendant_of_items_from_used_parent_scratch_or_oci_arch(
     caplog: LogCaptureFixture,
 ) -> None:
     caplog.set_level("DEBUG")
@@ -66,7 +66,7 @@ def test_get_descendant_of_relationships_packages_from_used_parent_scratch_or_oc
     mock_doc.packages = []
     mock_doc.relationships = []
     descendant_of_packages_relationships_annotations = (
-        get_descendant_of_relationships_packages_from_used_parent(mock_doc, "name")
+        get_descendant_of_items_from_used_parent(mock_doc, "name")
     )
     assert descendant_of_packages_relationships_annotations == []
     assert (
@@ -79,7 +79,7 @@ def test_get_descendant_of_relationships_packages_from_used_parent_scratch_or_oc
 
 
 @pytest.mark.asyncio
-def test_get_descendant_of_relationships_packages_from_used_parent_no_annot() -> None:
+def test_get_descendant_of_items_from_used_parent_no_annot() -> None:
     mock_doc = MagicMock()
     mock_doc.annotations = []
     mock_doc.packages = [
@@ -92,7 +92,7 @@ def test_get_descendant_of_relationships_packages_from_used_parent_no_annot() ->
         )
     ]
     descendant_of_packages_relationships_annotations = (
-        get_descendant_of_relationships_packages_from_used_parent(mock_doc, "name")
+        get_descendant_of_items_from_used_parent(mock_doc, "name")
     )
     assert Annotation not in descendant_of_packages_relationships_annotations
 

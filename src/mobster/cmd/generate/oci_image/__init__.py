@@ -25,7 +25,7 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
 )
 from mobster.cmd.generate.oci_image.contextual_parent_content import (
     download_parent_image_sbom,
-    get_descendant_of_relationships_packages_from_used_parent,
+    get_descendant_of_items_from_used_parent,
     get_parent_spdx_id_from_component,
     map_parent_to_component_and_modify_component,
 )
@@ -138,19 +138,15 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         parent_spdx_id_from_component = get_parent_spdx_id_from_component(
             component_sbom_doc
         )
-        descendant_of_rels_pkgs_annots_from_used_parent = (
-            get_descendant_of_relationships_packages_from_used_parent(
-                parent_sbom_doc, parent_spdx_id_from_component
-            )
+        descendant_of_items_from_used_parent = get_descendant_of_items_from_used_parent(
+            parent_sbom_doc, parent_spdx_id_from_component
         )
-
         contextual_sbom = await map_parent_to_component_and_modify_component(
             parent_sbom_doc,
             component_sbom_doc,
             parent_spdx_id_from_component,
-            descendant_of_rels_pkgs_annots_from_used_parent,
+            descendant_of_items_from_used_parent,
         )
-
         return contextual_sbom
 
     async def _assess_and_dispatch_contextual_workflow(
