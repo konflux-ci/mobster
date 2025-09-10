@@ -6,7 +6,13 @@ from unittest.mock import mock_open, patch
 import pytest
 
 from mobster.image import Image, IndexImage
-from mobster.release import Component, ComponentModel, Snapshot, make_snapshot
+from mobster.release import (
+    Component,
+    ComponentModel,
+    ReleaseRepository,
+    Snapshot,
+    make_snapshot,
+)
 from tests.conftest import random_digest
 
 
@@ -37,12 +43,28 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                     "containerImage": f"quay.io/repo1@{digest1}",
                     "rh-registry-repo": "registry.redhat.io/repo1",
                     "tags": ["1.0"],
+                    "repositories": [
+                        {
+                            "rh-registry-repo": "registry.redhat.io/repo1",
+                            "tags": ["1.0"],
+                            "irrelevant_field": "irrelevant value",
+                        },
+                        {
+                            "rh-registry-repo": "registry.redhat.io/oper1",
+                            "tags": ["1.0", "latest"],
+                        },
+                    ],
                 },
                 {
                     "name": "comp-2",
                     "containerImage": f"quay.io/repo2@{digest2}",
-                    "rh-registry-repo": "registry.redhat.io/repo2",
-                    "tags": ["2.0", "latest"],
+                    "repositories": [
+                        {
+                            "rh-registry-repo": "registry.redhat.io/repo2",
+                            "tags": ["2.0", "latest"],
+                            "irrelevant_field": "irrelevant value",
+                        },
+                    ],
                 },
             ]
         }
@@ -57,8 +79,15 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                     digest1,
                     children=[Image("quay.io/repo1", child_digest1)],
                 ),
-                tags=["1.0"],
-                repository="registry.redhat.io/repo1",
+                # Make sure "repo1" is not replicated even if present in both fields
+                release_repositories=[
+                    ReleaseRepository(
+                        repo_url="registry.redhat.io/repo1", tags=["1.0"]
+                    ),
+                    ReleaseRepository(
+                        repo_url="registry.redhat.io/oper1", tags=["1.0", "latest"]
+                    ),
+                ],
             ),
             Component(
                 name="comp-2",
@@ -67,8 +96,11 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                     digest2,
                     children=[Image("quay.io/repo2", child_digest2)],
                 ),
-                tags=["2.0", "latest"],
-                repository="registry.redhat.io/repo2",
+                release_repositories=[
+                    ReleaseRepository(
+                        repo_url="registry.redhat.io/repo2", tags=["2.0", "latest"]
+                    )
+                ],
             ),
         ],
     )
@@ -89,6 +121,47 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
         with patch("builtins.open", mock_open(read_data=snapshot_raw)):
             snapshot = await make_snapshot(Path(""))
             assert snapshot == expected_snapshot
+
+
+@pytest.mark.asyncio
+async def test_make_snapshot_backwards_compatible() -> None:
+    """Verify backwards compatibility of a Snapshot schema."""
+    snapshot_raw = json.dumps(
+        {
+            "components": [
+                {
+                    "name": "comp-1",
+                    "containerImage": f"quay.io/repo1@sha256:{'a' * 128}",
+                    "rh-registry-repo": "registry.redhat.io/repo1",
+                    "tags": ["1.0"],
+                },
+            ]
+        }
+    )
+    fake_manifest = {
+        "mediaType": "application/vnd.oci.image.index.v1+json",
+        "manifests": [{"digest": "sha256:" + "b" * 128}],
+    }
+    with patch("mobster.image.get_image_manifest", return_value=fake_manifest):
+        with patch("builtins.open", mock_open(read_data=snapshot_raw)):
+            snapshot = await make_snapshot(Path(""))
+            assert snapshot == Snapshot(
+                components=[
+                    Component(
+                        name="comp-1",
+                        image=IndexImage(
+                            "quay.io/repo1",
+                            f"sha256:{'a' * 128}",
+                            children=[Image("quay.io/repo1", f"sha256:{'b' * 128}")],
+                        ),
+                        release_repositories=[
+                            ReleaseRepository(
+                                repo_url="registry.redhat.io/repo1", tags=["1.0"]
+                            ),
+                        ],
+                    ),
+                ],
+            )
 
 
 @pytest.mark.asyncio
@@ -155,8 +228,12 @@ async def test_make_snapshot_specific(
                     digest1,
                     children=[Image("quay.io/repo1", child_digest1)],
                 ),
-                tags=["1.0"],
-                repository="registry.redhat.io/repo1",
+                release_repositories=[
+                    ReleaseRepository(
+                        "registry.redhat.io/repo1",
+                        tags=["1.0"],
+                    )
+                ],
             ),
         ],
     )
@@ -170,8 +247,12 @@ async def test_make_snapshot_specific(
                     digest2,
                     children=[Image("quay.io/repo2", child_digest2)],
                 ),
-                tags=["2.0", "latest"],
-                repository="registry.redhat.io/repo2",
+                release_repositories=[
+                    ReleaseRepository(
+                        repo_url="registry.redhat.io/repo2",
+                        tags=["2.0", "latest"],
+                    )
+                ],
             )
         )
 

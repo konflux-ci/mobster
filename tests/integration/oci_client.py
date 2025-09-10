@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 import httpx
 
-from mobster.image import Image
+from mobster.image import Image, IndexImage
 from mobster.utils import run_async_subprocess
 
 
@@ -111,7 +111,7 @@ class ReferrersTagOCIClient:
 
     async def create_image_index(
         self, name: str, tag: str, images: list[Image]
-    ) -> Image:
+    ) -> IndexImage:
         """
         Create an OCI image index in the registry.
 
@@ -164,11 +164,12 @@ class ReferrersTagOCIClient:
                     f"Error: {stderr.decode()}"
                 )
             manifest = await self.fetch_manifest(name, tag)
-            return Image(
+            return IndexImage(
                 repository=f"{self.registry}/{name}",
                 digest=self._get_digest_from_manifest(manifest),
                 tag=tag,
                 manifest=manifest,
+                children=images,
             )
 
     async def fetch_manifest(self, name: str, tag: str) -> str:
