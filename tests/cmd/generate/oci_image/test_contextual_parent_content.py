@@ -13,8 +13,10 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from mobster.cmd.generate.oci_image.contextual_parent_content import (
     download_parent_image_sbom,
     get_descendant_of_items_from_used_parent,
-    get_grandparent_from_legacy_sbom,
+    get_grandparent_annotation,
+    get_package_by_spdx_id,
     get_parent_spdx_id_from_component,
+    get_relationship_by_spdx_id,
 )
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
@@ -50,10 +52,29 @@ def test_get_grandparent_from_legacy_sbom() -> None:
         "SPDXRef-spam-parent", RelationshipType.BUILD_TOOL_OF, "SPDXRef-spam"
     )
     mock_doc.relationships = [base_relationship]
-    pkg, annot, rel = get_grandparent_from_legacy_sbom(mock_doc)
+    annot = get_grandparent_annotation(mock_doc)
+
+    assert annot is not None
+    pkg = get_package_by_spdx_id(mock_doc, annot.spdx_id)
+    rel = get_relationship_by_spdx_id(
+        mock_doc,
+        annot.spdx_id,
+        expected_relationship_type=RelationshipType.BUILD_TOOL_OF,
+    )
     assert pkg == base_package
     assert annot == base_annotation
     assert rel == base_relationship
+
+    desc_base_relationship = Relationship(
+        "SPDXRef-spam", RelationshipType.DESCENDANT_OF, "SPDXRef-spam-parent"
+    )
+    mock_doc.relationships = [desc_base_relationship]
+    desc_rel = get_relationship_by_spdx_id(
+        mock_doc,
+        annot.spdx_id,
+        expected_relationship_type=RelationshipType.DESCENDANT_OF,
+    )
+    assert desc_base_relationship == desc_rel
 
 
 @pytest.mark.asyncio
@@ -65,21 +86,42 @@ def test_get_descendant_of_items_from_used_parent_scratch_or_oci_arch(
     mock_doc.annotations = []
     mock_doc.packages = []
     mock_doc.relationships = []
-    descendant_of_packages_relationships_annotations = (
-        get_descendant_of_items_from_used_parent(mock_doc, "name")
-    )
-    assert descendant_of_packages_relationships_annotations == []
+    get_descendant_of_items_from_used_parent(mock_doc, "name")
     assert (
-        "[Parent image content] Cannot determine parent of the "
-        "downloaded parent image SBOM. It either does "
-        "not exist (it was an oci-archive or the image is built from "
-        "scratch) or the downloaded SBOM is not sourced from konflux."
-        in caplog.messages
+        "[Parent image content] Cannot determine parent of the downloaded "
+        "parent image SBOM. It either does not exist (it was an oci-archive "
+        "or the image is built from scratch), it is malformed or the downloaded "
+        "SBOMis not sourced from konflux." in caplog.messages
     )
 
 
 @pytest.mark.asyncio
-def test_get_descendant_of_items_from_used_parent_no_annot() -> None:
+def test_get_descendant_of_items_from_used_parent_invalid_sbom_structure(
+    caplog: LogCaptureFixture,
+) -> None:
+    caplog.set_level("DEBUG")
+    mock_doc = MagicMock()
+    base_annotation = Annotation(
+        "SPDXRef-spam-parent",
+        AnnotationType.OTHER,
+        Actor(ActorType.TOOL, "ham"),
+        datetime.datetime.now(),
+        '{ "name": "konflux:container:is_base_image",   "value": "true" }',
+    )
+    mock_doc.annotations = [
+        base_annotation,
+    ]
+    mock_doc.packages = []
+    mock_doc.relationships = []
+    assert get_descendant_of_items_from_used_parent(mock_doc, "name") == []
+
+    mock_doc.packages = [Package("SPDXRef-spam-parent", "name", SpdxNoAssertion())]
+
+    assert get_descendant_of_items_from_used_parent(mock_doc, "name") == []
+
+
+@pytest.mark.asyncio
+def test_get_descendant_of_items_from_used_parent_grandparent_no_annot() -> None:
     mock_doc = MagicMock()
     mock_doc.annotations = []
     mock_doc.packages = [
@@ -91,10 +133,42 @@ def test_get_descendant_of_items_from_used_parent_no_annot() -> None:
             "SPDXRef-spam", RelationshipType.DESCENDANT_OF, "SPDXRef-spam-parent"
         )
     ]
-    descendant_of_packages_relationships_annotations = (
-        get_descendant_of_items_from_used_parent(mock_doc, "name")
-    )
-    assert Annotation not in descendant_of_packages_relationships_annotations
+    descendant_of_items = get_descendant_of_items_from_used_parent(mock_doc, "name")
+    assert len(descendant_of_items) == 0
+
+
+@pytest.mark.asyncio
+def test_get_descendant_of_items_from_used_parent_grandgrandparent_no_annot(
+    caplog: LogCaptureFixture,
+) -> None:
+    mock_doc = MagicMock()
+    mock_doc.packages = [
+        Package("SPDXRef-spam-parent", "name", SpdxNoAssertion()),
+        Package("SPDXRef-spam", "name", SpdxNoAssertion()),
+        Package("SPDXRef-spam-grandparent", "name", SpdxNoAssertion()),
+    ]
+    mock_doc.relationships = [
+        Relationship(
+            "SPDXRef-spam", RelationshipType.DESCENDANT_OF, "SPDXRef-spam-parent"
+        ),
+        Relationship(
+            "SPDXRef-spam-parent",
+            RelationshipType.DESCENDANT_OF,
+            "SPDXRef-spam-grandparent",
+        ),
+    ]
+    mock_doc.annotations = [
+        Annotation(
+            "SPDXRef-spam-parent",
+            AnnotationType.OTHER,
+            Actor(ActorType.TOOL, "ham"),
+            datetime.datetime.now(),
+            '{ "name": "konflux:container:is_base_image",   "value": "true" }',
+        )
+    ]
+
+    get_descendant_of_items_from_used_parent(mock_doc, "name")
+    assert "Annotation not found for SPDXRef-spam-grandparent" in caplog.messages
 
 
 @pytest.mark.asyncio

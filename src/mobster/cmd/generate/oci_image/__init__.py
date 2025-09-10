@@ -5,6 +5,7 @@ __all__ = ["GenerateOciImageCommand"]
 import json
 import logging
 from argparse import ArgumentError
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -177,8 +178,9 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         ):
             try:
                 parent_image_obj = base_images[parent_image_ref]
+                copied_component_sbom_doc = deepcopy(component_sbom_doc)
                 return await self._execute_contextual_workflow(
-                    component_sbom_doc, parent_image_obj, image_arch
+                    copied_component_sbom_doc, parent_image_obj, image_arch
                 )
             except Exception:  # pylint: disable=broad-exception-caught
                 LOGGER.exception("Could not create contextual SBOM!")
