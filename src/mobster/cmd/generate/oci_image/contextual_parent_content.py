@@ -180,7 +180,7 @@ def get_parent_spdx_id_from_component(component_sbom_doc: Document) -> Any:
 
     Args:
         component_sbom_doc: Non-contextualized component SBOM with
-        DESCENDANT_OF relationship pointing to used parent image.
+            DESCENDANT_OF relationship pointing to used parent image.
 
     Returns:
         SPDX ID of the parent image defined by this component.
@@ -188,8 +188,8 @@ def get_parent_spdx_id_from_component(component_sbom_doc: Document) -> Any:
 
     Raises:
         SBOMError: If the passed SBOM does not contain DESCENDANT_OF relationship.
-        This should never happen unless regression happen in mobster in
-        functionality adding this relationship to component content.
+            This should never happen unless regression happen in mobster in
+            functionality adding this relationship to component content.
     """
     for relationship in component_sbom_doc.relationships:
         if relationship.relationship_type == RelationshipType.DESCENDANT_OF:
@@ -224,7 +224,7 @@ def parent_without_descendant_of(
         grandparent_annotation: Grandparent package
         grandparent_relationship: Grandparent relationship
         parent_spdx_id_from_component: SPDX ID of parent
-        image from component SBOM
+            image from component SBOM
 
     Returns:
         List with single BUILD_TOOL_OF relationship converted to DESCENDANT_OF
@@ -263,11 +263,11 @@ def parent_with_descendant_of(
 
     Args:
         parent_image_sbom: used parent SBOM that was contextualized or
-        produced by mobster.
+            produced by mobster.
         grandparent_package: Grandparent package.
         parent_spdx_id_from_component: SPDX ID of parent from component.
         descendant_of_packages_relationships: list of tuples containing
-        associated packages and DESCENDANT_OF relationships.
+            associated packages and DESCENDANT_OF relationships.
 
     Returns:
         Associated DESCENDANT_OF relationships with associated packages
@@ -311,7 +311,7 @@ def get_descendant_of_items_from_used_parent(
     Args:
         parent_image_sbom: Downloaded used parent image SBOM.
         parent_spdx_id_from_component: Name of the used parent from
-        component SBOM
+            component SBOM
 
     Returns:
         List of DESCENDANT_OF relationships, their packages and annotations
@@ -419,13 +419,13 @@ async def map_parent_to_component_and_modify_component(
     when package is sourced from parent (or grandparents)
     Args:
         parent_image_sbom: Downloaded used parent image SBOM
-        (can be contextualized or not).
+            (can be contextualized or not).
         component_sbom_doc: The component SBOM to be contextualized.
         parent_spdx_id_from_component: The name of the used parent that is
-        determined at component SBOM generation.
+            determined at component SBOM generation.
         descendant_of_items_from_used_parent: DESCENDANT_OF relationships,
-        related packages and relationships from used parent SBOM -
-        grandparents of the component.
+            related packages and relationships from used parent SBOM -
+            grandparents of the component.
 
     Returns:
         Fully contextualized component SBOM.
@@ -478,9 +478,9 @@ def _supply_descendants_from_parent_to_component(
 
     Args:
         component_sbom_doc: The full generated component SBOM.
-        descendant_of_items_from_used_parent: All
-        DESCENDANT_OF relationships, associated packages and
-        their annotations
+        descendant_of_items_from_used_parent: All DESCENDANT_OF
+            relationships, associated packages
+            and their annotations
 
     Returns:
         None. Component SBOM is fully contextualized.
@@ -512,24 +512,24 @@ def _modify_relationship_in_component(
         component_relationship: Component relationship to-be-modified.
 
         parent_relationship: Parent relationship.
-        A) If parent has been contextualized there are two options of the
-        component's relationship modification after packages match,
-        depending on the information in used parent SBOM:
-        1. component CONTAINS package -> grandparent CONTAINS package
-        2. component CONTAINS package ->
-        parent (parent_spdx_id_from_component) CONTAINS package
-        B) If downloaded used parent is not contextualized there is only
-        one option for the component's relationship modification:
-        component CONTAINS package ->
-        1. parent (parent_spdx_id_from_component) CONTAINS package
+            A) If parent has been contextualized there are two options of the
+            component's relationship modification after packages match,
+            depending on the information in used parent SBOM:
+            1. component CONTAINS package -> grandparent CONTAINS package
+            2. component CONTAINS package ->
+            parent (parent_spdx_id_from_component) CONTAINS package
+            B) If downloaded used parent is not contextualized there is only
+            one option for the component's relationship modification:
+            component CONTAINS package ->
+            1. parent (parent_spdx_id_from_component) CONTAINS package
 
         parent_spdx_id_from_component: The name of the used parent that
-        is determined at component SBOM generation.
+            is determined at component SBOM generation.
 
         parent_root_packages: This decides if CONTAINS relationship is copied
-        (grandparent) or modified (every package in non-contextualized parent
-        OR every other package in contextualized parent that is not bound to
-        its parent (component's grandparent)).
+            (grandparent) or modified (every package in non-contextualized parent
+            OR every other package in contextualized parent that is not bound to
+            its parent (component's grandparent)).
 
 
     Returns: None. Component SBOM is modified in-place.
