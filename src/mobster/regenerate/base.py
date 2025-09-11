@@ -1,27 +1,22 @@
 """A command execution module for regenerating SBOM documents."""
 
 import argparse
-from enum import Enum
 import json
 import logging
 import os
 
-from dataclasses import dataclass
-
-import spdx_tools.spdx.writer.json.json_writer as spdx_json_writer
-
-
 from argparse import ArgumentParser
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 from mobster import utils
 from mobster.cli import parse_concurrency
 from mobster.cmd.download.download_tpa import get_tpa_default_client
-from mobster.cmd.generate.product import create_sbom, ReleaseNotes, ReleaseData
 from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.error import SBOMError
-from mobster.release import ReleaseId, Snapshot
+from mobster.release import ReleaseId
 from mobster.tekton.component import ProcessComponentArgs, process_component_sboms
 from mobster.tekton.product import ProcessProductArgs, process_product_sboms
 from mobster.tekton.s3 import S3Client
@@ -47,7 +42,10 @@ class RegenerateArgs:
         mobster_versions: Comma separated list of mobster versions to query for
                           e.g.:   0.2.1,0.5.0
         concurrency: concurrency limit for S3 client (non-zero integer)
+        tpa_retries: total number of attempts for TPA requests
         dry_run: Run in 'dry run' only mode (skips destructive TPA IO)
+        verbose: Run in verbose mode (additional logs/trace)
+        sbom_type: SBOMType (Product/Component) used for this regenerator
     """
 
     output_path: str
@@ -55,6 +53,7 @@ class RegenerateArgs:
     s3_bucket_url: str | None = None
     mobster_versions: str | None = None
     concurrency: int | None = None
+    tpa_retries: int = 1
     dry_run: bool = False
     verbose: bool = False
     sbom_type: SbomType = SbomType.UNKNOWN
@@ -236,29 +235,29 @@ class SbomRegenerator:
             await process_product_sboms(ProcessProductArgs(
                 release_data=path_release_data,
                 concurrency=self.args.concurrency,
-                data_dir=self.args.output_path,
+                data_dir=Path(self.args.output_path),
                 snapshot_spec=path_snapshot,
                 atlas_api_url=self.args.tpa_base_url,
                 retry_s3_bucket=self.args.s3_bucket_url,
-                release_id=release_id,
-                labels=[],
-                # result_dir=self.args.output_path,
-                # tpa_retries=self.args.tpa_retries,
-                # upload_concurrency=self.args.concurrency,
+                release_id=ReleaseId(release_id),
+                labels={},
+                result_dir=Path(self.args.output_path),
+                tpa_retries=self.args.tpa_retries,
+                upload_concurrency=self.args.concurrency,
             ))
             #  release_notes, snapshot, release_id
         elif self.sbom_type == SbomType.COMPONENT:
             await process_component_sboms(ProcessComponentArgs(
-                data_dir=self.args.output_path,
+                data_dir=Path(self.args.output_path),
                 snapshot_spec=path_snapshot,
                 atlas_api_url=self.args.tpa_base_url,
                 retry_s3_bucket=self.args.s3_bucket_url,
-                release_id=release_id,
-                labels=[],
+                release_id=ReleaseId(release_id),
+                labels={},
                 augment_concurrency=self.args.concurrency,
-                # result_dir=self.args.output_path,
-                # tpa_retries=self.args.tpa_retries,
-                # upload_concurrency=self.args.concurrency,
+                result_dir=Path(self.args.output_path),
+                tpa_retries=self.args.tpa_retries,
+                upload_concurrency=self.args.concurrency,
             ))
 
 
@@ -339,3 +338,11 @@ def add_args(parser: ArgumentParser) -> None:
         default=False,
         help="Run in verbose mode (additional logs/trace)",
     )
+
+    parser.add_argument(
+        "--tpa-retries",
+        type=int,
+        default=1,
+        help="total number of attempts for TPA requests",
+    )
+
