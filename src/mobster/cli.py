@@ -1,10 +1,9 @@
 """Mobster Command Line Interface (CLI) Module"""
 
-from pathlib import Path
-from typing import Any
-
 import argparse
 import re
+from pathlib import Path
+from typing import Any
 
 from mobster.cmd import augment
 from mobster.cmd.delete import delete_tpa

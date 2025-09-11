@@ -4,7 +4,6 @@ import argparse
 import json
 import logging
 import os
-
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from enum import Enum
@@ -60,11 +59,8 @@ class RegenerateArgs:
 
 
 class SbomRegenerator:
-
     def __init__(
-            self,
-            args: RegenerateArgs,
-            sbom_type: SbomType = SbomType.UNKNOWN
+        self, args: RegenerateArgs, sbom_type: SbomType = SbomType.UNKNOWN
     ) -> None:
         self.args = args
         self.sbom_type = sbom_type
@@ -82,8 +78,7 @@ class SbomRegenerator:
 
         # query for relevant sboms, based on the CLI-provided mobster versions
         sboms = self.tpa_client.list_sboms(
-            query=self.construct_query(),
-            sort="ingested"
+            query=self.construct_query(), sort="ingested"
         )
 
         count_sboms_success = 0
@@ -91,8 +86,9 @@ class SbomRegenerator:
         LOGGER.info(f"Regenerating {self.sbom_type.value} SBOMs..")
 
         async for sbom in sboms:
-            LOGGER.info(f"Regenerating {self.sbom_type.value} SBOM: "
-                        f"{sbom.id} ({sbom.name})")
+            LOGGER.info(
+                f"Regenerating {self.sbom_type.value} SBOM: {sbom.id} ({sbom.name})"
+            )
             try:
                 await self.regenerate_sbom(sbom)
                 count_sboms_success += 1
@@ -100,32 +96,27 @@ class SbomRegenerator:
                 LOGGER.error(e)
                 exit(1)
 
-        LOGGER.info(f"Successfully regenerated {count_sboms_success}"
-                    f" {self.sbom_type.value} SBOMs.")
+        LOGGER.info(
+            f"Successfully regenerated {count_sboms_success}"
+            f" {self.sbom_type.value} SBOMs."
+        )
 
-    async def regenerate_sbom(
-            self,
-            sbom: SbomSummary
-    ) -> None:
+    async def regenerate_sbom(self, sbom: SbomSummary) -> None:
         """
         regenerate the given sbom (re-create it, upload it, then delete old version)
         """
         release_id = await self.get_release_id(sbom)
         # gather related data from s3 bucket
-        path_snapshot, path_release_data = await self.gather_s3_input_data(
-            release_id
-        )
+        path_snapshot, path_release_data = await self.gather_s3_input_data(release_id)
         LOGGER.info(f"proceeding to regenerate SBOM: {sbom.id}  ({sbom.name})")
         if self.args.dry_run:
-            LOGGER.info(f"*Dry Run recreate SBOM: "
-                        f"{sbom.id} ({sbom.name})")
+            LOGGER.info(f"*Dry Run recreate SBOM: {sbom.id} ({sbom.name})")
             return
         else:
             await self.process_sboms(release_id.id, path_release_data, path_snapshot)
 
         if self.args.dry_run:
-            LOGGER.info(f"*Dry Run 'delete' original SBOM: "
-                        f"{sbom.id} ({sbom.name})")
+            LOGGER.info(f"*Dry Run 'delete' original SBOM: {sbom.id} ({sbom.name})")
             return
         else:
             # delete
@@ -133,9 +124,11 @@ class SbomRegenerator:
             # check delete status
             if response_delete.status_code != 200:
                 # delete failed, log and abort regeneration for this SBOM
-                raise SBOMError(f"delete SBOM failed for SBOM: {sbom.id}, "
-                                f"status: {response_delete.status_code}, "
-                                f"message: {response_delete.text}")
+                raise SBOMError(
+                    f"delete SBOM failed for SBOM: {sbom.id}, "
+                    f"status: {response_delete.status_code}, "
+                    f"message: {response_delete.text}"
+                )
             LOGGER.info(f"Success: deleted original SBOM: {sbom.id} ({sbom.name})")
             return
 
@@ -146,14 +139,14 @@ class SbomRegenerator:
         # check if the given summary already contains it
         release_id = self.extract_release_id(sbom)
         if not release_id:
-            LOGGER.debug(
-                f"No release_id in SBOM Summary: {sbom.id} ({sbom.name})")
+            LOGGER.debug(f"No release_id in SBOM Summary: {sbom.id} ({sbom.name})")
             # LOGGER.debug(f"{sbom}")
             # download the complete SBOM and extract the release_id
             release_id = await self.download_and_extract_release_id(sbom)
             if not release_id:
                 raise SBOMError(
-                    f"No release_id found for SBOM: {sbom.id} ({sbom.name})")
+                    f"No release_id found for SBOM: {sbom.id} ({sbom.name})"
+                )
         return release_id
 
     def extract_release_id(self, sbom: SbomSummary) -> ReleaseId | None:
@@ -161,7 +154,7 @@ class SbomRegenerator:
             for annot in sbom["annotations"]:
                 if "release_id=" in annot["comment"]:
                     return ReleaseId(annot["comment"].partition("release_id=")[2])
-        elif self.sbom_type == SbomType.COMPONENT and  "properties" in sbom:
+        elif self.sbom_type == SbomType.COMPONENT and "properties" in sbom:
             for prop in sbom["properties"]:
                 if prop["name"] == "release_id":
                     return prop["value"]
@@ -170,8 +163,7 @@ class SbomRegenerator:
         return None
 
     async def download_and_extract_release_id(
-            self,
-            sbom: SbomSummary
+        self, sbom: SbomSummary
     ) -> ReleaseId | None:
         name = utils.normalize_file_name(sbom.name)
         local_path = self.args.output_path / f"{name}.json"
@@ -187,10 +179,11 @@ class SbomRegenerator:
             return None
         return self.extract_release_id(sbom)
 
-
     def construct_query(self):
-        versions = "|".join(f"Tool: Mobster-{str(v).strip()}"
-                            for v in self.args.mobster_versions.split(","))
+        versions = "|".join(
+            f"Tool: Mobster-{str(v).strip()}"
+            for v in self.args.mobster_versions.split(",")
+        )
         query = f"authors~{versions}"
         LOGGER.info(f"query: {query}")
         return query
@@ -200,16 +193,14 @@ class SbomRegenerator:
             bucket=self.args.s3_bucket_url,
             access_key=os.environ["MOBSTER_S3_ACCESS_KEY"],
             secret_key=os.environ["MOBSTER_S3_SECRET_KEY"],
-            concurrency_limit=self.args.concurrency
+            concurrency_limit=self.args.concurrency,
         )
         return s3_client
 
-    async def gather_s3_input_data(
-            self,
-            release_id: ReleaseId
-    ) -> tuple[Path, Path]:
-        if await self.s3_client.snapshot_exists(release_id) and \
-                await self.s3_client.release_data_exists(release_id):
+    async def gather_s3_input_data(self, release_id: ReleaseId) -> tuple[Path, Path]:
+        if await self.s3_client.snapshot_exists(
+            release_id
+        ) and await self.s3_client.release_data_exists(release_id):
             path_snapshot = Path(
                 f"{self.args.output_path}/{release_id.id}.snapshot.json"
             )
@@ -220,45 +211,47 @@ class SbomRegenerator:
                 raise SBOMError(f"missing S3 snapshot, for release_id: {release_id}")
             if not await self.s3_client.get_release_data(path_release_data, release_id):
                 raise SBOMError(f"missing S3 ReleaseData, for release_id: {release_id}")
-            LOGGER.info(f"input data gathered from S3 bucket, "
-                        f"for release_id: {release_id}")
+            LOGGER.info(
+                f"input data gathered from S3 bucket, for release_id: {release_id}"
+            )
             return path_snapshot, path_release_data
         raise SBOMError(f"no data found in S3 bucket, for release_id: {release_id}")
 
     async def process_sboms(
-            self,
-            release_id: str,
-            path_release_data: Path,
-            path_snapshot: Path
+        self, release_id: str, path_release_data: Path, path_snapshot: Path
     ):
         if self.sbom_type == SbomType.PRODUCT:
-            await process_product_sboms(ProcessProductArgs(
-                release_data=path_release_data,
-                concurrency=self.args.concurrency,
-                data_dir=Path(self.args.output_path),
-                snapshot_spec=path_snapshot,
-                atlas_api_url=self.args.tpa_base_url,
-                retry_s3_bucket=self.args.s3_bucket_url,
-                release_id=ReleaseId(release_id),
-                labels={},
-                result_dir=Path(self.args.output_path),
-                tpa_retries=self.args.tpa_retries,
-                upload_concurrency=self.args.concurrency,
-            ))
+            await process_product_sboms(
+                ProcessProductArgs(
+                    release_data=path_release_data,
+                    concurrency=self.args.concurrency,
+                    data_dir=Path(self.args.output_path),
+                    snapshot_spec=path_snapshot,
+                    atlas_api_url=self.args.tpa_base_url,
+                    retry_s3_bucket=self.args.s3_bucket_url,
+                    release_id=ReleaseId(release_id),
+                    labels={},
+                    result_dir=Path(self.args.output_path),
+                    tpa_retries=self.args.tpa_retries,
+                    upload_concurrency=self.args.concurrency,
+                )
+            )
             #  release_notes, snapshot, release_id
         elif self.sbom_type == SbomType.COMPONENT:
-            await process_component_sboms(ProcessComponentArgs(
-                data_dir=Path(self.args.output_path),
-                snapshot_spec=path_snapshot,
-                atlas_api_url=self.args.tpa_base_url,
-                retry_s3_bucket=self.args.s3_bucket_url,
-                release_id=ReleaseId(release_id),
-                labels={},
-                augment_concurrency=self.args.concurrency,
-                result_dir=Path(self.args.output_path),
-                tpa_retries=self.args.tpa_retries,
-                upload_concurrency=self.args.concurrency,
-            ))
+            await process_component_sboms(
+                ProcessComponentArgs(
+                    data_dir=Path(self.args.output_path),
+                    snapshot_spec=path_snapshot,
+                    atlas_api_url=self.args.tpa_base_url,
+                    retry_s3_bucket=self.args.s3_bucket_url,
+                    release_id=ReleaseId(release_id),
+                    labels={},
+                    augment_concurrency=self.args.concurrency,
+                    result_dir=Path(self.args.output_path),
+                    tpa_retries=self.args.tpa_retries,
+                    upload_concurrency=self.args.concurrency,
+                )
+            )
 
 
 def parse_args() -> RegenerateArgs:
@@ -301,7 +294,7 @@ def add_args(parser: ArgumentParser) -> None:
         type=str,
         required=True,
         help="Comma separated list of mobster versions to query for, "
-             "e.g.:  0.2.1,0.5.0",
+        "e.g.:  0.2.1,0.5.0",
     )
 
     parser.add_argument(
@@ -345,4 +338,3 @@ def add_args(parser: ArgumentParser) -> None:
         default=1,
         help="total number of attempts for TPA requests",
     )
-

@@ -1,9 +1,14 @@
 """A module for re-generating component SBOM documents."""
+
 import asyncio
 import logging
 
 from mobster.log import setup_logging
-from mobster.regenerate.base import parse_args, SbomRegenerator, SbomType
+from mobster.regenerate.base import (
+    SbomRegenerator,
+    SbomType,
+    parse_args,
+)
 
 LOGGER = logging.getLogger(__name__)
 
