@@ -142,12 +142,13 @@ class SbomRegenerator:
             release_id = await self.download_and_extract_release_id(sbom)
         return release_id
 
-    def extract_release_id(self, sbom: SbomSummary) -> ReleaseId | None:
-        if self.sbom_type == SbomType.PRODUCT and "annotations" in sbom:
+    @staticmethod
+    def extract_release_id(sbom: SbomSummary) -> ReleaseId | None:
+        if "annotations" in sbom:
             for annot in sbom["annotations"]:
                 if "release_id=" in annot["comment"]:
                     return ReleaseId(annot["comment"].partition("release_id=")[2])
-        elif self.sbom_type == SbomType.COMPONENT and "properties" in sbom:
+        elif "properties" in sbom:
             for prop in sbom["properties"]:
                 if prop["name"] == "release_id":
                     return prop["value"]
