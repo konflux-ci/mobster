@@ -1,0 +1,187 @@
+{
+    "SPDXID": "SPDXRef-DOCUMENT",
+    "creationInfo": {
+        "created": "1970-01-01T00:00:00Z",
+        "creators": [
+            "Person: me (hello)"
+        ]
+    },
+    "dataLicense": "CC0-1.0",
+    "name": "Very important parent image SBOM",
+    "spdxVersion": "SPDX-2.3",
+    "documentNamespace": "https://example.url.konflux.dev/yes",
+    "packages": [
+      {
+        "SPDXID": "SPDXRef-this-component",
+        "name": "this-component",
+        "downloadLocation": "NOASSERTION",
+        "externalRefs": [
+          {
+            "referenceCategory": "PACKAGE_MANAGER",
+            "referenceLocator": "pkg:oci/this-component@sha256:25081994?repository_url=quay.io/rhn_support_emravec/this-component",
+            "referenceType": "purl"
+          }
+        ],
+        "supplier": "Organization: Red Hat",
+        "filesAnalyzed": true,
+        "versionInfo": "0.1"
+      },
+      {
+        "SPDXID": "SPDXRef-package_grandparent",
+        "name": "package_grandparent",
+        "downloadLocation": "NOASSERTION",
+        "filesAnalyzed": true,
+        "externalRefs": [
+          {
+            "referenceCategory": "PACKAGE_MANAGER",
+            "referenceType": "purl",
+            "referenceLocator": "pkg:oci/konflux/package_grandparent@0.0.1?arch=x86_64"
+          }
+        ]
+      },
+      {
+        "SPDXID": "SPDXRef-package_parent",
+        "name": "package_parent",
+        "downloadLocation": "NOASSERTION",
+        "filesAnalyzed": true,
+        "externalRefs": [
+          {
+            "referenceCategory": "PACKAGE_MANAGER",
+            "referenceType": "purl",
+            "referenceLocator": "pkg:rpm/konflux/package_parent@0.0.1?arch=x86_64"
+          }
+        ]
+      },
+      {
+        "SPDXID": "SPDXRef-package_parent_unmatched321",
+        "name": "package_parent_unmatched321",
+        "downloadLocation": "NOASSERTION",
+        "filesAnalyzed": true,
+        "externalRefs": [
+          {
+            "referenceCategory": "PACKAGE_MANAGER",
+            "referenceType": "purl",
+            "referenceLocator": "pkg:rpm/konflux/package_parent_unmatched321@0.0.1?arch=x86_64"
+          }
+        ]
+      },
+      {
+        "SPDXID": "SPDXRef-package_component",
+        "name": "package_component",
+        "downloadLocation": "NOASSERTION",
+        "filesAnalyzed": true,
+        "externalRefs": [
+          {
+            "referenceCategory": "PACKAGE_MANAGER",
+            "referenceType": "purl",
+            "referenceLocator": "pkg:rpm/konflux/package_component@0.0.1?arch=x86_64"
+          }
+        ]
+      },
+      {
+        "SPDXID": "SPDXRef-image-registry.access.redhat.com/ubi7",
+        "name": "docker.io/library/golang",
+        "downloadLocation": "NOASSERTION",
+        "filesAnalyzed": true,
+        "externalRefs": [
+          {
+            "referenceCategory": "PACKAGE_MANAGER",
+            "referenceType": "purl",
+            "referenceLocator": "pkg:oci/ubi@sha256:sha?repository_url=registry.access.redhat.com/ubi7/ubi"
+          }
+        ],
+        "annotations": [
+          {
+            "annotator": "Tool: konflux:jsonencoded",
+            "comment": "{\"name\":\"konflux:container:is_builder_image:for_stage\",\"value\":\"1\"}",
+            "annotationDate": "2025-02-13T16:10:50Z",
+            "annotationType": "OTHER"
+          }
+        ]
+      },
+      {
+        "SPDXID": "SPDXRef-used-parent",
+        "name": "registry.access.redhat.com/ubi9/ubi",
+        "downloadLocation": "NOASSERTION",
+        "filesAnalyzed": true,
+        "externalRefs": [
+          {
+            "referenceCategory": "PACKAGE_MANAGER",
+            "referenceType": "purl",
+            "referenceLocator": "pkg:oci/ubi@sha256:sha?repository_url=registry.access.redhat.com/ubi8/ubi"
+          }
+        ],
+        "annotations": [
+          {
+            "annotator": "Tool: konflux:jsonencoded",
+            "comment": "{\"name\":\"konflux:container:is_base_image\",\"value\":\"true\"}",
+            "annotationDate": "2025-02-13T16:10:50Z",
+            "annotationType": "OTHER"
+          }
+        ]
+      },
+      {
+        "SPDXID": "SPDXRef-grandparent",
+        "name": "le grandparent",
+        "downloadLocation": "NOASSERTION",
+        "externalRefs": [
+          {
+            "referenceCategory": "PACKAGE_MANAGER",
+            "referenceType": "purl",
+            "referenceLocator": "pkg:oci/konflux/grandpa@0.0.3?arch=amd64"
+          }
+        ],
+        "annotations": [
+          {
+            "annotationDate": "1970-01-01T00:00:00Z",
+            "annotationType": "OTHER",
+            "annotator": "Tool: konflux:jsonencoded",
+            "comment": "{\"name\":\"konflux:container:is_base_image\",\"value\":\"true\"}"
+          }
+        ],
+        "filesAnalyzed": false
+      }
+    ],
+    "relationships": [
+      {
+        "spdxElementId": "SPDXRef-DOCUMENT",
+        "relationshipType": "DESCRIBES",
+        "relatedSpdxElement": "SPDXRef-this-component"
+      },
+      {
+        "spdxElementId": "SPDXRef-used-parent",
+        "relationshipType": "CONTAINS",
+        "relatedSpdxElement": "SPDXRef-package_grandparent"
+      },
+      {
+        "spdxElementId": "SPDXRef-used-parent",
+        "relationshipType": "CONTAINS",
+        "relatedSpdxElement": "SPDXRef-package_parent"
+      },
+      {
+        "spdxElementId": "SPDXRef-this-component",
+        "relationshipType": "CONTAINS",
+        "relatedSpdxElement": "SPDXRef-package_parent_unmatched321"
+      },
+      {
+        "spdxElementId": "SPDXRef-this-component",
+        "relationshipType": "CONTAINS",
+        "relatedSpdxElement": "SPDXRef-package_component"
+      },
+      {
+        "spdxElementId": "SPDXRef-image-registry.access.redhat.com/ubi7",
+        "relationshipType": "BUILD_TOOL_OF",
+        "relatedSpdxElement": "SPDXRef-this-component"
+      },
+      {
+        "spdxElementId": "SPDXRef-this-component",
+        "relationshipType": "DESCENDANT_OF",
+        "relatedSpdxElement": "SPDXRef-used-parent"
+      },
+      {
+        "spdxElementId": "SPDXRef-used-parent",
+        "relationshipType": "DESCENDANT_OF",
+        "relatedSpdxElement": "SPDXRef-grandparent"
+      }
+    ]
+}
