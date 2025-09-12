@@ -43,18 +43,20 @@ class RegenerateArgs:
         concurrency: concurrency limit for S3 client (non-zero integer)
         tpa_retries: total number of attempts for TPA requests
         dry_run: Run in 'dry run' only mode (skips destructive TPA IO)
+        fail_fast: fail and exit on first regen error (default: True)
         verbose: Run in verbose mode (additional logs/trace)
         sbom_type: SBOMType (Product/Component) used for this regenerator
     """
 
-    output_path: str
-    tpa_base_url: str | None = None
-    s3_bucket_url: str | None = None
-    mobster_versions: str | None = None
-    concurrency: int | None = None
-    tpa_retries: int = 1
-    dry_run: bool = False
-    verbose: bool = False
+    output_path: Path
+    tpa_base_url: str
+    s3_bucket_url: str
+    mobster_versions: str
+    concurrency: int
+    tpa_retries: int
+    dry_run: bool
+    fail_fast: bool
+    verbose: bool
     sbom_type: SbomType = SbomType.UNKNOWN
 
 
@@ -71,6 +73,8 @@ class SbomRegenerator:
         """
         regenerate the set of sboms indicated by the cli args
         """
+        LOGGER.debug(f"--fail-fast: {self.args.fail_fast}")
+        LOGGER.debug(f"--dry-run: {self.args.dry_run}")
         LOGGER.info("Searching for matching product-level SBOMs..")
 
         self.tpa_client = get_tpa_default_client(self.args.tpa_base_url)
@@ -94,7 +98,8 @@ class SbomRegenerator:
                 count_sboms_success += 1
             except SBOMError as e:
                 LOGGER.error(e)
-                exit(1)
+                if self.args.fail_fast:
+                    exit(1)
 
         LOGGER.info(
             f"Successfully regenerated {count_sboms_success}"
@@ -110,14 +115,12 @@ class SbomRegenerator:
         path_snapshot, path_release_data = await self.gather_s3_input_data(release_id)
         LOGGER.info(f"proceeding to regenerate SBOM: {sbom.id}  ({sbom.name})")
         if self.args.dry_run:
-            LOGGER.info(f"*Dry Run recreate SBOM: {sbom.id} ({sbom.name})")
-            return
+            LOGGER.info(f"*Dry Run: 'generate' SBOM: {sbom.id} ({sbom.name})")
         else:
             await self.process_sboms(release_id.id, path_release_data, path_snapshot)
 
         if self.args.dry_run:
-            LOGGER.info(f"*Dry Run 'delete' original SBOM: {sbom.id} ({sbom.name})")
-            return
+            LOGGER.info(f"*Dry Run: 'delete' original SBOM: {sbom.id} ({sbom.name})")
         else:
             # delete
             response_delete = await self.tpa_client.delete(sbom.id)
@@ -139,7 +142,7 @@ class SbomRegenerator:
         # check if the given summary already contains it
         release_id = self.extract_release_id(sbom)
         if not release_id:
-            LOGGER.debug(f"No release_id in SBOM Summary: {sbom.id} ({sbom.name})")
+            # LOGGER.debug(f"No release_id in SBOM Summary: {sbom.id} ({sbom.name})")
             # LOGGER.debug(f"{sbom}")
             # download the complete SBOM and extract the release_id
             release_id = await self.download_and_extract_release_id(sbom)
@@ -159,7 +162,7 @@ class SbomRegenerator:
                 if prop["name"] == "release_id":
                     return prop["value"]
         # no release_id found
-        LOGGER.info("no release_id found in SBOM")
+        # LOGGER.debug("no release_id found in SBOM")
         return None
 
     async def download_and_extract_release_id(
@@ -197,25 +200,24 @@ class SbomRegenerator:
         )
         return s3_client
 
-    async def gather_s3_input_data(self, release_id: ReleaseId) -> tuple[Path, Path]:
-        if await self.s3_client.snapshot_exists(
-            release_id
-        ) and await self.s3_client.release_data_exists(release_id):
-            path_snapshot = Path(
-                f"{self.args.output_path}/{release_id.id}.snapshot.json"
-            )
-            path_release_data = Path(
-                f"{self.args.output_path}/{release_id.id}.release_data.json"
-            )
-            if not await self.s3_client.get_snapshot(path_snapshot, release_id):
-                raise SBOMError(f"missing S3 snapshot, for release_id: {release_id}")
-            if not await self.s3_client.get_release_data(path_release_data, release_id):
-                raise SBOMError(f"missing S3 ReleaseData, for release_id: {release_id}")
-            LOGGER.info(
-                f"input data gathered from S3 bucket, for release_id: {release_id}"
-            )
-            return path_snapshot, path_release_data
-        raise SBOMError(f"no data found in S3 bucket, for release_id: {release_id}")
+    async def gather_s3_input_data(self, rid: ReleaseId) -> tuple[Path, Path]:
+        LOGGER.debug(f"gathering input data for release_id: '{rid}'")
+        path_snapshot = (
+            self.args.output_path
+            / S3Client.snapshot_prefix
+            / f"{rid}.snapshot.json"
+        )
+        path_release_data = (
+            self.args.output_path
+            / S3Client.release_data_prefix
+            / f"{rid}.release_data.json"
+        )
+        await self.s3_client.get_snapshot(path_snapshot, rid)
+        await self.s3_client.get_release_data(path_release_data, rid)
+        LOGGER.info(
+            f"input data gathered from S3 bucket, for release_id: {rid}"
+        )
+        return path_snapshot, path_release_data
 
     async def process_sboms(
         self, release_id: str, path_release_data: Path, path_snapshot: Path
@@ -225,13 +227,13 @@ class SbomRegenerator:
                 ProcessProductArgs(
                     release_data=path_release_data,
                     concurrency=self.args.concurrency,
-                    data_dir=Path(self.args.output_path),
+                    data_dir=self.args.output_path,
                     snapshot_spec=path_snapshot,
                     atlas_api_url=self.args.tpa_base_url,
                     retry_s3_bucket=self.args.s3_bucket_url,
                     release_id=ReleaseId(release_id),
                     labels={},
-                    result_dir=Path(self.args.output_path),
+                    result_dir=self.args.output_path,
                     tpa_retries=self.args.tpa_retries,
                     upload_concurrency=self.args.concurrency,
                 )
@@ -240,14 +242,14 @@ class SbomRegenerator:
         elif self.sbom_type == SbomType.COMPONENT:
             await process_component_sboms(
                 ProcessComponentArgs(
-                    data_dir=Path(self.args.output_path),
+                    data_dir=self.args.output_path,
                     snapshot_spec=path_snapshot,
                     atlas_api_url=self.args.tpa_base_url,
                     retry_s3_bucket=self.args.s3_bucket_url,
                     release_id=ReleaseId(release_id),
                     labels={},
                     augment_concurrency=self.args.concurrency,
-                    result_dir=Path(self.args.output_path),
+                    result_dir=self.args.output_path,
                     tpa_retries=self.args.tpa_retries,
                     upload_concurrency=self.args.concurrency,
                 )
@@ -264,6 +266,9 @@ def parse_args() -> RegenerateArgs:
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
+    prepare_output_paths(args.output_path)
+
+    LOGGER.debug(args)
 
     return RegenerateArgs(
         output_path=args.output_path,
@@ -271,8 +276,17 @@ def parse_args() -> RegenerateArgs:
         s3_bucket_url=args.s3_bucket_url,
         mobster_versions=args.mobster_versions,
         concurrency=args.concurrency,
+        tpa_retries=args.tpa_retries,
         dry_run=args.dry_run,
+        fail_fast=not args.non_fail_fast,
+        verbose=args.verbose,
     )  # pylint:disable=duplicate-code
+
+
+def prepare_output_paths(output_path: Path) -> None:
+    # prepare output_path subdirs
+    (output_path / S3Client.release_data_prefix).mkdir(parents=True, exist_ok=True)
+    (output_path / S3Client.snapshot_prefix).mkdir(parents=True, exist_ok=True)
 
 
 def add_args(parser: ArgumentParser) -> None:
@@ -283,10 +297,25 @@ def add_args(parser: ArgumentParser) -> None:
         parser: argument parser to add commands to
     """
     parser.add_argument(
+        "--output-path",
+        type=Path,
+        required=True,
+        help="Path to the output directory. "
+        "If it doesn't exist, it will be automatically created.",
+    )
+
+    parser.add_argument(
         "--tpa-base-url",
         type=str,
         required=True,
         help="URL of the TPA server",
+    )
+
+    parser.add_argument(
+        "--s3-bucket-url",
+        type=str,
+        required=True,
+        help="AWS S3 bucket URL",
     )
 
     parser.add_argument(
@@ -298,13 +327,6 @@ def add_args(parser: ArgumentParser) -> None:
     )
 
     parser.add_argument(
-        "--s3-bucket-url",
-        type=str,
-        required=True,
-        help="AWS S3 bucket URL",
-    )
-
-    parser.add_argument(
         "--concurrency",
         type=parse_concurrency,
         default=8,
@@ -312,10 +334,10 @@ def add_args(parser: ArgumentParser) -> None:
     )
 
     parser.add_argument(
-        "--output-path",
-        type=Path,
-        help="Path to the output file. If not provided, the output will be printed"
-        "to stdout.",
+        "--tpa-retries",
+        type=int,
+        default=1,
+        help="total number of attempts for TPA requests",
     )
 
     parser.add_argument(
@@ -326,15 +348,15 @@ def add_args(parser: ArgumentParser) -> None:
     )
 
     parser.add_argument(
+        "--non-fail-fast",
+        type=bool,
+        default=False,
+        help="don't fail and exit on first regen error",
+    )
+
+    parser.add_argument(
         "--verbose",
         type=bool,
         default=False,
         help="Run in verbose mode (additional logs/trace)",
-    )
-
-    parser.add_argument(
-        "--tpa-retries",
-        type=int,
-        default=1,
-        help="total number of attempts for TPA requests",
     )
