@@ -14,10 +14,10 @@ from mobster.cmd.generate.oci_image.contextual_parent_content import (
     download_parent_image_sbom,
     get_descendant_of_items_from_used_parent,
     get_grandparent_annotation,
-    get_package_by_spdx_id,
     get_parent_spdx_id_from_component,
     get_relationship_by_spdx_id,
 )
+from mobster.cmd.generate.oci_image.spdx_utils import get_package_by_spdx_id
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM
@@ -101,6 +101,9 @@ def test_get_descendant_of_items_from_used_parent_invalid_sbom_structure(
 ) -> None:
     caplog.set_level("DEBUG")
     mock_doc = MagicMock()
+    mock_doc.creation_info.name = (
+        "quay.io/test-org-cat-feeder/user-ns2/testrepo-giver@sha256:1"
+    )
     base_annotation = Annotation(
         "SPDXRef-spam-parent",
         AnnotationType.OTHER,
@@ -114,10 +117,19 @@ def test_get_descendant_of_items_from_used_parent_invalid_sbom_structure(
     mock_doc.packages = []
     mock_doc.relationships = []
     assert get_descendant_of_items_from_used_parent(mock_doc, "name") == []
+    assert (
+        "No package found for annotation SPDXRef-spam-parent in downloaded parent "
+        "SBOM quay.io/test-org-cat-feeder/user-ns2/testrepo-giver@sha256:1"
+    ) in caplog.messages
 
     mock_doc.packages = [Package("SPDXRef-spam-parent", "name", SpdxNoAssertion())]
 
     assert get_descendant_of_items_from_used_parent(mock_doc, "name") == []
+    assert (
+        "No BUILD_TOOL_OF relationship found for package SPDXRef-spam-parent "
+        "in downloaded parent SBOM "
+        "quay.io/test-org-cat-feeder/user-ns2/testrepo-giver@sha256:1"
+    ) in caplog.messages
 
 
 @pytest.mark.asyncio

@@ -14,7 +14,10 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from mobster.cmd.generate.oci_image.constants import (
     IS_BASE_IMAGE_ANNOTATION,
 )
-from mobster.cmd.generate.oci_image.spdx_utils import find_spdx_root_packages_spdxid
+from mobster.cmd.generate.oci_image.spdx_utils import (
+    find_spdx_root_packages_spdxid,
+    get_package_by_spdx_id,
+)
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.oci.cosign import CosignClient
@@ -22,18 +25,18 @@ from mobster.oci.cosign import CosignClient
 LOGGER = logging.getLogger(__name__)
 
 
-def get_grandparent_annotation(parent_image_sbom: Document) -> Annotation | None:
+def get_grandparent_annotation(parent_sbom_doc: Document) -> Annotation | None:
     """
     Searches used parent image annotation in the used parent
     image content according to the annotation comment
 
     Args:
-        parent_image_sbom (Document): The used parent image sbom.
+        parent_sbom_doc (Document): The used parent image sbom.
 
     Returns:
         Annotation spdx_id: The used parent image annotation spdx_id or None.
     """
-    for annotation in parent_image_sbom.annotations:
+    for annotation in parent_sbom_doc.annotations:
         try:
             if json.loads(annotation.annotation_comment) == IS_BASE_IMAGE_ANNOTATION:
                 return annotation
@@ -51,23 +54,6 @@ def get_grandparent_annotation(parent_image_sbom: Document) -> Annotation | None
         "is not sourced from konflux."
     )
     return None
-
-
-def get_package_by_spdx_id(doc: Document, spdx_id: str) -> Package | None:
-    """
-    Gets package by spdx id from document.
-
-    Args:
-        doc (Document): The SPDX SBOM document.
-        spdx_id (str): The SPDX SBOM ID.
-
-    Returns:
-        Package | None: The package or None.
-    """
-    return next(
-        (pkg for pkg in doc.packages if pkg.spdx_id == spdx_id),
-        None,
-    )
 
 
 def get_relationship_by_spdx_id(
@@ -175,7 +161,7 @@ def get_parent_spdx_id_from_component(component_sbom_doc: Document) -> Any:
     Later, when mapping mechanism will map packages from downloaded parent
     to this component content, matched packages (all matched when parent is
     non-contextualized, otherwise only parent-only packages) will
-    adopt this SPDXID bounding them to the used parent image instead
+    adopt this SPDXID binding them to the used parent image instead
     of this component.
 
     Args:
@@ -201,7 +187,7 @@ def get_parent_spdx_id_from_component(component_sbom_doc: Document) -> Any:
     )
 
 
-def parent_without_descendant_of(
+def process_build_tool_of_grandparent_item(
     grandparent_package: Package,
     grandparent_annotation: Annotation,
     grandparent_relationship: Relationship,
@@ -221,7 +207,7 @@ def parent_without_descendant_of(
 
     Args:
         grandparent_package: Grandparent package
-        grandparent_annotation: Grandparent package
+        grandparent_annotation: Grandparent annotation
         grandparent_relationship: Grandparent relationship
         parent_spdx_id_from_component: SPDX ID of parent
             image from component SBOM
@@ -231,18 +217,20 @@ def parent_without_descendant_of(
         indicating parent of the component parent (component's grandparent)
     """
     grandparent_package.files_analyzed = False
-    grandparent_relationship.relationship_type = RelationshipType.DESCENDANT_OF
-    # Substitution of the parent name from
-    # parent to name of the parent from component
-    grandparent_name = grandparent_relationship.spdx_element_id
-    grandparent_relationship.spdx_element_id = parent_spdx_id_from_component
-    grandparent_relationship.related_spdx_element_id = grandparent_name
 
-    return [(grandparent_package, grandparent_relationship, grandparent_annotation)]
+    parent_grandparent_relationship = Relationship(
+        spdx_element_id=parent_spdx_id_from_component,
+        related_spdx_element_id=grandparent_relationship.spdx_element_id,
+        relationship_type=RelationshipType.DESCENDANT_OF,
+    )
+
+    return [
+        (grandparent_package, parent_grandparent_relationship, grandparent_annotation)
+    ]
 
 
-def parent_with_descendant_of(
-    parent_image_sbom: Document,
+def process_descendant_of_grandparent_items(
+    parent_sbom_doc: Document,
     grandparent_package: Package | None,
     parent_spdx_id_from_component: str,
     descendant_of_packages_relationships: list[tuple[Package, Relationship]],
@@ -262,7 +250,7 @@ def parent_with_descendant_of(
     to align CONTAINS relationships in final component SBOM.
 
     Args:
-        parent_image_sbom: used parent SBOM that was contextualized or
+        parent_sbom_doc: used parent SBOM that was contextualized or
             produced by mobster.
         grandparent_package: Grandparent package.
         parent_spdx_id_from_component: SPDX ID of parent from component.
@@ -270,46 +258,49 @@ def parent_with_descendant_of(
             associated packages and DESCENDANT_OF relationships.
 
     Returns:
-        Associated DESCENDANT_OF relationships with associated packages
-        and annotations.
+        Associated DESCENDANT_OF relationships with packages
+        and associated annotations.
     """
     descendant_of_items: list[tuple[Package, Relationship, Annotation | None]] = []
     for pkg, rel in descendant_of_packages_relationships:
         # Substitution of the parent name to parent name from component
         if grandparent_package and grandparent_package.spdx_id == pkg.spdx_id:
-            rel.spdx_element_id = parent_spdx_id_from_component
+            rel = Relationship(
+                spdx_element_id=parent_spdx_id_from_component,
+                related_spdx_element_id=rel.related_spdx_element_id,
+                relationship_type=rel.relationship_type,
+            )
 
-        annotation_found = False
-        for annot in parent_image_sbom.annotations:
+        annotation = None
+        for annot in parent_sbom_doc.annotations:
             if pkg.spdx_id == annot.spdx_id:
-                annotation_found = True
-                descendant_of_items.append((pkg, rel, annot))
-
-        if not annotation_found:
+                annotation = annot
+        if not annotation:
             LOGGER.warning("Annotation not found for %s", pkg.spdx_id)
-            descendant_of_items.append((pkg, rel, None))
+        descendant_of_items.append((pkg, rel, annotation))
 
     return descendant_of_items
 
 
 def get_descendant_of_items_from_used_parent(
-    parent_image_sbom: Document, parent_spdx_id_from_component: str
+    parent_sbom_doc: Document, parent_spdx_id_from_component: str
 ) -> list[tuple[Package, Relationship, Annotation]]:
     """
-    Obtains all of used parent image DESCENDANT_OF packages, their
-    relationships, and annotations and groups them together.
-    DESCENDANT_OF packages, annotations and their relationships
+    Obtains all of used parent image DESCENDANT_OF relationships, related
+    packages, and their annotations and groups them together.
+    DESCENDANT_OF relationships packages and their annotations
     will be supplemented into final component SBOM after
-    contextualization to establish relationships with grandparents.
+    contextualization to establish relationships with
+    grandparents of the component.
 
     If no DESCENDANT_OF relationship was found, used parent image had to be
-    produced by legacy workflow, where is such relationship indicating used
-    parent image expressed as grandparent BUILD_TOOL_OF parent - we need to
-    convert it to DESCENDANT_OF relationship and rename `parent` as it is
-    named in component before we pass this relationship to component.
+    produced by legacy workflow, where is such relationship was expressed as
+    `grandparent BUILD_TOOL_OF parent` - we need to convert it to
+    DESCENDANT_OF relationship and rename `parent` as it is named in
+    component before we pass this relationship to component.
 
     Args:
-        parent_image_sbom: Downloaded used parent image SBOM.
+        parent_sbom_doc: Downloaded used parent image SBOM.
         parent_spdx_id_from_component: Name of the used parent from
             component SBOM
 
@@ -317,13 +308,7 @@ def get_descendant_of_items_from_used_parent(
         List of DESCENDANT_OF relationships, their packages and annotations
         from used parent SBOM.
     """
-    descendant_of_packages_relationships = normalize_and_filter(
-        parent_image_sbom.packages,
-        parent_image_sbom.relationships,
-        predicate=_package_with_descendant_of_relationship,
-    )
-
-    grandparent_annotation = get_grandparent_annotation(parent_image_sbom)
+    grandparent_annotation = get_grandparent_annotation(parent_sbom_doc)
 
     # Grandparent of the downloaded used parent image SBOM cannot
     # be determined. SBOM is either malformed, not sourced from
@@ -333,52 +318,102 @@ def get_descendant_of_items_from_used_parent(
         return []
 
     grandparent_package = get_package_by_spdx_id(
-        parent_image_sbom, grandparent_annotation.spdx_id
+        parent_sbom_doc, grandparent_annotation.spdx_id
     )
-    # Defensive approach: when grandparent annotation exists,
     # package must be present as well
     if not grandparent_package:
+        LOGGER.warning(
+            "No package found for annotation %s in downloaded parent SBOM %s",
+            grandparent_annotation.spdx_id,
+            parent_sbom_doc.creation_info.name,
+        )
         return []
+
+    descendant_of_packages_relationships = (
+        filter_and_associate_packages_and_relationships(
+            parent_sbom_doc.packages,
+            parent_sbom_doc.relationships,
+            predicate=is_package_associated_with_descendant_of_relationship,
+        )
+    )
+
     if not descendant_of_packages_relationships:
         grandparent_relationship = get_relationship_by_spdx_id(
-            parent_image_sbom, grandparent_annotation.spdx_id
+            parent_sbom_doc,
+            grandparent_annotation.spdx_id,
+            expected_relationship_type=RelationshipType.BUILD_TOOL_OF,
         )
         # Defensive approach: when grandparent package exists,
         # relationship must be present as well
         if not grandparent_relationship:
+            LOGGER.warning(
+                "No BUILD_TOOL_OF relationship found for "
+                "package %s in downloaded parent SBOM %s",
+                grandparent_package.spdx_id,
+                parent_sbom_doc.creation_info.name,
+            )
             return []
-        return parent_without_descendant_of(
+
+        return process_build_tool_of_grandparent_item(
             grandparent_package,
             grandparent_annotation,
             grandparent_relationship,
             parent_spdx_id_from_component,
         )
 
-    return parent_with_descendant_of(
-        parent_image_sbom,
+    return process_descendant_of_grandparent_items(
+        parent_sbom_doc,
         grandparent_package,
         parent_spdx_id_from_component,
         descendant_of_packages_relationships,
     )
 
 
-def _package_with_contains_relationship(pkg: Package, rel: Relationship) -> bool:
-    """Maps package with its own CONTAINS relationship"""
+def is_package_associated_with_contains_relationship(
+    pkg: Package, rel: Relationship
+) -> bool:
+    """
+    Maps package with its own CONTAINS relationship.
+
+    Args:
+        pkg: Package object.
+        rel: Relationship object.
+
+    Returns:
+        true if the package SPDX ID matches
+        related_spdx_element_id of the CONTAINS
+        relationship,false otherwise.
+    """
     return (
         pkg.spdx_id == rel.related_spdx_element_id
         and rel.relationship_type == RelationshipType.CONTAINS
     )
 
 
-def _package_with_descendant_of_relationship(pkg: Package, rel: Relationship) -> bool:
-    """Maps package with its own DESCENDANT_OF relationship"""
+def is_package_associated_with_descendant_of_relationship(
+    pkg: Package, rel: Relationship
+) -> bool:
+    """
+    Maps package with its own DESCENDANT_OF relationship.
+    pkg: package
+    rel:
+
+    Args:
+        pkg: Package object.
+        rel: Relationship object.
+
+    Returns:
+        true if the package SPDX ID matches
+        related_spdx_element_id of the DESCENDANT_OF
+        relationship, false otherwise.
+    """
     return (
         pkg.spdx_id == rel.related_spdx_element_id
         and rel.relationship_type == RelationshipType.DESCENDANT_OF
     )
 
 
-def normalize_and_filter(
+def filter_and_associate_packages_and_relationships(
     packages: list[Package],
     relationships: list[Relationship],
     predicate: Callable[[Package, Relationship], bool],
@@ -406,7 +441,7 @@ def normalize_and_filter(
 
 
 async def map_parent_to_component_and_modify_component(
-    parent_image_sbom: Document,
+    parent_sbom_doc: Document,
     component_sbom_doc: Document,
     parent_spdx_id_from_component: str,
     descendant_of_items_from_used_parent: list[
@@ -418,7 +453,7 @@ async def map_parent_to_component_and_modify_component(
     component content, and modifies relationships in component,
     when package is sourced from parent (or grandparents)
     Args:
-        parent_image_sbom: Downloaded used parent image SBOM
+        parent_sbom_doc: Downloaded used parent image SBOM
             (can be contextualized or not).
         component_sbom_doc: The component SBOM to be contextualized.
         parent_spdx_id_from_component: The name of the used parent that is
@@ -430,17 +465,19 @@ async def map_parent_to_component_and_modify_component(
     Returns:
         Fully contextualized component SBOM.
     """
-    parent_root_packages = await find_spdx_root_packages_spdxid(parent_image_sbom)
+    parent_root_packages = await find_spdx_root_packages_spdxid(parent_sbom_doc)
 
-    parent_package_with_relationship = normalize_and_filter(
-        parent_image_sbom.packages,
-        parent_image_sbom.relationships,
-        predicate=_package_with_contains_relationship,
+    parent_package_with_relationship = filter_and_associate_packages_and_relationships(
+        parent_sbom_doc.packages,
+        parent_sbom_doc.relationships,
+        predicate=is_package_associated_with_contains_relationship,
     )
-    component_package_with_relationship = normalize_and_filter(
-        component_sbom_doc.packages,
-        component_sbom_doc.relationships,
-        predicate=_package_with_contains_relationship,
+    component_package_with_relationship = (
+        filter_and_associate_packages_and_relationships(
+            component_sbom_doc.packages,
+            component_sbom_doc.relationships,
+            predicate=is_package_associated_with_contains_relationship,
+        )
     )
 
     for parent_package, parent_relationship in parent_package_with_relationship:
@@ -483,7 +520,7 @@ def _supply_descendants_from_parent_to_component(
             and their annotations
 
     Returns:
-        None. Component SBOM is fully contextualized.
+        Component SBOM that is fully contextualized.
     """
     for pkg, rel, annot in descendant_of_items_from_used_parent:
         component_sbom_doc.relationships.append(rel)
@@ -534,21 +571,21 @@ def _modify_relationship_in_component(
 
     Returns: None. Component SBOM is modified in-place.
     """
-    # Contextualized parent: matched package is bounded to parent itself
+    # Contextualized parent: matched package is bound to parent itself
     # (not to any of the grandparents),
     # and when we want to point relationship from component to parent
     # we need to use parent name from generated component
-    # Non-contextualized parent: all the packages are bounded to the
+    # Non-contextualized parent: all the packages are bound to the
     # parent, we need to use parent name from generated component
     if parent_relationship.spdx_element_id in parent_root_packages:
         component_relationship.spdx_element_id = parent_spdx_id_from_component
 
-    # Contextualized parent: matched package is not bounded to the root package(s) but
-    # bounded to some grandparent of the parent by previous contextualization - we
+    # Contextualized parent: matched package is not bound to the root package(s) but
+    # bound to some grandparent of the parent by previous contextualization - we
     # need to preserve this relationship
     # Non-contextualized parent or parent without another parent (no grandparent for
     # component): should never reach this branch, because all
-    # the packages will always be bounded to parent itself - all relationships will
+    # the packages will always be bound to parent itself - all relationships will
     # refer to root packages, no grandparents are present by contextualization or
     # in reality
     else:
