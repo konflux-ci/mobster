@@ -2,7 +2,6 @@
 
 import json
 import logging
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
 
@@ -329,15 +328,15 @@ def get_descendant_of_items_from_used_parent(
         )
         return []
 
-    descendant_of_packages_relationships = (
-        filter_and_associate_packages_and_relationships(
+    packages_with_related_descendant_of_relationships = (
+        associate_relationships_and_related_packages(
             parent_sbom_doc.packages,
             parent_sbom_doc.relationships,
-            predicate=is_package_associated_with_descendant_of_relationship,
+            relationship_type=RelationshipType.DESCENDANT_OF,
         )
     )
 
-    if not descendant_of_packages_relationships:
+    if not packages_with_related_descendant_of_relationships:
         grandparent_relationship = get_relationship_by_spdx_id(
             parent_sbom_doc,
             grandparent_annotation.spdx_id,
@@ -365,66 +364,22 @@ def get_descendant_of_items_from_used_parent(
         parent_sbom_doc,
         grandparent_package,
         parent_spdx_id_from_component,
-        descendant_of_packages_relationships,
+        packages_with_related_descendant_of_relationships,
     )
 
 
-def is_package_associated_with_contains_relationship(
-    pkg: Package, rel: Relationship
-) -> bool:
-    """
-    Maps package with its own CONTAINS relationship.
-
-    Args:
-        pkg: Package object.
-        rel: Relationship object.
-
-    Returns:
-        true if the package SPDX ID matches
-        related_spdx_element_id of the CONTAINS
-        relationship,false otherwise.
-    """
-    return (
-        pkg.spdx_id == rel.related_spdx_element_id
-        and rel.relationship_type == RelationshipType.CONTAINS
-    )
-
-
-def is_package_associated_with_descendant_of_relationship(
-    pkg: Package, rel: Relationship
-) -> bool:
-    """
-    Maps package with its own DESCENDANT_OF relationship.
-    pkg: package
-    rel:
-
-    Args:
-        pkg: Package object.
-        rel: Relationship object.
-
-    Returns:
-        true if the package SPDX ID matches
-        related_spdx_element_id of the DESCENDANT_OF
-        relationship, false otherwise.
-    """
-    return (
-        pkg.spdx_id == rel.related_spdx_element_id
-        and rel.relationship_type == RelationshipType.DESCENDANT_OF
-    )
-
-
-def filter_and_associate_packages_and_relationships(
+def associate_relationships_and_related_packages(
     packages: list[Package],
     relationships: list[Relationship],
-    predicate: Callable[[Package, Relationship], bool],
+    relationship_type: RelationshipType,
 ) -> list[tuple[Package, Relationship]]:
     """
-    Associate packages and relationships together according
-    to the condition specified by passed predicate function
+    Associate relationships (related_spdx_element_id) and related
+    packages (spdx_id) together for given relationship type.
     Args:
         packages: List of Package objects.
         relationships: List of Relationship objects.
-        predicate: Predicate function with specific condition
+        relationship_type: Relationship type.
 
     Returns:
         List of tuples of related package and relationship objects.
@@ -433,7 +388,10 @@ def filter_and_associate_packages_and_relationships(
 
     for pkg in packages:
         for rel in relationships:
-            if predicate(pkg, rel):
+            if (
+                pkg.spdx_id == rel.related_spdx_element_id
+                and rel.relationship_type == relationship_type
+            ):
                 assoc_package_relationship.append((pkg, rel))
                 break
 
@@ -467,24 +425,29 @@ async def map_parent_to_component_and_modify_component(
     """
     parent_root_packages = await find_spdx_root_packages_spdxid(parent_sbom_doc)
 
-    parent_package_with_relationship = filter_and_associate_packages_and_relationships(
-        parent_sbom_doc.packages,
-        parent_sbom_doc.relationships,
-        predicate=is_package_associated_with_contains_relationship,
+    parent_package_with_contains_relationship = (
+        associate_relationships_and_related_packages(
+            parent_sbom_doc.packages,
+            parent_sbom_doc.relationships,
+            relationship_type=RelationshipType.CONTAINS,
+        )
     )
-    component_package_with_relationship = (
-        filter_and_associate_packages_and_relationships(
+    component_package_with_contains_relationship = (
+        associate_relationships_and_related_packages(
             component_sbom_doc.packages,
             component_sbom_doc.relationships,
-            predicate=is_package_associated_with_contains_relationship,
+            relationship_type=RelationshipType.CONTAINS,
         )
     )
 
-    for parent_package, parent_relationship in parent_package_with_relationship:
+    for (
+        parent_package,
+        parent_relationship,
+    ) in parent_package_with_contains_relationship:
         for (
             component_package,
             component_relationship,
-        ) in component_package_with_relationship:
+        ) in component_package_with_contains_relationship:
             if package_matched(parent_package, component_package):
                 _modify_relationship_in_component(
                     component_relationship,
