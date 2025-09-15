@@ -136,6 +136,8 @@ spec:
               # Poetry installs both, so we need to remove the installed mobster
               # script to use the original one.
               rm -f $(which mobster)
+              rm -f $(which process_product_sbom)
+              rm -f $(which process_component_sboms)
 
               echo "Using mobster application at $(which mobster)"
               echo "Using pytest at $(which pytest)"

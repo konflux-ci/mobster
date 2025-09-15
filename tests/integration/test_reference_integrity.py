@@ -313,11 +313,11 @@ def generate_and_store_snapshot(index_image: Image, output_dir: Path) -> Path:
                 "tags": ["1.0", "latest"],
                 "repositories": [
                     {
-                        "rh-registry-repo": "registry.redhat.io/sample/test-repo",
+                        "rh-registry-repo": f"{index_image.registry}/sample/test-repo",
                         "tags": ["1.0", "latest"],
                     },
                     {
-                        "rh-registry-repo": "registry.redhat.io/elpmas/oper-tset",
+                        "rh-registry-repo": f"{index_image.registry}/elpmas/oper-tset",
                         "tags": ["1.0", "latest"],
                     },
                 ],

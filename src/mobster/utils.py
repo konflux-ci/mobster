@@ -27,7 +27,10 @@ def normalize_file_name(current_name: str) -> str:
 
 
 async def run_async_subprocess(
-    cmd: list[str], env: dict[str, str] | None = None, retry_times: int = 0
+    cmd: list[str],
+    env: dict[str, str] | None = None,
+    retry_times: int = 0,
+    **kwargs: Any,
 ) -> tuple[int, bytes, bytes]:
     """Run command in subprocess asynchronously.
 
@@ -35,6 +38,7 @@ async def run_async_subprocess(
         cmd: Command to run in subprocess.
         env: Environment dictionary.
         retry_times: Number of retries if the process ends with non-zero return code.
+        **kwargs: Any key-word args for the subprocess itself.
 
     Returns:
         tuple[int, bytes, bytes]: Return code, stdout, and stderr.
@@ -56,6 +60,7 @@ async def run_async_subprocess(
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=cmd_env,
+            **kwargs,
         )
 
         stdout, stderr = await proc.communicate()
