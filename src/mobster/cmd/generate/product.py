@@ -210,7 +210,7 @@ def get_component_packages(components: list[Component]) -> list[Package]:
                     name=repository.repo_name,
                     version=component.image.digest,
                     qualifiers={
-                        "repository_url": repository.repo_url,
+                        "repository_url": repository.public_repo_url,
                         "tag": tag,
                     },
                 ).to_string()

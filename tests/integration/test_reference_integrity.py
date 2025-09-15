@@ -310,14 +310,17 @@ def generate_and_store_snapshot(index_image: Image, output_dir: Path) -> Path:
                 "name": index_image.name,
                 "containerImage": index_image.reference,
                 "rh-registry-repo": "registry.redhat.io/sample/test-repo",
+                "repository": f"{index_image.registry}/sample/test-repo",
                 "tags": ["1.0", "latest"],
                 "repositories": [
                     {
-                        "rh-registry-repo": "registry.redhat.io/sample/test-repo",
+                        "url": f"{index_image.registry}/sample/test-repo",
+                        "rh-registry-repo": "registry.com/sample/test-repo",
                         "tags": ["1.0", "latest"],
                     },
                     {
-                        "rh-registry-repo": "registry.redhat.io/elpmas/oper-tset",
+                        "rh-registry-repo": "registry..com/elpmas/oper-tset",
+                        "url": f"{index_image.registry}/elpmas/oper-tset",
                         "tags": ["1.0", "latest"],
                     },
                 ],

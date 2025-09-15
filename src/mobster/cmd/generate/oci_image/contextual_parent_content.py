@@ -2,7 +2,6 @@
 
 import json
 import logging
-from pathlib import Path
 from typing import Any, Literal
 
 from spdx_tools.spdx.model.annotation import Annotation
@@ -19,7 +18,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 )
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
-from mobster.oci.cosign import CosignClient
+from mobster.oci.cosign import CosignClient, CosignConfig
 
 LOGGER = logging.getLogger(__name__)
 
@@ -134,7 +133,7 @@ async def download_parent_image_sbom(
             arch,
         )
 
-    cosign_client = CosignClient(Path(""))
+    cosign_client = CosignClient(CosignConfig())
     try:
         sbom = await cosign_client.fetch_sbom(actual_parent_image)
     except SBOMError:
