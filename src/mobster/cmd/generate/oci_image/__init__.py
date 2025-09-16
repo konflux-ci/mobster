@@ -5,6 +5,7 @@ __all__ = ["GenerateOciImageCommand"]
 import json
 import logging
 from argparse import ArgumentError
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -24,13 +25,10 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     get_image_objects_from_file,
 )
 from mobster.cmd.generate.oci_image.contextual_parent_content import (
-    adjust_parent_image_relationship_in_legacy_sbom,
-    adjust_parent_image_spdx_element_ids,
-    calculate_component_only_content,
-    create_contextual_sbom,
     download_parent_image_sbom,
-    get_used_parent_image_from_legacy_sbom,
-    remove_parent_image_builder_records,
+    get_descendant_of_items_from_used_parent,
+    get_parent_spdx_id_from_component,
+    map_parent_to_component_and_modify_component,
 )
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.spdx_utils import (
@@ -120,10 +118,17 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         arch: str,
     ) -> Document | None:
         """
-        Run all steps from the contextual workflow.
+        Run all steps from the contextual workflow. Finds and
+        downloads used parent image SBOM (if exists), maps packages
+        from parent to component and modifies relationships in
+        component, expressing which packages came to component
+        from used parent or grandparents.
+
         Args:
             component_sbom_doc:
                 The component SBOM created for this image.
+                Warning: component SBOM is intentionally
+                modified by this workflow.
             parent_image_ref: Reference to the parent image.
             arch: CPU architecture of this image.
 
@@ -132,29 +137,25 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 The contextual SBOM if the workflow was successful.
                 None otherwise.
         """
-
         parent_image_sbom = await download_parent_image_sbom(parent_image_ref, arch)
         if not parent_image_sbom:
             return None
         parent_sbom_doc = await normalize_and_load_sbom(
             parent_image_sbom, append_mobster=False
         )
-
-        component_only_sbom_doc = await calculate_component_only_content(
-            parent_sbom_doc, component_sbom_doc
+        parent_spdx_id_from_component = get_parent_spdx_id_from_component(
+            component_sbom_doc
         )
-        grandparent_spdx_id = await get_used_parent_image_from_legacy_sbom(
-            parent_sbom_doc
+        descendant_of_items_from_used_parent = get_descendant_of_items_from_used_parent(
+            parent_sbom_doc, parent_spdx_id_from_component
         )
-        parent_sbom_doc = await adjust_parent_image_relationship_in_legacy_sbom(
-            parent_sbom_doc, grandparent_spdx_id
+        contextual_sbom = await map_parent_to_component_and_modify_component(
+            parent_sbom_doc,
+            component_sbom_doc,
+            parent_spdx_id_from_component,
+            descendant_of_items_from_used_parent,
         )
-        parent_sbom_doc = await adjust_parent_image_spdx_element_ids(
-            parent_sbom_doc, component_sbom_doc, grandparent_spdx_id
-        )
-        parent_sbom_doc = await remove_parent_image_builder_records(parent_sbom_doc)
-
-        return await create_contextual_sbom(parent_sbom_doc, component_only_sbom_doc)
+        return contextual_sbom
 
     async def _assess_and_dispatch_contextual_workflow(
         self,
@@ -184,8 +185,9 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         ):
             try:
                 parent_image_obj = base_images[parent_image_ref]
+                copied_component_sbom_doc = deepcopy(component_sbom_doc)
                 return await self._execute_contextual_workflow(
-                    component_sbom_doc, parent_image_obj, image_arch
+                    copied_component_sbom_doc, parent_image_obj, image_arch
                 )
             except Exception:  # pylint: disable=broad-exception-caught
                 LOGGER.exception("Could not create contextual SBOM!")
