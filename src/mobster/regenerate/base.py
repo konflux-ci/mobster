@@ -7,6 +7,7 @@ import os
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from enum import Enum
+from httpx import Response
 from pathlib import Path
 
 from mobster import utils
@@ -16,8 +17,8 @@ from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.error import SBOMError
 from mobster.release import ReleaseId
-from mobster.tekton.component import ProcessComponentArgs, process_component_sboms
-from mobster.tekton.product import ProcessProductArgs, process_product_sboms
+from mobster.tekton.component import process_component_sboms, ProcessComponentArgs
+from mobster.tekton.product import process_product_sboms, ProcessProductArgs
 from mobster.tekton.s3 import S3Client
 
 LOGGER = logging.getLogger(__name__)
@@ -69,6 +70,10 @@ class SbomRegenerator:
         self.tpa_client: TPAClient | None = None
         self.s3_client: S3Client | None = None
 
+    def setup(self) -> None:
+        self.tpa_client = get_tpa_default_client(self.args.tpa_base_url)
+        self.s3_client = self.get_s3_client()
+
     async def regenerate_sboms(self) -> None:
         """
         regenerate the set of sboms indicated by the cli args
@@ -76,9 +81,6 @@ class SbomRegenerator:
         LOGGER.debug(f"--fail-fast: {self.args.fail_fast}")
         LOGGER.debug(f"--dry-run: {self.args.dry_run}")
         LOGGER.info(f"Searching for matching {self.sbom_type.value} SBOMs..")
-
-        self.tpa_client = get_tpa_default_client(self.args.tpa_base_url)
-        self.s3_client = self.get_s3_client()
 
         # query for relevant sboms, based on the CLI-provided mobster versions
         sboms = self.tpa_client.list_sboms(
@@ -109,6 +111,10 @@ class SbomRegenerator:
             return
         # gather related data from s3 bucket
         path_snapshot, path_release_data = await self.gather_s3_input_data(release_id)
+        if not path_snapshot or not path_release_data:
+            raise SBOMError(
+                f"No S3 bucket snapshot/release_data found for SBOM: {sbom.id}"
+            )
         LOGGER.info(f"proceeding to regenerate SBOM: {sbom.id}  ({sbom.name})")
         if self.args.dry_run:
             LOGGER.info(f"*Dry Run: 'generate' SBOM: {sbom.id} ({sbom.name})")
@@ -119,7 +125,7 @@ class SbomRegenerator:
             LOGGER.info(f"*Dry Run: 'delete' original SBOM: {sbom.id} ({sbom.name})")
         else:
             # delete
-            response_delete = await self.tpa_client.delete(sbom.id)
+            response_delete = await self.delete_sbom(sbom.id)
             # check delete status
             if response_delete.status_code != 200:
                 # delete failed, log and abort regeneration for this SBOM
@@ -151,7 +157,7 @@ class SbomRegenerator:
         elif "properties" in sbom:
             for prop in sbom["properties"]:
                 if prop["name"] == "release_id":
-                    return prop["value"]
+                    return ReleaseId(prop["value"])
         return None
 
     async def download_and_extract_release_id(
@@ -239,6 +245,9 @@ class SbomRegenerator:
                     upload_concurrency=self.args.concurrency,
                 )
             )
+
+    async def delete_sbom(self, sbom_id) -> Response:
+        await self.tpa_client.delete_sbom(sbom_id)
 
 
 def parse_args() -> RegenerateArgs:

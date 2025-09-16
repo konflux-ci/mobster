@@ -19,6 +19,7 @@ def main() -> None:
     LOGGER.info("Starting product SBOM re-generation.")
     args = parse_args()
     regen = SbomRegenerator(args, SbomType.PRODUCT)
+    regen.setup()
     asyncio.run(regen.regenerate_sboms())
 
 

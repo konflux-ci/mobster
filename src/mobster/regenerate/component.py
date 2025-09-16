@@ -19,6 +19,7 @@ def main() -> None:
     LOGGER.info("Starting component SBOM re-generation.")
     args = parse_args()
     regen = SbomRegenerator(args, SbomType.COMPONENT)
+    regen.setup()
     asyncio.run(regen.regenerate_sboms())
 
 
