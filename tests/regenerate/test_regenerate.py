@@ -1,12 +1,13 @@
 import asyncio
-import httpx
 import json
 import os
-import pytest
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch, mock_open
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+
+import httpx
+import pytest
 
 import mobster.regenerate.base as regen_base
 from mobster.cmd.upload.model import SbomSummary

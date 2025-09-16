@@ -7,8 +7,9 @@ import os
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from enum import Enum
-from httpx import Response
 from pathlib import Path
+
+from httpx import Response
 
 from mobster import utils
 from mobster.cli import parse_concurrency
@@ -17,8 +18,8 @@ from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.error import SBOMError
 from mobster.release import ReleaseId
-from mobster.tekton.component import process_component_sboms, ProcessComponentArgs
-from mobster.tekton.product import process_product_sboms, ProcessProductArgs
+from mobster.tekton.component import ProcessComponentArgs, process_component_sboms
+from mobster.tekton.product import ProcessProductArgs, process_product_sboms
 from mobster.tekton.s3 import S3Client
 
 LOGGER = logging.getLogger(__name__)
