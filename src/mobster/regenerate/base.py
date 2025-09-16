@@ -4,18 +4,19 @@ import argparse
 import json
 import logging
 import os
+import sys
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 from httpx import Response
 
 from mobster import utils
 from mobster.cli import parse_concurrency
-from mobster.cmd.download.download_tpa import get_tpa_default_client
 from mobster.cmd.upload.model import SbomSummary
-from mobster.cmd.upload.tpa import TPAClient
+from mobster.cmd.upload.tpa import TPAClient, get_tpa_default_client
 from mobster.error import SBOMError
 from mobster.release import ReleaseId
 from mobster.tekton.component import ProcessComponentArgs, process_component_sboms
@@ -26,6 +27,9 @@ LOGGER = logging.getLogger(__name__)
 
 
 class SbomType(Enum):
+    """
+    enum to represent SBOM entrypoint type (Product/Component)
+    """
     PRODUCT = "Product"
     COMPONENT = "Component"
     UNKNOWN = "Unknown"
@@ -63,17 +67,17 @@ class RegenerateArgs:
 
 
 class SbomRegenerator:
+    """ base regenerator class for SBM regeneration """
+
     def __init__(
-        self, args: RegenerateArgs, sbom_type: SbomType = SbomType.UNKNOWN
+            self,
+            args: RegenerateArgs,
+            sbom_type: SbomType = SbomType.UNKNOWN,
     ) -> None:
         self.args = args
         self.sbom_type = sbom_type
-        self.tpa_client: TPAClient | None = None
-        self.s3_client: S3Client | None = None
-
-    def setup(self) -> None:
-        self.tpa_client = get_tpa_default_client(self.args.tpa_base_url)
-        self.s3_client = self.get_s3_client()
+        self.s3_client = self.setup_s3_client()
+        self.tpa_client = self.setup_tpa_client()
 
     async def regenerate_sboms(self) -> None:
         """
@@ -84,7 +88,7 @@ class SbomRegenerator:
         LOGGER.info(f"Searching for matching {self.sbom_type.value} SBOMs..")
 
         # query for relevant sboms, based on the CLI-provided mobster versions
-        sboms = self.tpa_client.list_sboms(
+        sboms = self.get_tpa_client().list_sboms(
             query=self.construct_query(), sort="ingested"
         )
 
@@ -99,7 +103,7 @@ class SbomRegenerator:
             except SBOMError as e:
                 LOGGER.error(e)
                 if self.args.fail_fast:
-                    exit(1)
+                    sys.exit(1)
 
         LOGGER.info(f"Finished {self.sbom_type.value} SBOM regeneration.")
 
@@ -120,7 +124,7 @@ class SbomRegenerator:
         if self.args.dry_run:
             LOGGER.info(f"*Dry Run: 'generate' SBOM: {sbom.id} ({sbom.name})")
         else:
-            await self.process_sboms(release_id.id, path_release_data, path_snapshot)
+            await self.process_sboms(release_id, path_release_data, path_snapshot)
 
         if self.args.dry_run:
             LOGGER.info(f"*Dry Run: 'delete' original SBOM: {sbom.id} ({sbom.name})")
@@ -138,47 +142,61 @@ class SbomRegenerator:
             LOGGER.info(f"Success: deleted original SBOM: {sbom.id} ({sbom.name})")
             return
 
-    async def get_release_id(self, sbom: SbomSummary):
+    async def get_release_id(self, sbom: SbomSummary) -> ReleaseId:
         """
         get the given SBOM's release_id
         """
-        # check if the given summary already contains it
-        release_id = self.extract_release_id(sbom)
-        if not release_id:
-            # download the complete SBOM and extract the release_id
-            release_id = await self.download_and_extract_release_id(sbom)
+        try:
+            # check if the given summary already contains it
+            release_id = self.extract_release_id(sbom.model_dump())
+        except ValueError:
+            # nothing found
+            try:
+                # download the complete SBOM and extract the release_id
+                release_id = await self.download_and_extract_release_id(sbom)
+            except ValueError as e:
+                LOGGER.error("No ReleaseId found in SBOM")
+                raise SBOMError() from e
         return release_id
 
     @staticmethod
-    def extract_release_id(sbom: SbomSummary) -> ReleaseId | None:
-        if "annotations" in sbom:
-            for annot in sbom["annotations"]:
+    def extract_release_id(sbom_dict: dict[str, Any]) -> ReleaseId:
+        """ extract ReleaseId from the given SBOM dict """
+        if "annotations" in sbom_dict:
+            for annot in sbom_dict["annotations"]:
                 if "release_id=" in annot["comment"]:
                     return ReleaseId(annot["comment"].partition("release_id=")[2])
-        elif "properties" in sbom:
-            for prop in sbom["properties"]:
+        elif "properties" in sbom_dict:
+            for prop in sbom_dict["properties"]:
                 if prop["name"] == "release_id":
                     return ReleaseId(prop["value"])
-        return None
+        raise ValueError("No ReleaseId found in SBOM.")
 
     async def download_and_extract_release_id(
         self, sbom: SbomSummary
-    ) -> ReleaseId | None:
+    ) -> ReleaseId:
+        """
+        download the full SBOM represented by the given summary,
+        then extract ReleaseId from it
+        """
         name = utils.normalize_file_name(sbom.name)
         local_path = self.args.output_path / f"{name}.json"
-        await self.tpa_client.download_sbom(sbom.id, local_path)
+        await self.get_tpa_client().download_sbom(sbom.id, local_path)
         try:
-            with open(local_path) as f:
-                sbom = json.load(f)
-        except FileNotFoundError:
+            with open(local_path, encoding="utf-8") as f:
+                sbom_dict = json.load(f)
+        except FileNotFoundError as e:
             LOGGER.error(f"'{local_path}' not found.")
-            return None
-        except json.JSONDecodeError:
+            raise ValueError() from e
+        except json.JSONDecodeError as e:
             LOGGER.error("Error: Invalid JSON in '{local_path_original}'.")
-            return None
-        return self.extract_release_id(sbom)
+            raise ValueError() from e
+        return self.extract_release_id(sbom_dict)
 
-    def construct_query(self):
+    def construct_query(self) -> str:
+        """
+        construct a TPA query based on the cli-supplied mobster versions arg
+        """
         versions = "|".join(
             f"Tool: Mobster-{str(v).strip()}"
             for v in self.args.mobster_versions.split(",")
@@ -188,6 +206,15 @@ class SbomRegenerator:
         return query
 
     def get_s3_client(self) -> S3Client:
+        """ get the currently configured S3Client """
+        return self.s3_client
+
+    def get_tpa_client(self) -> TPAClient:
+        """ get the currently configured TPAClient """
+        return self.tpa_client
+
+    def setup_s3_client(self) -> S3Client:
+        """ setup a S3Client """
         s3_client = S3Client(
             bucket=self.args.s3_bucket_url,
             access_key=os.environ["MOBSTER_S3_ACCESS_KEY"],
@@ -196,7 +223,12 @@ class SbomRegenerator:
         )
         return s3_client
 
+    def setup_tpa_client(self) -> TPAClient:
+        """ setup a TPAClient """
+        return get_tpa_default_client(self.args.tpa_base_url)
+
     async def gather_s3_input_data(self, rid: ReleaseId) -> tuple[Path, Path]:
+        """ fetch snapshot and release data from S3 for the given ReleaseId """
         LOGGER.debug(f"gathering input data for release_id: '{rid}'")
         path_snapshot = (
             self.args.output_path / S3Client.snapshot_prefix / f"{rid}.snapshot.json"
@@ -206,14 +238,18 @@ class SbomRegenerator:
             / S3Client.release_data_prefix
             / f"{rid}.release_data.json"
         )
-        await self.s3_client.get_snapshot(path_snapshot, rid)
-        await self.s3_client.get_release_data(path_release_data, rid)
+        await self.get_s3_client().get_snapshot(path_snapshot, rid)
+        await self.get_s3_client().get_release_data(path_release_data, rid)
         LOGGER.info(f"input data gathered from S3 bucket, for release_id: {rid}")
         return path_snapshot, path_release_data
 
     async def process_sboms(
-        self, release_id: str, path_release_data: Path, path_snapshot: Path
-    ):
+        self, release_id: ReleaseId, path_release_data: Path, path_snapshot: Path
+    ) -> None:
+        """
+        invoke the relevant tekton SBOM generation function,
+        based on which cli-called entrypoint was used
+        """
         if self.sbom_type == SbomType.PRODUCT:
             await process_product_sboms(
                 ProcessProductArgs(
@@ -223,7 +259,7 @@ class SbomRegenerator:
                     snapshot_spec=path_snapshot,
                     atlas_api_url=self.args.tpa_base_url,
                     retry_s3_bucket=self.args.s3_bucket_url,
-                    release_id=ReleaseId(release_id),
+                    release_id=release_id,
                     labels={},
                     result_dir=self.args.output_path,
                     tpa_retries=self.args.tpa_retries,
@@ -238,7 +274,7 @@ class SbomRegenerator:
                     snapshot_spec=path_snapshot,
                     atlas_api_url=self.args.tpa_base_url,
                     retry_s3_bucket=self.args.s3_bucket_url,
-                    release_id=ReleaseId(release_id),
+                    release_id=release_id,
                     labels={},
                     augment_concurrency=self.args.concurrency,
                     result_dir=self.args.output_path,
@@ -247,8 +283,10 @@ class SbomRegenerator:
                 )
             )
 
-    async def delete_sbom(self, sbom_id) -> Response:
-        await self.tpa_client.delete_sbom(sbom_id)
+    async def delete_sbom(self, sbom_id: str) -> Response:
+        """ delete the given SBOM, using the TPA client """
+        response = await self.get_tpa_client().delete_sbom(sbom_id)
+        return response
 
 
 def parse_args() -> RegenerateArgs:
@@ -279,6 +317,7 @@ def parse_args() -> RegenerateArgs:
 
 
 def prepare_output_paths(output_path: Path) -> None:
+    """ ensure cli-specified output paths exist for use by the regenerator """
     # prepare output_path subdirs
     (output_path / S3Client.release_data_prefix).mkdir(parents=True, exist_ok=True)
     (output_path / S3Client.snapshot_prefix).mkdir(parents=True, exist_ok=True)

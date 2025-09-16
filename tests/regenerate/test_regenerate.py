@@ -1,3 +1,5 @@
+""" tests for module for regenerating SBOM documents """
+
 import asyncio
 import json
 import os
@@ -17,7 +19,8 @@ from mobster.release import ReleaseId
 from mobster.tekton.s3 import S3Client
 
 
-def get_regenerate_args() -> regen_base.RegenerateArgs:
+def mock_regenerate_args() -> regen_base.RegenerateArgs:
+    """ default RegenerateArgs for regenerator tests """
     return regen_base.RegenerateArgs(
         output_path=Path("/test/path"),
         tpa_base_url="https://test.ing",
@@ -32,12 +35,9 @@ def get_regenerate_args() -> regen_base.RegenerateArgs:
     )
 
 
-def get_mock_release_id(last_three_caharacters: str) -> str:
-    return f"2587e906-b2ab-47cd-b78a-53e406197{last_three_caharacters}"
-
-
 def test_regenerate_args() -> None:
-    args = get_regenerate_args()
+    """ test arg parsing/setup for regenerator """
+    args = mock_regenerate_args()
     assert args.output_path == Path("/test/path")
     assert args.tpa_base_url == "https://test.ing"
     assert args.s3_bucket_url == "https://test-url"
@@ -51,10 +51,11 @@ def test_regenerate_args() -> None:
 
 
 def get_mock_sbom(id: str, name: str) -> SbomSummary:
+    """ constructs a SbomSummary object for testing """
     return SbomSummary(
         id=id,
         name=name,
-        ingested=datetime.now().isoformat(),
+        ingested=datetime.now(),
         sha256="sha256",
         sha384="sha384",
         sha512="sha512",
@@ -72,6 +73,7 @@ def get_mock_sbom(id: str, name: str) -> SbomSummary:
 def mock_download_sbom_json_with_attr(
     id: str, name: str, release_id: str, path: Path
 ) -> str:
+    """ sample downloaded SBOM data for testing """
     sbom = {
         "name": f"{name}",
         "documentNamespace": "https://anchore.com/syft/dir/var/workdir/"
@@ -102,10 +104,11 @@ def mock_download_sbom_json_with_attr(
 @pytest.mark.asyncio
 @patch("mobster.cmd.upload.tpa.TPAClient")
 async def test_regenerate_sboms(
-    mock_env_vars: MagicMock,
-    mock_tpa_client: AsyncMock,
+        mock_tpa_client: AsyncMock,
+        mock_env_vars: None,
 ) -> None:
-    args = get_regenerate_args()
+    """ tests regenerate_sboms() """
+    args = mock_regenerate_args()
 
     sbom1 = get_mock_sbom(id="a", name="sbom_1")
 
@@ -115,7 +118,7 @@ async def test_regenerate_sboms(
     mock_tpa_client.list_sboms.return_value = mock_list_sboms("", "")
     mock_tpa_client.download_sbom = AsyncMock()
 
-    regenerator = regen_base.SbomRegenerator(args, regen_base.SbomType.PRODUCT)
+    regenerator = SbomRegenerator(args, regen_base.SbomType.PRODUCT)
 
     regenerator.tpa_client = mock_tpa_client
     regenerator.regenerate_sbom = AsyncMock()
@@ -125,13 +128,17 @@ async def test_regenerate_sboms(
 
 
 @pytest.mark.asyncio
-async def test_regenerate_sbom_dry_run() -> None:
-    args = get_regenerate_args()
+async def test_regenerate_sbom_dry_run(
+        mock_env_vars: None
+) -> None:
+    """ tests regenerate_sboms() in dry-run mode """
+    args = mock_regenerate_args()
     args.dry_run = True
     mock_sbom = get_mock_sbom(id="abc123", name="sbom-abc123")
+    release_id = ReleaseId.new()
 
     regenerator = SbomRegenerator(args)
-    regenerator.get_release_id = AsyncMock(return_value=get_mock_release_id("123"))
+    regenerator.get_release_id = AsyncMock(return_value=release_id)
     regenerator.gather_s3_input_data = AsyncMock(
         return_value=("path_snapshot", "path_release_data")
     )
@@ -141,17 +148,20 @@ async def test_regenerate_sbom_dry_run() -> None:
 
     regenerator.get_release_id.assert_awaited_once_with(mock_sbom)
     regenerator.gather_s3_input_data.assert_awaited_once_with(
-        get_mock_release_id("123")
+        release_id
     )
 
 
 @pytest.mark.asyncio
-async def test_regenerate_sbom_non_dry_run(mock_env_vars: MagicMock) -> None:
-    args = get_regenerate_args()
+async def test_regenerate_sbom_non_dry_run(
+        mock_env_vars: None
+) -> None:
+    """ tests regenerate_sboms() in "live" (non dry-run) mode """
+    args = mock_regenerate_args()
     args.dry_run = False
     sbom_id = "123456"
     sbom_name = "test_sbom"
-    release_id_str = get_mock_release_id("456")
+    release_id = ReleaseId.new()
     mock_sbom = get_mock_sbom(id=sbom_id, name=sbom_name)
     mock_tpa_client = AsyncMock()
     mock_tpa_client.delete_sbom.return_value = AsyncMock(status_code=200)
@@ -159,7 +169,7 @@ async def test_regenerate_sbom_non_dry_run(mock_env_vars: MagicMock) -> None:
     path_snapshot = Path("/path/to/snapshot")
     path_release_data = Path("/path/to/release_data")
     regenerator = SbomRegenerator(args)
-    regenerator.get_release_id = AsyncMock(return_value=ReleaseId(release_id_str))
+    regenerator.get_release_id = AsyncMock(return_value=release_id)
     regenerator.gather_s3_input_data = AsyncMock(
         return_value=(path_snapshot, path_release_data)
     )
@@ -177,18 +187,21 @@ async def test_regenerate_sbom_non_dry_run(mock_env_vars: MagicMock) -> None:
     regenerator.delete_sbom.assert_awaited_once()
 
 
-def test_gather_s3_input_data(mock_env_vars: MagicMock) -> None:
-    args = get_regenerate_args()
+def test_gather_s3_input_data(
+        mock_env_vars: None
+) -> None:
+    """ tests fetching S3 bucket data """
+    args = mock_regenerate_args()
     sbom_regenerator = SbomRegenerator(args)
     sbom_regenerator.s3_client = AsyncMock(spec=S3Client)
-    rid = ReleaseId(get_mock_release_id("abc"))
+    rid = ReleaseId.new()
 
     path_snapshot = args.output_path / S3Client.snapshot_prefix / f"{rid}.snapshot.json"
     path_release_data = (
         args.output_path / S3Client.release_data_prefix / f"{rid}.release_data.json"
     )
 
-    async def async_test():
+    async def async_test() -> None:
         result = await sbom_regenerator.gather_s3_input_data(rid)
 
         assert result == (path_snapshot, path_release_data)
@@ -203,7 +216,7 @@ def test_gather_s3_input_data(mock_env_vars: MagicMock) -> None:
 
 
 @pytest.fixture
-def dummy_args(tmp_path):
+def dummy_args(tmp_path: Path) -> list[str]:
     """Fixture to simulate command line arguments."""
     return [
         "--output-path",
@@ -227,7 +240,11 @@ def dummy_args(tmp_path):
     ]
 
 
-def test_parse_args(tmp_path, dummy_args, monkeypatch):
+def test_parse_args(
+        tmp_path: Path,
+        dummy_args: list[str],
+        monkeypatch: pytest.MonkeyPatch,
+):
     """Test the parse_args function for proper argument parsing."""
     monkeypatch.setattr("sys.argv", ["program_name"] + dummy_args)
     args = regen_base.parse_args()
@@ -243,8 +260,8 @@ def test_parse_args(tmp_path, dummy_args, monkeypatch):
     assert args.verbose is True
 
 
-def test_prepare_output_paths(tmp_path):
-    """Test if prepare_output_paths creates the required directories."""
+def test_prepare_output_paths(tmp_path: Path) -> None:
+    """ verify prepare_output_paths ensures the required dirs exist """
     test_output_path = tmp_path / "output"
     regen_base.prepare_output_paths(test_output_path)
     assert (test_output_path / "release-data").exists()
@@ -252,6 +269,7 @@ def test_prepare_output_paths(tmp_path):
 
 
 def test_prepare_output_paths_with_existing_path(tmp_path: Path) -> None:
+    """ verify prepare_output_paths ensures the required dirs exist """
     output_path = tmp_path / "output"
     (output_path / S3Client.release_data_prefix).mkdir(parents=True, exist_ok=True)
     (output_path / S3Client.snapshot_prefix).mkdir(parents=True, exist_ok=True)
@@ -268,6 +286,7 @@ def test_prepare_output_paths_with_existing_path(tmp_path: Path) -> None:
 
 
 def test_prepare_output_paths_with_nonexisting_path(tmp_path: Path) -> None:
+    """ verify prepare_output_paths ensures the required dirs exist """
     output_path = tmp_path / "foobar12345"
     regen_base.prepare_output_paths(output_path)
 
@@ -280,29 +299,37 @@ def test_prepare_output_paths_with_nonexisting_path(tmp_path: Path) -> None:
 
 
 def test_extract_release_id_with_annotations() -> None:
-    expected_release_id = ReleaseId(get_mock_release_id("123"))
-    sbom = {
+    """ verify extract_release_id handles annotations """
+    expected_release_id = ReleaseId.new()
+    sbom_dict = {
         "annotations": [
-            {"comment": f"release_id={expected_release_id}"},
+            {"comment": f"release_id={expected_release_id.id}"},
         ]
     }
-    result = SbomRegenerator.extract_release_id(sbom)
+    result = SbomRegenerator.extract_release_id(sbom_dict)
     assert expected_release_id.id == result.id
 
 
 def test_extract_release_id_with_properties() -> None:
-    expected_release_id = ReleaseId(get_mock_release_id("456"))
-    sbom = {
+    """ verify extract_release_id handles properties """
+    expected_release_id = ReleaseId.new()
+    sbom_dict = {
         "properties": [
-            {"name": "release_id", "value": f"{expected_release_id}"},
+            {"name": "release_id", "value": f"{expected_release_id.id}"},
         ]
     }
-    result = SbomRegenerator.extract_release_id(sbom)
+    result = SbomRegenerator.extract_release_id(sbom_dict)
     assert expected_release_id.id == result.id
 
 
+def sbom_from_dict(sbom_dict: dict[str, Any]) -> SbomSummary:
+    """ convenience function to unmarshal SBOMSummary from dict """
+    return json.loads(json.dumps(sbom_dict))
+
+
 def test_extract_release_id_missing() -> None:
-    sbom = {
+    """ verify extract_release_id handles missing ReleaseId """
+    sbom_dict = {
         "annotations": [
             {"comment": "etc"},
         ],
@@ -310,20 +337,28 @@ def test_extract_release_id_missing() -> None:
             {"name": "foo", "value": "bar"},
         ],
     }
-
-    result = SbomRegenerator.extract_release_id(sbom)
-    assert result is None
+    try:
+        SbomRegenerator.extract_release_id(sbom_dict)
+        # shouldn't get here, so fail
+        raise AssertionError()
+    except ValueError:
+        # expected
+        assert True
 
 
 async def async_test_wrapper(the_coro):
+    """ convenience test wrapper for coroutine """
     return await the_coro
 
 
-def test_download_and_extract_release_id_success() -> None:
+def test_download_and_extract_release_id_success(
+        mock_env_vars: None
+) -> None:
+    """ verify download_and_extract_release_id """
     sbom = get_mock_sbom(id="12345", name="test-sbom")
-    expected_release_id = get_mock_release_id("123")
+    expected_release_id = ReleaseId.new()
     mocked_client = AsyncMock()
-    mocked_args = MagicMock()
+    mocked_args = mock_regenerate_args()
     mocked_args.output_path = MagicMock()
     mocked_args.output_path.__truediv__.return_value = "/mock/path/test-sbom.json"
 
@@ -345,25 +380,33 @@ def test_download_and_extract_release_id_success() -> None:
     assert release_id == expected_release_id
 
 
-def test_download_and_extract_release_id_file_not_found() -> None:
+def test_download_and_extract_release_id_file_not_found(
+        mock_env_vars: None
+) -> None:
+    """ verify download_and_extract_release_id handles filenotfound error """
     sbom = get_mock_sbom(id="12345", name="test-sbom")
     mocked_client = AsyncMock()
-    mocked_args = MagicMock()
+    mocked_args = mock_regenerate_args()
     mocked_args.output_path = MagicMock()
     mocked_args.output_path.__truediv__.return_value = "/mock/path/test-sbom.json"
 
     regenerator = SbomRegenerator(args=mocked_args)
     regenerator.tpa_client = mocked_client
 
-    with patch("builtins.open", side_effect=FileNotFoundError):
-        release_id = asyncio.run(
-            async_test_wrapper(regenerator.download_and_extract_release_id(sbom))
-        )
+    try:
+        with patch("builtins.open", side_effect=FileNotFoundError):
+            asyncio.run(
+                async_test_wrapper(regenerator.download_and_extract_release_id(sbom))
+            )
+        # shouldn't get here, so fail
+        raise AssertionError()
+    except ValueError:
+        # expected
+        pass
 
     mocked_client.download_sbom.assert_awaited_once_with(
         "12345", "/mock/path/test-sbom.json"
     )
-    assert release_id is None
 
 
 @pytest.fixture
