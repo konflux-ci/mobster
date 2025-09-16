@@ -1,6 +1,8 @@
 """A command execution module for regenerating SBOM documents."""
 
+import aiofiles
 import argparse
+import asyncio
 import json
 import logging
 import os
@@ -83,6 +85,7 @@ class SbomRegenerator:
         """
         regenerate the set of sboms indicated by the cli args
         """
+        LOGGER.debug(f"--concurrency: {self.args.concurrency}")
         LOGGER.debug(f"--fail-fast: {self.args.fail_fast}")
         LOGGER.debug(f"--dry-run: {self.args.dry_run}")
         LOGGER.info(f"Searching for matching {self.sbom_type.value} SBOMs..")
@@ -92,55 +95,63 @@ class SbomRegenerator:
             query=self.construct_query(), sort="ingested"
         )
 
-        LOGGER.info(f"Regenerating {self.sbom_type.value} SBOMs..")
+        semaphore = asyncio.Semaphore(self.args.concurrency)
 
+        LOGGER.info(f"Regenerating {self.sbom_type.value} SBOMs..")
+        regen_tasks = []
         async for sbom in sboms:
             LOGGER.debug(
                 f"Regenerating {self.sbom_type.value} SBOM: {sbom.id} ({sbom.name})"
             )
             try:
-                await self.regenerate_sbom(sbom)
+                regen_tasks.append(self.regenerate_sbom(sbom, semaphore))
             except SBOMError as e:
                 LOGGER.error(e)
                 if self.args.fail_fast:
                     sys.exit(1)
 
+        await asyncio.gather(*regen_tasks)
+
         LOGGER.info(f"Finished {self.sbom_type.value} SBOM regeneration.")
 
-    async def regenerate_sbom(self, sbom: SbomSummary) -> None:
+    async def regenerate_sbom(
+            self, sbom: SbomSummary,
+            semaphore: asyncio.Semaphore
+    ) -> None:
         """
         regenerate the given sbom (re-create it, upload it, then delete old version)
         """
-        release_id = await self.get_release_id(sbom)
-        if not release_id:
-            return
-        # gather related data from s3 bucket
-        path_snapshot, path_release_data = await self.gather_s3_input_data(release_id)
-        if not path_snapshot or not path_release_data:
-            raise SBOMError(
-                f"No S3 bucket snapshot/release_data found for SBOM: {sbom.id}"
-            )
-        LOGGER.info(f"proceeding to regenerate SBOM: {sbom.id}  ({sbom.name})")
-        if self.args.dry_run:
-            LOGGER.info(f"*Dry Run: 'generate' SBOM: {sbom.id} ({sbom.name})")
-        else:
-            await self.process_sboms(release_id, path_release_data, path_snapshot)
-
-        if self.args.dry_run:
-            LOGGER.info(f"*Dry Run: 'delete' original SBOM: {sbom.id} ({sbom.name})")
-        else:
-            # delete
-            response_delete = await self.delete_sbom(sbom.id)
-            # check delete status
-            if response_delete.status_code != 200:
-                # delete failed, log and abort regeneration for this SBOM
+        async with semaphore:
+            release_id = await self.get_release_id(sbom)
+            if not release_id:
+                return
+            # gather related data from s3 bucket
+            path_snapshot, path_release_data = await self.gather_s3_input_data(release_id)
+            if not path_snapshot or not path_release_data:
                 raise SBOMError(
-                    f"delete SBOM failed for SBOM: {sbom.id}, "
-                    f"status: {response_delete.status_code}, "
-                    f"message: {response_delete.text}"
+                    f"No S3 bucket snapshot/release_data found for SBOM: {sbom.id}"
                 )
-            LOGGER.info(f"Success: deleted original SBOM: {sbom.id} ({sbom.name})")
-            return
+            LOGGER.info(f"proceeding to regenerate SBOM: {sbom.id}  ({sbom.name})")
+            if self.args.dry_run:
+                LOGGER.info(f"*Dry Run: 'generate' SBOM: {sbom.id} ({sbom.name})")
+            else:
+                await self.process_sboms(release_id, path_release_data, path_snapshot)
+
+            if self.args.dry_run:
+                LOGGER.info(f"*Dry Run: 'delete' original SBOM: {sbom.id} ({sbom.name})")
+            else:
+                # delete
+                response_delete = await self.delete_sbom(sbom.id)
+                # check delete status
+                if response_delete.status_code != 200:
+                    # delete failed, log and abort regeneration for this SBOM
+                    raise SBOMError(
+                        f"delete SBOM failed for SBOM: {sbom.id}, "
+                        f"status: {response_delete.status_code}, "
+                        f"message: {response_delete.text}"
+                    )
+                LOGGER.info(f"Success: deleted original SBOM: {sbom.id} ({sbom.name})")
+                return
 
     async def get_release_id(self, sbom: SbomSummary) -> ReleaseId:
         """
@@ -155,7 +166,7 @@ class SbomRegenerator:
                 # download the complete SBOM and extract the release_id
                 release_id = await self.download_and_extract_release_id(sbom)
             except ValueError as e:
-                LOGGER.error("No ReleaseId found in SBOM")
+                LOGGER.error(f"No ReleaseId found in SBOM {sbom.id}")
                 raise SBOMError() from e
         return release_id
 
@@ -170,7 +181,7 @@ class SbomRegenerator:
             for prop in sbom_dict["properties"]:
                 if prop["name"] == "release_id":
                     return ReleaseId(prop["value"])
-        raise ValueError("No ReleaseId found in SBOM.")
+        raise ValueError(f"No ReleaseId found in SBOM: {sbom_dict.get("id")}")
 
     async def download_and_extract_release_id(
         self, sbom: SbomSummary
@@ -182,16 +193,24 @@ class SbomRegenerator:
         name = utils.normalize_file_name(sbom.name)
         local_path = self.args.output_path / f"{name}.json"
         await self.get_tpa_client().download_sbom(sbom.id, local_path)
-        try:
-            with open(local_path, encoding="utf-8") as f:
-                sbom_dict = json.load(f)
-        except FileNotFoundError as e:
-            LOGGER.error(f"'{local_path}' not found.")
-            raise ValueError() from e
-        except json.JSONDecodeError as e:
-            LOGGER.error("Error: Invalid JSON in '{local_path_original}'.")
-            raise ValueError() from e
-        return self.extract_release_id(sbom_dict)
+        # allow retry, since larger volume of downloads occasionally
+        # results in slightly delayed availability
+        max_retries = 3
+        for retry in range(1, max_retries):
+            try:
+                async with aiofiles.open(local_path, encoding="utf-8") as f:
+                    json_str_contents = await f.read()
+                    sbom_dict = json.loads(json_str_contents)
+                    return self.extract_release_id(sbom_dict)
+            except FileNotFoundError as e:
+                LOGGER.warning(f"'{local_path}' not found.")
+            except json.JSONDecodeError as e:
+                LOGGER.warning(f"Invalid JSON in '{local_path}'.")
+            if retry < max_retries:
+                # briefly wait, then try again
+                await asyncio.sleep(0.5)
+                continue
+            raise ValueError(f"Unable to extract ReleaseId from {local_path}")
 
     def construct_query(self) -> str:
         """
