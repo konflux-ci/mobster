@@ -1,6 +1,7 @@
 import datetime
 import json
 from argparse import ArgumentError
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -327,39 +328,55 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
 
 
 @pytest.mark.asyncio
-@patch("mobster.cmd.generate.oci_image.create_contextual_sbom")
-@patch("mobster.cmd.generate.oci_image.calculate_component_only_content")
 @patch("mobster.cmd.generate.oci_image.download_parent_image_sbom")
-async def test_GenerateOciImageCommand__execute_contextual_workflow(
+async def test_GenerateOciImageCommand__execute_contextual_workflow_parent_is_ctx(
     mock_download_parent: AsyncMock,
-    mock_calculate_component_only_content: AsyncMock,
-    mock_create_contextual_sbom: AsyncMock,
-    spdx_parent_sbom_with_grandparent_json: dict[str, Any],
+    spdx_parent_sbom_contextualized_json: dict[str, Any],
     spdx_component_sbom: Document,
 ) -> None:
     """
-    This test mostly just hits code statements to make coverage happy,
-    this needs to be rewritten after contextual SBOM is implemented!
+    Testcases will be expanded when matching mechanism will be implemented in ISV-
+    Currently is matching mechanism dummy and matches only SPDX ID-s
+    (what will not be a case in full implementation)
     """
-
-    mock_create_contextual_sbom.side_effect = lambda *args: args
-    mock_calculate_component_only_content.side_effect = lambda *args: args[1]
-    mock_download_parent.return_value = spdx_parent_sbom_with_grandparent_json
+    mock_download_parent.return_value = spdx_parent_sbom_contextualized_json
 
     command = GenerateOciImageCommand(MagicMock())
-    parent_sbom, component_only = await command._execute_contextual_workflow(  # type: ignore[misc]
-        spdx_component_sbom,
+    contextual_sbom = await command._execute_contextual_workflow(
+        deepcopy(spdx_component_sbom),
         Image("registry.access.redhat.com/ubi8/ubi", "sha256:sha"),
         "amd64",
     )
     with open(
-        "tests/sbom/test_oci_generate_data/contextual/output/expected_out_parent.spdx.json",
+        "tests/sbom/test_oci_generate_data/contextual/output/expected_out_component_parent_contextualized.spdx.json",
     ) as in_file:
-        assert await command.dump_sbom_to_dict(parent_sbom) == json.load(in_file)
+        assert await command.dump_sbom_to_dict(contextual_sbom) == json.load(in_file)  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.generate.oci_image.download_parent_image_sbom")
+async def test_GenerateOciImageCommand__execute_contextual_workflow_parent_not_ctx(
+    mock_download_parent: AsyncMock,
+    spdx_parent_sbom_not_contextualized_json: dict[str, Any],
+    spdx_component_sbom: Document,
+) -> None:
+    """
+    Testcases will be expanded when matching mechanism will be implemented in ISV-
+    Currently is matching mechanism dummy and matches only SPDX ID-s
+    (what will not be a case in full implementation)
+    """
+    mock_download_parent.return_value = spdx_parent_sbom_not_contextualized_json
+
+    command = GenerateOciImageCommand(MagicMock())
+    contextual_sbom = await command._execute_contextual_workflow(
+        deepcopy(spdx_component_sbom),
+        Image("registry.access.redhat.com/ubi8/ubi", "sha256:sha"),
+        "amd64",
+    )
     with open(
-        "tests/sbom/test_oci_generate_data/contextual/output/expected_out_component.spdx.json",
+        "tests/sbom/test_oci_generate_data/contextual/output/expected_out_component_parent_not_contextualized.spdx.json",
     ) as in_file:
-        assert await command.dump_sbom_to_dict(component_only) == json.load(in_file)
+        assert await command.dump_sbom_to_dict(contextual_sbom) == json.load(in_file)  # type: ignore[arg-type]
 
 
 @pytest.mark.asyncio
