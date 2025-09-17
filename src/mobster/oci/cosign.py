@@ -8,6 +8,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import tempfile
 import typing
 from base64 import b64decode
@@ -280,6 +281,9 @@ class CosignClient(Cosign):
         async with self._heavy_op_semaphore:
             with make_oci_auth_file(push_reference) as authfile:
                 cosign_env = {"DOCKER_CONFIG": str(authfile.parent)}
+                for env_var_name in ('AWS_DEFAULT_REGION', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'):
+                    if env_var_value := os.environ.get(f"COSIGN_{env_var_name}"):
+                        cosign_env[env_var_name] = str(env_var_value)
                 if not self.rekor_config:
                     logger.debug("[Cosign] TLog won't be used for sbom attestation.")
                     cosign_command.insert(-1, "--tlog-upload=false")
