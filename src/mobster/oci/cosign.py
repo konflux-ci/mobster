@@ -7,6 +7,7 @@ client implementing the Cosign protocol.
 import hashlib
 import json
 import logging
+import os
 import tempfile
 import typing
 from base64 import b64decode
@@ -277,6 +278,17 @@ class CosignClient(Cosign):
                 cosign_env["SIGSTORE_REKOR_PUBLIC_KEY"] = str(
                     self.rekor_config.rekor_key
                 )
+            for env_var_name in (
+                "COSIGN_AWS_DEFAULT_REGION",
+                "COSIGN_AWS_ACCESS_KEY_ID",
+                "COSIGN_AWS_SECRET_ACCESS_KEY",
+            ):
+                # Optionally pass values for cosign authentication if its signing key
+                # is stored in AWS. It's expected to be in a different AWS instance
+                # than the one used for SBOM storing in case of Atlas failure,
+                # so the variables have the "COSIGN_" prefix to not override them
+                if env_var_value := os.environ.get(env_var_name):
+                    cosign_env[env_var_name.removeprefix("COSIGN_")] = env_var_value
             with tempfile.NamedTemporaryFile() as sign_key_passwd_file:
                 sign_key_passwd_file.write(self.password)
                 code, _, stderr = await run_async_subprocess(
