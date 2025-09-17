@@ -1,11 +1,11 @@
 """A command execution module for regenerating SBOM documents."""
 
-import aiofiles
 import argparse
 import asyncio
 import json
 import logging
 import os
+import re
 import sys
 from argparse import ArgumentParser
 from dataclasses import dataclass
@@ -13,6 +13,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+import aiofiles
 from httpx import Response
 
 from mobster import utils
@@ -78,6 +79,8 @@ class SbomRegenerator:
     ) -> None:
         self.args = args
         self.sbom_type = sbom_type
+        self.regen_semaphore = asyncio.Semaphore(self.args.concurrency)
+        self.s3_semaphore = asyncio.Semaphore(self.args.concurrency)
         self.s3_client = self.setup_s3_client()
         self.tpa_client = self.setup_tpa_client()
 
@@ -95,8 +98,6 @@ class SbomRegenerator:
             query=self.construct_query(), sort="ingested"
         )
 
-        semaphore = asyncio.Semaphore(self.args.concurrency)
-
         LOGGER.info(f"Regenerating {self.sbom_type.value} SBOMs..")
         regen_tasks = []
         async for sbom in sboms:
@@ -104,7 +105,7 @@ class SbomRegenerator:
                 f"Regenerating {self.sbom_type.value} SBOM: {sbom.id} ({sbom.name})"
             )
             try:
-                regen_tasks.append(self.regenerate_sbom(sbom, semaphore))
+                regen_tasks.append(self.regenerate_sbom(sbom))
             except SBOMError as e:
                 LOGGER.error(e)
                 if self.args.fail_fast:
@@ -115,30 +116,36 @@ class SbomRegenerator:
         LOGGER.info(f"Finished {self.sbom_type.value} SBOM regeneration.")
 
     async def regenerate_sbom(
-            self, sbom: SbomSummary,
-            semaphore: asyncio.Semaphore
+            self, sbom: SbomSummary
     ) -> None:
         """
         regenerate the given sbom (re-create it, upload it, then delete old version)
         """
-        async with semaphore:
+        async with self.regen_semaphore:
             release_id = await self.get_release_id(sbom)
             if not release_id:
                 return
             # gather related data from s3 bucket
-            path_snapshot, path_release_data = await self.gather_s3_input_data(release_id)
+            path_snapshot, path_release_data = await self.gather_s3_input_data(
+                release_id
+            )
+
             if not path_snapshot or not path_release_data:
                 raise SBOMError(
                     f"No S3 bucket snapshot/release_data found for SBOM: {sbom.id}"
                 )
-            LOGGER.info(f"proceeding to regenerate SBOM: {sbom.id}  ({sbom.name})")
+            LOGGER.info(
+                f"proceeding to regenerate SBOM: {sbom.id}  ({sbom.name})"
+            )
             if self.args.dry_run:
                 LOGGER.info(f"*Dry Run: 'generate' SBOM: {sbom.id} ({sbom.name})")
             else:
                 await self.process_sboms(release_id, path_release_data, path_snapshot)
 
             if self.args.dry_run:
-                LOGGER.info(f"*Dry Run: 'delete' original SBOM: {sbom.id} ({sbom.name})")
+                LOGGER.info(
+                    f"*Dry Run: 'delete' original SBOM: {sbom.id} ({sbom.name})"
+                )
             else:
                 # delete
                 response_delete = await self.delete_sbom(sbom.id)
@@ -150,7 +157,9 @@ class SbomRegenerator:
                         f"status: {response_delete.status_code}, "
                         f"message: {response_delete.text}"
                     )
-                LOGGER.info(f"Success: deleted original SBOM: {sbom.id} ({sbom.name})")
+                LOGGER.info(
+                    f"Success: deleted original SBOM: {sbom.id} ({sbom.name})"
+                )
                 return
 
     async def get_release_id(self, sbom: SbomSummary) -> ReleaseId:
@@ -202,9 +211,9 @@ class SbomRegenerator:
                     json_str_contents = await f.read()
                     sbom_dict = json.loads(json_str_contents)
                     return self.extract_release_id(sbom_dict)
-            except FileNotFoundError as e:
+            except FileNotFoundError:
                 LOGGER.warning(f"'{local_path}' not found.")
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError:
                 LOGGER.warning(f"Invalid JSON in '{local_path}'.")
             if retry < max_retries:
                 # briefly wait, then try again
@@ -234,13 +243,34 @@ class SbomRegenerator:
 
     def setup_s3_client(self) -> S3Client:
         """ setup a S3Client """
+        bucket, endpoint_url = self.parse_s3_bucket_url(self.args.s3_bucket_url)
         s3_client = S3Client(
-            bucket=self.args.s3_bucket_url,
+            bucket=bucket,
             access_key=os.environ["MOBSTER_S3_ACCESS_KEY"],
             secret_key=os.environ["MOBSTER_S3_SECRET_KEY"],
             concurrency_limit=self.args.concurrency,
+            endpoint_url=endpoint_url
         )
         return s3_client
+
+    @staticmethod
+    def parse_s3_bucket_url(s3_bucket_url: str):
+        """
+        parse the s3-bucket-url arg into bucket name and endpoint
+
+        (test mocks may provide malformed URLs; no problem to allow these,
+          since any legitimately malformed URLs from the CLI will simply result
+          in an exit with error, on initial S3 request attempt)
+        """
+        match_bucket_name = re.search('//(.+?).s3', s3_bucket_url)
+        endpoint_url = s3_bucket_url
+        bucket_name = ""
+        if match_bucket_name:
+            bucket_name = match_bucket_name.group(1)
+            endpoint_url = s3_bucket_url.replace(
+                f"{bucket_name}.", ""
+            )
+        return bucket_name, endpoint_url
 
     def setup_tpa_client(self) -> TPAClient:
         """ setup a TPAClient """
@@ -257,8 +287,44 @@ class SbomRegenerator:
             / S3Client.release_data_prefix
             / f"{rid}.release_data.json"
         )
-        await self.get_s3_client().get_snapshot(path_snapshot, rid)
-        await self.get_s3_client().get_release_data(path_release_data, rid)
+        async with self.s3_semaphore:
+            if not await self.get_s3_client().get_snapshot(
+                    path_snapshot,
+                    rid
+            ):
+                raise ValueError(
+                    f"No snapshot found for ReleaseId: {str(rid)}"
+                )
+            if not await self.get_s3_client().get_release_data(
+                    path_release_data,
+                    rid
+            ):
+                raise ValueError(
+                    f"No release data found for ReleaseId: {str(rid)}"
+                )
+        LOGGER.info(f"input data gathered from S3 bucket, for release_id: {rid}")
+        return path_snapshot, path_release_data
+
+    async def boto3_gather_s3_input_data(self, rid: ReleaseId) -> tuple[Path, Path]:
+        """ fetch snapshot and release data from S3 for the given ReleaseId """
+        LOGGER.debug(f"gathering input data for release_id: '{rid}'")
+        path_snapshot = (
+            self.args.output_path / S3Client.snapshot_prefix / f"{rid}.snapshot.json"
+        )
+        path_release_data = (
+            self.args.output_path
+            / S3Client.release_data_prefix
+            / f"{rid}.release_data.json"
+        )
+        # async with self.s3_semaphore:
+        self.boto3_client.download_file(
+            "mpp-e1-preprod-sbom-29093454-2ea7-4fd0-b4cf-dc69a7529ee0",
+            f"release-data/{rid}",
+            f"{path_release_data}")
+        self.boto3_client.download_file(
+            "mpp-e1-preprod-sbom-29093454-2ea7-4fd0-b4cf-dc69a7529ee0",
+            f"snapshots/{rid}",
+            f"{path_snapshot}")
         LOGGER.info(f"input data gathered from S3 bucket, for release_id: {rid}")
         return path_snapshot, path_release_data
 

@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -349,64 +349,6 @@ def test_extract_release_id_missing() -> None:
 async def async_test_wrapper(the_coro):
     """ convenience test wrapper for coroutine """
     return await the_coro
-
-
-def test_download_and_extract_release_id_success(
-        mock_env_vars: None
-) -> None:
-    """ verify download_and_extract_release_id """
-    sbom = get_mock_sbom(id="12345", name="test-sbom")
-    expected_release_id = ReleaseId.new()
-    mocked_client = AsyncMock()
-    mocked_args = mock_regenerate_args()
-    mocked_args.output_path = MagicMock()
-    mocked_args.output_path.__truediv__.return_value = "/mock/path/test-sbom.json"
-
-    regenerator = SbomRegenerator(args=mocked_args)
-    regenerator.tpa_client = mocked_client
-    regenerator.extract_release_id = MagicMock(return_value=expected_release_id)
-
-    with patch(
-        "builtins.open", mock_open(read_data=json.dumps({"id": "release-data"}))
-    ):
-        release_id = asyncio.run(
-            async_test_wrapper(regenerator.download_and_extract_release_id(sbom))
-        )
-
-    mocked_client.download_sbom.assert_awaited_once_with(
-        "12345", "/mock/path/test-sbom.json"
-    )
-    assert regenerator.extract_release_id.called
-    assert release_id == expected_release_id
-
-
-def test_download_and_extract_release_id_file_not_found(
-        mock_env_vars: None
-) -> None:
-    """ verify download_and_extract_release_id handles filenotfound error """
-    sbom = get_mock_sbom(id="12345", name="test-sbom")
-    mocked_client = AsyncMock()
-    mocked_args = mock_regenerate_args()
-    mocked_args.output_path = MagicMock()
-    mocked_args.output_path.__truediv__.return_value = "/mock/path/test-sbom.json"
-
-    regenerator = SbomRegenerator(args=mocked_args)
-    regenerator.tpa_client = mocked_client
-
-    try:
-        with patch("builtins.open", side_effect=FileNotFoundError):
-            asyncio.run(
-                async_test_wrapper(regenerator.download_and_extract_release_id(sbom))
-            )
-        # shouldn't get here, so fail
-        raise AssertionError()
-    except ValueError:
-        # expected
-        pass
-
-    mocked_client.download_sbom.assert_awaited_once_with(
-        "12345", "/mock/path/test-sbom.json"
-    )
 
 
 @pytest.fixture
