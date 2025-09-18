@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -244,7 +244,7 @@ def test_parse_args(
         tmp_path: Path,
         dummy_args: list[str],
         monkeypatch: pytest.MonkeyPatch,
-):
+) -> None:
     """Test the parse_args function for proper argument parsing."""
     monkeypatch.setattr("sys.argv", ["program_name"] + dummy_args)
     args = regen_base.parse_args()

@@ -190,7 +190,7 @@ class SbomRegenerator:
             for prop in sbom_dict["properties"]:
                 if prop["name"] == "release_id":
                     return ReleaseId(prop["value"])
-        raise ValueError(f"No ReleaseId found in SBOM: {sbom_dict.get("id")}")
+        raise ValueError(f"No ReleaseId found in SBOM: {sbom_dict.get('id')}")
 
     async def download_and_extract_release_id(
         self, sbom: SbomSummary
@@ -219,7 +219,7 @@ class SbomRegenerator:
                 # briefly wait, then try again
                 await asyncio.sleep(0.5)
                 continue
-            raise ValueError(f"Unable to extract ReleaseId from {local_path}")
+        raise ValueError(f"Unable to extract ReleaseId from {local_path}")
 
     def construct_query(self) -> str:
         """
@@ -254,7 +254,7 @@ class SbomRegenerator:
         return s3_client
 
     @staticmethod
-    def parse_s3_bucket_url(s3_bucket_url: str):
+    def parse_s3_bucket_url(s3_bucket_url: str) -> tuple[str, str]:
         """
         parse the s3-bucket-url arg into bucket name and endpoint
 
@@ -302,29 +302,6 @@ class SbomRegenerator:
                 raise ValueError(
                     f"No release data found for ReleaseId: {str(rid)}"
                 )
-        LOGGER.info(f"input data gathered from S3 bucket, for release_id: {rid}")
-        return path_snapshot, path_release_data
-
-    async def boto3_gather_s3_input_data(self, rid: ReleaseId) -> tuple[Path, Path]:
-        """ fetch snapshot and release data from S3 for the given ReleaseId """
-        LOGGER.debug(f"gathering input data for release_id: '{rid}'")
-        path_snapshot = (
-            self.args.output_path / S3Client.snapshot_prefix / f"{rid}.snapshot.json"
-        )
-        path_release_data = (
-            self.args.output_path
-            / S3Client.release_data_prefix
-            / f"{rid}.release_data.json"
-        )
-        # async with self.s3_semaphore:
-        self.boto3_client.download_file(
-            "mpp-e1-preprod-sbom-29093454-2ea7-4fd0-b4cf-dc69a7529ee0",
-            f"release-data/{rid}",
-            f"{path_release_data}")
-        self.boto3_client.download_file(
-            "mpp-e1-preprod-sbom-29093454-2ea7-4fd0-b4cf-dc69a7529ee0",
-            f"snapshots/{rid}",
-            f"{path_snapshot}")
         LOGGER.info(f"input data gathered from S3 bucket, for release_id: {rid}")
         return path_snapshot, path_release_data
 
