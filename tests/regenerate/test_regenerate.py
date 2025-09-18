@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 
 import httpx
 import pytest
@@ -344,6 +344,88 @@ def test_extract_release_id_missing() -> None:
     except ValueError:
         # expected
         assert True
+
+
+def test_download_and_extract_release_id_success(
+        mock_env_vars: None
+) -> None:
+    summary = get_mock_sbom(id="sbom_id_1", name="test_sbom")
+    expected_release_id = ReleaseId.new()
+
+    args = mock_regenerate_args()
+    regenerator = SbomRegenerator(args)
+    regenerator.get_tpa_client = MagicMock(
+        return_value=MagicMock(download_sbom=AsyncMock())
+    )
+    regenerator.extract_release_id = MagicMock(return_value=expected_release_id)
+
+    sbom_path = Path("/mock/path/test_sbom.json")
+    regenerator.args.output_path = sbom_path.parent
+
+    with patch("aiofiles.open", new_callable=MagicMock) as mocked_open:
+        mocked_open.return_value.__aenter__.return_value.read = AsyncMock(
+            return_value=json.dumps({"mock_key": "mock_value"})
+        )
+        asyncio.run(regenerator.download_and_extract_release_id(summary))
+
+    regenerator.get_tpa_client().download_sbom.assert_awaited_once_with(
+        summary.id, sbom_path
+    )
+    mocked_open.return_value.__aenter__.return_value.read.assert_awaited_once()
+    regenerator.extract_release_id.assert_called_once_with(
+        {"mock_key": "mock_value"}
+    )
+
+
+def test_download_and_extract_release_id_file_not_found_error(
+        mock_env_vars: None
+) -> None:
+    summary = get_mock_sbom(id="sbom_id_2", name="test_sbom_error")
+    args = mock_regenerate_args()
+    regenerator = SbomRegenerator(args)
+    regenerator.get_tpa_client = MagicMock(
+        return_value=MagicMock(download_sbom=AsyncMock())
+    )
+    regenerator.args.output_path = Path("/mock/path")
+
+    with patch("aiofiles.open", side_effect=FileNotFoundError), patch(
+            "asyncio.sleep", new_callable=AsyncMock
+    ) as mocked_sleep:
+        try:
+            asyncio.run(regenerator.download_and_extract_release_id(summary))
+        except ValueError as e:
+            assert "Unable to extract ReleaseId" in str(e)
+
+    regenerator.get_tpa_client().download_sbom.assert_awaited()
+    mocked_sleep.assert_awaited()
+
+
+def test_download_and_extract_release_id_invalid_json_error(
+        mock_env_vars: None
+) -> None:
+    summary = get_mock_sbom(id="sbom_id_3", name="test_sbom_invalid_json")
+    args = mock_regenerate_args()
+    regenerator = SbomRegenerator(args)
+    regenerator.get_tpa_client = MagicMock(
+        return_value=MagicMock(download_sbom=AsyncMock())
+    )
+    regenerator.args.output_path = Path("/mock/path")
+
+    with patch("aiofiles.open", new_callable=MagicMock) as mocked_open, patch(
+            "asyncio.sleep", new_callable=AsyncMock
+    ) as mocked_sleep:
+        mocked_open.return_value.__aenter__.return_value.read = AsyncMock(
+            side_effect=json.JSONDecodeError("Expecting value", "mock_doc", 0)
+        )
+
+        try:
+            asyncio.run(regenerator.download_and_extract_release_id(summary))
+        except ValueError as e:
+            assert "Unable to extract ReleaseId" in str(e)
+
+    regenerator.get_tpa_client().download_sbom.assert_awaited()
+    mocked_open.return_value.__aenter__.return_value.read.assert_awaited()
+    mocked_sleep.assert_awaited()
 
 
 async def async_test_wrapper(the_coro):
