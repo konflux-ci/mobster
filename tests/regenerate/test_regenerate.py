@@ -219,7 +219,7 @@ def test_gather_s3_input_data(
 def dummy_args(tmp_path: Path) -> list[str]:
     """Fixture to simulate command line arguments."""
     return [
-        "--output-path",
+        "--output-dir",
         str(tmp_path / "output"),
         "--tpa-base-url",
         "https://tpa.url",
@@ -232,11 +232,8 @@ def dummy_args(tmp_path: Path) -> list[str]:
         "--tpa-retries",
         "300",
         "--dry-run",
-        "True",
         "--non-fail-fast",
-        "True",
         "--verbose",
-        "True",
     ]
 
 

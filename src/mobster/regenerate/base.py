@@ -2,11 +2,14 @@
 
 import argparse
 import asyncio
+import atexit
 import json
 import logging
 import os
 import re
+import shutil
 import sys
+import tempfile
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from enum import Enum
@@ -88,14 +91,12 @@ class SbomRegenerator:
         """
         regenerate the set of sboms indicated by the cli args
         """
-        LOGGER.debug(f"--concurrency: {self.args.concurrency}")
-        LOGGER.debug(f"--fail-fast: {self.args.fail_fast}")
-        LOGGER.debug(f"--dry-run: {self.args.dry_run}")
         LOGGER.info(f"Searching for matching {self.sbom_type.value} SBOMs..")
-
         # query for relevant sboms, based on the CLI-provided mobster versions
         sboms = self.get_tpa_client().list_sboms(
-            query=self.construct_query(), sort="ingested"
+            query=self.construct_query(),
+            sort="ingested",
+            page_size=250,
         )
 
         LOGGER.info(f"Regenerating {self.sbom_type.value} SBOMs..")
@@ -361,12 +362,16 @@ def parse_args() -> RegenerateArgs:
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
-    prepare_output_paths(args.output_path)
+    path_output_dir = prepare_output_paths(args.output_dir)
 
     LOGGER.debug(args)
 
+    LOGGER.debug(f"--fail-fast: {not args.non_fail_fast}")
+    LOGGER.debug(f"--dry-run: {args.dry_run}")
+    LOGGER.debug(f"--verbose: {args.verbose}")
+
     return RegenerateArgs(
-        output_path=args.output_path,
+        output_path=path_output_dir,
         tpa_base_url=args.tpa_base_url,
         s3_bucket_url=args.s3_bucket_url,
         mobster_versions=args.mobster_versions,
@@ -378,11 +383,19 @@ def parse_args() -> RegenerateArgs:
     )  # pylint:disable=duplicate-code
 
 
-def prepare_output_paths(output_path: Path) -> None:
+def prepare_output_paths(output_dir: str) -> Path:
     """ ensure cli-specified output paths exist for use by the regenerator """
+    if not output_dir:
+        # create it as a temporary directory
+        output_dir = tempfile.mkdtemp()
+        # remove it on exit
+        atexit.register(lambda: shutil.rmtree(output_dir))
+    output_path = Path(output_dir)
+    LOGGER.debug(f"output path: {output_path}")
     # prepare output_path subdirs
     (output_path / S3Client.release_data_prefix).mkdir(parents=True, exist_ok=True)
     (output_path / S3Client.snapshot_prefix).mkdir(parents=True, exist_ok=True)
+    return output_path
 
 
 def add_args(parser: ArgumentParser) -> None:
@@ -393,11 +406,12 @@ def add_args(parser: ArgumentParser) -> None:
         parser: argument parser to add commands to
     """
     parser.add_argument(
-        "--output-path",
-        type=Path,
-        required=True,
+        "--output-dir",
+        type=str,
+        required=False,
         help="Path to the output directory. "
-        "If it doesn't exist, it will be automatically created.",
+             "If it doesn't exist, it will be automatically created. "
+             "If not specified, a TemporaryDirectory will be created.",
     )
 
     parser.add_argument(
@@ -419,7 +433,7 @@ def add_args(parser: ArgumentParser) -> None:
         type=str,
         required=True,
         help="Comma separated list of mobster versions to query for, "
-        "e.g.:  0.2.1,0.5.0",
+             "e.g.:  0.2.1,0.5.0",
     )
 
     parser.add_argument(
@@ -436,23 +450,23 @@ def add_args(parser: ArgumentParser) -> None:
         help="total number of attempts for TPA requests",
     )
 
+    # bool
     parser.add_argument(
         "--dry-run",
-        type=bool,
-        default=False,
+        action='store_true',
         help="Run in 'dry run' only mode (skips destructive TPA IO)",
     )
 
+    # bool
     parser.add_argument(
         "--non-fail-fast",
-        type=bool,
-        default=False,
+        action='store_true',
         help="don't fail and exit on first regen error",
     )
 
+    # bool
     parser.add_argument(
         "--verbose",
-        type=bool,
-        default=False,
+        action='store_true',
         help="Run in verbose mode (additional logs/trace)",
     )
