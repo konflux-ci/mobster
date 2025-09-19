@@ -146,3 +146,10 @@ async def test_image_from_repo_digest_unsupported_manifest() -> None:
             await Image.from_repository_digest_manifest(
                 "quay.io/repo", "sha256:deadbeef"
             )
+
+
+@pytest.mark.parametrize(
+    ["image", "expected_registry"], [(Image("quay.io/foo/bar", ""), "quay.io")]
+)
+def test_image_registry(image: Image, expected_registry: str) -> None:
+    assert image.registry == expected_registry

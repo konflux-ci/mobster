@@ -7,6 +7,8 @@ from typing import Any, Literal
 import httpx
 
 from mobster.image import Image, IndexImage
+from mobster.oci.artifact import Provenance02
+from mobster.oci.cosign import CosignClient
 from mobster.utils import run_async_subprocess
 
 
@@ -195,7 +197,11 @@ class ReferrersTagOCIClient:
         return stdout.decode().strip()
 
     async def attach_sbom(
-        self, image: Image, format: Literal["spdx", "cyclonedx"], sbom: bytes
+        self,
+        image: Image,
+        format: Literal["spdx", "cyclonedx"],
+        sbom: bytes,
+        cosign_client: CosignClient | None = None,
     ) -> None:
         """
         Attach an SBOM to an image as a referrer.
@@ -204,6 +210,8 @@ class ReferrersTagOCIClient:
             image: The image to attach the SBOM to.
             format: The SBOM format (spdx or cyclonedx).
             sbom: The SBOM content as bytes.
+            cosign_client: If provided, this function also adds a signed
+                provenance
         """
         derived_tag = image.digest.replace(":", "-") + ".sbom"
 
@@ -226,6 +234,32 @@ class ReferrersTagOCIClient:
         # with spec
         config_digest = await self._push_blob(image.name, b"")
         await self._push_manifest(image.name, derived_tag, config_digest, layers)
+        if cosign_client:
+            provenance = Provenance02(
+                {
+                    "builder": {"id": "https://konflux.dev"},
+                    "buildType": "https://mobyproject.org/buildkit@v1",
+                    "buildConfig": {
+                        "tasks": [
+                            {
+                                "finishedOn": "1970-01-01T00:00:00Z",
+                                "results": [
+                                    {
+                                        "name": "SBOM_BLOB_URL",
+                                        "value": image.repository
+                                        + ":"
+                                        + derived_tag
+                                        + "@"
+                                        + sbom_blob_digest,
+                                    },
+                                    {"name": "IMAGE_DIGEST", "value": image.digest},
+                                ],
+                            }
+                        ]
+                    },
+                }
+            )
+            await cosign_client.attest_provenance(provenance, image.reference)
 
     async def _push_blob(self, name: str, blob: bytes) -> str:
         """
