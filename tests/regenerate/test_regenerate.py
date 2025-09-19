@@ -436,8 +436,8 @@ def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN_URL", "https://test.token.url")
     monkeypatch.setenv("MOBSTER_TPA_SSO_ACCOUNT", "test-account")
     monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN", "test-token")
-    monkeypatch.setenv("MOBSTER_S3_ACCESS_KEY", "test-access-key")
-    monkeypatch.setenv("MOBSTER_S3_SECRET_KEY", "test-secret-key")
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test-access-key")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test-secret-key")
 
 
 @pytest.fixture

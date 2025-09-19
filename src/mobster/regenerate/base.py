@@ -247,8 +247,8 @@ class SbomRegenerator:
         bucket, endpoint_url = self.parse_s3_bucket_url(self.args.s3_bucket_url)
         s3_client = S3Client(
             bucket=bucket,
-            access_key=os.environ["MOBSTER_S3_ACCESS_KEY"],
-            secret_key=os.environ["MOBSTER_S3_SECRET_KEY"],
+            access_key=os.environ["AWS_ACCESS_KEY_ID"],
+            secret_key=os.environ["AWS_SECRET_ACCESS_KEY"],
             concurrency_limit=self.args.concurrency,
             endpoint_url=endpoint_url
         )
