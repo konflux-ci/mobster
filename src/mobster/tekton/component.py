@@ -5,12 +5,14 @@ Script used for processing component SBOMs in Tekton task.
 import argparse as ap
 import asyncio
 import logging
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from mobster.cmd.augment import AugmentConfig, SBOMRefDetail, augment_sboms
+from mobster.error import SBOMError
 from mobster.log import setup_logging
-from mobster.release import ReleaseId
+from mobster.oci.cosign import Cosign, CosignClient, RekorConfig
+from mobster.release import ReleaseId, make_snapshot
 from mobster.tekton.artifact import (
     get_component_artifact,
 )
@@ -26,16 +28,27 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
+class CosignConfig:
+    """Configuration of Cosign keys."""
+
+    sign_key: str
+    verify_key: Path
+    sign_password: bytes = b""
+
+
+@dataclass
 class ProcessComponentArgs(CommonArgs):
     """
     Arguments for component SBOM processing.
 
     Attributes:
         augment_concurrency: maximum number of concurrent SBOM augmentation operations
-        upload_concurrency: maximum number of concurrent SBOM upload operations
+        cosign_config: Config for cosign
     """
 
     augment_concurrency: int
+    cosign_config: CosignConfig
+    rekor_config: RekorConfig | None = None
 
 
 def parse_args() -> ProcessComponentArgs:
@@ -49,7 +62,45 @@ def parse_args() -> ProcessComponentArgs:
     add_common_args(parser)
     parser.add_argument("--augment-concurrency", type=int, default=8)
     parser.add_argument("--upload-concurrency", type=int, default=8)
+    parser.add_argument(
+        "--rekor-key",
+        type=Path,
+        help="The public key file of the rekor server used for SBOM "
+        "attestation within a registry",
+        default=None,
+    )
+    parser.add_argument(
+        "--rekor-url", type=str, help="The URL of the Rekor server", default=None
+    )
+    parser.add_argument(
+        "--sign-key",
+        type=str,
+        help="The signing (private) key file or k8s secret to use when signing "
+        "OCI attestation with SBOMs. The command just attaches "
+        "an SBOM if this argument is unfilled.",
+        required=True,
+    )
+    parser.add_argument(
+        "--verify-key",
+        type=Path,
+        help="The cosign verification key for attest downloading and verification.",
+        required=True,
+    )
+    parser.add_argument(
+        "--sign-password",
+        type=str,
+        default="",
+        help="The password protecting the signing key.",
+    )
     args = parser.parse_args()
+    cosign_config = CosignConfig(
+        sign_key=args.sign_key,
+        verify_key=args.verify_key,
+        sign_password=args.sign_password.encode("utf-8"),
+    )
+    rekor_config = None
+    if (rekor_key := args.rekor_key) and (rekor_url := args.rekor_url):
+        rekor_config = RekorConfig(rekor_key=rekor_key, rekor_url=rekor_url)
 
     # the snapshot_spec is joined with the data_dir as previous tasks provide
     # the path as relative to the dataDir
@@ -64,11 +115,17 @@ def parse_args() -> ProcessComponentArgs:
         upload_concurrency=args.upload_concurrency,
         labels=args.labels,
         tpa_retries=args.tpa_retries,
+        cosign_config=cosign_config,
+        rekor_config=rekor_config,
     )
 
 
-def augment_component_sboms(
-    sbom_path: Path, snapshot_spec: Path, release_id: ReleaseId, concurrency: int
+async def augment_component_sboms(
+    sbom_path: Path,
+    snapshot_spec: Path,
+    release_id: ReleaseId,
+    cosign_client: Cosign,
+    concurrency: int,
 ) -> None:
     """
     Augment component SBOMs using the mobster augment command.
@@ -77,24 +134,32 @@ def augment_component_sboms(
         sbom_path: Path where the SBOM will be saved.
         snapshot_spec: Path to snapshot specification file.
         release_id: Release ID to store in SBOM file.
+        cosign_client: Cosign client
         concurrency: Maximum number of concurrent augmentation operations.
     """
-    cmd = [
-        "mobster",
-        "--verbose",
-        "augment",
-        "--output",
-        str(sbom_path),
-        "oci-image",
-        "--snapshot",
-        str(snapshot_spec),
-        "--release-id",
-        str(release_id),
-        "--concurrency",
-        str(concurrency),
-    ]  # pylint: disable=duplicate-code
-
-    subprocess.run(cmd, check=True)
+    semaphore = asyncio.Semaphore(concurrency)
+    snapshot = await make_snapshot(snapshot_spec, None, semaphore)
+    config = AugmentConfig(
+        cosign=cosign_client,
+        verify=True,
+        semaphore=semaphore,
+        output_dir=sbom_path,
+        release_id=release_id,
+    )
+    result_details = await augment_sboms(config, snapshot)
+    if not all(result_details):
+        raise SBOMError("Could not generate all SBOMs!")
+    push_tasks = [
+        attest_sbom_to_registry(
+            result_detail,  # type: ignore[arg-type]
+            cosign_client,
+            semaphore,
+        )
+        for result_detail in result_details
+    ]
+    push_results = await asyncio.gather(*push_tasks)
+    if not all(push_results):
+        raise SBOMError("Could not attest all SBOMs!")
 
 
 async def process_component_sboms(args: ProcessComponentArgs) -> None:
@@ -110,11 +175,18 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
         LOGGER.info("Uploading snapshot to S3 with release_id=%s", args.release_id)
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
 
+    cosign_client = CosignClient(
+        verification_key=args.cosign_config.verify_key,
+        signing_key=args.cosign_config.sign_key,
+        signing_key_password=args.cosign_config.sign_password,
+        rekor_config=args.rekor_config,
+    )
     LOGGER.info("Starting SBOM augmentation")
-    augment_component_sboms(
+    await augment_component_sboms(
         args.ensured_sbom_dir(),
         args.snapshot_spec,
         args.release_id,
+        cosign_client,
         args.augment_concurrency,
     )
     config = args.to_upload_config()
@@ -125,6 +197,42 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     )
     artifact = get_component_artifact(report)
     artifact.write_result(args.result_dir)
+
+
+async def attest_sbom_to_registry(
+    sbom_ref_detail: SBOMRefDetail,
+    cosign_client: Cosign,
+    semaphore: asyncio.Semaphore,
+) -> bool:
+    """
+    Use cosign client to push the augmented component SBOM to the registry
+    as an attestation of the image.
+    Args:
+        sbom_ref_detail: Info about SBOM file, its release destination and its type
+        cosign_client: The cosign client used for the communication with the registry
+        semaphore: Semaphore for throttling concurrency
+    Returns:
+        True if the push was successful, False otherwise
+    """
+    assert cosign_client.can_sign(), (
+        f"Could not attest image {sbom_ref_detail.reference} "
+        f"because no signing key was provided!"
+    )
+    async with semaphore:
+        try:
+            await cosign_client.attest_sbom(
+                sbom_path=sbom_ref_detail.path,
+                image_ref=sbom_ref_detail.reference,
+                sbom_format=sbom_ref_detail.sbom_format,
+            )
+            LOGGER.debug("Successfully attested image %s.", sbom_ref_detail.reference)
+        except SBOMError:
+            LOGGER.exception("Could not attest SBOM because of a cosign error.")
+            return False
+        except Exception:  # pylint: disable=broad-exception-caught
+            LOGGER.exception("Could not attest SBOM because of an unknown error.")
+            return False
+    return True
 
 
 def main() -> None:
