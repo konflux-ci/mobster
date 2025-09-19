@@ -327,6 +327,7 @@ class SbomRegenerator:
                     result_dir=self.args.output_path,
                     tpa_retries=self.args.tpa_retries,
                     upload_concurrency=self.args.concurrency,
+                    skip_upload=self.args.dry_run,
                 )
             )
             #  release_notes, snapshot, release_id
@@ -343,6 +344,7 @@ class SbomRegenerator:
                     result_dir=self.args.output_path,
                     tpa_retries=self.args.tpa_retries,
                     upload_concurrency=self.args.concurrency,
+                    skip_upload=self.args.dry_run,
                 )
             )
 

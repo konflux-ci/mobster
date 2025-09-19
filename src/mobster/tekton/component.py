@@ -64,6 +64,7 @@ def parse_args() -> ProcessComponentArgs:
         upload_concurrency=args.upload_concurrency,
         labels=args.labels,
         tpa_retries=args.tpa_retries,
+        skip_upload=args.skip_updload,
     )
 
 
@@ -106,9 +107,16 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     """
     s3 = connect_with_s3(args.retry_s3_bucket)
 
-    if s3:
-        LOGGER.info("Uploading snapshot to S3 with release_id=%s", args.release_id)
-        await upload_snapshot(s3, args.snapshot_spec, args.release_id)
+    if args.skip_upload:
+        LOGGER.debug(f"skip_upload={args.skip_upload}, so no snapshot / "
+                     f"release data upload to S3, for release_id=%s")
+    else:
+        if s3:
+            LOGGER.info(
+                "Uploading snapshot to S3 with release_id=%s",
+                args.release_id
+            )
+            await upload_snapshot(s3, args.snapshot_spec, args.release_id)
 
     LOGGER.info("Starting SBOM augmentation")
     augment_component_sboms(
@@ -119,12 +127,16 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     )
     config = args.to_upload_config()
 
-    report = await upload_sboms(
-        config,
-        s3,
-    )
-    artifact = get_component_artifact(report)
-    artifact.write_result(args.result_dir)
+    if args.skip_upload:
+        LOGGER.debug(f"skip_upload={args.skip_upload}, "
+                     f"so no upload to TPA, for release_id=%s")
+    else:
+        report = await upload_sboms(
+            config,
+            s3,
+        )
+        artifact = get_component_artifact(report)
+        artifact.write_result(args.result_dir)
 
 
 def main() -> None:
