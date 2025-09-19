@@ -65,6 +65,7 @@ def parse_args() -> ProcessProductArgs:
         concurrency=args.concurrency,
         labels=args.labels,
         tpa_retries=args.tpa_retries,
+        skip_upload=args.skip_updload,
     )  # pylint:disable=duplicate-code
 
 
@@ -115,13 +116,17 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     sbom_path = args.ensured_sbom_dir() / "sbom.json"
     s3 = connect_with_s3(args.retry_s3_bucket)
 
-    if s3:
-        LOGGER.info(
-            "Uploading snapshot and release data to S3 with release_id=%s",
-            args.release_id,
-        )
-        await upload_snapshot(s3, args.snapshot_spec, args.release_id)
-        await upload_release_data(s3, args.release_data, args.release_id)
+    if args.skip_upload:
+        LOGGER.debug(f"skip_upload={args.skip_upload}, so no snapshot / "
+                     f"release data upload to S3, for release_id=%s")
+    else:
+        if s3:
+            LOGGER.info(
+                "Uploading snapshot and release data to S3 with release_id=%s",
+                args.release_id,
+            )
+            await upload_snapshot(s3, args.snapshot_spec, args.release_id)
+            await upload_release_data(s3, args.release_data, args.release_id)
 
     create_product_sbom(
         sbom_path,
@@ -131,12 +136,16 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
         args.concurrency,
     )
 
-    report = await upload_sboms(
-        args.to_upload_config(),
-        s3,
-    )
-    artifact = get_product_artifact(report)
-    artifact.write_result(args.result_dir)
+    if args.skip_upload:
+        LOGGER.debug(f"skip_upload={args.skip_upload}, "
+                     f"so no upload to TPA, for release_id=%s")
+    else:
+        report = await upload_sboms(
+            args.to_upload_config(),
+            s3,
+        )
+        artifact = get_product_artifact(report)
+        artifact.write_result(args.result_dir)
 
 
 def main() -> None:
