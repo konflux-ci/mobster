@@ -34,7 +34,7 @@ class CosignConfig:
     sign_key: str
     verify_key: Path
     sign_password: bytes = b""
-    concurrency: int = 6
+    concurrency: int = 4
 
 
 @dataclass
@@ -63,7 +63,7 @@ def parse_args() -> ProcessComponentArgs:
     add_common_args(parser)
     parser.add_argument("--augment-concurrency", type=int, default=8)
     parser.add_argument("--upload-concurrency", type=int, default=8)
-    parser.add_argument("--cosign-concurrency", type=int, default=6)
+    parser.add_argument("--cosign-concurrency", type=int, default=4)
     parser.add_argument(
         "--rekor-key",
         type=Path,

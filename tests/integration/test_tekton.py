@@ -454,7 +454,7 @@ async def test_process_component_sboms_happypath(
 
 @pytest.mark.asyncio
 @pytest.mark.slow
-@pytest.mark.fail_slow("8m")
+@pytest.mark.fail_slow("9m")
 async def test_process_component_sboms_big_release(
     test_id: str,
     s3_client: S3Client,
