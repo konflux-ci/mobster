@@ -4,6 +4,7 @@ The protocol is used mainly for testing. The tests inject a testing cosign
 client implementing the Cosign protocol.
 """
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -102,44 +103,53 @@ class CosignClient(Cosign):
     """
 
     def __init__(
+        # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         verification_key: Path | None = None,
         signing_key: Path | str | None = None,
         signing_key_password: bytes = b"",
         rekor_config: RekorConfig | None = None,
+        concurrency: int = 4,
     ) -> None:
         """
         Args:
             verification_key: Path to public key used to verify attestations.
             signing_key: Path to a private key used for attestation signing.
+            signing_key_password: password to unlock the secret key PEM file
+            rekor_config: TLOG configuration
+            concurrency: Number of concurrent heavy operations permitted
         """
         self.verification_key = verification_key
         self.signing_key = signing_key
         self.password = signing_key_password
         self.rekor_config = rekor_config
+        # Some cosign operations are extremely heavy, requiring a mutex mechanism
+        # to not get OOM killed within the pipeline
+        self._heavy_op_semaphore = asyncio.Semaphore(concurrency)
 
     async def _verify_attestation(
         self,
         image: Image,
         attestation_type: typing.Literal["slsaprovenance02", "spdxjson", "cyclonedx"],
     ) -> list[bytes]:
-        with make_oci_auth_file(image.reference) as authfile:
-            # We ignore the transparency log, because as of now, Konflux releases
-            # don't publish to Rekor.
-            cmd = [
-                "cosign",
-                "verify-attestation",
-                f"--key={self.verification_key}",
-                f"--type={attestation_type}",
-                "--insecure-ignore-tlog=true",
-                image.reference,
-            ]
-            logger.debug("Executing for %s command '%s'", image, " ".join(cmd))
-            code, stdout, stderr = await run_async_subprocess(
-                cmd,
-                env={"DOCKER_CONFIG": str(authfile.parent)},
-                retry_times=3,
-            )
+        async with self._heavy_op_semaphore:
+            with make_oci_auth_file(image.reference) as authfile:
+                # We ignore the transparency log, because as of now, Konflux releases
+                # don't publish to Rekor.
+                cmd = [
+                    "cosign",
+                    "verify-attestation",
+                    f"--key={self.verification_key}",
+                    f"--type={attestation_type}",
+                    "--insecure-ignore-tlog=true",
+                    image.reference,
+                ]
+                logger.debug("Executing for %s command '%s'", image, " ".join(cmd))
+                code, stdout, stderr = await run_async_subprocess(
+                    cmd,
+                    env={"DOCKER_CONFIG": str(authfile.parent)},
+                    retry_times=3,
+                )
 
         if code != 0:
             raise SBOMError(
@@ -267,24 +277,27 @@ class CosignClient(Cosign):
             str(file_path),
             push_reference,
         ]
-        with make_oci_auth_file(push_reference) as authfile:
-            cosign_env = {"DOCKER_CONFIG": str(authfile.parent)}
-            if not self.rekor_config:
-                logger.debug("[Cosign] TLog won't be used for sbom attestation.")
-                cosign_command.insert(-1, "--tlog-upload=false")
-            else:
-                cosign_command.insert(-1, f"--rekor-url={self.rekor_config.rekor_url}")
-                cosign_env["SIGSTORE_REKOR_PUBLIC_KEY"] = str(
-                    self.rekor_config.rekor_key
-                )
-            with tempfile.NamedTemporaryFile() as sign_key_passwd_file:
-                sign_key_passwd_file.write(self.password)
-                code, _, stderr = await run_async_subprocess(
-                    cosign_command,
-                    env=cosign_env,
-                    retry_times=3,
-                    stdin=sign_key_passwd_file,
-                )
+        async with self._heavy_op_semaphore:
+            with make_oci_auth_file(push_reference) as authfile:
+                cosign_env = {"DOCKER_CONFIG": str(authfile.parent)}
+                if not self.rekor_config:
+                    logger.debug("[Cosign] TLog won't be used for sbom attestation.")
+                    cosign_command.insert(-1, "--tlog-upload=false")
+                else:
+                    cosign_command.insert(
+                        -1, f"--rekor-url={self.rekor_config.rekor_url}"
+                    )
+                    cosign_env["SIGSTORE_REKOR_PUBLIC_KEY"] = str(
+                        self.rekor_config.rekor_key
+                    )
+                with tempfile.NamedTemporaryFile() as sign_key_passwd_file:
+                    sign_key_passwd_file.write(self.password)
+                    code, _, stderr = await run_async_subprocess(
+                        cosign_command,
+                        env=cosign_env,
+                        retry_times=3,
+                        stdin=sign_key_passwd_file,
+                    )
         if code:
             raise SBOMError(
                 f"Could not attest SBOM ({' '.join(cosign_command)}) "

@@ -34,6 +34,7 @@ class CosignConfig:
     sign_key: str
     verify_key: Path
     sign_password: bytes = b""
+    concurrency: int = 4
 
 
 @dataclass
@@ -62,6 +63,7 @@ def parse_args() -> ProcessComponentArgs:
     add_common_args(parser)
     parser.add_argument("--augment-concurrency", type=int, default=8)
     parser.add_argument("--upload-concurrency", type=int, default=8)
+    parser.add_argument("--cosign-concurrency", type=int, default=4)
     parser.add_argument(
         "--rekor-key",
         type=Path,
@@ -97,6 +99,7 @@ def parse_args() -> ProcessComponentArgs:
         sign_key=args.sign_key,
         verify_key=args.verify_key,
         sign_password=args.sign_password.encode("utf-8"),
+        concurrency=args.cosign_concurrency,
     )
     rekor_config = None
     if (rekor_key := args.rekor_key) and (rekor_url := args.rekor_url):
@@ -180,6 +183,7 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
         signing_key=args.cosign_config.sign_key,
         signing_key_password=args.cosign_config.sign_password,
         rekor_config=args.rekor_config,
+        concurrency=args.cosign_config.concurrency,
     )
     LOGGER.info("Starting SBOM augmentation")
     await augment_component_sboms(
