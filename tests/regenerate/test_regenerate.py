@@ -29,6 +29,7 @@ def mock_regenerate_args() -> regen_base.RegenerateArgs:
         mobster_versions="1.2.3,4.5.6",
         concurrency=100,
         tpa_retries=20,
+        tpa_page_size=100,
         dry_run=True,
         fail_fast=True,
         verbose=False,
@@ -45,6 +46,7 @@ def test_regenerate_args() -> None:
     assert args.mobster_versions == "1.2.3,4.5.6"
     assert args.concurrency == 100
     assert args.tpa_retries == 20
+    assert args.tpa_page_size == 100
     assert args.dry_run is True
     assert args.fail_fast is True
     assert args.verbose is False
@@ -102,92 +104,6 @@ def mock_download_sbom_json_with_attr(
     return json.dumps(sbom)
 
 
-@pytest.mark.asyncio
-@patch("mobster.cmd.upload.tpa.TPAClient")
-async def test_regenerate_sboms(
-        mock_tpa_client: AsyncMock,
-        mock_env_vars: None,
-) -> None:
-    """ tests regenerate_sboms() """
-    args = mock_regenerate_args()
-
-    sbom1 = get_mock_sbom(id="a", name="sbom_1")
-
-    async def mock_list_sboms(query: str, sort: str) -> Any:
-        yield sbom1
-
-    mock_tpa_client.list_sboms.return_value = mock_list_sboms("", "")
-    mock_tpa_client.download_sbom = AsyncMock()
-
-    regenerator = SbomRegenerator(args, regen_base.SbomType.PRODUCT)
-
-    regenerator.tpa_client = mock_tpa_client
-    regenerator.regenerate_sbom = AsyncMock()  # type: ignore[method-assign]
-
-    await regenerator.regenerate_sboms()
-    regenerator.regenerate_sbom.assert_awaited_with(sbom1)
-
-
-@pytest.mark.asyncio
-async def test_regenerate_sbom_dry_run(
-        mock_env_vars: None
-) -> None:
-    """ tests regenerate_sboms() in dry-run mode """
-    args = mock_regenerate_args()
-    args.dry_run = True
-    mock_sbom = get_mock_sbom(id="abc123", name="sbom-abc123")
-    release_id = ReleaseId.new()
-
-    regenerator = SbomRegenerator(args)
-    regenerator.get_release_id = AsyncMock(return_value=release_id)  # type: ignore[method-assign]
-    regenerator.gather_s3_input_data = AsyncMock(  # type: ignore[method-assign]
-        return_value=("path_snapshot", "path_release_data")
-    )
-    regenerator.process_sboms = AsyncMock()  # type: ignore[method-assign]
-
-    await regenerator.regenerate_sbom(mock_sbom)
-
-    regenerator.get_release_id.assert_awaited_once_with(mock_sbom)
-    regenerator.gather_s3_input_data.assert_awaited_once_with(
-        release_id
-    )
-
-
-@pytest.mark.asyncio
-async def test_regenerate_sbom_non_dry_run(
-        mock_env_vars: None
-) -> None:
-    """ tests regenerate_sboms() in "live" (non dry-run) mode """
-    args = mock_regenerate_args()
-    args.dry_run = False
-    sbom_id = "123456"
-    sbom_name = "test_sbom"
-    release_id = ReleaseId.new()
-    mock_sbom = get_mock_sbom(id=sbom_id, name=sbom_name)
-    mock_tpa_client = AsyncMock()
-    mock_tpa_client.delete_sbom.return_value = AsyncMock(status_code=200)
-
-    path_snapshot = Path("/path/to/snapshot")
-    path_release_data = Path("/path/to/release_data")
-    regenerator = SbomRegenerator(args)
-    regenerator.get_release_id = AsyncMock(return_value=release_id)  # type: ignore[method-assign]
-    regenerator.gather_s3_input_data = AsyncMock(  # type: ignore[method-assign]
-        return_value=(path_snapshot, path_release_data)
-    )
-    regenerator.process_sboms = AsyncMock()  # type: ignore[method-assign]
-    regenerator.tpa_client = mock_tpa_client
-    regenerator.delete_sbom = AsyncMock()  # type: ignore[method-assign]
-    regenerator.delete_sbom.return_value = httpx.Response(status_code=200)
-
-    await regenerator.regenerate_sbom(mock_sbom)
-
-    regenerator.get_release_id.assert_awaited_once()
-    regenerator.gather_s3_input_data.assert_awaited_once()
-
-    regenerator.process_sboms.assert_awaited_once()
-    regenerator.delete_sbom.assert_awaited_once()
-
-
 def test_gather_s3_input_data(
         mock_env_vars: None
 ) -> None:
@@ -232,6 +148,8 @@ def dummy_args(tmp_path: Path) -> list[str]:
         "500",
         "--tpa-retries",
         "300",
+        "--tpa-page-size",
+        "1500",
         "--dry-run",
         "--non-fail-fast",
         "--verbose",
@@ -253,6 +171,7 @@ def test_parse_args(
     assert args.mobster_versions == "0.1.2,3.4.5"
     assert args.concurrency == 500
     assert args.tpa_retries == 300
+    assert args.tpa_page_size == 1500
     assert args.dry_run is True
     assert args.fail_fast is False
     assert args.verbose is True

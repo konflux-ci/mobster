@@ -57,6 +57,7 @@ class RegenerateArgs:
         dry_run: Run in 'dry run' only mode (skips destructive TPA IO)
         fail_fast: fail and exit on first regen error (default: True)
         verbose: Run in verbose mode (additional logs/trace)
+        tpa_page_size: paging size (how many SBOMs) for query response sets
         sbom_type: SBOMType (Product/Component) used for this regenerator
     """
 
@@ -66,6 +67,7 @@ class RegenerateArgs:
     mobster_versions: str
     concurrency: int
     tpa_retries: int
+    tpa_page_size: int
     dry_run: bool
     fail_fast: bool
     verbose: bool
@@ -86,6 +88,7 @@ class SbomRegenerator:
         self.s3_semaphore = asyncio.Semaphore(self.args.concurrency)
         self.s3_client = self.setup_s3_client()
         self.tpa_client = self.setup_tpa_client()
+        self.sbom_release_groups: dict[ReleaseId, list[str]] = {}
 
     async def regenerate_sboms(self) -> None:
         """
@@ -96,36 +99,77 @@ class SbomRegenerator:
         sboms = self.get_tpa_client().list_sboms(
             query=self.construct_query(),
             sort="ingested",
-            page_size=250,
+            page_size=self.args.tpa_page_size,
         )
 
-        LOGGER.info(f"Regenerating {self.sbom_type.value} SBOMs..")
-        regen_tasks = []
+        LOGGER.info(
+            f"Gathering ReleaseIds for {self.sbom_type.value} SBOMs."
+        )
+        tasks_gather_release_ids = []
         async for sbom in sboms:
-            LOGGER.debug(
-                f"Regenerating {self.sbom_type.value} SBOM: {sbom.id} ({sbom.name})"
-            )
             try:
-                regen_tasks.append(self.regenerate_sbom(sbom))
+                tasks_gather_release_ids.append(
+                    self.organize_sbom_by_release_id(sbom)
+                )
             except SBOMError as e:
                 LOGGER.error(e)
                 if self.args.fail_fast:
                     sys.exit(1)
 
+        await asyncio.gather(*tasks_gather_release_ids)
+
+        LOGGER.info(
+            f"Finished gathering ReleaseIds for "
+            f"{len(tasks_gather_release_ids)} SBOMs."
+        )
+
+        LOGGER.info(
+            f"Running regenerate for "
+            f"{len(self.sbom_release_groups)} "
+            f"release groups.."
+        )
+        await self.regenerate_release_groups()
+        LOGGER.info(
+            f"Finished regeneration for {tasks_gather_release_ids} "
+            f"release groups."
+        )
+
+    async def organize_sbom_by_release_id(self, sbom: SbomSummary) -> None:
+        LOGGER.debug(
+            f"Gathering ReleaseId for SBOM: {sbom.id}"
+        )
+        release_id = await self.get_release_id(sbom)
+        if release_id not in self.sbom_release_groups:
+            # initialize the release group
+            self.sbom_release_groups[release_id] = []
+        self.sbom_release_groups[release_id].append(sbom.id)
+        LOGGER.debug(
+            f"Finished gathering ReleaseId ({str(release_id)}) "
+            f"for SBOM: {sbom.id}."
+        )
+
+    async def regenerate_release_groups(self) -> None:
+        LOGGER.info(
+            f"Regenerating {self.sbom_type.value} release groups.."
+        )
+        regen_tasks = []
+        for release_id in self.sbom_release_groups:
+            regen_tasks.append(
+                self.regenerate_sbom_release(release_id)
+            )
         await asyncio.gather(*regen_tasks)
+        LOGGER.info(
+            f"Finished regenerating {self.sbom_type.value} release groups."
+        )
 
-        LOGGER.info(f"Finished {self.sbom_type.value} SBOM regeneration.")
-
-    async def regenerate_sbom(
-            self, sbom: SbomSummary
+    async def regenerate_sbom_release(
+            self, release_id: ReleaseId
     ) -> None:
         """
-        regenerate the given sbom (re-create it, upload it, then delete old version)
+        regenerate the given sbom release
+        (re-create it, upload it, then delete old version)
         """
         async with self.regen_semaphore:
-            release_id = await self.get_release_id(sbom)
-            if not release_id:
-                return
             # gather related data from s3 bucket
             path_snapshot, path_release_data = await self.gather_s3_input_data(
                 release_id
@@ -133,35 +177,39 @@ class SbomRegenerator:
 
             if not path_snapshot or not path_release_data:
                 raise SBOMError(
-                    f"No S3 bucket snapshot/release_data found for SBOM: {sbom.id}"
+                    f"No S3 bucket snapshot/release_data found for "
+                    f"SBOM release: {str(release_id)}"
                 )
-            LOGGER.info(
-                f"proceeding to regenerate SBOM: {sbom.id}  ({sbom.name})"
-            )
-            if self.args.dry_run:
-                LOGGER.info(f"*Dry Run: 'generate' SBOM: {sbom.id} ({sbom.name})")
-            else:
-                await self.process_sboms(release_id, path_release_data, path_snapshot)
+            LOGGER.debug(f"Generate SBOM release: {str(release_id)}")
+            await self.process_sboms(release_id, path_release_data, path_snapshot)
 
-            if self.args.dry_run:
-                LOGGER.info(
-                    f"*Dry Run: 'delete' original SBOM: {sbom.id} ({sbom.name})"
-                )
-            else:
-                # delete
-                response_delete = await self.delete_sbom(sbom.id)
-                # check delete status
-                if response_delete.status_code != 200:
-                    # delete failed, log and abort regeneration for this SBOM
-                    raise SBOMError(
-                        f"delete SBOM failed for SBOM: {sbom.id}, "
-                        f"status: {response_delete.status_code}, "
-                        f"message: {response_delete.text}"
+            for sbom_id in self.sbom_release_groups.get(release_id, []):
+                if self.args.dry_run:
+                    LOGGER.info(
+                        f"*Dry Run: 'delete' related SBOM: for "
+                        f"SBOM release: {str(release_id)} -- "
+                        f"SBOM id: {sbom_id}"
                     )
-                LOGGER.info(
-                    f"Success: deleted original SBOM: {sbom.id} ({sbom.name})"
-                )
-                return
+                else:
+                    LOGGER.info(
+                        f"*Deleting related SBOM: for "
+                        f"SBOM release: {str(release_id)} -- "
+                        f"SBOM id: {sbom_id}"
+                    )
+                    # delete
+                    response_delete = await self.delete_sbom(sbom_id)
+                    # check delete status
+                    if response_delete.status_code != 200:
+                        # delete failed, log and abort regeneration for this SBOM
+                        raise SBOMError(
+                            f"delete SBOM failed for SBOM: {sbom_id}, "
+                            f"status: {response_delete.status_code}, "
+                            f"message: {response_delete.text}"
+                        )
+                    LOGGER.info(
+                        f"Success: deleted original SBOM: {sbom_id}"
+                    )
+                    return
 
     async def get_release_id(self, sbom: SbomSummary) -> ReleaseId:
         """
@@ -371,6 +419,7 @@ def parse_args() -> RegenerateArgs:
     LOGGER.debug(f"--fail-fast: {not args.non_fail_fast}")
     LOGGER.debug(f"--dry-run: {args.dry_run}")
     LOGGER.debug(f"--verbose: {args.verbose}")
+    LOGGER.debug(f"--tpa-page-size: {args.tpa_page_size}")
 
     return RegenerateArgs(
         output_path=path_output_dir,
@@ -379,6 +428,7 @@ def parse_args() -> RegenerateArgs:
         mobster_versions=args.mobster_versions,
         concurrency=args.concurrency,
         tpa_retries=args.tpa_retries,
+        tpa_page_size=args.tpa_page_size,
         dry_run=args.dry_run,
         fail_fast=not args.non_fail_fast,
         verbose=args.verbose,
@@ -450,6 +500,14 @@ def add_args(parser: ArgumentParser) -> None:
         type=int,
         default=1,
         help="total number of attempts for TPA requests",
+    )
+
+    # int
+    parser.add_argument(
+        "--tpa-page-size",
+        type=int,
+        default=50,
+        help="paging size (how many SBOMs) for query response sets",
     )
 
     # bool
