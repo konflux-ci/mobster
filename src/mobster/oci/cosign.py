@@ -109,7 +109,7 @@ class CosignClient(Cosign):
         signing_key: Path | str | None = None,
         signing_key_password: bytes = b"",
         rekor_config: RekorConfig | None = None,
-        concurrency: int = 4,
+        concurrency: int = 6,
     ) -> None:
         """
         Args:
