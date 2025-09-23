@@ -13,8 +13,10 @@ import httpx
 import pytest
 
 import mobster.regenerate.base as regen_base
+import mobster.regenerate.product as regen_product
 from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.tpa import TPAClient
+from mobster.error import SBOMError
 from mobster.regenerate.base import SbomRegenerator
 from mobster.release import ReleaseId
 from mobster.tekton.s3 import S3Client
@@ -34,7 +36,6 @@ def mock_regenerate_args() -> regen_base.RegenerateArgs:
         fail_fast=True,
         verbose=False,
         ignore_missing_releaseid=True,
-        sbom_type=regen_base.SbomType.PRODUCT,
     )
 
 
@@ -52,7 +53,6 @@ def test_regenerate_args() -> None:
     assert args.fail_fast is True
     assert args.verbose is False
     assert args.ignore_missing_releaseid is True
-    assert args.sbom_type == regen_base.SbomType.PRODUCT
 
 
 def get_mock_sbom(id: str, name: str) -> SbomSummary:
@@ -111,7 +111,7 @@ def test_gather_s3_input_data(
 ) -> None:
     """ tests fetching S3 bucket data """
     args = mock_regenerate_args()
-    sbom_regenerator = SbomRegenerator(args)
+    sbom_regenerator = SbomRegenerator(args, regen_base.SbomType.PRODUCT)
     sbom_regenerator.s3_client = AsyncMock(spec=S3Client)
     rid = ReleaseId.new()
 
@@ -179,6 +179,101 @@ def test_parse_args(
     assert args.fail_fast is False
     assert args.ignore_missing_releaseid is True
     assert args.verbose is True
+
+
+@pytest.mark.asyncio
+async def test_regenerate_sboms_success(
+        mock_env_vars: None,
+        mock_tpa_client: AsyncMock
+) -> None:
+    mock_args = mock_regenerate_args()
+    mock_args.tpa_page_size = 10
+
+    sbom1 = get_mock_sbom(id="a", name="sbom_1")
+    mock_release_id = ReleaseId.new()
+
+    async def mock_list_sboms(query: str, sort: str) -> Any:
+        yield sbom1
+
+    def mock_find_release_id(sbom: SbomSummary) -> ReleaseId:
+        return mock_release_id
+
+    mock_tpa_client.list_sboms.return_value = mock_list_sboms("", "")
+    mock_tpa_client.download_sbom = AsyncMock()
+
+    sbom_regenerator = SbomRegenerator(mock_args, regen_base.SbomType.PRODUCT)
+    sbom_regenerator.get_tpa_client = MagicMock(return_value=mock_tpa_client)  # type: ignore[method-assign]
+    sbom_regenerator.organize_sbom_by_release_id = AsyncMock()  # type: ignore[method-assign]
+
+    await sbom_regenerator.regenerate_sboms()
+
+    sbom_regenerator.organize_sbom_by_release_id.assert_called()
+    mock_tpa_client.list_sboms.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_regenerate_sboms_error(
+        mock_env_vars: None,
+        mock_tpa_client: AsyncMock
+) -> None:
+    mock_args = mock_regenerate_args()
+    mock_args.tpa_page_size = 10
+
+    sbom1 = get_mock_sbom(id="a", name="sbom_1")
+    mock_release_id = ReleaseId.new()
+
+    async def mock_list_sboms(query: str, sort: str) -> Any:
+        yield sbom1
+
+    def mock_find_release_id(sbom: SbomSummary) -> ReleaseId:
+        return mock_release_id
+
+    mock_tpa_client.list_sboms.return_value = mock_list_sboms("", "")
+    mock_tpa_client.download_sbom = AsyncMock()
+
+    sbom_regenerator = SbomRegenerator(mock_args, regen_base.SbomType.PRODUCT)
+    sbom_regenerator.get_tpa_client = MagicMock(  # type: ignore[method-assign]
+        return_value=mock_tpa_client
+    )
+    sbom_regenerator.organize_sbom_by_release_id = AsyncMock()  # type: ignore[method-assign]
+
+    sbom_regenerator = SbomRegenerator(mock_args, regen_base.SbomType.COMPONENT)
+    sbom_regenerator.get_tpa_client = MagicMock(  # type: ignore[method-assign]
+        return_value=mock_tpa_client
+    )
+    sbom_regenerator.organize_sbom_by_release_id = AsyncMock(  # type: ignore[method-assign]
+        side_effect=SBOMError("Failed to process SBOM")
+    )
+
+    try:
+        await sbom_regenerator.regenerate_sboms()
+        # shouldn't get here, so fail
+        raise AssertionError()
+    except SBOMError:
+        # expected
+        pass
+
+    sbom_regenerator.organize_sbom_by_release_id.assert_called()
+    mock_tpa_client.list_sboms.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_organize_sbom_by_release_id(
+        mock_env_vars: None,
+        mock_tpa_client: AsyncMock
+) -> None:
+    mock_args = mock_regenerate_args()
+    sbom1 = get_mock_sbom(id="a", name="sbom_1")
+    mock_release_id = MagicMock(ReleaseId)
+
+    sbom_regenerator = SbomRegenerator(mock_args, regen_base.SbomType.PRODUCT)
+    sbom_regenerator.get_release_id = AsyncMock(  # type: ignore[method-assign]
+        return_value=mock_release_id
+    )
+
+    await sbom_regenerator.organize_sbom_by_release_id(sbom1)
+
+    sbom_regenerator.get_release_id.assert_called_with(sbom1)
 
 
 def test_prepare_output_paths(tmp_path: Path) -> None:
@@ -274,7 +369,7 @@ def test_download_and_extract_release_id_success(
     expected_release_id = ReleaseId.new()
 
     args = mock_regenerate_args()
-    regenerator = SbomRegenerator(args)
+    regenerator = SbomRegenerator(args, regen_base.SbomType.PRODUCT)
     regenerator.get_tpa_client = MagicMock(  # type: ignore[method-assign]
         return_value=MagicMock(download_sbom=AsyncMock())
     )
@@ -305,7 +400,7 @@ def test_download_and_extract_release_id_file_not_found_error(
 ) -> None:
     summary = get_mock_sbom(id="sbom_id_2", name="test_sbom_error")
     args = mock_regenerate_args()
-    regenerator = SbomRegenerator(args)
+    regenerator = SbomRegenerator(args, regen_base.SbomType.COMPONENT)
     regenerator.get_tpa_client = MagicMock(  # type: ignore[method-assign]
         return_value=MagicMock(download_sbom=AsyncMock())
     )
@@ -328,7 +423,7 @@ def test_download_and_extract_release_id_invalid_json_error(
 ) -> None:
     summary = get_mock_sbom(id="sbom_id_3", name="test_sbom_invalid_json")
     args = mock_regenerate_args()
-    regenerator = SbomRegenerator(args)
+    regenerator = SbomRegenerator(args, regen_base.SbomType.COMPONENT)
     regenerator.get_tpa_client = MagicMock(  # type: ignore[method-assign]
         return_value=MagicMock(download_sbom=AsyncMock())
     )
@@ -376,3 +471,4 @@ def mock_tpa_client() -> AsyncMock:
         )
     )
     return mock
+

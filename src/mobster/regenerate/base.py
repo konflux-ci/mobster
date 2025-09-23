@@ -38,7 +38,6 @@ class SbomType(Enum):
     """
     PRODUCT = "Product"
     COMPONENT = "Component"
-    UNKNOWN = "Unknown"
 
 
 class MissingReleaseIdError(ValueError):
@@ -69,7 +68,6 @@ class RegenerateArgs:
         ignore_missing_releaseid: Ignore (and don't fail on) any SBOM which
                                   doesn't contain a ReleaseId
         tpa_page_size: paging size (how many SBOMs) for query response sets
-        sbom_type: SBOMType (Product/Component) used for this regenerator
     """
 
     output_path: Path
@@ -83,7 +81,6 @@ class RegenerateArgs:
     fail_fast: bool
     ignore_missing_releaseid: bool
     verbose: bool
-    sbom_type: SbomType = SbomType.UNKNOWN
 
 
 class SbomRegenerator:
@@ -92,7 +89,7 @@ class SbomRegenerator:
     def __init__(
             self,
             args: RegenerateArgs,
-            sbom_type: SbomType = SbomType.UNKNOWN,
+            sbom_type: SbomType,
     ) -> None:
         self.args = args
         self.sbom_type = sbom_type
@@ -130,28 +127,10 @@ class SbomRegenerator:
 
         await asyncio.gather(*tasks_gather_release_ids)
 
-        LOGGER.info("")
-        LOGGER.info("")
-        LOGGER.info("")
-        LOGGER.info("")
-        LOGGER.info("")
-        LOGGER.info(
-            "#######################################################"
-            "#######################################################"
-        )
         LOGGER.info(
             f"Finished gathering ReleaseIds for "
             f"{len(tasks_gather_release_ids)} SBOMs."
         )
-        LOGGER.info(
-            "#######################################################"
-            "#######################################################"
-        )
-        LOGGER.info("")
-        LOGGER.info("")
-        LOGGER.info("")
-        LOGGER.info("")
-        LOGGER.info("")
 
         LOGGER.info(
             f"Running regenerate for "
