@@ -171,6 +171,7 @@ async def handle_atlas_transient_errors(paths: list[Path], s3_client: S3Client) 
     if not s3_credentials_exist():
         raise ValueError("Missing AWS authentication while attempting S3 retry.")
 
+    LOGGER.debug("Uploading (%s) files to S3.", len(paths))
     await asyncio.gather(*[s3_client.upload_file(failed_sbom) for failed_sbom in paths])
 
 
@@ -190,19 +191,6 @@ async def upload_to_atlas(
         TPAUploadReport: Parsed upload report from the upload command.
     """
     return await TPAUploadCommand.upload(config)
-
-
-async def upload_to_s3(report: TPAUploadReport, client: S3Client) -> None:
-    """
-    Upload failed SBOMs from the report to S3.
-
-    Args:
-        report: upload report containing the failed SBOMs
-        client: S3 client to use
-    """
-    await asyncio.gather(
-        *[client.upload_file(failure.path) for failure in report.failure]
-    )
 
 
 def connect_with_s3(retry_s3_bucket: str | None) -> S3Client | None:

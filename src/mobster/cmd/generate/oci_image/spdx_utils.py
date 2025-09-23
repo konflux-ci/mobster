@@ -331,3 +331,20 @@ async def update_package_in_spdx_sbom(
         # Check existing relationships and redirect the current roots to the new root
         await redirect_current_roots_to_new_root(sbom, package.spdx_id)
     return sbom
+
+
+def get_package_by_spdx_id(doc: Document, spdx_id: str) -> Package | None:
+    """
+    Gets package by spdx id from document.
+
+    Args:
+        doc (Document): The SPDX SBOM document.
+        spdx_id (str): The SPDX SBOM ID.
+
+    Returns:
+        Package | None: The package or None.
+    """
+    return next(
+        (pkg for pkg in doc.packages if pkg.spdx_id == spdx_id),
+        None,
+    )
