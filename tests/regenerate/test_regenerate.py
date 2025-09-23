@@ -33,6 +33,7 @@ def mock_regenerate_args() -> regen_base.RegenerateArgs:
         dry_run=True,
         fail_fast=True,
         verbose=False,
+        ignore_missing_releaseid=True,
         sbom_type=regen_base.SbomType.PRODUCT,
     )
 
@@ -50,6 +51,7 @@ def test_regenerate_args() -> None:
     assert args.dry_run is True
     assert args.fail_fast is True
     assert args.verbose is False
+    assert args.ignore_missing_releaseid is True
     assert args.sbom_type == regen_base.SbomType.PRODUCT
 
 
@@ -152,6 +154,7 @@ def dummy_args(tmp_path: Path) -> list[str]:
         "1500",
         "--dry-run",
         "--non-fail-fast",
+        "--ignore-missing-releaseid",
         "--verbose",
     ]
 
@@ -174,6 +177,7 @@ def test_parse_args(
     assert args.tpa_page_size == 1500
     assert args.dry_run is True
     assert args.fail_fast is False
+    assert args.ignore_missing_releaseid is True
     assert args.verbose is True
 
 

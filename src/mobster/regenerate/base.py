@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import aiofiles
-from httpx import Response
+from httpx import RequestError, Response
 
 from mobster import utils
 from mobster.cli import parse_concurrency
@@ -41,6 +41,15 @@ class SbomType(Enum):
     UNKNOWN = "Unknown"
 
 
+class MissingReleaseIdError(ValueError):
+    """
+    Exception class for cases where ReleaseId is not found in an SBOM.
+    """
+    def __init__(self, message: str = "ReleaseId not found in SBOM.") -> None:
+        self.message = message
+        super().__init__(self.message)
+
+
 @dataclass
 class RegenerateArgs:
     """
@@ -57,6 +66,8 @@ class RegenerateArgs:
         dry_run: Run in 'dry run' only mode (skips destructive TPA IO)
         fail_fast: fail and exit on first regen error (default: True)
         verbose: Run in verbose mode (additional logs/trace)
+        ignore_missing_releaseid: Ignore (and don't fail on) any SBOM which
+                                  doesn't contain a ReleaseId
         tpa_page_size: paging size (how many SBOMs) for query response sets
         sbom_type: SBOMType (Product/Component) used for this regenerator
     """
@@ -70,6 +81,7 @@ class RegenerateArgs:
     tpa_page_size: int
     dry_run: bool
     fail_fast: bool
+    ignore_missing_releaseid: bool
     verbose: bool
     sbom_type: SbomType = SbomType.UNKNOWN
 
@@ -118,10 +130,28 @@ class SbomRegenerator:
 
         await asyncio.gather(*tasks_gather_release_ids)
 
+        LOGGER.info("")
+        LOGGER.info("")
+        LOGGER.info("")
+        LOGGER.info("")
+        LOGGER.info("")
+        LOGGER.info(
+            "#######################################################"
+            "#######################################################"
+        )
         LOGGER.info(
             f"Finished gathering ReleaseIds for "
             f"{len(tasks_gather_release_ids)} SBOMs."
         )
+        LOGGER.info(
+            "#######################################################"
+            "#######################################################"
+        )
+        LOGGER.info("")
+        LOGGER.info("")
+        LOGGER.info("")
+        LOGGER.info("")
+        LOGGER.info("")
 
         LOGGER.info(
             f"Running regenerate for "
@@ -138,15 +168,23 @@ class SbomRegenerator:
         LOGGER.debug(
             f"Gathering ReleaseId for SBOM: {sbom.id}"
         )
-        release_id = await self.get_release_id(sbom)
-        if release_id not in self.sbom_release_groups:
-            # initialize the release group
-            self.sbom_release_groups[release_id] = []
-        self.sbom_release_groups[release_id].append(sbom.id)
-        LOGGER.debug(
-            f"Finished gathering ReleaseId ({str(release_id)}) "
-            f"for SBOM: {sbom.id}."
-        )
+        try:
+            release_id = await self.get_release_id(sbom)
+            if release_id not in self.sbom_release_groups:
+                # initialize the release group
+                self.sbom_release_groups[release_id] = []
+            self.sbom_release_groups[release_id].append(sbom.id)
+            LOGGER.debug(
+                f"Finished gathering ReleaseId ({str(release_id)}) "
+                f"for SBOM: {sbom.id}."
+            )
+        except MissingReleaseIdError as e:
+            if self.args.ignore_missing_releaseid:
+                LOGGER.debug(e.message)
+                return
+            else:
+                LOGGER.error(e.message)
+                raise SBOMError from e
 
     async def regenerate_release_groups(self) -> None:
         LOGGER.info(
@@ -218,14 +256,14 @@ class SbomRegenerator:
         try:
             # check if the given summary already contains it
             release_id = self.extract_release_id(sbom.model_dump())
-        except ValueError:
+        except MissingReleaseIdError:
             # nothing found
             try:
                 # download the complete SBOM and extract the release_id
                 release_id = await self.download_and_extract_release_id(sbom)
-            except ValueError as e:
-                LOGGER.error(f"No ReleaseId found in SBOM {sbom.id}")
-                raise SBOMError() from e
+            except MissingReleaseIdError as e:
+                LOGGER.warning(f"No ReleaseId found in SBOM {sbom.id}")
+                raise e
         return release_id
 
     @staticmethod
@@ -239,7 +277,9 @@ class SbomRegenerator:
             for prop in sbom_dict["properties"]:
                 if prop["name"] == "release_id":
                     return ReleaseId(prop["value"])
-        raise ValueError(f"No ReleaseId found in SBOM: {sbom_dict.get('id')}")
+        raise MissingReleaseIdError(
+            f"No ReleaseId found in SBOM: {sbom_dict.get('id')}"
+        )
 
     async def download_and_extract_release_id(
         self, sbom: SbomSummary
@@ -250,11 +290,28 @@ class SbomRegenerator:
         """
         name = utils.normalize_file_name(sbom.name)
         local_path = self.args.output_path / f"{name}.json"
-        await self.get_tpa_client().download_sbom(sbom.id, local_path)
+        # allow retry on download
+        max_download_retries = 3
+        for retry in range(1, max_download_retries):
+            try:
+                await self.get_tpa_client().download_sbom(sbom.id, local_path)
+                # successful download, no need to retry
+                break
+            except RequestError as e:
+                msg = f"Download was unsuccessful for '{local_path}' ({str(e)})."
+                LOGGER.warning(msg)
+                if retry < max_download_retries:
+                    # briefly wait, then try again
+                    await asyncio.sleep(0.5)
+                    continue
+                # raise SBOMError to stop overall script execution
+                LOGGER.error(msg)
+                raise SBOMError(msg) from e
+
         # allow retry, since larger volume of downloads occasionally
         # results in slightly delayed availability
-        max_retries = 3
-        for retry in range(1, max_retries):
+        max_read_retries = 3
+        for retry in range(1, max_read_retries):
             try:
                 async with aiofiles.open(local_path, encoding="utf-8") as f:
                     json_str_contents = await f.read()
@@ -264,11 +321,11 @@ class SbomRegenerator:
                 LOGGER.warning(f"'{local_path}' not found.")
             except json.JSONDecodeError:
                 LOGGER.warning(f"Invalid JSON in '{local_path}'.")
-            if retry < max_retries:
+            if retry < max_read_retries:
                 # briefly wait, then try again
                 await asyncio.sleep(0.5)
                 continue
-        raise ValueError(f"Unable to extract ReleaseId from {local_path}")
+        raise MissingReleaseIdError(f"Unable to extract ReleaseId from {local_path}")
 
     def construct_query(self) -> str:
         """
@@ -416,6 +473,7 @@ def parse_args() -> RegenerateArgs:
 
     LOGGER.debug(args)
 
+    LOGGER.debug(f"--ignore-missing-releaseid: {args.ignore_missing_releaseid}")
     LOGGER.debug(f"--fail-fast: {not args.non_fail_fast}")
     LOGGER.debug(f"--dry-run: {args.dry_run}")
     LOGGER.debug(f"--verbose: {args.verbose}")
@@ -431,6 +489,7 @@ def parse_args() -> RegenerateArgs:
         tpa_page_size=args.tpa_page_size,
         dry_run=args.dry_run,
         fail_fast=not args.non_fail_fast,
+        ignore_missing_releaseid=args.ignore_missing_releaseid,
         verbose=args.verbose,
     )  # pylint:disable=duplicate-code
 
@@ -521,7 +580,14 @@ def add_args(parser: ArgumentParser) -> None:
     parser.add_argument(
         "--non-fail-fast",
         action='store_true',
-        help="don't fail and exit on first regen error",
+        help="Don't fail and exit on first regen error",
+    )
+
+    # bool
+    parser.add_argument(
+        "--ignore-missing-releaseid",
+        action='store_true',
+        help="Ignore (and don't fail on) any SBOM which is missing ReleaseId",
     )
 
     # bool
