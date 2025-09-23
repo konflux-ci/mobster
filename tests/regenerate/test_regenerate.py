@@ -13,7 +13,6 @@ import httpx
 import pytest
 
 import mobster.regenerate.base as regen_base
-import mobster.regenerate.product as regen_product
 from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.error import SBOMError
