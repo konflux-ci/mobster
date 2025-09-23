@@ -338,13 +338,27 @@ def get_package_by_spdx_id(doc: Document, spdx_id: str) -> Package | None:
     Gets package by spdx id from document.
 
     Args:
-        doc (Document): The SPDX SBOM document.
-        spdx_id (str): The SPDX SBOM ID.
+        doc (Document): The SPDX SBOM document to search in.
+        spdx_id (str): The SPDX SBOM ID to search for.
 
     Returns:
-        Package | None: The package or None.
+        Package | None: The package with the given spdx id, or None if not found.
     """
     return next(
         (pkg for pkg in doc.packages if pkg.spdx_id == spdx_id),
         None,
     )
+
+
+def get_annotations_by_spdx_id(doc: Document, spdx_id: str) -> list[Annotation]:
+    """
+    Gets all annotations with the given spdx id from document.
+
+    Args:
+        doc (Document): The SPDX SBOM document to search in.
+        spdx_id (str): The SPDX SBOM ID to search for.
+
+    Returns:
+        list[Annotation]: The list of all annotations with the given spdx id.
+    """
+    return [annot for annot in doc.annotations if annot.spdx_id == spdx_id]
