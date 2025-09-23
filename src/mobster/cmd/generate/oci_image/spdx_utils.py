@@ -348,3 +348,13 @@ def get_package_by_spdx_id(doc: Document, spdx_id: str) -> Package | None:
         (pkg for pkg in doc.packages if pkg.spdx_id == spdx_id),
         None,
     )
+
+
+def get_annotation_by_spdx_id(doc: Document, spdx_id: str) -> Annotation | None:
+    """
+    Gets annotation by spdx id from document.
+    """
+    return next(
+        (annot for annot in doc.annotations if annot.spdx_id == spdx_id),
+        None,
+    )
