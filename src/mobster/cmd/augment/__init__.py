@@ -181,12 +181,7 @@ async def load_sbom(image: Image, cosign: Cosign, verify: bool) -> SBOM:
     """
     sbom = await cosign.fetch_sbom(image)
     if verify:
-        try:
-            await verify_sbom(sbom, image, cosign)
-        except (SBOMError, SBOMVerificationError):
-            LOGGER.exception(
-                "SBOM verification for image '%s' has failed!", image.reference
-            )
+        await verify_sbom(sbom, image, cosign)
     return sbom
 
 
