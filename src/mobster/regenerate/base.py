@@ -11,6 +11,7 @@ import shutil
 import sys
 import tempfile
 from argparse import ArgumentParser
+from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -44,9 +45,6 @@ class MissingReleaseIdError(ValueError):
     """
     Exception class for cases where ReleaseId is not found in an SBOM.
     """
-    def __init__(self, message: str = "ReleaseId not found in SBOM.") -> None:
-        self.message = message
-        super().__init__(self.message)
 
 
 @dataclass
@@ -93,11 +91,10 @@ class SbomRegenerator:
     ) -> None:
         self.args = args
         self.sbom_type = sbom_type
-        self.regen_semaphore = asyncio.Semaphore(self.args.concurrency)
-        self.s3_semaphore = asyncio.Semaphore(self.args.concurrency)
+        self.semaphore = asyncio.Semaphore(self.args.concurrency)
         self.s3_client = self.setup_s3_client()
         self.tpa_client = self.setup_tpa_client()
-        self.sbom_release_groups: dict[ReleaseId, list[str]] = {}
+        self.sbom_release_groups = defaultdict(list)
 
     async def regenerate_sboms(self) -> None:
         """
@@ -149,20 +146,17 @@ class SbomRegenerator:
         )
         try:
             release_id = await self.get_release_id(sbom)
-            if release_id not in self.sbom_release_groups:
-                # initialize the release group
-                self.sbom_release_groups[release_id] = []
             self.sbom_release_groups[release_id].append(sbom.id)
             LOGGER.debug(
-                f"Finished gathering ReleaseId ({str(release_id)}) "
+                f"Finished gathering ReleaseId ({release_id}) "
                 f"for SBOM: {sbom.id}."
             )
         except MissingReleaseIdError as e:
             if self.args.ignore_missing_releaseid:
-                LOGGER.debug(e.message)
+                LOGGER.debug(str(e))
                 return
             else:
-                LOGGER.error(e.message)
+                LOGGER.error(str(e))
                 raise SBOMError from e
 
     async def regenerate_release_groups(self) -> None:
@@ -186,7 +180,7 @@ class SbomRegenerator:
         regenerate the given sbom release
         (re-create it, upload it, then delete old version)
         """
-        async with self.regen_semaphore:
+        async with self.semaphore:
             # gather related data from s3 bucket
             path_snapshot, path_release_data = await self.gather_s3_input_data(
                 release_id
@@ -372,7 +366,7 @@ class SbomRegenerator:
             / S3Client.release_data_prefix
             / f"{rid}.release_data.json"
         )
-        async with self.s3_semaphore:
+        async with self.semaphore:
             if not await self.get_s3_client().get_snapshot(
                     path_snapshot,
                     rid
