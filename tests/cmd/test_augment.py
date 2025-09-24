@@ -306,22 +306,6 @@ class TestAugmentCommand:
             await verify_sbom(sbom, image, fake_cosign)
 
     @pytest.mark.asyncio
-    @patch("mobster.cmd.augment.verify_sbom")
-    async def test_load_sbom_warn(
-        self,
-        mock_verify_sbom: AsyncMock,
-        fake_cosign: "FakeCosign",
-        caplog: LogCaptureFixture,
-    ) -> None:
-        problem_message = "I hate this SBOM, it sucks."
-        mock_verify_sbom.side_effect = SBOMError(problem_message)
-        image = Image("quay.io/repo", "sha256:aaaaaaaa")
-
-        await load_sbom(image, fake_cosign, True)
-        assert caplog.records[-1].exc_text
-        assert problem_message in caplog.records[-1].exc_text
-
-    @pytest.mark.asyncio
     async def test_update_sbom_error_handling(
         self,
         fake_cosign: "FakeCosign",

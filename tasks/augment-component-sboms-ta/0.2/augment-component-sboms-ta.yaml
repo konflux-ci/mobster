@@ -110,6 +110,10 @@ spec:
       type: string
       description: K8s secret name with a cosign signing key used for SBOM attestation.
 
+    - name: attestationPubKey
+      type: string
+      description: K8s reference to a secret containing a key for verifying provenance attestations
+
   results:
     - description: Produced trusted data artifact
       name: sourceDataArtifact
@@ -149,7 +153,7 @@ spec:
           value: $(params.sourceDataArtifact)
 
     - name: process-component-sboms
-      image: quay.io/rh-ee-mszymutk/mobster-test@sha256:9ea2975d4b99abd664dd9b117bfd68a346395287bcb28ea6050f682f9bd4e3a9
+      image: quay.io/rh-ee-mszymutk/mobster-test@sha256:b0662f2a03ce4ba8a83c978e0a19efd331c58b7a1822949bf39a7452614d6f6e
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
           valueFrom:
@@ -184,11 +188,6 @@ spec:
             secretKeyRef:
               name: $(params.cosignSecretName)
               key: SIGN_KEY
-        - name: VERIFY_KEY
-          valueFrom:
-            secretKeyRef:
-              name: $(params.cosignSecretName)
-              key: PUBLIC_KEY
         - name: COSIGN_AWS_DEFAULT_REGION
           valueFrom:
             secretKeyRef:
@@ -218,9 +217,6 @@ spec:
         # script below will verify that the release_id has the correct format.
         release_id=$(dirname "$(params.snapshotSpec)")
         
-        echo "$VERIFY_KEY" > /tmp/verify_key_file.pub
-        echo "PUBLIC KEY: $VERIFY_KEY"
-
         process_component_sboms \
           --data-dir "$(params.dataDir)" \
           --snapshot-spec "$(params.snapshotSpec)" \
@@ -231,7 +227,7 @@ spec:
           --upload-concurrency "$(params.uploadConcurrency)" \
           --result-dir "$(params.resultsDirPath)" \
           --sign-key "$SIGN_KEY" \
-          --verify-key /tmp/verify_key_file.pub
+          --verify-key "$(params.attestationPubKey)"
 
     - name: create-trusted-artifact
       ref:

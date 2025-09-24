@@ -106,7 +106,7 @@ class CosignClient(Cosign):
     def __init__(
         # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
-        verification_key: Path | None = None,
+        verification_key: Path | str | None = None,
         signing_key: Path | str | None = None,
         signing_key_password: bytes = b"",
         rekor_config: RekorConfig | None = None,
