@@ -94,7 +94,7 @@ class SbomRegenerator:
         self.semaphore = asyncio.Semaphore(self.args.concurrency)
         self.s3_client = self.setup_s3_client()
         self.tpa_client = self.setup_tpa_client()
-        self.sbom_release_groups = defaultdict(list)
+        self.sbom_release_groups: dict[ReleaseId, list[str]] = defaultdict(list)
 
     async def regenerate_sboms(self) -> None:
         """
