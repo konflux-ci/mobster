@@ -149,7 +149,7 @@ spec:
           value: $(params.sourceDataArtifact)
 
     - name: process-component-sboms
-      image: quay.io/rh-ee-mszymutk/mobster-test@sha256:4a50a2b22ef1c07d196de913443bca2fe7fffe66c4cbe22995aaa1a025b78114
+      image: quay.io/rh-ee-mszymutk/mobster-test@sha256:448442bcc7c17172dd2af918d772ca2780357def93e1255918a626e77ad3cbe2
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
           valueFrom:
@@ -219,6 +219,7 @@ spec:
         release_id=$(dirname "$(params.snapshotSpec)")
         
         echo "$VERIFY_KEY" > /tmp/verify_key_file.pub
+        echo "PUBLIC KEY: $VERIFY_KEY"
 
         process_component_sboms \
           --data-dir "$(params.dataDir)" \
