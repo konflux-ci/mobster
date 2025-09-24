@@ -176,8 +176,9 @@ class TestAugmentCommand:
                     ),
                     release_repositories=[
                         ReleaseRepository(
-                            repo_url="registry.redhat.io/org/tenant/test",
+                            public_repo_url="registry.redhat.io/org/tenant/test",
                             tags=["1.0", "latest"],
+                            internal_repo_url="quay.io/org/tenant/test",
                         )
                     ],
                 ),
@@ -223,8 +224,9 @@ class TestAugmentCommand:
                     ),
                     release_repositories=[
                         ReleaseRepository(
-                            repo_url="registry.redhat.io/org/tenant/test",
+                            public_repo_url="registry.redhat.io/org/tenant/test",
                             tags=["1.0", "latest"],
+                            internal_repo_url="quay.io/org/tenant/test",
                         )
                     ],
                 ),
@@ -274,8 +276,9 @@ class TestAugmentCommand:
                     ),
                     release_repositories=[
                         ReleaseRepository(
-                            repo_url="registry.redhat.io/org/tenant/cdx-singlearch",
+                            public_repo_url="registry.redhat.io/org/tenant/cdx-singlearch",
                             tags=["1.0", "latest"],
+                            internal_repo_url="quay.io/org/tenant/cdx-singlearch",
                         )
                     ],
                 ),
@@ -324,7 +327,9 @@ class TestAugmentCommand:
         fake_cosign: "FakeCosign",
     ) -> None:
         img = Image("quay.io/repo", "sha256:aaaaaaaa")
-        repo = ReleaseRepository(repo_url="quay.io/repo", tags=[])
+        repo = ReleaseRepository(
+            public_repo_url="quay.io/repo", tags=[], internal_repo_url="quay.io/repo"
+        )
 
         with patch("mobster.cmd.augment.update_sbom_in_situ") as mock_update:
             mock_update.side_effect = SBOMError
@@ -434,8 +439,8 @@ def test_get_sbom_to_filename_dict_duplicate_prevention() -> None:
 class VerifyCycloneDX:
     @staticmethod
     def verify_purl(purl: PackageURL, repositories: list[ReleaseRepository]) -> None:
-        repo_urls = {repo.repo_url for repo in repositories}
-        repo_names = {repo.repo_url.split("/")[-1] for repo in repositories}
+        repo_urls = {repo.public_repo_url for repo in repositories}
+        repo_names = {repo.public_repo_url.split("/")[-1] for repo in repositories}
         assert purl.qualifiers is not None
         assert purl.qualifiers.get("repository_url") in repo_urls  # type: ignore
         assert purl.name in repo_names
@@ -568,8 +573,9 @@ class TestUpdateFormatSupport:
             image=Image("quay.io/test", "sha256:abc123"),
             release_repositories=[
                 ReleaseRepository(
-                    repo_url="registry.redhat.io/test",
+                    public_repo_url="registry.redhat.io/test",
                     tags=["latest"],
+                    internal_repo_url="quay.io/test",
                 )
             ],
         )
@@ -585,8 +591,9 @@ class TestUpdateFormatSupport:
             ),
             release_repositories=[
                 ReleaseRepository(
-                    repo_url="registry.redhat.io/test",
+                    public_repo_url="registry.redhat.io/test",
                     tags=["latest"],
+                    internal_repo_url="quay.io/test",
                 )
             ],
         )
@@ -764,8 +771,9 @@ def test_cdx_update_sbom_raises_error_for_index_image() -> None:
     ):
         handler.update_sbom(
             ReleaseRepository(
-                repo_url="quay.io/repo",
+                public_repo_url="quay.io/repo",
                 tags=["latest"],
+                internal_repo_url="quay.io/repo",
             ),
             index_image,
             {},

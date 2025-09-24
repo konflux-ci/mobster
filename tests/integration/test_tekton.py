@@ -101,10 +101,15 @@ async def test_create_product_sboms_ta_happypath(
                 "rh-registry-repo": "registry.redhat.io/test",
                 "tags": ["latest"],
                 "repositories": [
-                    {"rh-registry-repo": "registry.redhat.io/test", "tags": ["latest"]},
+                    {
+                        "rh-registry-repo": "registry.redhat.io/test",
+                        "tags": ["latest"],
+                        "url": "registry.redhat.io/test",
+                    },
                     {
                         "rh-registry-repo": "registry.redhat.io/anothertest",
                         "tags": ["latest"],
+                        "url": "registry.redhat.io/anothertest",
                     },
                 ],
             }
@@ -369,11 +374,13 @@ async def test_process_component_sboms_happypath(
                 "tags": ["latest", "1.0"],
                 "repositories": [
                     {
-                        "rh-registry-repo": f"{registry}/test",
+                        "rh-registry-repo": "registry.redhat.io/test",
+                        "url": f"{registry}/test",
                         "tags": ["latest", "1.0"],
                     },
                     {
-                        "rh-registry-repo": f"{registry}/anothertest",
+                        "rh-registry-repo": "registry.redhat.io/anothertest",
+                        "url": f"{registry}/anothertest",
                         "tags": ["1.0"],
                     },
                 ],
