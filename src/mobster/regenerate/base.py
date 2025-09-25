@@ -141,6 +141,7 @@ class SbomRegenerator:
         )
 
     async def organize_sbom_by_release_id(self, sbom: SbomSummary) -> None:
+        """ get the SBOM's ReleaseId and add it to that release group for regen """
         LOGGER.debug(
             f"Gathering ReleaseId for SBOM: {sbom.id}"
         )
@@ -155,11 +156,11 @@ class SbomRegenerator:
             if self.args.ignore_missing_releaseid:
                 LOGGER.debug(str(e))
                 return
-            else:
-                LOGGER.error(str(e))
-                raise SBOMError from e
+            LOGGER.error(str(e))
+            raise SBOMError from e
 
     async def regenerate_release_groups(self) -> None:
+        """ walk the set of release groups, and regenerate each release """
         LOGGER.info(
             f"Regenerating {self.sbom_type.value} release groups.."
         )
