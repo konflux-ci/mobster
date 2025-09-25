@@ -558,6 +558,9 @@ def _get_dependency_chain_spdx_ids(relationships: list[Relationship]) -> list[st
 
     parent_to_child = {}
     for rel in rels:
+        assert rel.spdx_element_id not in parent_to_child, (
+            "Detected a dependency tree in relationships instead of a path."
+        )
         parent_to_child[rel.spdx_element_id] = str(rel.related_spdx_element_id)
 
     # build chain starting from root
