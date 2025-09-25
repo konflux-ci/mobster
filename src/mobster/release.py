@@ -160,8 +160,14 @@ class ComponentModel(pdc.BaseModel):
     """
 
     name: str
-    image_reference: str = pdc.Field(alias="containerImage")
-    rh_registry_repo: str | None = pdc.Field(alias="rh-registry-repo", default=None)
+    image_reference: str = pdc.Field(
+        alias="containerImage",
+        validation_alias=pdc.AliasChoices("containerImage", "image_reference"),
+    )
+    rh_registry_repo: str = pdc.Field(
+        alias="rh-registry-repo",
+        validation_alias=pdc.AliasChoices("rh-registry-repo", "rh_registry_repo"),
+    )
     tags: list[str] | None = pdc.Field(default=None)
     repositories: list[ComponentRepositoryModel] = pdc.Field(default_factory=list)
 

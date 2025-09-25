@@ -15,6 +15,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from subprocess import CalledProcessError
 from typing import Any
 
 import aiofiles
@@ -31,6 +32,9 @@ from mobster.tekton.product import ProcessProductArgs, process_product_sboms
 from mobster.tekton.s3 import S3Client
 
 LOGGER = logging.getLogger(__name__)
+
+""" directory prefix for (re)generated SBOMs """
+generated_sboms_prefix = "sbom"
 
 
 class SbomType(Enum):
@@ -181,47 +185,52 @@ class SbomRegenerator:
         regenerate the given sbom release
         (re-create it, upload it, then delete old version)
         """
-        async with self.semaphore:
-            # gather related data from s3 bucket
-            path_snapshot, path_release_data = await self.gather_s3_input_data(
-                release_id
-            )
-
-            if not path_snapshot or not path_release_data:
-                raise SBOMError(
-                    f"No S3 bucket snapshot/release_data found for "
-                    f"SBOM release: {str(release_id)}"
+        try:
+            async with self.semaphore:
+                # gather related data from s3 bucket
+                path_snapshot, path_release_data = await self.gather_s3_input_data(
+                    release_id
                 )
-            LOGGER.debug(f"Generate SBOM release: {str(release_id)}")
-            await self.process_sboms(release_id, path_release_data, path_snapshot)
 
-            for sbom_id in self.sbom_release_groups.get(release_id, []):
-                if self.args.dry_run:
-                    LOGGER.info(
-                        f"*Dry Run: 'delete' related SBOM: for "
-                        f"SBOM release: {str(release_id)} -- "
-                        f"SBOM id: {sbom_id}"
+                if not path_snapshot or not path_release_data:
+                    raise SBOMError(
+                        f"No S3 bucket snapshot/release_data found for "
+                        f"SBOM release: {str(release_id)}"
                     )
-                else:
-                    LOGGER.info(
-                        f"*Deleting related SBOM: for "
-                        f"SBOM release: {str(release_id)} -- "
-                        f"SBOM id: {sbom_id}"
-                    )
-                    # delete
-                    response_delete = await self.delete_sbom(sbom_id)
-                    # check delete status
-                    if response_delete.status_code != 200:
-                        # delete failed, log and abort regeneration for this SBOM
-                        raise SBOMError(
-                            f"delete SBOM failed for SBOM: {sbom_id}, "
-                            f"status: {response_delete.status_code}, "
-                            f"message: {response_delete.text}"
+                LOGGER.debug(f"Generate SBOM release: {str(release_id)}")
+                await self.process_sboms(release_id, path_release_data, path_snapshot)
+
+                for sbom_id in self.sbom_release_groups.get(release_id, []):
+                    if self.args.dry_run:
+                        LOGGER.info(
+                            f"*Dry Run: 'delete' related SBOM: for "
+                            f"SBOM release: {str(release_id)} -- "
+                            f"SBOM id: {sbom_id}"
                         )
-                    LOGGER.info(
-                        f"Success: deleted original SBOM: {sbom_id}"
-                    )
-                    return
+                    else:
+                        LOGGER.info(
+                            f"*Deleting related SBOM: for "
+                            f"SBOM release: {str(release_id)} -- "
+                            f"SBOM id: {sbom_id}"
+                        )
+                        # delete
+                        response_delete = await self.delete_sbom(sbom_id)
+                        # check delete status
+                        if response_delete.status_code != 200:
+                            # delete failed, log & abort
+                            raise SBOMError(
+                                f"delete SBOM failed for SBOM: {sbom_id}, "
+                                f"status: {response_delete.status_code}, "
+                                f"message: {response_delete.text}"
+                            )
+                        LOGGER.info(
+                            f"Success: deleted original SBOM: {sbom_id}"
+                        )
+                        return
+        except SBOMError as e:
+            if self.args.fail_fast:
+                raise e
+            LOGGER.warning(str(e))
 
     async def get_release_id(self, sbom: SbomSummary) -> ReleaseId:
         """
@@ -262,8 +271,8 @@ class SbomRegenerator:
         download the full SBOM represented by the given summary,
         then extract ReleaseId from it
         """
-        name = utils.normalize_file_name(sbom.name)
-        local_path = self.args.output_path / f"{name}.json"
+        file_name = utils.normalize_file_name(sbom.id)
+        local_path = self.args.output_path / f"{file_name}.json"
         # allow retry on download
         max_download_retries = 3
         for retry in range(1, max_download_retries):
@@ -273,10 +282,10 @@ class SbomRegenerator:
                 break
             except RequestError as e:
                 msg = f"Download was unsuccessful for '{local_path}' ({str(e)})."
-                LOGGER.warning(msg)
                 if retry < max_download_retries:
                     # briefly wait, then try again
                     await asyncio.sleep(0.5)
+                    LOGGER.debug(f"retrying... ({msg})")
                     continue
                 # raise SBOMError to stop overall script execution
                 LOGGER.error(msg)
@@ -392,40 +401,43 @@ class SbomRegenerator:
         invoke the relevant tekton SBOM generation function,
         based on which cli-called entrypoint was used
         """
-        if self.sbom_type == SbomType.PRODUCT:
-            await process_product_sboms(
-                ProcessProductArgs(
-                    release_data=path_release_data,
-                    concurrency=self.args.concurrency,
-                    data_dir=self.args.output_path,
-                    snapshot_spec=path_snapshot,
-                    atlas_api_url=self.args.tpa_base_url,
-                    retry_s3_bucket=self.args.s3_bucket_url,
-                    release_id=release_id,
-                    labels={},
-                    result_dir=self.args.output_path,
-                    tpa_retries=self.args.tpa_retries,
-                    upload_concurrency=self.args.concurrency,
-                    skip_upload=self.args.dry_run,
+        try:
+            if self.sbom_type == SbomType.PRODUCT:
+                await process_product_sboms(
+                    ProcessProductArgs(
+                        release_data=path_release_data,
+                        concurrency=self.args.concurrency,
+                        data_dir=self.args.output_path,
+                        snapshot_spec=path_snapshot,
+                        atlas_api_url=self.args.tpa_base_url,
+                        retry_s3_bucket=self.args.s3_bucket_url,
+                        release_id=release_id,
+                        labels={},
+                        result_dir=self.args.output_path,
+                        tpa_retries=self.args.tpa_retries,
+                        upload_concurrency=self.args.concurrency,
+                        skip_upload=self.args.dry_run,
+                    )
                 )
-            )
-            #  release_notes, snapshot, release_id
-        elif self.sbom_type == SbomType.COMPONENT:
-            await process_component_sboms(
-                ProcessComponentArgs(
-                    data_dir=self.args.output_path,
-                    snapshot_spec=path_snapshot,
-                    atlas_api_url=self.args.tpa_base_url,
-                    retry_s3_bucket=self.args.s3_bucket_url,
-                    release_id=release_id,
-                    labels={},
-                    augment_concurrency=self.args.concurrency,
-                    result_dir=self.args.output_path,
-                    tpa_retries=self.args.tpa_retries,
-                    upload_concurrency=self.args.concurrency,
-                    skip_upload=self.args.dry_run,
+                #  release_notes, snapshot, release_id
+            elif self.sbom_type == SbomType.COMPONENT:
+                await process_component_sboms(
+                    ProcessComponentArgs(
+                        data_dir=self.args.output_path,
+                        snapshot_spec=path_snapshot,
+                        atlas_api_url=self.args.tpa_base_url,
+                        retry_s3_bucket=self.args.s3_bucket_url,
+                        release_id=release_id,
+                        labels={},
+                        augment_concurrency=self.args.concurrency,
+                        result_dir=self.args.output_path,
+                        tpa_retries=self.args.tpa_retries,
+                        upload_concurrency=self.args.concurrency,
+                        skip_upload=self.args.dry_run,
+                    )
                 )
-            )
+        except CalledProcessError as e:
+            raise SBOMError from e
 
     async def delete_sbom(self, sbom_id: str) -> Response:
         """ delete the given SBOM, using the TPA client """
@@ -480,6 +492,7 @@ def prepare_output_paths(output_dir: str) -> Path:
     # prepare output_path subdirs
     (output_path / S3Client.release_data_prefix).mkdir(parents=True, exist_ok=True)
     (output_path / S3Client.snapshot_prefix).mkdir(parents=True, exist_ok=True)
+    (output_path / generated_sboms_prefix).mkdir(parents=True, exist_ok=True)
     return output_path
 
 

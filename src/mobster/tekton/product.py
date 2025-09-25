@@ -118,7 +118,8 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
 
     if args.skip_upload:
         LOGGER.debug(f"skip_upload={args.skip_upload}, so no snapshot / "
-                     f"release data upload to S3, for release_id=%s")
+                     f"release data upload to S3, for release_id="
+                     f"{args.release_id}")
     elif s3:
         LOGGER.info(
             "Uploading snapshot and release data to S3 with release_id=%s",
@@ -137,7 +138,8 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
 
     if args.skip_upload:
         LOGGER.debug(f"skip_upload={args.skip_upload}, "
-                     f"so no upload to TPA, for release_id=%s")
+                     f"so no upload to TPA, for release_id="
+                     f"{args.release_id}")
     else:
         report = await upload_sboms(
             args.to_upload_config(),
