@@ -15,6 +15,7 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
 from mobster.cmd.generate.oci_image.constants import (
     IS_BASE_IMAGE_ANNOTATION,
+    HERMETO_ANNOTATION_COMMENTS,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
     find_spdx_root_packages_spdxid,
@@ -572,11 +573,7 @@ def generated_by_hermeto(annotations: list[Annotation]) -> bool:
     for annot in annotations:
         if (
             annot.annotator.actor_type == ActorType.TOOL
-            and annot.annotation_comment
-            in [
-                '{"name": "cachi2:found_by", "value": "cachi2"}',
-                '{"name": "hermeto:found_by", "value": "hermeto"}',
-            ]
+            and annot.annotation_comment in HERMETO_ANNOTATION_COMMENTS
         ):
             return True
     return False
@@ -603,8 +600,9 @@ def get_package_purl(package: Package) -> str | None:
 
 def sanitize_purl(purl: str) -> str | None:
     """
-    Sanitize the purl by removing extra parts outside of required fields
-    (type, name and version), and validate that it contains the required fields.
+    Sanitize the purl by removing parts not used in matching (anything outside of type,
+    namespace, name and version), and validate that it contains the required fields (
+    type, name and version).
 
     Args:
         purl: The purl to sanitize.
@@ -622,17 +620,20 @@ def sanitize_purl(purl: str) -> str | None:
     if not purl_obj.version:
         return None
 
-    # remove non-required fields
-    purl_obj = purl_obj._replace(subpath=None, qualifiers=None, namespace=None)
-    return purl_obj.to_string()
+    # include only fields used in matching
+    return PackageURL(
+        type=purl_obj.type,
+        namespace=purl_obj.namespace,
+        name=purl_obj.name,
+        version=purl_obj.version
+        ).to_string()
 
 
 def checksums_match(
     parent_checksums: list[Checksum], component_checksums: list[Checksum]
 ) -> bool:
     """
-    Compare two lists of Package Checksum objects. They are not hashable, so we need to
-    compare the old-fashioned way
+    Compare two lists of Package Checksum objects. All checksums must match.
 
     Args:
         parent_checksums: List of Checksum objects from parent package.
@@ -641,14 +642,16 @@ def checksums_match(
     Returns:
         True if any ofthe checksums match, False otherwise.
     """
-    if not parent_checksums and not component_checksums:
-        return True
-
-    return any(
-        parent_checksum == component_checksum
-        for parent_checksum in parent_checksums
-        for component_checksum in component_checksums
-    )
+    # The Checksum objects are not hashable and do not have to_string(), convert them to
+    # strings in a custom way
+    parent_checksums_str = [
+        str(checksum.algorithm) + ":" + checksum.value for checksum in parent_checksums
+    ]
+    component_checksums_str = [
+        str(checksum.algorithm) + ":" + checksum.value
+        for checksum in component_checksums
+    ]
+    return set(parent_checksums_str) == set(component_checksums_str)
 
 
 def package_matched(
@@ -662,11 +665,11 @@ def package_matched(
     sanitized down to only the required fields(type, name and version), then compared.
     For hermeto(parent)-to-syft(component) matching, a match is considered if the purls
     match. For syft(parent)-to-syft(component) matching, a match is only considered if
-    all of the following match:
-    - the sanitized purls
+    an identifier exists in both packages and matches. These identifiers are checked
+    in the order of the most specific to the least specific:
+    - list of checksums (all items must match)
     - the package verification codes
-    - the SPDX id
-    - any one of the checksums from both packages
+    - the package purls
 
     Args:
         parent_package: The parent package.
@@ -678,6 +681,9 @@ def package_matched(
     parent_package_annotation = get_annotation_by_spdx_id(
         parent_sbom_doc, parent_package.spdx_id
     )
+
+    if not parent_package_annotation:
+        return False
 
     parent_purl = get_package_purl(parent_package)
     component_purl = get_package_purl(component_package)
@@ -692,14 +698,15 @@ def package_matched(
     if generated_by_hermeto(parent_package_annotation):
         return parent_purl == component_purl
     else:
-        purl_match = parent_purl == component_purl
-        verification_code_match = (
-            parent_package.verification_code == component_package.verification_code
-        )
-        spdx_id_match = parent_package.spdx_id == component_package.spdx_id
-        checksum_match = checksums_match(
-            parent_package.checksums, component_package.checksums
-        )
-        return (
-            purl_match and verification_code_match and spdx_id_match and checksum_match
-        )
+        # Check identifiers from most specific to least specific
+        if parent_package.checksums or component_package.checksums:
+            return checksums_match(
+                parent_package.checksums, component_package.checksums
+                )
+
+        if parent_package.verification_code or component_package.verification_code:
+            return (
+                parent_package.verification_code == component_package.verification_code
+            )
+
+        return parent_purl == component_purl
