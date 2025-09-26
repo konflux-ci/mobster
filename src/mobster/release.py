@@ -160,8 +160,14 @@ class ComponentModel(pdc.BaseModel):
     """
 
     name: str
-    image_reference: str = pdc.Field(alias="containerImage")
-    rh_registry_repo: str | None = pdc.Field(alias="rh-registry-repo", default=None)
+    image_reference: str = pdc.Field(
+        alias="containerImage",
+        validation_alias=pdc.AliasChoices("containerImage", "image_reference"),
+    )
+    rh_registry_repo: str = pdc.Field(
+        alias="rh-registry-repo",
+        validation_alias=pdc.AliasChoices("rh-registry-repo", "rh_registry_repo"),
+    )
     tags: list[str] | None = pdc.Field(default=None)
     repositories: list[ComponentRepositoryModel] = pdc.Field(default_factory=list)
 
@@ -201,7 +207,7 @@ class ComponentModel(pdc.BaseModel):
         img_repository, img_digest = parse_image_reference(self.image_reference)
         async with semaphore:
             image: Image = await Image.from_repository_digest_manifest(
-                img_repository, img_digest
+                all_release_repos[0].repo_url, img_digest
             )
         return Component(
             name=self.name, image=image, release_repositories=all_release_repos

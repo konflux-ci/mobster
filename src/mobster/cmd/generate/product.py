@@ -36,7 +36,10 @@ class ReleaseNotes(pdc.BaseModel):
 class ReleaseData(pdc.BaseModel):
     """Pydantic model representing the merged data file."""
 
-    release_notes: ReleaseNotes = pdc.Field(alias="releaseNotes")
+    release_notes: ReleaseNotes = pdc.Field(
+        alias="releaseNotes",
+        validation_alias=pdc.AliasChoices("releaseNotes", "release_notes"),
+    )
 
 
 class GenerateProductCommand(GenerateCommand):
