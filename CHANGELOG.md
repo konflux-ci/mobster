@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.8.0](https://github.com/konflux-ci/mobster/compare/v0.7.0...v0.8.0) (2025-09-26)
+
+
+### Features
+
+* **ISV-5714:** Refactor SBOM modification code to reflect mapping mechanism imperfection finding ([972075e](https://github.com/konflux-ci/mobster/commit/972075e7210c26308d7d2fd4725feaee70103807))
+* **ISV-5714:** Refactor SBOM modification code to reflect mapping mechanism imperfection finding ([b58eb7d](https://github.com/konflux-ci/mobster/commit/b58eb7d4b4b27ebac2c6fce20a2594ac27d4a80d))
+* **ISV-5914:** utilize connection pooling in TPA client ([7fdac0f](https://github.com/konflux-ci/mobster/commit/7fdac0feb6f19c0892f9c626be52237c36ab3be5))
+* **ISV-5914:** utilize connection pooling in TPA client ([63615c7](https://github.com/konflux-ci/mobster/commit/63615c7b7cd7897b2b40be0d0f4f5dd26d754cab))
+* **ISV-6223:** Log S3 file uploads ([c82917b](https://github.com/konflux-ci/mobster/commit/c82917b19bd8fb1aff99e1f6f3993f32d4c1eb21))
+* **ISV-6223:** Log S3 file uploads ([34ccf2b](https://github.com/konflux-ci/mobster/commit/34ccf2bc0bae2a1dbb42fb1fd36a775de4f790f3))
+* **ISV-6260:** Support multiple target repositories in Konflux Snapshot. ([01f9cb0](https://github.com/konflux-ci/mobster/commit/01f9cb0589cc289a2bd061ae38a2fd12487057b5))
+* **ISV-6260:** Support multiple target repositories in Konflux Snapshot. ([08f3c2b](https://github.com/konflux-ci/mobster/commit/08f3c2baa7b40a5739d0a04e30ff76a328488f61))
+
+
+### Bug Fixes
+
+* Add a license to the container. ([2e11008](https://github.com/konflux-ci/mobster/commit/2e110082bcee2e6022fecc2577a733619f20e2cc))
+* **ISV-6219:** Glob pattern updated for ignoring the "tasks" dir. ([1609e42](https://github.com/konflux-ci/mobster/commit/1609e429f814b00299f3a48fe4a71cadde349e84))
+* **ISV-6219:** Glob pattern updated for ignoring the "tasks" dir. ([688c71a](https://github.com/konflux-ci/mobster/commit/688c71a691235bb16689a695b9f1cae7067431e6))
+* Update `deprecated-image-check` image ref. ([ea2e36a](https://github.com/konflux-ci/mobster/commit/ea2e36ac7f1eff424b214c5b2f174b0e8ae19764))
+* Update `deprecated-image-check` image ref. ([533e70c](https://github.com/konflux-ci/mobster/commit/533e70c464a9db61066b9db231ca03d832a3c250))
+* Update `task-clair-scan` image ref. ([5df22fb](https://github.com/konflux-ci/mobster/commit/5df22fb3d20df3af92ea5c2b2248b04a08a99cbc))
+
 ## [0.7.0](https://github.com/konflux-ci/mobster/compare/v0.6.0...v0.7.0) (2025-09-03)
 
 
