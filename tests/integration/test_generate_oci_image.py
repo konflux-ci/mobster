@@ -185,6 +185,7 @@ def _run_mobster_generate(img: Image, gdata: GenerateData) -> None:
         "--output",
         str(gdata.output_sbom_path),
         "oci-image",
+        "--contextualize",
         "--from-syft",
         str(gdata.input_sbom_path),
         "--image-digest",
