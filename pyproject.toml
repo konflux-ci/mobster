@@ -82,6 +82,7 @@ packages = [{ include = "mobster", from = "src" }]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')"
 ]

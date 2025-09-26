@@ -2,42 +2,23 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 
 from mobster.cmd.download.download_tpa import TPADownloadCommand
-from mobster.cmd.upload.tpa import TPAClient
-
-
-@pytest.fixture
-def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Set up environment variables needed for the TPA upload command."""
-    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN_URL", "https://test.token.url")
-    monkeypatch.setenv("MOBSTER_TPA_SSO_ACCOUNT", "test-account")
-    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN", "test-token")
-
-
-@pytest.fixture
-def mock_tpa_client() -> AsyncMock:
-    """Create a mock TPA client that returns success for uploads."""
-    mock = AsyncMock(spec=TPAClient)
-    mock.upload_sbom = AsyncMock(
-        return_value=httpx.Response(
-            200, request=httpx.Request("POST", "https://example.com")
-        )
-    )
-    return mock
+from tests.conftest import setup_mock_tpa_client_with_context_manager
 
 
 @pytest.mark.asyncio
-@patch("mobster.cmd.upload.tpa.TPAClient")
+@patch("mobster.cmd.download.download_tpa.get_tpa_default_client")
 async def test_execute_download(
-    mock_tpa_client_class: MagicMock,
-    mock_tpa_client: AsyncMock,
-    mock_env_vars: MagicMock,
+    mock_get_client: MagicMock,
+    mock_tpa_client_with_http_response: AsyncMock,
+    tpa_env_vars: None,
 ) -> None:
     """Test downloading SBOMs from TPA."""
-    mock_tpa_client_class.return_value = mock_tpa_client
+    setup_mock_tpa_client_with_context_manager(
+        mock_get_client, mock_tpa_client_with_http_response
+    )
 
     # Create mock SBOM objects
     sbom1 = MagicMock()
@@ -53,8 +34,8 @@ async def test_execute_download(
         yield sbom1
         yield sbom2
 
-    mock_tpa_client.list_sboms.return_value = mock_list_sboms("", "")
-    mock_tpa_client.download_sbom = AsyncMock()
+    mock_tpa_client_with_http_response.list_sboms.return_value = mock_list_sboms("", "")
+    mock_tpa_client_with_http_response.download_sbom = AsyncMock()
 
     args = MagicMock()
     args.output = Path("/test/dir")
@@ -65,7 +46,7 @@ async def test_execute_download(
     await command.execute()
 
     # Verify list_sboms was called with correct parameters
-    mock_tpa_client.list_sboms.assert_called_once_with(
+    mock_tpa_client_with_http_response.list_sboms.assert_called_once_with(
         query="test_query", sort="ingested"
     )
 
@@ -78,9 +59,9 @@ async def test_execute_download(
         (sbom2.id, Path("/test/dir/another-sbom.json")),
     ]
 
-    assert mock_tpa_client.download_sbom.call_count == 2
+    assert mock_tpa_client_with_http_response.download_sbom.call_count == 2
     for i, (expected_id, expected_path) in enumerate(expected_calls):
-        actual_call = mock_tpa_client.download_sbom.call_args_list[i]
+        actual_call = mock_tpa_client_with_http_response.download_sbom.call_args_list[i]
         assert actual_call[0][0] == expected_id  # First positional arg (sbom_id)
         assert actual_call[0][1] == expected_path  # Second positional arg (path)
 
@@ -89,14 +70,16 @@ async def test_execute_download(
 
 
 @pytest.mark.asyncio
-@patch("mobster.cmd.upload.tpa.TPAClient")
+@patch("mobster.cmd.download.download_tpa.get_tpa_default_client")
 async def test_execute_download_with_download_failure(
-    mock_tpa_client_class: MagicMock,
-    mock_tpa_client: AsyncMock,
-    mock_env_vars: MagicMock,
+    mock_get_client: MagicMock,
+    mock_tpa_client_with_http_response: AsyncMock,
+    tpa_env_vars: None,
 ) -> None:
     """Test downloading SBOMs when download fails."""
-    mock_tpa_client_class.return_value = mock_tpa_client
+    setup_mock_tpa_client_with_context_manager(
+        mock_get_client, mock_tpa_client_with_http_response
+    )
 
     # Create mock SBOM object
     sbom = MagicMock()
@@ -107,8 +90,10 @@ async def test_execute_download_with_download_failure(
     async def mock_list_sboms(query: str, sort: str) -> Any:
         yield sbom
 
-    mock_tpa_client.list_sboms.return_value = mock_list_sboms("", "")
-    mock_tpa_client.download_sbom = AsyncMock(side_effect=Exception("Download failed"))
+    mock_tpa_client_with_http_response.list_sboms.return_value = mock_list_sboms("", "")
+    mock_tpa_client_with_http_response.download_sbom = AsyncMock(
+        side_effect=Exception("Download failed")
+    )
 
     args = MagicMock()
     args.output = Path("/test/dir")
@@ -121,7 +106,7 @@ async def test_execute_download_with_download_failure(
         await command.execute()
 
     # Verify download was attempted
-    mock_tpa_client.download_sbom.assert_called_once()
+    mock_tpa_client_with_http_response.download_sbom.assert_called_once()
 
     # Success flag should still be False since execution failed
     assert command.exit_code == 1
@@ -131,19 +116,23 @@ async def test_execute_download_with_download_failure(
 @patch("mobster.cmd.upload.tpa.TPAClient")
 async def test_execute_download_empty_results(
     mock_tpa_client_class: MagicMock,
-    mock_tpa_client: AsyncMock,
-    mock_env_vars: MagicMock,
+    mock_tpa_client_with_http_response: AsyncMock,
+    tpa_env_vars: None,
 ) -> None:
     """Test downloading when no SBOMs are found."""
-    mock_tpa_client_class.return_value = mock_tpa_client
+    mock_tpa_client_with_http_response.__aenter__ = AsyncMock(
+        return_value=mock_tpa_client_with_http_response
+    )
+    mock_tpa_client_with_http_response.__aexit__ = AsyncMock(return_value=None)
+    mock_tpa_client_class.return_value = mock_tpa_client_with_http_response
 
     # Mock empty async generator for list_sboms
     async def mock_list_sboms(query: str, sort: str) -> Any:
         return
         yield  # This will never be reached, making it an empty generator
 
-    mock_tpa_client.list_sboms.return_value = mock_list_sboms("", "")
-    mock_tpa_client.download_sbom = AsyncMock()
+    mock_tpa_client_with_http_response.list_sboms.return_value = mock_list_sboms("", "")
+    mock_tpa_client_with_http_response.download_sbom = AsyncMock()
 
     args = MagicMock()
     args.output = Path("/test/dir")
@@ -154,12 +143,12 @@ async def test_execute_download_empty_results(
     await command.execute()
 
     # Verify list_sboms was called
-    mock_tpa_client.list_sboms.assert_called_once_with(
+    mock_tpa_client_with_http_response.list_sboms.assert_called_once_with(
         query="no_results_query", sort="ingested"
     )
 
     # Verify download_sbom was never called since no SBOMs were found
-    mock_tpa_client.download_sbom.assert_not_called()
+    mock_tpa_client_with_http_response.download_sbom.assert_not_called()
 
     # Success flag should still be True even with no results
     assert command.exit_code == 0

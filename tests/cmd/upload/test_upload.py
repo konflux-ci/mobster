@@ -14,24 +14,6 @@ from mobster.cmd.upload.upload import (
 
 
 @pytest.fixture
-def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Set up environment variables needed for the TPA upload command."""
-    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN_URL", "https://test.token.url")
-    monkeypatch.setenv("MOBSTER_TPA_SSO_ACCOUNT", "test-account")
-    monkeypatch.setenv("MOBSTER_TPA_SSO_TOKEN", "test-token")
-
-
-@pytest.fixture
-def mock_tpa_client() -> AsyncMock:
-    """Create a mock TPA client that returns success for uploads."""
-    mock = AsyncMock(spec=TPAClient)
-    mock.upload_sbom = AsyncMock(
-        return_value="urn:uuid:12345678-1234-5678-9012-123456789012"
-    )
-    return mock
-
-
-@pytest.fixture
 def mock_oidc_credentials() -> MagicMock:
     return MagicMock(spec=OIDCClientCredentials)
 
@@ -52,10 +34,12 @@ async def test_execute_upload_from_directory(
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
     mock_gather_sboms: MagicMock,
-    mock_env_vars: MagicMock,
+    tpa_env_vars: None,
     mock_tpa_client: MagicMock,
 ) -> None:
     """Test uploading SBOMs from a directory."""
+    mock_tpa_client.__aenter__ = AsyncMock(return_value=mock_tpa_client)
+    mock_tpa_client.__aexit__ = AsyncMock(return_value=None)
     mock_tpa_client_class.return_value = mock_tpa_client
     mock_tpa_client.upload_sbom.return_value = (
         "urn:uuid:12345678-1234-5678-9012-123456789012"
@@ -92,10 +76,12 @@ async def test_execute_upload_from_directory(
 async def test_execute_upload_single_file(
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
-    mock_env_vars: MagicMock,
+    tpa_env_vars: None,
     mock_tpa_client: MagicMock,
 ) -> None:
     """Test uploading a single SBOM file."""
+    mock_tpa_client.__aenter__ = AsyncMock(return_value=mock_tpa_client)
+    mock_tpa_client.__aexit__ = AsyncMock(return_value=None)
     mock_tpa_client_class.return_value = mock_tpa_client
     mock_tpa_client.upload_sbom.return_value = (
         "urn:uuid:12345678-1234-5678-9012-123456789012"
@@ -136,9 +122,11 @@ async def test_execute_upload_failure(
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
     mock_gather_sboms: MagicMock,
-    mock_env_vars: MagicMock,
+    tpa_env_vars: None,
 ) -> None:
     mock_tpa_client = AsyncMock(spec=TPAClient)
+    mock_tpa_client.__aenter__ = AsyncMock(return_value=mock_tpa_client)
+    mock_tpa_client.__aexit__ = AsyncMock(return_value=None)
     # Simulate failure by raising an exception, which will be caught and return False
     mock_tpa_client.upload_sbom = AsyncMock(side_effect=Exception("Upload failed"))
     mock_tpa_client_class.return_value = mock_tpa_client
@@ -171,9 +159,11 @@ async def test_execute_upload_exception(
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
     mock_gather_sboms: MagicMock,
-    mock_env_vars: MagicMock,
+    tpa_env_vars: None,
 ) -> None:
     mock_tpa_client = AsyncMock(spec=TPAClient)
+    mock_tpa_client.__aenter__ = AsyncMock(return_value=mock_tpa_client)
+    mock_tpa_client.__aexit__ = AsyncMock(return_value=None)
     mock_tpa_client.upload_sbom = AsyncMock(side_effect=Exception("Upload failed"))
     mock_tpa_client_class.return_value = mock_tpa_client
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
