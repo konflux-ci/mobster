@@ -224,7 +224,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
         """
         Update the SBOM of an index image in a repository.
         """
-        sbom["name"] = f"{repository.repo_url}@{index.digest}"
+        sbom["name"] = f"{repository.public_repo_url}@{index.digest}"
 
         index_package = cls._find_image_package(sbom, index)
         if not index_package:
@@ -232,7 +232,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
 
         index_package.update_external_refs(
             index,
-            repository.repo_url,
+            repository.public_repo_url,
             repository.tags,
         )
 
@@ -255,7 +255,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
             arch = get_purl_arch(original_purl)
             package.update_external_refs(
                 image,
-                repository.repo_url,
+                repository.public_repo_url,
                 repository.tags,
                 arch=arch,
             )
@@ -267,7 +267,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
         """
         Update the SBOM of single-arch image in a repository.
         """
-        sbom["name"] = f"{repository.repo_url}@{image.digest}"
+        sbom["name"] = f"{repository.public_repo_url}@{image.digest}"
 
         image_package = cls._find_image_package(sbom, image)
         if not image_package:
@@ -277,7 +277,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
 
         image_package.update_external_refs(
             image,
-            repository.repo_url,
+            repository.public_repo_url,
             repository.tags,
             arch=image_package.arch,  # propagate the arch from the package
         )
@@ -369,7 +369,9 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
 
         new_identity = []
         for tag in release_repo.tags:
-            purl = construct_purl(image, release_repo.repo_url, arch=arch, tag=tag)
+            purl = construct_purl(
+                image, release_repo.public_repo_url, arch=arch, tag=tag
+            )
             new_identity.append({"field": "purl", "concludedValue": purl})
 
         if cdx_component.get("evidence") is None:
@@ -399,7 +401,9 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
 
         arch = get_purl_arch(purl)
         tag = release_repo.tags[0] if release_repo.tags else None
-        new_purl = construct_purl(image, release_repo.repo_url, arch=arch, tag=tag)
+        new_purl = construct_purl(
+            image, release_repo.public_repo_url, arch=arch, tag=tag
+        )
         cdx_component["purl"] = new_purl
 
         if update_tags:
