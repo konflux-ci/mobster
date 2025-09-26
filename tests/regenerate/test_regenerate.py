@@ -376,7 +376,7 @@ def test_download_and_extract_release_id_success(
         return_value=expected_release_id
     )
 
-    sbom_path = Path("/mock/path/test_sbom.json")
+    sbom_path = Path("/mock/path/sbom_id_1.json")
     regenerator.args.output_path = sbom_path.parent
 
     with patch("aiofiles.open", new_callable=MagicMock) as mocked_open:
