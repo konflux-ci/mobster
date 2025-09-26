@@ -108,16 +108,14 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     s3 = connect_with_s3(args.retry_s3_bucket)
 
     if not args.skip_upload and s3:
-        LOGGER.info(
-            "Uploading snapshot to S3 with release_id=%s",
-            args.release_id
-        )
+        LOGGER.info("Uploading snapshot to S3 with release_id=%s", args.release_id)
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
     else:
-        LOGGER.debug(f"skip_upload={args.skip_upload}, so no snapshot / "
-                     f"release data upload to S3, for release_id="
-                     f"{args.release_id}")
-
+        LOGGER.debug(
+            f"skip_upload={args.skip_upload}, so no snapshot / "
+            f"release data upload to S3, for release_id="
+            f"{args.release_id}"
+        )
 
     LOGGER.info("Starting SBOM augmentation")
     augment_component_sboms(
@@ -129,9 +127,11 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     config = args.to_upload_config()
 
     if args.skip_upload:
-        LOGGER.debug(f"skip_upload={args.skip_upload}, "
-                     f"so no upload to TPA, for release_id="
-                     f"{args.release_id}")
+        LOGGER.debug(
+            f"skip_upload={args.skip_upload}, "
+            f"so no upload to TPA, for release_id="
+            f"{args.release_id}"
+        )
     else:
         report = await upload_sboms(
             config,

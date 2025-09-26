@@ -97,9 +97,8 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument("--retry-s3-bucket", type=str)
     parser.add_argument(
         "--skip-upload",
-        action='store_true',
-        help="Whether to generate without uploading to Atlas and S3. "
-             "(default: False)",
+        action="store_true",
+        help="Whether to generate without uploading to Atlas and S3. (default: False)",
     )
     parser.add_argument(
         "--labels",

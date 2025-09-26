@@ -1,4 +1,4 @@
-""" tests for module for regenerating SBOM documents """
+"""tests for module for regenerating SBOM documents"""
 
 import asyncio
 import json
@@ -22,7 +22,7 @@ from mobster.tekton.s3 import S3Client
 
 
 def mock_regenerate_args() -> regen_base.RegenerateArgs:
-    """ default RegenerateArgs for regenerator tests """
+    """default RegenerateArgs for regenerator tests"""
     return regen_base.RegenerateArgs(
         output_path=Path("/test/path"),
         tpa_base_url="https://test.ing",
@@ -39,7 +39,7 @@ def mock_regenerate_args() -> regen_base.RegenerateArgs:
 
 
 def test_regenerate_args() -> None:
-    """ test arg parsing/setup for regenerator """
+    """test arg parsing/setup for regenerator"""
     args = mock_regenerate_args()
     assert args.output_path == Path("/test/path")
     assert args.tpa_base_url == "https://test.ing"
@@ -55,7 +55,7 @@ def test_regenerate_args() -> None:
 
 
 def get_mock_sbom(id: str, name: str) -> SbomSummary:
-    """ constructs a SbomSummary object for testing """
+    """constructs a SbomSummary object for testing"""
     return SbomSummary(
         id=id,
         name=name,
@@ -77,7 +77,7 @@ def get_mock_sbom(id: str, name: str) -> SbomSummary:
 def mock_download_sbom_json_with_attr(
     id: str, name: str, release_id: str, path: Path
 ) -> str:
-    """ sample downloaded SBOM data for testing """
+    """sample downloaded SBOM data for testing"""
     sbom = {
         "name": f"{name}",
         "documentNamespace": "https://anchore.com/syft/dir/var/workdir/"
@@ -105,10 +105,8 @@ def mock_download_sbom_json_with_attr(
     return json.dumps(sbom)
 
 
-def test_gather_s3_input_data(
-        mock_env_vars: None
-) -> None:
-    """ tests fetching S3 bucket data """
+def test_gather_s3_input_data(mock_env_vars: None) -> None:
+    """tests fetching S3 bucket data"""
     args = mock_regenerate_args()
     sbom_regenerator = SbomRegenerator(args, regen_base.SbomType.PRODUCT)
     sbom_regenerator.s3_client = AsyncMock(spec=S3Client)
@@ -159,9 +157,9 @@ def dummy_args(tmp_path: Path) -> list[str]:
 
 
 def test_parse_args(
-        tmp_path: Path,
-        dummy_args: list[str],
-        monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    dummy_args: list[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test the parse_args function for proper argument parsing."""
     monkeypatch.setattr("sys.argv", ["program_name"] + dummy_args)
@@ -182,8 +180,7 @@ def test_parse_args(
 
 @pytest.mark.asyncio
 async def test_regenerate_sboms_success(
-        mock_env_vars: None,
-        mock_tpa_client: AsyncMock
+    mock_env_vars: None, mock_tpa_client: AsyncMock
 ) -> None:
     mock_args = mock_regenerate_args()
     mock_args.tpa_page_size = 10
@@ -212,8 +209,7 @@ async def test_regenerate_sboms_success(
 
 @pytest.mark.asyncio
 async def test_regenerate_sboms_error(
-        mock_env_vars: None,
-        mock_tpa_client: AsyncMock
+    mock_env_vars: None, mock_tpa_client: AsyncMock
 ) -> None:
     mock_args = mock_regenerate_args()
     mock_args.tpa_page_size = 10
@@ -258,8 +254,7 @@ async def test_regenerate_sboms_error(
 
 @pytest.mark.asyncio
 async def test_organize_sbom_by_release_id(
-        mock_env_vars: None,
-        mock_tpa_client: AsyncMock
+    mock_env_vars: None, mock_tpa_client: AsyncMock
 ) -> None:
     mock_args = mock_regenerate_args()
     sbom1 = get_mock_sbom(id="a", name="sbom_1")
@@ -276,7 +271,7 @@ async def test_organize_sbom_by_release_id(
 
 
 def test_prepare_output_paths(tmp_path: Path) -> None:
-    """ verify prepare_output_paths ensures the required dirs exist """
+    """verify prepare_output_paths ensures the required dirs exist"""
     test_output_path = tmp_path / "output"
     regen_base.prepare_output_paths(str(test_output_path))
     assert (test_output_path / "release-data").exists()
@@ -284,7 +279,7 @@ def test_prepare_output_paths(tmp_path: Path) -> None:
 
 
 def test_prepare_output_paths_with_existing_path(tmp_path: Path) -> None:
-    """ verify prepare_output_paths ensures the required dirs exist """
+    """verify prepare_output_paths ensures the required dirs exist"""
     output_path = tmp_path / "output"
     (output_path / S3Client.release_data_prefix).mkdir(parents=True, exist_ok=True)
     (output_path / S3Client.snapshot_prefix).mkdir(parents=True, exist_ok=True)
@@ -301,7 +296,7 @@ def test_prepare_output_paths_with_existing_path(tmp_path: Path) -> None:
 
 
 def test_prepare_output_paths_with_nonexisting_path(tmp_path: Path) -> None:
-    """ verify prepare_output_paths ensures the required dirs exist """
+    """verify prepare_output_paths ensures the required dirs exist"""
     output_path = tmp_path / "foobar12345"
     regen_base.prepare_output_paths(str(output_path))
 
@@ -314,7 +309,7 @@ def test_prepare_output_paths_with_nonexisting_path(tmp_path: Path) -> None:
 
 
 def test_extract_release_id_with_annotations() -> None:
-    """ verify extract_release_id handles annotations """
+    """verify extract_release_id handles annotations"""
     expected_release_id = ReleaseId.new()
     sbom_dict = {
         "annotations": [
@@ -326,7 +321,7 @@ def test_extract_release_id_with_annotations() -> None:
 
 
 def test_extract_release_id_with_properties() -> None:
-    """ verify extract_release_id handles properties """
+    """verify extract_release_id handles properties"""
     expected_release_id = ReleaseId.new()
     sbom_dict = {
         "properties": [
@@ -338,12 +333,12 @@ def test_extract_release_id_with_properties() -> None:
 
 
 def sbom_from_dict(sbom_dict: dict[str, Any]) -> SbomSummary:
-    """ convenience test function to unmarshal SBOMSummary from dict """
+    """convenience test function to unmarshal SBOMSummary from dict"""
     return json.loads(json.dumps(sbom_dict))  # type: ignore[no-any-return]
 
 
 def test_extract_release_id_missing() -> None:
-    """ verify extract_release_id handles missing ReleaseId """
+    """verify extract_release_id handles missing ReleaseId"""
     sbom_dict = {
         "annotations": [
             {"comment": "etc"},
@@ -361,9 +356,7 @@ def test_extract_release_id_missing() -> None:
         assert True
 
 
-def test_download_and_extract_release_id_success(
-        mock_env_vars: None
-) -> None:
+def test_download_and_extract_release_id_success(mock_env_vars: None) -> None:
     summary = get_mock_sbom(id="sbom_id_1", name="test_sbom")
     expected_release_id = ReleaseId.new()
 
@@ -389,13 +382,11 @@ def test_download_and_extract_release_id_success(
         summary.id, sbom_path
     )
     mocked_open.return_value.__aenter__.return_value.read.assert_awaited_once()
-    regenerator.extract_release_id.assert_called_once_with(
-        {"mock_key": "mock_value"}
-    )
+    regenerator.extract_release_id.assert_called_once_with({"mock_key": "mock_value"})
 
 
 def test_download_and_extract_release_id_file_not_found_error(
-        mock_env_vars: None
+    mock_env_vars: None,
 ) -> None:
     summary = get_mock_sbom(id="sbom_id_2", name="test_sbom_error")
     args = mock_regenerate_args()
@@ -405,9 +396,10 @@ def test_download_and_extract_release_id_file_not_found_error(
     )
     regenerator.args.output_path = Path("/mock/path")
 
-    with patch("aiofiles.open", side_effect=FileNotFoundError), patch(
-            "asyncio.sleep", new_callable=AsyncMock
-    ) as mocked_sleep:
+    with (
+        patch("aiofiles.open", side_effect=FileNotFoundError),
+        patch("asyncio.sleep", new_callable=AsyncMock) as mocked_sleep,
+    ):
         try:
             asyncio.run(regenerator.download_and_extract_release_id(summary))
         except ValueError as e:
@@ -418,7 +410,7 @@ def test_download_and_extract_release_id_file_not_found_error(
 
 
 def test_download_and_extract_release_id_invalid_json_error(
-        mock_env_vars: None
+    mock_env_vars: None,
 ) -> None:
     summary = get_mock_sbom(id="sbom_id_3", name="test_sbom_invalid_json")
     args = mock_regenerate_args()
@@ -428,9 +420,10 @@ def test_download_and_extract_release_id_invalid_json_error(
     )
     regenerator.args.output_path = Path("/mock/path")
 
-    with patch("aiofiles.open", new_callable=MagicMock) as mocked_open, patch(
-            "asyncio.sleep", new_callable=AsyncMock
-    ) as mocked_sleep:
+    with (
+        patch("aiofiles.open", new_callable=MagicMock) as mocked_open,
+        patch("asyncio.sleep", new_callable=AsyncMock) as mocked_sleep,
+    ):
         mocked_open.return_value.__aenter__.return_value.read = AsyncMock(
             side_effect=json.JSONDecodeError("Expecting value", "mock_doc", 0)
         )
@@ -446,7 +439,7 @@ def test_download_and_extract_release_id_invalid_json_error(
 
 
 async def async_test_wrapper(the_coro: Coroutine[Any, Any, Any]) -> Any:
-    """ convenience test wrapper for coroutine """
+    """convenience test wrapper for coroutine"""
     return await the_coro
 
 
@@ -470,4 +463,3 @@ def mock_tpa_client() -> AsyncMock:
         )
     )
     return mock
-

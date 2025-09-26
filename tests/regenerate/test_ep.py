@@ -37,10 +37,10 @@ def dummy_args() -> list[str]:
 @patch("mobster.regenerate.product.SbomRegenerator")
 @patch("mobster.regenerate.product.asyncio.run")
 def test_product_main(  # type: ignore[no-untyped-def]
-        mock_asyncio_run,
-        mock_sbom_regenerator_cls,
-        mock_parse_args,
-        mock_setup_logging,
+    mock_asyncio_run,
+    mock_sbom_regenerator_cls,
+    mock_parse_args,
+    mock_setup_logging,
 ) -> None:
     mock_setup_logging.return_value = None
     mock_args = MagicMock()
@@ -61,10 +61,10 @@ def test_product_main(  # type: ignore[no-untyped-def]
 @patch("mobster.regenerate.component.SbomRegenerator")
 @patch("mobster.regenerate.component.asyncio.run")
 def test_component_main(  # type: ignore[no-untyped-def]
-        mock_asyncio_run,
-        mock_sbom_regenerator_cls,
-        mock_parse_args,
-        mock_setup_logging,
+    mock_asyncio_run,
+    mock_sbom_regenerator_cls,
+    mock_parse_args,
+    mock_setup_logging,
 ) -> None:
     mock_setup_logging.return_value = None
     mock_args = MagicMock()
