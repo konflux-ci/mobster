@@ -21,8 +21,8 @@ from mobster.cmd.augment import (
 from mobster.cmd.augment.handlers import CycloneDXVersion1, get_purl_digest
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
-from mobster.oci.artifact import SBOM, Provenance02
-from mobster.oci.cosign import Cosign
+from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
+from mobster.oci.cosign import Cosign, RekorConfig
 from mobster.release import Component, ReleaseId, ReleaseRepository, Snapshot
 from mobster.sbom import cyclonedx
 from tests.conftest import assert_spdx_sbom, awaitable
@@ -74,7 +74,7 @@ class TestAugmentCommand:
     ) -> None:
         monkeypatch.setattr(
             "mobster.cmd.augment.CosignClient",
-            lambda _: fake_cosign,
+            lambda *_: fake_cosign,
         )
 
     @pytest.fixture(autouse=True)
@@ -140,9 +140,9 @@ class TestAugmentCommand:
         )
 
         with patch(
-            "mobster.cmd.augment.update_sboms",
+            "mobster.cmd.augment.augment_sboms",
         ) as fake_update_sboms:
-            fake_update_sboms.return_value = False
+            fake_update_sboms.return_value = [None]
             await cmd.execute()
             assert cmd.exit_code == 1
 
@@ -174,8 +174,9 @@ class TestAugmentCommand:
                     ),
                     release_repositories=[
                         ReleaseRepository(
-                            repo_url="registry.redhat.io/org/tenant/test",
+                            public_repo_url="registry.redhat.io/org/tenant/test",
                             tags=["1.0", "latest"],
+                            internal_repo_url="quay.io/org/tenant/test",
                         )
                     ],
                 ),
@@ -221,8 +222,9 @@ class TestAugmentCommand:
                     ),
                     release_repositories=[
                         ReleaseRepository(
-                            repo_url="registry.redhat.io/org/tenant/test",
+                            public_repo_url="registry.redhat.io/org/tenant/test",
                             tags=["1.0", "latest"],
+                            internal_repo_url="quay.io/org/tenant/test",
                         )
                     ],
                 ),
@@ -272,8 +274,9 @@ class TestAugmentCommand:
                     ),
                     release_repositories=[
                         ReleaseRepository(
-                            repo_url="registry.redhat.io/org/tenant/cdx-singlearch",
+                            public_repo_url="registry.redhat.io/org/tenant/cdx-singlearch",
                             tags=["1.0", "latest"],
+                            internal_repo_url="quay.io/org/tenant/cdx-singlearch",
                         )
                     ],
                 ),
@@ -306,7 +309,9 @@ class TestAugmentCommand:
         fake_cosign: "FakeCosign",
     ) -> None:
         img = Image("quay.io/repo", "sha256:aaaaaaaa")
-        repo = ReleaseRepository(repo_url="quay.io/repo", tags=[])
+        repo = ReleaseRepository(
+            public_repo_url="quay.io/repo", tags=[], internal_repo_url="quay.io/repo"
+        )
 
         with patch("mobster.cmd.augment.update_sbom_in_situ") as mock_update:
             mock_update.side_effect = SBOMError
@@ -317,7 +322,7 @@ class TestAugmentCommand:
                 semaphore=sem,
                 output_dir=Path("/tmp"),
             )
-            assert await update_sbom(config, repo, img) is False
+            assert await update_sbom(config, repo, img) is None
 
 
 class FakeCosign(Cosign):
@@ -332,6 +337,15 @@ class FakeCosign(Cosign):
 
     async def fetch_sbom(self, image: Image) -> SBOM:
         return self.sboms[image.digest]
+
+    async def attest_sbom(
+        self,
+        sbom_path: Path,
+        image_ref: str,
+        sbom_format: SBOMFormat,
+        rekor_config: RekorConfig | None = None,
+    ) -> None:
+        pass
 
     @staticmethod
     def load() -> "FakeCosign":
@@ -358,6 +372,12 @@ class FakeCosign(Cosign):
                 provenances[prov_file] = prov
 
         return FakeCosign(provenances, sboms)
+
+    def can_sign(self) -> bool:
+        return True
+
+    async def attest_provenance(self, provenance: Provenance02, image_ref: str) -> None:
+        pass
 
 
 def load_provenance(prov_dir: Path, digest: str) -> Provenance02 | None:
@@ -401,8 +421,8 @@ def test_get_sbom_to_filename_dict_duplicate_prevention() -> None:
 class VerifyCycloneDX:
     @staticmethod
     def verify_purl(purl: PackageURL, repositories: list[ReleaseRepository]) -> None:
-        repo_urls = {repo.repo_url for repo in repositories}
-        repo_names = {repo.repo_url.split("/")[-1] for repo in repositories}
+        repo_urls = {repo.public_repo_url for repo in repositories}
+        repo_names = {repo.public_repo_url.split("/")[-1] for repo in repositories}
         assert purl.qualifiers is not None
         assert purl.qualifiers.get("repository_url") in repo_urls  # type: ignore
         assert purl.name in repo_names
@@ -535,8 +555,9 @@ class TestUpdateFormatSupport:
             image=Image("quay.io/test", "sha256:abc123"),
             release_repositories=[
                 ReleaseRepository(
-                    repo_url="registry.redhat.io/test",
+                    public_repo_url="registry.redhat.io/test",
                     tags=["latest"],
+                    internal_repo_url="quay.io/test",
                 )
             ],
         )
@@ -552,8 +573,9 @@ class TestUpdateFormatSupport:
             ),
             release_repositories=[
                 ReleaseRepository(
-                    repo_url="registry.redhat.io/test",
+                    public_repo_url="registry.redhat.io/test",
                     tags=["latest"],
+                    internal_repo_url="quay.io/test",
                 )
             ],
         )
@@ -679,7 +701,7 @@ class TestUpdateFormatSupport:
             await update_sbom(
                 config, index_component.release_repositories[0], index_component.image
             )
-            is False
+            is None
         )
 
     @pytest.mark.asyncio
@@ -702,7 +724,7 @@ class TestUpdateFormatSupport:
             await update_sbom(
                 config, component.release_repositories[0], component.image
             )
-            is False
+            is None
         )
 
 
@@ -731,8 +753,9 @@ def test_cdx_update_sbom_raises_error_for_index_image() -> None:
     ):
         handler.update_sbom(
             ReleaseRepository(
-                repo_url="quay.io/repo",
+                public_repo_url="quay.io/repo",
                 tags=["latest"],
+                internal_repo_url="quay.io/repo",
             ),
             index_image,
             {},

@@ -1,5 +1,7 @@
 import asyncio
+import tempfile
 from collections.abc import AsyncGenerator, Generator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -7,6 +9,7 @@ import pytest_asyncio
 
 from mobster.cmd.upload.tpa import TPAClient, get_tpa_default_client
 from mobster.tekton.s3 import S3Client
+from mobster.utils import run_async_subprocess
 from tests.integration.oci_client import ReferrersTagOCIClient
 
 
@@ -150,3 +153,34 @@ def test_id(request: pytest.FixtureRequest) -> str:
     removing the need for clearing TPA after each test case.
     """
     return str(request.node.name)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cosign_keys() -> tuple[Path, Path]:  # type: ignore[misc]
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with tempfile.NamedTemporaryFile() as password_tempfile:
+            password_tempfile.write(b"")
+            code, stdout, stderr = asyncio.run(
+                run_async_subprocess(
+                    ["cosign", "generate-key-pair"],
+                    cwd=temp_dir,
+                    stdin=password_tempfile,
+                )
+            )
+            assert code == 0, f"{stdout.decode()}, {stderr.decode()}"
+        temp_dir_path = Path(temp_dir)
+        pub_key = temp_dir_path / "cosign.pub"
+        assert pub_key.exists()
+        priv_key = temp_dir_path / "cosign.key"
+        assert priv_key.exists()
+        yield priv_key, pub_key
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cosign_sign_key(cosign_keys: tuple[Path, Path]) -> Path:
+    return cosign_keys[0]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cosign_verify_key(cosign_keys: tuple[Path, Path]) -> Path:
+    return cosign_keys[1]
