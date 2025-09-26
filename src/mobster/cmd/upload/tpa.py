@@ -2,6 +2,7 @@
 TPA API client
 """
 
+import contextlib
 import itertools
 import json
 import logging
@@ -36,8 +37,31 @@ class TPATransientError(TPAError):
 
 class TPAClient(OIDCClientCredentialsClient):
     """
-    TPA API client
+    TPA API client with connection pooling support.
+
+    Inherits async context manager behavior from OIDCClientCredentialsClient.
+    Use with "async with" statement for proper resource management.
+
+    Example:
+        async with TPAClient(
+            base_url="https://tpa.example.com",
+            auth=auth_credentials
+        ) as client:
+            urn = await client.upload_sbom(path_to_sbom)
+            sboms = client.list_sboms(query="name:my-app")
+            async for sbom in sboms:
+                await client.download_sbom(sbom.id, local_path)
     """
+
+    async def __aenter__(self) -> "TPAClient":
+        """
+        Initialize the HTTP client for connection pooling.
+
+        Returns:
+            Self instance with initialized HTTP client
+        """
+        await super().__aenter__()
+        return self
 
     async def upload_sbom(
         self,
@@ -176,9 +200,10 @@ class TPAClient(OIDCClientCredentialsClient):
         return {f"labels.{key}": val for key, val in labels.items()}
 
 
-def get_tpa_default_client(
+@contextlib.asynccontextmanager
+async def get_tpa_default_client(
     base_url: str,
-) -> TPAClient:
+) -> AsyncGenerator[TPAClient, None]:
     """
     Get a default TPA client with OIDC credentials.
 
@@ -195,8 +220,9 @@ def get_tpa_default_client(
             client_id=os.environ["MOBSTER_TPA_SSO_ACCOUNT"],
             client_secret=os.environ["MOBSTER_TPA_SSO_TOKEN"],
         )
-    tpa_client = TPAClient(
+
+    async with TPAClient(
         base_url=base_url,
         auth=auth,
-    )
-    return tpa_client
+    ) as client:
+        yield client

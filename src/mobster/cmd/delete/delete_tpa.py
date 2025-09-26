@@ -22,16 +22,15 @@ class TPADeleteCommand(Command):
         """
         Execute the command to delete SBOMs from the TPA.
         """
-        tpa_client = get_tpa_default_client(self.cli_args.tpa_base_url)
+        async with get_tpa_default_client(self.cli_args.tpa_base_url) as client:
+            sboms = client.list_sboms(query=self.cli_args.query, sort="ingested")
 
-        sboms = tpa_client.list_sboms(query=self.cli_args.query, sort="ingested")
-
-        async for sbom in sboms:
-            if self.cli_args.dry_run:
-                LOGGER.info("Would delete SBOM: %s (%s)", sbom.id, sbom.name)
-                continue
-            await tpa_client.delete_sbom(sbom.id)
-            LOGGER.info("Deleted SBOM:  %s (%s)", sbom.id, sbom.name)
+            async for sbom in sboms:
+                if self.cli_args.dry_run:
+                    LOGGER.info("Would delete SBOM: %s (%s)", sbom.id, sbom.name)
+                    continue
+                await client.delete_sbom(sbom.id)
+                LOGGER.info("Deleted SBOM:  %s (%s)", sbom.id, sbom.name)
         self.exit_code = 0
 
     async def save(self) -> None:

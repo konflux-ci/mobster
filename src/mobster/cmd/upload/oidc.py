@@ -2,12 +2,12 @@
 OIDC client wrapped around httpx
 """
 
+import asyncio
 import logging
 import time
 from asyncio import sleep
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
-from threading import Lock
 from typing import Any
 from urllib.parse import urljoin
 
@@ -15,6 +15,10 @@ import httpx
 from httpx import Proxy, Timeout
 
 LOGGER = logging.getLogger(__name__)
+
+DEFAULT_TIMEOUT_SECONDS = 60
+DEFAULT_CONNECT_TIMEOUT_SECONDS = 5
+TOKEN_EXPIRY_BUFFER_SECONDS = 15
 
 
 class OIDCAuthenticationError(Exception):
@@ -53,7 +57,22 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
     Generic OIDC client credential client
 
     Transparently handles the OIDC client credential flow required for authentication,
-    including automatic token renewal.
+    including automatic token renewal. Uses connection pooling for improved performance.
+
+    WARNING: this client should not be initialized directly, but using an
+    "async with" statement. Only that guarantees proper clean up of the
+    internal HTTPX client used.
+
+    Example:
+        async with OIDCClientCredentialsClient(
+            base_url="https://api.example.com",
+            auth=OIDCClientCredentials(
+                token_url="https://auth.example.com/token",
+                client_id="your-client-id",
+                client_secret="your-client-secret"
+            )
+        ) as client:
+            response = await client.get("/api/endpoint")
     """
 
     def __init__(
@@ -63,7 +82,8 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         proxy: str | None = None,
     ):
         """
-        Create a new client
+        Create a new client.
+
 
         Args:
             base_url (str): Base url for the API server
@@ -72,12 +92,59 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
             proxy (Optional[str]): Proxy to use to talk to the API server
                 Defaults to None, which means no proxy.
         """
+        self.client: httpx.AsyncClient | None = None
         self._proxies = Proxy(proxy) if proxy else None
         self._base_url = base_url
         self._auth = auth
         self._token = ""
         self._token_expiration = 0
-        self._token_mutex = Lock()
+        self._token_mutex = asyncio.Lock()
+
+    async def __aenter__(self) -> "OIDCClientCredentialsClient":
+        """
+        Initialize the HTTP client for connection pooling.
+
+        Returns:
+            Self instance with initialized HTTP client
+
+        Raises:
+            RuntimeError: If client initialization fails
+        """
+        try:
+            self.client = httpx.AsyncClient(
+                proxy=self._proxies,
+                timeout=Timeout(
+                    DEFAULT_TIMEOUT_SECONDS, connect=DEFAULT_CONNECT_TIMEOUT_SECONDS
+                ),
+            )
+            return self
+        except Exception as exc:
+            raise RuntimeError(f"Failed to initialize HTTP client: {exc}") from exc
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:  # type: ignore
+        """
+        Clean up the HTTP client and close connections.
+
+        Args:
+            exc_type: Exception type if an exception occurred
+            exc_val: Exception value if an exception occurred
+            exc_tb: Exception traceback if an exception occurred
+        """
+        if self.client:
+            await self.client.aclose()
+            self.client = None
+
+    def _assert_client(self) -> None:
+        """
+        Raises a RuntimeError if the client was not initialized using an async
+        context manager.
+        Raises:
+            RuntimeError if the client attribute is None
+        """
+        if self.client is None:
+            raise RuntimeError(
+                "The client was not initialized using an async context manager."
+            )
 
     def _token_expired(self) -> bool:
         """
@@ -87,8 +154,8 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
             bool: True if the current token needs to be renewed
         """
         # Avoid reusing a token which is too close to its expiration by considering it
-        # expired if it has less than 15 seconds of validity left
-        return time.time() > self._token_expiration - 15
+        # expired if it has less than TOKEN_EXPIRY_BUFFER_SECONDS of validity left
+        return time.time() > self._token_expiration - TOKEN_EXPIRY_BUFFER_SECONDS
 
     # pylint: disable=missing-timeout
     async def _fetch_token(self) -> None:
@@ -104,15 +171,16 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         # See https://www.oauth.com/oauth2-servers/access-tokens/client-credentials/
         # and https://www.ietf.org/rfc/rfc6749.txt section 4.4 and 2.3.1
         LOGGER.debug("Fetching new token from %s", self._auth.token_url)
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                self._auth.token_url,
-                data={
-                    "grant_type": "client_credentials",
-                    "client_id": self._auth.client_id,
-                    "client_secret": self._auth.client_secret,
-                },
-            )
+
+        self._assert_client()
+        resp = await self.client.post(  # type:ignore[union-attr]
+            self._auth.token_url,
+            data={
+                "grant_type": "client_credentials",
+                "client_id": self._auth.client_id,
+                "client_secret": self._auth.client_secret,
+            },
+        )
         if not resp.is_success:
             LOGGER.error(
                 "Unable to fetch auth token. [%s] %s", resp.status_code, resp.text
@@ -131,7 +199,7 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         self._token_expiration = int(token.get("expires_in", 300) + time.time())
         LOGGER.debug("Token will expire in %s seconds", token.get("expires_in"))
 
-    async def _ensure_valid_token(self, client: httpx.AsyncClient) -> None:
+    async def _ensure_valid_token(self) -> None:
         """
         Check if we have a valid token and if not, renew it
         Always store the token in client header to ensure
@@ -140,10 +208,13 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         if self._auth is None:
             return
 
-        with self._token_mutex:
+        async with self._token_mutex:
             if self._token_expired():
                 await self._fetch_token()
-            client.headers["Authorization"] = "Bearer " + self._token
+            self._assert_client()
+            self.client.headers["Authorization"] = (  # type:ignore[union-attr]
+                "Bearer " + self._token
+            )
 
     # Mypy doesn't recognize that either a value is returned
     # or an exception is raised in all cases
@@ -192,59 +263,63 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         if status_forcelist is None:
             status_forcelist = [408, 429, 500, 502, 503, 504]
 
-        # fresh client for each request, make timeout longer only if
-        # connection is successful (5.0 is the default in httpx)
-        client = httpx.AsyncClient(proxy=self._proxies, timeout=Timeout(60, connect=5))
-        if headers:
-            client.headers.update(headers)
-
-        async with client:
-            for attempt in range(retries):
-                await self._ensure_valid_token(client)
-                try:
-                    resp = await client.request(
-                        method, effective_url, content=content, params=params
+        self._assert_client()
+        for attempt in range(retries):
+            await self._ensure_valid_token()
+            try:
+                resp = await self.client.request(  # type:ignore[union-attr]
+                    method,
+                    effective_url,
+                    content=content,
+                    params=params,
+                    headers=headers,
+                )
+                if resp.status_code in status_forcelist:
+                    raise httpx.HTTPStatusError(
+                        message=f"Retry-able HTTP status code: {resp.status_code}",
+                        request=resp.request,
+                        response=resp,
                     )
-                    if resp.status_code in status_forcelist:
-                        raise httpx.HTTPStatusError(
-                            message=f"Retry-able HTTP status code: {resp.status_code}",
-                            request=resp.request,
-                            response=resp,
+                LOGGER.debug(
+                    "HTTP request [%s]: status code: %s",
+                    method,
+                    effective_url,
+                    extra={"mobster_httpx_request_response_code": resp.status_code},
+                )
+                return resp
+            except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                # retry on problems with request and forcelist status codes
+                if attempt < retries - 1:
+                    delta_to_next_att = backoff_factor * (2**attempt)
+                    extra_info = {
+                        "mobster_httpx_request_params": params,
+                        "mobster_httpx_request_headers": headers,
+                    }
+                    if isinstance(exc, httpx.HTTPStatusError):
+                        extra_info["mobster_httpx_request_response_code"] = (
+                            exc.response.status_code
                         )
-                    LOGGER.debug(
-                        "HTTP request [%s]: status code: %s",
+
+                    LOGGER.exception(
+                        "HTTP %s request to %s failed: %s. "
+                        "Next attempt in %f seconds, remaining retries: %d",
                         method,
                         effective_url,
-                        extra={"mobster_httpx_request_response_code": resp.status_code},
+                        exc,
+                        delta_to_next_att,
+                        retries - attempt,
+                        extra=extra_info,
                     )
-                    return resp
-                except (httpx.RequestError, httpx.HTTPStatusError) as exc:
-                    # retry on problems with request and forcelist status codes
-                    if attempt < retries - 1:
-                        delta_to_next_att = backoff_factor * (2**attempt)
-                        LOGGER.exception(
-                            "HTTP %s request to %s failed: %s. "
-                            "Next attempt in %f seconds, remaining retries: %d",
-                            method,
-                            effective_url,
-                            exc,
-                            delta_to_next_att,
-                            retries - attempt,
-                            extra={
-                                "mobster_httpx_request_params": params,
-                                "mobster_httpx_request_headers": headers,
-                            },
-                        )
-                        await sleep(delta_to_next_att)
-                    else:
-                        raise RetryExhaustedException(
-                            f"Retries exhausted for "
-                            f"HTTP {method} request for {effective_url}"
-                        ) from exc
-                except Exception as exc:  # pylint: disable=broad-except
-                    # capture broad exception and raise it without retrying
-                    LOGGER.exception("HTTP %s request failed: %s", method, exc)
-                    raise
+                    await sleep(delta_to_next_att)
+                else:
+                    raise RetryExhaustedException(
+                        f"Retries exhausted for "
+                        f"HTTP {method} request for {effective_url}"
+                    ) from exc
+            except Exception as exc:  # pylint: disable=broad-except
+                # capture broad exception and raise it without retrying
+                LOGGER.exception("HTTP %s request failed: %s", method, exc)
+                raise
 
     async def get(
         self,
@@ -398,13 +473,12 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         effective_url = urljoin(self._base_url, url)
         LOGGER.debug("HTTP %s %s (streaming)", method, effective_url)
 
-        client = httpx.AsyncClient(proxy=self._proxies, timeout=60)
-        if headers:
-            client.headers.update(headers)
+        await self._ensure_valid_token()
 
-        await self._ensure_valid_token(client)
-
-        async with client.stream(method, effective_url, params=params) as response:
+        self._assert_client()
+        async with self.client.stream(  # type:ignore[union-attr]
+            method, effective_url, params=params, headers=headers
+        ) as response:
             response.raise_for_status()
             async for chunk in response.aiter_bytes():
                 yield chunk
