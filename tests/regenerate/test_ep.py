@@ -32,15 +32,6 @@ def dummy_args() -> list[str]:
     ]
 
 
-@patch("mobster.regenerate.product.SbomRegenerator.regenerate_sboms")
-def test_product_main(  # type: ignore[no-untyped-def]
-        mock_regenerate_sboms
-) -> None:
-    mock_regenerate_sboms.return_value = None
-    product_main()
-    mock_regenerate_sboms.assert_called_once_with()
-
-
 @patch("mobster.regenerate.product.setup_logging")
 @patch("mobster.regenerate.product.parse_args")
 @patch("mobster.regenerate.product.SbomRegenerator")

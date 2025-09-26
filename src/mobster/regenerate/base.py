@@ -34,7 +34,7 @@ from mobster.tekton.s3 import S3Client
 LOGGER = logging.getLogger(__name__)
 
 """ directory prefix for (re)generated SBOMs """
-generated_sboms_prefix = "sbom"
+GENERATED_SBOMS_PREFIX = "sbom"
 
 
 class SbomType(Enum):
@@ -52,7 +52,7 @@ class MissingReleaseIdError(ValueError):
 
 
 @dataclass
-class RegenerateArgs:
+class RegenerateArgs:  # pylint: disable=R0902
     """
     Arguments for SBOM regeneration.
 
@@ -104,7 +104,10 @@ class SbomRegenerator:
         """
         regenerate the set of sboms indicated by the cli args
         """
-        LOGGER.info(f"Searching for matching {self.sbom_type.value} SBOMs..")
+        LOGGER.info(
+            "Searching for matching %s SBOMs..",
+            self.sbom_type.value
+        )
         # query for relevant sboms, based on the CLI-provided mobster versions
         sboms = self.get_tpa_client().list_sboms(
             query=self.construct_query(),
@@ -113,7 +116,8 @@ class SbomRegenerator:
         )
 
         LOGGER.info(
-            f"Gathering ReleaseIds for {self.sbom_type.value} SBOMs."
+            "Gathering ReleaseIds for %s SBOMs.",
+            self.sbom_type.value
         )
         tasks_gather_release_ids = []
         async for sbom in sboms:
@@ -129,32 +133,33 @@ class SbomRegenerator:
         await asyncio.gather(*tasks_gather_release_ids)
 
         LOGGER.info(
-            f"Finished gathering ReleaseIds for "
-            f"{len(tasks_gather_release_ids)} SBOMs."
+            "Finished gathering ReleaseIds for %s SBOMs.",
+            len(tasks_gather_release_ids)
         )
 
         LOGGER.info(
-            f"Running regenerate for "
-            f"{len(self.sbom_release_groups)} "
-            f"release groups.."
+            "Running regenerate for %s release groups..",
+            len(self.sbom_release_groups)
         )
         await self.regenerate_release_groups()
         LOGGER.info(
-            f"Finished regeneration for {tasks_gather_release_ids} "
-            f"release groups."
+            "Finished regeneration for %s release groups.",
+            tasks_gather_release_ids
         )
 
     async def organize_sbom_by_release_id(self, sbom: SbomSummary) -> None:
         """ get the SBOM's ReleaseId and add it to that release group for regen """
         LOGGER.debug(
-            f"Gathering ReleaseId for SBOM: {sbom.id}"
+            "Gathering ReleaseId for SBOM: %s",
+            sbom.id
         )
         try:
             release_id = await self.get_release_id(sbom)
             self.sbom_release_groups[release_id].append(sbom.id)
             LOGGER.debug(
-                f"Finished gathering ReleaseId ({release_id}) "
-                f"for SBOM: {sbom.id}."
+                "Finished gathering ReleaseId (%s) for SBOM: %s",
+                    release_id,
+                sbom.id
             )
         except MissingReleaseIdError as e:
             if self.args.ignore_missing_releaseid:
@@ -166,7 +171,8 @@ class SbomRegenerator:
     async def regenerate_release_groups(self) -> None:
         """ walk the set of release groups, and regenerate each release """
         LOGGER.info(
-            f"Regenerating {self.sbom_type.value} release groups.."
+            "Regenerating %s release groups..",
+            self.sbom_type.value
         )
         regen_tasks = []
         for release_id in self.sbom_release_groups:
@@ -175,7 +181,8 @@ class SbomRegenerator:
             )
         await asyncio.gather(*regen_tasks)
         LOGGER.info(
-            f"Finished regenerating {self.sbom_type.value} release groups."
+            "Finished regenerating %s release groups.",
+            self.sbom_type.value
         )
 
     async def regenerate_sbom_release(
@@ -194,24 +201,29 @@ class SbomRegenerator:
 
                 if not path_snapshot or not path_release_data:
                     raise SBOMError(
-                        f"No S3 bucket snapshot/release_data found for "
-                        f"SBOM release: {str(release_id)}"
+                        f"No S3 bucket snapshot/release_data found "
+                        f"for SBOM release: {str(release_id)}"
                     )
-                LOGGER.debug(f"Generate SBOM release: {str(release_id)}")
+                LOGGER.debug(
+                    "Generate SBOM release: %s",
+                    str(release_id)
+                )
                 await self.process_sboms(release_id, path_release_data, path_snapshot)
 
                 for sbom_id in self.sbom_release_groups.get(release_id, []):
                     if self.args.dry_run:
                         LOGGER.info(
-                            f"*Dry Run: 'delete' related SBOM: for "
-                            f"SBOM release: {str(release_id)} -- "
-                            f"SBOM id: {sbom_id}"
+                            "*Dry Run: 'delete' related SBOM: for "
+                            "SBOM release: %s -- SBOM id: %s",
+                            str(release_id),
+                            sbom_id
                         )
                     else:
                         LOGGER.info(
-                            f"*Deleting related SBOM: for "
-                            f"SBOM release: {str(release_id)} -- "
-                            f"SBOM id: {sbom_id}"
+                            "*Deleting related SBOM: for "
+                            "SBOM release: %s -- SBOM id: %s",
+                            str(release_id),
+                            sbom_id
                         )
                         # delete
                         response_delete = await self.delete_sbom(sbom_id)
@@ -221,10 +233,11 @@ class SbomRegenerator:
                             raise SBOMError(
                                 f"delete SBOM failed for SBOM: {sbom_id}, "
                                 f"status: {response_delete.status_code}, "
-                                f"message: {response_delete.text}"
+                                f"message: {response_delete.text}",
                             )
                         LOGGER.info(
-                            f"Success: deleted original SBOM: {sbom_id}"
+                            "Success: deleted original SBOM: %s",
+                            sbom_id
                         )
                         return
         except SBOMError as e:
@@ -245,7 +258,10 @@ class SbomRegenerator:
                 # download the complete SBOM and extract the release_id
                 release_id = await self.download_and_extract_release_id(sbom)
             except MissingReleaseIdError as e:
-                LOGGER.warning(f"No ReleaseId found in SBOM {sbom.id}")
+                LOGGER.warning(
+                    "No ReleaseId found in SBOM %s",
+                    sbom.id
+                )
                 raise e
         return release_id
 
@@ -285,7 +301,10 @@ class SbomRegenerator:
                 if retry < max_download_retries:
                     # briefly wait, then try again
                     await asyncio.sleep(0.5)
-                    LOGGER.debug(f"retrying... ({msg})")
+                    LOGGER.debug(
+                        "retrying... (%s)",
+                        msg
+                    )
                     continue
                 # raise SBOMError to stop overall script execution
                 LOGGER.error(msg)
@@ -301,9 +320,15 @@ class SbomRegenerator:
                     sbom_dict = json.loads(json_str_contents)
                     return self.extract_release_id(sbom_dict)
             except FileNotFoundError:
-                LOGGER.warning(f"'{local_path}' not found.")
+                LOGGER.warning(
+                    "'%s' not found.",
+                    local_path
+                )
             except json.JSONDecodeError:
-                LOGGER.warning(f"Invalid JSON in '{local_path}'.")
+                LOGGER.warning(
+                    "Invalid JSON in '%s'.",
+                    local_path
+                )
             if retry < max_read_retries:
                 # briefly wait, then try again
                 await asyncio.sleep(0.5)
@@ -319,7 +344,10 @@ class SbomRegenerator:
             for v in self.args.mobster_versions.split(",")
         )
         query = f"authors~{versions}"
-        LOGGER.info(f"query: {query}")
+        LOGGER.debug(
+            "query: %s",
+            query
+        )
         return query
 
     def get_s3_client(self) -> S3Client:
@@ -367,7 +395,10 @@ class SbomRegenerator:
 
     async def gather_s3_input_data(self, rid: ReleaseId) -> tuple[Path, Path]:
         """ fetch snapshot and release data from S3 for the given ReleaseId """
-        LOGGER.debug(f"gathering input data for release_id: '{rid}'")
+        LOGGER.debug(
+            "gathering input data for release_id: '%s'",
+            rid
+        )
         path_snapshot = (
             self.args.output_path / S3Client.snapshot_prefix / f"{rid}.snapshot.json"
         )
@@ -391,7 +422,10 @@ class SbomRegenerator:
                 raise ValueError(
                     f"No release data found for ReleaseId: {str(rid)}"
                 )
-        LOGGER.info(f"input data gathered from S3 bucket, for release_id: {rid}")
+        LOGGER.debug(
+            "input data gathered from S3 bucket, for release_id: %s",
+            rid
+        )
         return path_snapshot, path_release_data
 
     async def process_sboms(
@@ -459,12 +493,6 @@ def parse_args() -> RegenerateArgs:
 
     LOGGER.debug(args)
 
-    LOGGER.debug(f"--ignore-missing-releaseid: {args.ignore_missing_releaseid}")
-    LOGGER.debug(f"--fail-fast: {not args.non_fail_fast}")
-    LOGGER.debug(f"--dry-run: {args.dry_run}")
-    LOGGER.debug(f"--verbose: {args.verbose}")
-    LOGGER.debug(f"--tpa-page-size: {args.tpa_page_size}")
-
     return RegenerateArgs(
         output_path=path_output_dir,
         tpa_base_url=args.tpa_base_url,
@@ -488,11 +516,14 @@ def prepare_output_paths(output_dir: str) -> Path:
         # remove it on exit
         atexit.register(lambda: shutil.rmtree(output_dir))
     output_path = Path(output_dir)
-    LOGGER.debug(f"output path: {output_path}")
+    LOGGER.debug(
+        "output path: %s",
+        output_path
+    )
     # prepare output_path subdirs
     (output_path / S3Client.release_data_prefix).mkdir(parents=True, exist_ok=True)
     (output_path / S3Client.snapshot_prefix).mkdir(parents=True, exist_ok=True)
-    (output_path / generated_sboms_prefix).mkdir(parents=True, exist_ok=True)
+    (output_path / GENERATED_SBOMS_PREFIX).mkdir(parents=True, exist_ok=True)
     return output_path
 
 
