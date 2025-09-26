@@ -5,7 +5,7 @@ services:
     ports:
       - "9000:9000"
     volumes:
-      - ./hack/tests/zot.config.json:/etc/zot/config.json:ro
+      - ./hack/tests/zot.config.json:/etc/zot/config.json:ro,Z
     command: ["serve", "/etc/zot/config.json"]
 
   tpa:

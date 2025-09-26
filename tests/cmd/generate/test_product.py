@@ -140,8 +140,9 @@ class TestGenerateProductCommand:
                             ),
                             release_repositories=[
                                 ReleaseRepository(
-                                    repo_url="registry.redhat.io/repo",
+                                    public_repo_url="registry.redhat.io/repo",
                                     tags=["1.0", "latest"],
+                                    internal_repo_url="quay.io/repo",
                                 )
                             ],
                         )
@@ -172,8 +173,9 @@ class TestGenerateProductCommand:
                             ),
                             release_repositories=[
                                 ReleaseRepository(
-                                    repo_url="registry.redhat.io/repo",
+                                    public_repo_url="registry.redhat.io/repo",
                                     tags=["1.0", "latest"],
+                                    internal_repo_url="quay.io/repo",
                                 )
                             ],
                         )
@@ -204,8 +206,9 @@ class TestGenerateProductCommand:
                             ),
                             release_repositories=[
                                 ReleaseRepository(
-                                    repo_url="registry.redhat.io/repo",
+                                    public_repo_url="registry.redhat.io/repo",
                                     tags=["1.0", "latest"],
+                                    internal_repo_url="quay.io/repo",
                                 )
                             ],
                         ),
@@ -217,8 +220,9 @@ class TestGenerateProductCommand:
                             ),
                             release_repositories=[
                                 ReleaseRepository(
-                                    repo_url="registry.redhat.io/another-repo",
+                                    public_repo_url="registry.redhat.io/another-repo",
                                     tags=["2.0", "production"],
+                                    internal_repo_url="quay.io/another-repo",
                                 )
                             ],
                         ),
