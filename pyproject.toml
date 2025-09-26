@@ -1,6 +1,6 @@
 [project]
 name = "mobster"
-version = "0.7.0"
+version = "1.0.0"
 
 description = "A tool for generating and managing Software Bill of Materials (SBOM)."
 
