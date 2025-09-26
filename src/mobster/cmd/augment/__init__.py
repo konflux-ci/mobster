@@ -181,12 +181,7 @@ async def load_sbom(image: Image, cosign: Cosign, verify: bool) -> SBOM:
     """
     sbom = await cosign.fetch_sbom(image)
     if verify:
-        try:
-            await verify_sbom(sbom, image, cosign)
-        except (SBOMError, SBOMVerificationError):
-            LOGGER.exception(
-                "SBOM verification for image '%s' has failed!", image.reference
-            )
+        await verify_sbom(sbom, image, cosign)
     return sbom
 
 
@@ -255,8 +250,7 @@ async def update_sbom(
             sbom = await load_sbom(image, config.cosign, config.verify)
             if not update_sbom_in_situ(repository, image, sbom, config.release_id):
                 raise SBOMError(f"Unsupported SBOM format for image {image}.")
-            sbom_reference = repository.repo_url + "@" + image.digest
-            sbom.reference = sbom_reference
+            sbom.reference = repository.public_repo_url + "@" + image.digest
             path = config.output_dir / get_randomized_sbom_filename(sbom)
             await write_sbom(sbom.doc, path)
             sbom_format = sbom.format
@@ -267,11 +261,15 @@ async def update_sbom(
             gc.collect()
 
             LOGGER.info(
-                "Successfully enriched SBOM for image %s (released to %s)",
+                "Successfully enriched SBOM for image %s "
+                "(released to %s and pushed to %s)",
                 image,
-                repository.repo_url,
+                repository.public_repo_url,
+                repository.internal_repo_url,
             )
-            return SBOMRefDetail(sbom_reference, sbom_format, path)
+            return SBOMRefDetail(
+                repository.internal_repo_url + "@" + image.digest, sbom_format, path
+            )
         except Exception:  # pylint: disable=broad-except
             # We catch all exceptions, because we're processing many SBOMs
             # concurrently and an uncaught exception would halt all concurrently
@@ -279,7 +277,7 @@ async def update_sbom(
             LOGGER.exception(
                 "Failed to enrich SBOM for image %s (released to %s).",
                 image,
-                repository.repo_url,
+                repository.public_repo_url,
             )
             return None
 

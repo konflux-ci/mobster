@@ -32,7 +32,7 @@ class CosignConfig:
     """Configuration of Cosign keys."""
 
     sign_key: str
-    verify_key: Path
+    verify_key: str
     sign_password: bytes = b""
     concurrency: int = 4
 
@@ -84,7 +84,7 @@ def parse_args() -> ProcessComponentArgs:
     )
     parser.add_argument(
         "--verify-key",
-        type=Path,
+        type=str,
         help="The cosign verification key for attest downloading and verification.",
         required=True,
     )

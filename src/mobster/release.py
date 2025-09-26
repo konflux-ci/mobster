@@ -38,11 +38,12 @@ class ReleaseRepository:
     A repository that a component is being released to.
 
     Attributes:
-        repo_url: The URL of the repository (image name included)
+        public_repo_url: The URL of the repository (image name included)
         tags: The tags used for the release of this image.
     """
 
-    repo_url: str
+    public_repo_url: str
+    internal_repo_url: str
     tags: list[str]
 
     @property
@@ -59,7 +60,7 @@ class ReleaseRepository:
             >>> ).repo_name
             "rhel"
         """
-        return self.repo_url.split("/")[-1]
+        return self.public_repo_url.split("/")[-1]
 
 
 @dataclass
@@ -141,6 +142,7 @@ class ComponentRepositoryModel(pdc.BaseModel):
     """
 
     rh_registry_repo: str = pdc.Field(alias="rh-registry-repo")
+    url: str
     tags: list[str]
 
     def to_repository(self) -> ReleaseRepository:
@@ -151,7 +153,11 @@ class ComponentRepositoryModel(pdc.BaseModel):
             Mobster's inner representation of this Konflux Component's
             release repository.
         """
-        return ReleaseRepository(repo_url=self.rh_registry_repo, tags=self.tags)
+        return ReleaseRepository(
+            public_repo_url=self.rh_registry_repo,
+            tags=self.tags,
+            internal_repo_url=self.url,
+        )
 
 
 class ComponentModel(pdc.BaseModel):
@@ -161,6 +167,7 @@ class ComponentModel(pdc.BaseModel):
 
     name: str
     image_reference: str = pdc.Field(alias="containerImage")
+    repository: str | None = pdc.Field(default=None)
     rh_registry_repo: str | None = pdc.Field(alias="rh-registry-repo", default=None)
     tags: list[str] | None = pdc.Field(default=None)
     repositories: list[ComponentRepositoryModel] = pdc.Field(default_factory=list)
@@ -193,9 +200,18 @@ class ComponentModel(pdc.BaseModel):
         # Konflux release team, the data is replicated between the legacy
         # and the new part of the schema, so we have to make sure not to
         # duplicate the data on reading it.
-        if not all_release_repos and self.rh_registry_repo and self.tags:
+        if (
+            not all_release_repos
+            and self.rh_registry_repo
+            and self.tags
+            and self.repository
+        ):
             all_release_repos.append(
-                ReleaseRepository(repo_url=self.rh_registry_repo, tags=self.tags)
+                ReleaseRepository(
+                    public_repo_url=self.rh_registry_repo,
+                    tags=self.tags,
+                    internal_repo_url=self.repository,
+                )
             )
 
         img_repository, img_digest = parse_image_reference(self.image_reference)

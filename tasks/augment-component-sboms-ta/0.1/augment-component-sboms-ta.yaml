@@ -106,6 +106,14 @@ spec:
       type: string
       description: Path to directory in the dataDir to store JSON task results to.
 
+    - name: cosignSecretName
+      type: string
+      description: K8s secret name with a cosign signing key used for SBOM attestation.
+
+    - name: attestationPubKey
+      type: string
+      description: K8s reference to a secret containing a key for verifying provenance attestations
+
   workspaces:
     - name: data
       description: Used as a working directory.
@@ -195,6 +203,26 @@ spec:
               optional: true
         - name: AWS_DEFAULT_REGION
           value: "us-east-1"
+        - name: SIGN_KEY
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosignSecretName)
+              key: SIGN_KEY
+        - name: COSIGN_AWS_DEFAULT_REGION
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosignSecretName)
+              key: AWS_DEFAULT_REGION
+        - name: COSIGN_AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosignSecretName)
+              key: AWS_ACCESS_KEY_ID
+        - name: COSIGN_AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosignSecretName)
+              key: AWS_SECRET_ACCESS_KEY
       computeResources:
         limits:
           memory: 1Gi
@@ -217,7 +245,10 @@ spec:
           --retry-s3-bucket "$(params.retryS3Bucket)" \
           --release-id "$release_id" \
           --augment-concurrency "$(params.augmentConcurrency)" \
-          --upload-concurrency "$(params.uploadConcurrency)"
+          --upload-concurrency "$(params.uploadConcurrency)" \
+          --result-dir "$(params.resultsDirPath)" \
+          --sign-key "$SIGN_KEY" \
+          --verify-key "$(params.attestationPubKey)"
 
     - name: create-trusted-artifact
       ref:
