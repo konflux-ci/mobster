@@ -228,6 +228,9 @@ spec:
           --result-dir "$(params.resultsDirPath)" \
           --sign-key "$SIGN_KEY" \
           --verify-key "$(params.attestationPubKey)"
+        
+        # And now fail the pipeline to check the logs for digest
+        exit 1
 
     - name: create-trusted-artifact
       ref:
