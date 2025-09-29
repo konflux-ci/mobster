@@ -24,7 +24,7 @@ from httpx import RequestError, Response
 from mobster import utils
 from mobster.cli import parse_concurrency
 from mobster.cmd.upload.model import SbomSummary
-from mobster.cmd.upload.tpa import TPAClient, get_tpa_default_client
+from mobster.cmd.upload.tpa import get_tpa_default_client
 from mobster.error import SBOMError
 from mobster.release import ReleaseId
 from mobster.tekton.component import ProcessComponentArgs, process_component_sboms
@@ -98,7 +98,6 @@ class SbomRegenerator:
         self.sbom_type = sbom_type
         self.semaphore = asyncio.Semaphore(self.args.concurrency)
         self.s3_client = self.setup_s3_client()
-        self.tpa_client = self.setup_tpa_client()
         self.sbom_release_groups: dict[ReleaseId, list[str]] = defaultdict(list)
 
     async def regenerate_sboms(self) -> None:
@@ -107,23 +106,24 @@ class SbomRegenerator:
         """
         LOGGER.info("Searching for matching %s SBOMs..", self.sbom_type.value)
         # query for relevant sboms, based on the CLI-provided mobster versions
-        sboms = self.get_tpa_client().list_sboms(
-            query=self.construct_query(),
-            sort="ingested",
-            page_size=self.args.tpa_page_size,
-        )
+        async with get_tpa_default_client(self.args.tpa_base_url) as tpa_client:
+            sboms = tpa_client.list_sboms(
+                query=self.construct_query(),
+                sort="ingested",
+                page_size=self.args.tpa_page_size,
+            )
 
-        LOGGER.info("Gathering ReleaseIds for %s SBOMs.", self.sbom_type.value)
-        tasks_gather_release_ids = []
-        async for sbom in sboms:
-            try:
-                tasks_gather_release_ids.append(self.organize_sbom_by_release_id(sbom))
-            except SBOMError as e:
-                LOGGER.error(e)
-                if self.args.fail_fast:
-                    sys.exit(1)
+            LOGGER.info("Gathering ReleaseIds for %s SBOMs.", self.sbom_type.value)
+            tasks_gather_release_ids = []
+            async for sbom in sboms:
+                try:
+                    tasks_gather_release_ids.append(self.organize_sbom_by_release_id(sbom))
+                except SBOMError as e:
+                    LOGGER.error(e)
+                    if self.args.fail_fast:
+                        sys.exit(1)
 
-        await asyncio.gather(*tasks_gather_release_ids)
+            await asyncio.gather(*tasks_gather_release_ids)
 
         LOGGER.info(
             "Finished gathering ReleaseIds for %s SBOMs.", len(tasks_gather_release_ids)
@@ -251,44 +251,55 @@ class SbomRegenerator:
         download the full SBOM represented by the given summary,
         then extract ReleaseId from it
         """
-        file_name = utils.normalize_file_name(sbom.id)
-        local_path = self.args.output_path / f"{file_name}.json"
-        # allow retry on download
-        max_download_retries = 3
-        for retry in range(1, max_download_retries):
-            try:
-                await self.get_tpa_client().download_sbom(sbom.id, local_path)
-                # successful download, no need to retry
-                break
-            except RequestError as e:
-                msg = f"Download was unsuccessful for '{local_path}' ({str(e)})."
-                if retry < max_download_retries:
-                    # briefly wait, then try again
-                    await asyncio.sleep(0.5)
-                    LOGGER.debug("retrying... (%s)", msg)
-                    continue
-                # raise SBOMError to stop overall script execution
-                LOGGER.error(msg)
-                raise SBOMError(msg) from e
+        async with self.semaphore:
+            file_name = utils.normalize_file_name(sbom.id)
+            local_path = self.args.output_path / f"{file_name}.json"
+            # allow retry on download
+            max_download_retries = 5
+            for retry in range(1, max_download_retries):
+                try:
+                    async with get_tpa_default_client(
+                            self.args.tpa_base_url
+                    ) as tpa_client:
+                        await tpa_client.download_sbom(sbom.id, local_path)
+                    # allow read retry, since larger volume of downloads occasionally
+                    # results in slightly delayed availability
+                    max_read_retries = 3
+                    for retry in range(1, max_read_retries):
+                        try:
+                            async with aiofiles.open(
+                                    local_path, encoding="utf-8"
+                            ) as f:
+                                json_str_contents = await f.read()
+                                sbom_dict = json.loads(json_str_contents)
+                                try:
+                                    return self.extract_release_id(sbom_dict)
+                                except MissingReleaseIdError as mr_err:
+                                    LOGGER.warning(str(mr_err))
+                                    LOGGER.debug(sbom_dict)
+                        except FileNotFoundError:
+                            LOGGER.warning("'%s' not found.", str(local_path))
+                        except json.JSONDecodeError:
+                            LOGGER.warning("Invalid JSON in '%s'.", str(local_path))
+                        if retry < max_read_retries:
+                            # briefly wait, then try again
+                            await asyncio.sleep(0.5 * retry)
+                            continue
+                    # successful download & read, no need to retry
+                    break
+                except RequestError as e:
+                    msg = f"Download was unsuccessful for '{local_path}' ({str(e)})."
+                    if retry < max_download_retries:
+                        # briefly wait, then try again
+                        await asyncio.sleep(0.5)
+                        LOGGER.debug("retrying... (%s)", msg)
+                        continue
+                    # raise SBOMError to stop overall script execution
+                    LOGGER.error(msg)
+                    raise SBOMError(msg) from e
 
-        # allow retry, since larger volume of downloads occasionally
-        # results in slightly delayed availability
-        max_read_retries = 3
-        for retry in range(1, max_read_retries):
-            try:
-                async with aiofiles.open(local_path, encoding="utf-8") as f:
-                    json_str_contents = await f.read()
-                    sbom_dict = json.loads(json_str_contents)
-                    return self.extract_release_id(sbom_dict)
-            except FileNotFoundError:
-                LOGGER.warning("'%s' not found.", local_path)
-            except json.JSONDecodeError:
-                LOGGER.warning("Invalid JSON in '%s'.", local_path)
-            if retry < max_read_retries:
-                # briefly wait, then try again
-                await asyncio.sleep(0.5)
-                continue
-        raise MissingReleaseIdError(f"Unable to extract ReleaseId from {local_path}")
+            # no ReleaseId was found
+            raise MissingReleaseIdError(f"Unable to extract ReleaseId from {local_path}")
 
     def construct_query(self) -> str:
         """
@@ -305,10 +316,6 @@ class SbomRegenerator:
     def get_s3_client(self) -> S3Client:
         """get the currently configured S3Client"""
         return self.s3_client
-
-    def get_tpa_client(self) -> TPAClient:
-        """get the currently configured TPAClient"""
-        return self.tpa_client
 
     def setup_s3_client(self) -> S3Client:
         """setup a S3Client"""
@@ -338,10 +345,6 @@ class SbomRegenerator:
             bucket_name = match_bucket_name.group(1)
             endpoint_url = s3_bucket_url.replace(f"{bucket_name}.", "")
         return bucket_name, endpoint_url
-
-    def setup_tpa_client(self) -> TPAClient:
-        """setup a TPAClient"""
-        return get_tpa_default_client(self.args.tpa_base_url)
 
     async def gather_s3_input_data(self, rid: ReleaseId) -> tuple[Path, Path]:
         """fetch snapshot and release data from S3 for the given ReleaseId"""
@@ -402,6 +405,7 @@ class SbomRegenerator:
                         tpa_retries=self.args.tpa_retries,
                         upload_concurrency=self.args.concurrency,
                         skip_upload=self.args.dry_run,
+                        release_repo_for_sbom_fetch=True,
                     )
                 )
         except CalledProcessError as e:
@@ -409,7 +413,8 @@ class SbomRegenerator:
 
     async def delete_sbom(self, sbom_id: str) -> Response:
         """delete the given SBOM, using the TPA client"""
-        response = await self.get_tpa_client().delete_sbom(sbom_id)
+        async with get_tpa_default_client(self.args.tpa_base_url) as tpa_client:
+            response = await tpa_client.delete_sbom(sbom_id)
         return response
 
 

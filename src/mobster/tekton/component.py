@@ -33,9 +33,11 @@ class ProcessComponentArgs(CommonArgs):
     Attributes:
         augment_concurrency: maximum number of concurrent SBOM augmentation operations
         upload_concurrency: maximum number of concurrent SBOM upload operations
+        release_repo_for_sbom_fetch: when fetching build SBOMs, use the release repo url
     """
 
     augment_concurrency: int
+    release_repo_for_sbom_fetch: bool
 
 
 def parse_args() -> ProcessComponentArgs:
@@ -49,6 +51,11 @@ def parse_args() -> ProcessComponentArgs:
     add_common_args(parser)
     parser.add_argument("--augment-concurrency", type=int, default=8)
     parser.add_argument("--upload-concurrency", type=int, default=8)
+    parser.add_argument(
+        "--release-repo-for-sbom-fetch",
+        action="store_true",
+        help="when fetching build SBOMs, use the release repo url",
+    )
     args = parser.parse_args()
 
     # the snapshot_spec is joined with the data_dir as previous tasks provide
@@ -65,11 +72,16 @@ def parse_args() -> ProcessComponentArgs:
         labels=args.labels,
         tpa_retries=args.tpa_retries,
         skip_upload=args.skip_updload,
+        release_repo_for_sbom_fetch=args.release_repo_for_sbom_fetch,
     )
 
 
 def augment_component_sboms(
-    sbom_path: Path, snapshot_spec: Path, release_id: ReleaseId, concurrency: int
+    sbom_path: Path,
+    snapshot_spec: Path,
+    release_id: ReleaseId,
+    concurrency: int,
+    release_repo_for_sbom_fetch: bool,
 ) -> None:
     """
     Augment component SBOMs using the mobster augment command.
@@ -79,6 +91,7 @@ def augment_component_sboms(
         snapshot_spec: Path to snapshot specification file.
         release_id: Release ID to store in SBOM file.
         concurrency: Maximum number of concurrent augmentation operations.
+        release_repo_for_sbom_fetch: when fetching build SBOMs, use the release repo url.
     """
     cmd = [
         "mobster",
@@ -94,6 +107,9 @@ def augment_component_sboms(
         "--concurrency",
         str(concurrency),
     ]  # pylint: disable=duplicate-code
+
+    if release_repo_for_sbom_fetch:
+        cmd.append("--release-repo-for-sbom-fetch")
 
     subprocess.run(cmd, check=True)
 
@@ -123,6 +139,7 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
         args.snapshot_spec,
         args.release_id,
         args.augment_concurrency,
+        args.release_repo_for_sbom_fetch,
     )
     config = args.to_upload_config()
 

@@ -207,7 +207,7 @@ class ComponentModel(pdc.BaseModel):
         img_repository, img_digest = parse_image_reference(self.image_reference)
         async with semaphore:
             image: Image = await Image.from_repository_digest_manifest(
-                all_release_repos[0].repo_url, img_digest
+                img_repository, img_digest
             )
         return Component(
             name=self.name, image=image, release_repositories=all_release_repos
