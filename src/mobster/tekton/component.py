@@ -91,7 +91,8 @@ def augment_component_sboms(
         snapshot_spec: Path to snapshot specification file.
         release_id: Release ID to store in SBOM file.
         concurrency: Maximum number of concurrent augmentation operations.
-        release_repo_for_sbom_fetch: when fetching build SBOMs, use the release repo url.
+        release_repo_for_sbom_fetch: when fetching build SBOMs,
+            use the release repo url.
     """
     cmd = [
         "mobster",

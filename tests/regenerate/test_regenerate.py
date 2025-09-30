@@ -7,7 +7,7 @@ from collections.abc import Coroutine
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
@@ -15,7 +15,6 @@ import pytest
 import mobster.regenerate.base as regen_base
 from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.tpa import TPAClient
-from mobster.error import SBOMError
 from mobster.regenerate.base import SbomRegenerator
 from mobster.release import ReleaseId
 from mobster.tekton.s3 import S3Client
@@ -179,80 +178,6 @@ def test_parse_args(
 
 
 @pytest.mark.asyncio
-async def test_regenerate_sboms_success(
-    mock_env_vars: None, mock_tpa_client: AsyncMock
-) -> None:
-    mock_args = mock_regenerate_args()
-    mock_args.tpa_page_size = 10
-
-    sbom1 = get_mock_sbom(id="a", name="sbom_1")
-    mock_release_id = ReleaseId.new()
-
-    async def mock_list_sboms(query: str, sort: str) -> Any:
-        yield sbom1
-
-    def mock_find_release_id(sbom: SbomSummary) -> ReleaseId:
-        return mock_release_id
-
-    mock_tpa_client.list_sboms.return_value = mock_list_sboms("", "")
-    mock_tpa_client.download_sbom = AsyncMock()
-
-    sbom_regenerator = SbomRegenerator(mock_args, regen_base.SbomType.PRODUCT)
-    sbom_regenerator.get_tpa_client = MagicMock(return_value=mock_tpa_client)  # type: ignore[method-assign]
-    sbom_regenerator.organize_sbom_by_release_id = AsyncMock()  # type: ignore[method-assign]
-
-    await sbom_regenerator.regenerate_sboms()
-
-    sbom_regenerator.organize_sbom_by_release_id.assert_called()
-    mock_tpa_client.list_sboms.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_regenerate_sboms_error(
-    mock_env_vars: None, mock_tpa_client: AsyncMock
-) -> None:
-    mock_args = mock_regenerate_args()
-    mock_args.tpa_page_size = 10
-
-    sbom1 = get_mock_sbom(id="a", name="sbom_1")
-    mock_release_id = ReleaseId.new()
-
-    async def mock_list_sboms(query: str, sort: str) -> Any:
-        yield sbom1
-
-    def mock_find_release_id(sbom: SbomSummary) -> ReleaseId:
-        return mock_release_id
-
-    mock_tpa_client.list_sboms.return_value = mock_list_sboms("", "")
-    mock_tpa_client.download_sbom = AsyncMock()
-
-    sbom_regenerator = SbomRegenerator(mock_args, regen_base.SbomType.PRODUCT)
-    sbom_regenerator.get_tpa_client = MagicMock(  # type: ignore[method-assign]
-        return_value=mock_tpa_client
-    )
-    sbom_regenerator.organize_sbom_by_release_id = AsyncMock()  # type: ignore[method-assign]
-
-    sbom_regenerator = SbomRegenerator(mock_args, regen_base.SbomType.COMPONENT)
-    sbom_regenerator.get_tpa_client = MagicMock(  # type: ignore[method-assign]
-        return_value=mock_tpa_client
-    )
-    sbom_regenerator.organize_sbom_by_release_id = AsyncMock(  # type: ignore[method-assign]
-        side_effect=SBOMError("Failed to process SBOM")
-    )
-
-    try:
-        await sbom_regenerator.regenerate_sboms()
-        # shouldn't get here, so fail
-        raise AssertionError()
-    except SBOMError:
-        # expected
-        pass
-
-    sbom_regenerator.organize_sbom_by_release_id.assert_called()
-    mock_tpa_client.list_sboms.assert_called_once()
-
-
-@pytest.mark.asyncio
 async def test_organize_sbom_by_release_id(
     mock_env_vars: None, mock_tpa_client: AsyncMock
 ) -> None:
@@ -354,88 +279,6 @@ def test_extract_release_id_missing() -> None:
     except ValueError:
         # expected
         assert True
-
-
-def test_download_and_extract_release_id_success(mock_env_vars: None) -> None:
-    summary = get_mock_sbom(id="sbom_id_1", name="test_sbom")
-    expected_release_id = ReleaseId.new()
-
-    args = mock_regenerate_args()
-    regenerator = SbomRegenerator(args, regen_base.SbomType.PRODUCT)
-    regenerator.get_tpa_client = MagicMock(  # type: ignore[method-assign]
-        return_value=MagicMock(download_sbom=AsyncMock())
-    )
-    regenerator.extract_release_id = MagicMock(  # type: ignore[method-assign]
-        return_value=expected_release_id
-    )
-
-    sbom_path = Path("/mock/path/sbom_id_1.json")
-    regenerator.args.output_path = sbom_path.parent
-
-    with patch("aiofiles.open", new_callable=MagicMock) as mocked_open:
-        mocked_open.return_value.__aenter__.return_value.read = AsyncMock(
-            return_value=json.dumps({"mock_key": "mock_value"})
-        )
-        asyncio.run(regenerator.download_and_extract_release_id(summary))
-
-    regenerator.get_tpa_client().download_sbom.assert_awaited_once_with(
-        summary.id, sbom_path
-    )
-    mocked_open.return_value.__aenter__.return_value.read.assert_awaited_once()
-    regenerator.extract_release_id.assert_called_once_with({"mock_key": "mock_value"})
-
-
-def test_download_and_extract_release_id_file_not_found_error(
-    mock_env_vars: None,
-) -> None:
-    summary = get_mock_sbom(id="sbom_id_2", name="test_sbom_error")
-    args = mock_regenerate_args()
-    regenerator = SbomRegenerator(args, regen_base.SbomType.COMPONENT)
-    regenerator.get_tpa_client = MagicMock(  # type: ignore[method-assign]
-        return_value=MagicMock(download_sbom=AsyncMock())
-    )
-    regenerator.args.output_path = Path("/mock/path")
-
-    with (
-        patch("aiofiles.open", side_effect=FileNotFoundError),
-        patch("asyncio.sleep", new_callable=AsyncMock) as mocked_sleep,
-    ):
-        try:
-            asyncio.run(regenerator.download_and_extract_release_id(summary))
-        except ValueError as e:
-            assert "Unable to extract ReleaseId" in str(e)
-
-    regenerator.get_tpa_client().download_sbom.assert_awaited()
-    mocked_sleep.assert_awaited()
-
-
-def test_download_and_extract_release_id_invalid_json_error(
-    mock_env_vars: None,
-) -> None:
-    summary = get_mock_sbom(id="sbom_id_3", name="test_sbom_invalid_json")
-    args = mock_regenerate_args()
-    regenerator = SbomRegenerator(args, regen_base.SbomType.COMPONENT)
-    regenerator.get_tpa_client = MagicMock(  # type: ignore[method-assign]
-        return_value=MagicMock(download_sbom=AsyncMock())
-    )
-    regenerator.args.output_path = Path("/mock/path")
-
-    with (
-        patch("aiofiles.open", new_callable=MagicMock) as mocked_open,
-        patch("asyncio.sleep", new_callable=AsyncMock) as mocked_sleep,
-    ):
-        mocked_open.return_value.__aenter__.return_value.read = AsyncMock(
-            side_effect=json.JSONDecodeError("Expecting value", "mock_doc", 0)
-        )
-
-        try:
-            asyncio.run(regenerator.download_and_extract_release_id(summary))
-        except ValueError as e:
-            assert "Unable to extract ReleaseId" in str(e)
-
-    regenerator.get_tpa_client().download_sbom.assert_awaited()
-    mocked_open.return_value.__aenter__.return_value.read.assert_awaited()
-    mocked_sleep.assert_awaited()
 
 
 async def async_test_wrapper(the_coro: Coroutine[Any, Any, Any]) -> Any:

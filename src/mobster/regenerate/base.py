@@ -117,7 +117,9 @@ class SbomRegenerator:
             tasks_gather_release_ids = []
             async for sbom in sboms:
                 try:
-                    tasks_gather_release_ids.append(self.organize_sbom_by_release_id(sbom))
+                    tasks_gather_release_ids.append(
+                        self.organize_sbom_by_release_id(sbom)
+                    )
                 except SBOMError as e:
                     LOGGER.error(e)
                     if self.args.fail_fast:
@@ -259,7 +261,7 @@ class SbomRegenerator:
             for retry in range(1, max_download_retries):
                 try:
                     async with get_tpa_default_client(
-                            self.args.tpa_base_url
+                        self.args.tpa_base_url
                     ) as tpa_client:
                         await tpa_client.download_sbom(sbom.id, local_path)
                     # allow read retry, since larger volume of downloads occasionally
@@ -267,9 +269,7 @@ class SbomRegenerator:
                     max_read_retries = 3
                     for retry in range(1, max_read_retries):
                         try:
-                            async with aiofiles.open(
-                                    local_path, encoding="utf-8"
-                            ) as f:
+                            async with aiofiles.open(local_path, encoding="utf-8") as f:
                                 json_str_contents = await f.read()
                                 sbom_dict = json.loads(json_str_contents)
                                 try:
@@ -299,7 +299,9 @@ class SbomRegenerator:
                     raise SBOMError(msg) from e
 
             # no ReleaseId was found
-            raise MissingReleaseIdError(f"Unable to extract ReleaseId from {local_path}")
+            raise MissingReleaseIdError(
+                f"Unable to extract ReleaseId from {local_path}"
+            )
 
     def construct_query(self) -> str:
         """
