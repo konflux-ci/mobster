@@ -1,15 +1,19 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "schedule": [ "at any time" ],
+  "schedule": [
+    "at any time"
+  ],
   "extends": [
-    "config:base"
+    "config:recommended"
   ],
   "dependencyDashboard": false,
   "tekton": {
-    "schedule": [ "at any time" ],
-    "fileMatch": [
-      "\\.yaml$",
-      "\\.yml$"
+    "schedule": [
+      "at any time"
+    ],
+    "managerFilePatterns": [
+      "/\\.yaml$/",
+      "/\\.yml$/"
     ],
     "includePaths": [
       "tasks/**",
@@ -18,11 +22,19 @@
   },
   "packageRules": [
     {
-      "matchManagers": [ "lockFileMaintenance", "dockerfile", "poetry" ],
-      "schedule": [ "* 0-5 * * 1" ]
+      "matchManagers": [
+        "lockFileMaintenance",
+        "dockerfile",
+        "poetry"
+      ],
+      "schedule": [
+        "* 0-5 * * 1"
+      ]
     },
     {
-      "schedule": [ "at any time" ],
+      "schedule": [
+        "at any time"
+      ],
       "groupName": "tekton-tasks",
       "matchFileNames": [
         "tasks/**"
