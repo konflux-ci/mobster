@@ -200,6 +200,15 @@ class Image:  # pylint: disable=too-many-instance-attributes
         return f"{self.repository}@{self.digest}"
 
     @property
+    def registry(self) -> str:
+        """
+        Get the registry url without the repository name.
+        Returns:
+            The registry url without the repository name.
+        """
+        return self.repository.split("/")[0]
+
+    @property
     def digest_hex_val(self) -> str:
         """
         A digest value in hex format.

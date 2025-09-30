@@ -47,10 +47,12 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                         {
                             "rh-registry-repo": "registry.redhat.io/repo1",
                             "tags": ["1.0"],
+                            "url": "quay.io/repo1",
                             "irrelevant_field": "irrelevant value",
                         },
                         {
                             "rh-registry-repo": "registry.redhat.io/oper1",
+                            "url": "quay.io/oper1",
                             "tags": ["1.0", "latest"],
                         },
                     ],
@@ -63,6 +65,7 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                             "rh-registry-repo": "registry.redhat.io/repo2",
                             "tags": ["2.0", "latest"],
                             "irrelevant_field": "irrelevant value",
+                            "url": "quay.io/repo2",
                         },
                     ],
                 },
@@ -82,10 +85,14 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                 # Make sure "repo1" is not replicated even if present in both fields
                 release_repositories=[
                     ReleaseRepository(
-                        repo_url="registry.redhat.io/repo1", tags=["1.0"]
+                        public_repo_url="registry.redhat.io/repo1",
+                        tags=["1.0"],
+                        internal_repo_url="quay.io/repo1",
                     ),
                     ReleaseRepository(
-                        repo_url="registry.redhat.io/oper1", tags=["1.0", "latest"]
+                        public_repo_url="registry.redhat.io/oper1",
+                        tags=["1.0", "latest"],
+                        internal_repo_url="quay.io/oper1",
                     ),
                 ],
             ),
@@ -98,7 +105,9 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                 ),
                 release_repositories=[
                     ReleaseRepository(
-                        repo_url="registry.redhat.io/repo2", tags=["2.0", "latest"]
+                        public_repo_url="registry.redhat.io/repo2",
+                        tags=["2.0", "latest"],
+                        internal_repo_url="quay.io/repo2",
                     )
                 ],
             ),
@@ -133,6 +142,7 @@ async def test_make_snapshot_backwards_compatible() -> None:
                     "name": "comp-1",
                     "containerImage": f"quay.io/repo1@sha256:{'a' * 128}",
                     "rh-registry-repo": "registry.redhat.io/repo1",
+                    "repository": "quay.io/repo1",
                     "tags": ["1.0"],
                 },
             ]
@@ -156,7 +166,9 @@ async def test_make_snapshot_backwards_compatible() -> None:
                         ),
                         release_repositories=[
                             ReleaseRepository(
-                                repo_url="registry.redhat.io/repo1", tags=["1.0"]
+                                public_repo_url="registry.redhat.io/repo1",
+                                tags=["1.0"],
+                                internal_repo_url="quay.io/repo1",
                             ),
                         ],
                     ),
@@ -232,6 +244,7 @@ async def test_make_snapshot_specific(
                     ReleaseRepository(
                         "registry.redhat.io/repo1",
                         tags=["1.0"],
+                        internal_repo_url="quay.io/repo1",
                     )
                 ],
             ),
@@ -249,8 +262,9 @@ async def test_make_snapshot_specific(
                 ),
                 release_repositories=[
                     ReleaseRepository(
-                        repo_url="registry.redhat.io/repo2",
+                        public_repo_url="registry.redhat.io/repo2",
                         tags=["2.0", "latest"],
+                        internal_repo_url="quay.io/repo2",
                     )
                 ],
             )
