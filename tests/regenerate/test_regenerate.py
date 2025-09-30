@@ -7,7 +7,7 @@ from collections.abc import Coroutine
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -306,3 +306,30 @@ def mock_tpa_client() -> AsyncMock:
         )
     )
     return mock
+
+
+@pytest.mark.asyncio
+async def test_regenerate_sboms_success(mock_env_vars: None) -> None:
+    args = mock_regenerate_args()
+    sbom_type = AsyncMock()
+    sbom_regenerator = SbomRegenerator(args=args, sbom_type=sbom_type)
+
+    sbom_regenerator.construct_query = AsyncMock(return_value="test_query")
+    sbom_regenerator.organize_sbom_by_release_id = AsyncMock()
+    sbom_regenerator.regenerate_release_groups = AsyncMock()
+    sbom_regenerator.args.fail_fast = False
+
+    with patch(
+            "mobster.regenerate.base.get_tpa_default_client",
+            AsyncMock()
+    ) as mock_client:
+        mock_client.return_value.__aenter__.return_value.list_sboms = AsyncMock(
+            return_value=[]
+        )
+        await sbom_regenerator.regenerate_sboms()
+
+        assert sbom_regenerator.construct_query.called
+        assert sbom_regenerator.organize_sbom_by_release_id.call_count == 0
+        assert sbom_regenerator.regenerate_release_groups.called
+
+

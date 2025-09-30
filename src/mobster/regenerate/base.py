@@ -19,7 +19,7 @@ from subprocess import CalledProcessError
 from typing import Any
 
 import aiofiles
-from httpx import RequestError, Response
+from httpx import HTTPStatusError, RequestError, Response
 
 from mobster import utils
 from mobster.cli import parse_concurrency
@@ -98,7 +98,7 @@ class SbomRegenerator:
         self.sbom_type = sbom_type
         self.semaphore = asyncio.Semaphore(self.args.concurrency)
         self.s3_client = self.setup_s3_client()
-        self.sbom_release_groups: dict[ReleaseId, list[str]] = defaultdict(list)
+        self.sbom_release_groups: dict[str, list[str]] = defaultdict(list)
 
     async def regenerate_sboms(self) -> None:
         """
@@ -115,7 +115,17 @@ class SbomRegenerator:
 
             LOGGER.info("Gathering ReleaseIds for %s SBOMs.", self.sbom_type.value)
             tasks_gather_release_ids = []
+            # ======================================
+            # TODO: temporary for testing
+            counter = 0
+            # ======================================
             async for sbom in sboms:
+                # ======================================
+                # TODO: temporary for testing
+                counter += 1
+                if counter > 100:
+                    break
+                # ======================================
                 try:
                     tasks_gather_release_ids.append(
                         self.organize_sbom_by_release_id(sbom)
@@ -134,6 +144,8 @@ class SbomRegenerator:
         LOGGER.info(
             "Running regenerate for %s release groups..", len(self.sbom_release_groups)
         )
+        if self.args.verbose:
+            LOGGER.debug(self.sbom_release_groups)
         await self.regenerate_release_groups()
         LOGGER.info(
             "Finished regeneration for %s release groups.", tasks_gather_release_ids
@@ -144,7 +156,7 @@ class SbomRegenerator:
         LOGGER.debug("Gathering ReleaseId for SBOM: %s", sbom.id)
         try:
             release_id = await self.get_release_id(sbom)
-            self.sbom_release_groups[release_id].append(sbom.id)
+            self.sbom_release_groups[str(release_id)].append(sbom.id)
             LOGGER.debug(
                 "Finished gathering ReleaseId (%s) for SBOM: %s", release_id, sbom.id
             )
@@ -160,7 +172,7 @@ class SbomRegenerator:
         LOGGER.info("Regenerating %s release groups..", self.sbom_type.value)
         regen_tasks = []
         for release_id in self.sbom_release_groups:
-            regen_tasks.append(self.regenerate_sbom_release(release_id))
+            regen_tasks.append(self.regenerate_sbom_release(ReleaseId(release_id)))
         await asyncio.gather(*regen_tasks)
         LOGGER.info("Finished regenerating %s release groups.", self.sbom_type.value)
 
@@ -184,7 +196,7 @@ class SbomRegenerator:
                 LOGGER.debug("Generate SBOM release: %s", str(release_id))
                 await self.process_sboms(release_id, path_release_data, path_snapshot)
 
-                for sbom_id in self.sbom_release_groups.get(release_id, []):
+                for sbom_id in self.sbom_release_groups.get(str(release_id), []):
                     if self.args.dry_run:
                         LOGGER.info(
                             "*Dry Run: 'delete' related SBOM: for "
@@ -267,7 +279,7 @@ class SbomRegenerator:
                     # allow read retry, since larger volume of downloads occasionally
                     # results in slightly delayed availability
                     max_read_retries = 3
-                    for retry in range(1, max_read_retries):
+                    for read_retry in range(1, max_read_retries):
                         try:
                             async with aiofiles.open(local_path, encoding="utf-8") as f:
                                 json_str_contents = await f.read()
@@ -281,18 +293,18 @@ class SbomRegenerator:
                             LOGGER.warning("'%s' not found.", str(local_path))
                         except json.JSONDecodeError:
                             LOGGER.warning("Invalid JSON in '%s'.", str(local_path))
-                        if retry < max_read_retries:
+                        if read_retry < max_read_retries:
                             # briefly wait, then try again
-                            await asyncio.sleep(0.5 * retry)
+                            await asyncio.sleep(0.5 * read_retry)
                             continue
                     # successful download & read, no need to retry
                     break
-                except RequestError as e:
+                except (RequestError, HTTPStatusError) as e:
                     msg = f"Download was unsuccessful for '{local_path}' ({str(e)})."
                     if retry < max_download_retries:
                         # briefly wait, then try again
-                        await asyncio.sleep(0.5)
-                        LOGGER.debug("retrying... (%s)", msg)
+                        await asyncio.sleep(0.5 * retry)
+                        LOGGER.debug("retry %s... (%s)", retry, msg)
                         continue
                     # raise SBOMError to stop overall script execution
                     LOGGER.error(msg)
@@ -359,12 +371,33 @@ class SbomRegenerator:
             / S3Client.release_data_prefix
             / f"{rid}.release_data.json"
         )
-        async with self.semaphore:
-            if not await self.get_s3_client().get_snapshot(path_snapshot, rid):
-                raise ValueError(f"No snapshot found for ReleaseId: {str(rid)}")
-            if not await self.get_s3_client().get_release_data(path_release_data, rid):
-                raise ValueError(f"No release data found for ReleaseId: {str(rid)}")
+        max_download_retries = 5
+        for retry in range(1, max_download_retries):
+            # use timeout to avoid hung responses
+            try:
+                got_snapshot = await asyncio.wait_for(
+                    self.get_s3_client().get_snapshot(path_snapshot, rid), 5)
+                got_release_data = await asyncio.wait_for(
+                    self.get_s3_client().get_release_data(path_release_data, rid), 5)
+                if got_snapshot and got_release_data:
+                    break
+                LOGGER.warning(
+                    "S3 gather (attempt %s) failed for ReleaseId: ",
+                    retry,
+                    str(rid)
+                )
+            except (TimeoutError, ValueError) as e:
+                if retry < max_download_retries:
+                    await asyncio.sleep(0.5 * retry)
+                    continue
+                LOGGER.error(
+                    "S3 gather max retries exceeded for ReleaseId: ",
+                    retry, str(rid)
+                )
+                raise SBOMError from e
         LOGGER.debug("input data gathered from S3 bucket, for release_id: %s", rid)
+        # ensure s3 client has actually completed download and written the files
+        await asyncio.sleep(0.5)
         return path_snapshot, path_release_data
 
     async def process_sboms(
