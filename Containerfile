@@ -1,5 +1,6 @@
 FROM quay.io/konflux-ci/oras:3d83c68 AS oras
 FROM registry.redhat.io/rhtas/cosign-rhel9:1.2.0-1744791100 AS cosign
+FROM quay.io/conforma/cli:snapshot AS conforma
 FROM registry.access.redhat.com/ubi9/python-312@sha256:558341c02c51ee12820185b203edaa953f18d1c2ac4426947547edd9cea44ff0 AS builder
 
 # Set the working directory in the container
@@ -50,6 +51,7 @@ COPY --from=builder /app /app
 # Copy needed binaries for SBOM augmentation
 COPY --from=oras /usr/bin/oras /usr/bin/oras
 COPY --from=cosign /usr/local/bin/cosign /usr/bin/cosign
+COPY --from=conforma /usr/local/bin/ec /usr/bin/ec
 # Copy license to the container
 COPY LICENSE /licenses/
 
