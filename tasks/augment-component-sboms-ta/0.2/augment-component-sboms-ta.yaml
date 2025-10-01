@@ -251,6 +251,7 @@ spec:
         fi
         
         process_component_sboms "${mobster_args[@]}"
+        exit 1
 
     - name: create-trusted-artifact
       ref:
