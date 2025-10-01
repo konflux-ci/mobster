@@ -128,17 +128,20 @@ class SbomRegenerator:
             await asyncio.gather(*tasks_gather_release_ids)
 
         LOGGER.info(
-            "Finished gathering ReleaseIds for %s SBOMs.", len(tasks_gather_release_ids)
+            "Finished gathering ReleaseIds for %s SBOMs.",
+            len(tasks_gather_release_ids)
         )
 
         LOGGER.info(
-            "Running regenerate for %s release groups..", len(self.sbom_release_groups)
+            "Running regenerate for %s release groups..",
+            len(self.sbom_release_groups)
         )
         if self.args.verbose:
             LOGGER.debug(self.sbom_release_groups)
         await self.regenerate_release_groups()
         LOGGER.info(
-            "Finished regeneration for %s release groups.", len(self.sbom_release_groups)
+            "Finished regeneration for %s release groups.",
+            len(self.sbom_release_groups)
         )
 
     async def organize_sbom_by_release_id(self, sbom: SbomSummary) -> None:

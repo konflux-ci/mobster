@@ -7,7 +7,7 @@ from collections.abc import Coroutine
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -18,6 +18,7 @@ from mobster.cmd.upload.tpa import TPAClient
 from mobster.regenerate.base import SbomRegenerator
 from mobster.release import ReleaseId
 from mobster.tekton.s3 import S3Client
+from tests.conftest import setup_mock_tpa_client_with_context_manager
 
 
 def mock_regenerate_args() -> regen_base.RegenerateArgs:
@@ -74,9 +75,25 @@ def get_mock_sbom(id: str, name: str) -> SbomSummary:
 
 
 def mock_download_sbom_json_with_attr(
-    id: str, name: str, release_id: str, path: Path
+    id: str, name: str, release_id: str | None, path: Path
 ) -> str:
     """sample downloaded SBOM data for testing"""
+    annotations = [
+        {
+            "annotationDate": "2025-08-27T06:54:32Z",
+            "annotationType": "OTHER",
+        }
+    ]
+    if release_id is not None:
+        annotations.append(
+            {
+                "annotationDate": "2025-08-25T09:34:17Z",
+                "annotationType": "OTHER",
+                "annotator": "Tool: Mobster-0.6.0",
+                "comment": f"release_id={release_id}",
+            }
+        )
+
     sbom = {
         "name": f"{name}",
         "documentNamespace": "https://anchore.com/syft/dir/var/workdir/"
@@ -92,14 +109,7 @@ def mock_download_sbom_json_with_attr(
             "created": "2025-08-20T19:15:58Z",
         },
         "packages": [],
-        "annotations": [
-            {
-                "annotationDate": "2025-08-25T09:34:17Z",
-                "annotationType": "OTHER",
-                "annotator": "Tool: Mobster-0.6.0",
-                "comment": f"release_id={release_id}",
-            }
-        ],
+        "annotations": annotations
     }
     return json.dumps(sbom)
 
@@ -306,4 +316,62 @@ def mock_tpa_client() -> AsyncMock:
         )
     )
     return mock
+
+
+@pytest.mark.asyncio
+@patch("mobster.regenerate.base.get_tpa_default_client")
+async def test_regenerate_sboms_success(
+    mock_get_client: MagicMock,
+    mock_tpa_client_with_http_response: AsyncMock,
+    mock_env_vars: None,
+) -> None:
+    setup_mock_tpa_client_with_context_manager(
+        mock_get_client, mock_tpa_client_with_http_response
+    )
+    sbom_summary_1 = get_mock_sbom("1", "A")
+    sbom_download_1 = mock_download_sbom_json_with_attr(
+        "1", "A", "9e3efbfb-565d-46ef-96b7-8e2bbe0472a1", Path("/tmp/foo")
+    )
+
+    async def mock_list_sboms(query: str, sort: str, page_size: int) -> Any:
+        yield sbom_summary_1
+
+    async def mock_download_sbom(sbom_id: str, path: Path) -> Any:
+        yield sbom_download_1
+
+    list_sboms_mock = MagicMock(side_effect=mock_list_sboms)
+    mock_tpa_client_with_http_response.list_sboms = list_sboms_mock
+
+    download_sbom_mock = MagicMock(side_effect=mock_download_sbom)
+    mock_tpa_client_with_http_response.download_sbom = download_sbom_mock
+
+    args = mock_regenerate_args()
+    sbom_type = regen_base.SbomType.PRODUCT
+    sbom_regenerator = SbomRegenerator(args=args, sbom_type=sbom_type)
+
+    with (
+        patch(
+            'mobster.regenerate.base.SbomRegenerator.construct_query',
+            new_callable=AsyncMock
+        ) as mock_construct_query,
+        patch(
+            'mobster.regenerate.base.SbomRegenerator.organize_sbom_by_release_id',
+            new_callable=AsyncMock
+        ) as mock_organize_sbom_by_release_id,
+        patch(
+            'mobster.regenerate.base.SbomRegenerator.regenerate_release_groups',
+            new_callable=AsyncMock
+        ) as mock_regenerate_release_groups
+    ):
+        mock_construct_query.return_value = "test_query"
+
+        sbom_regenerator.args.fail_fast = False
+
+        await sbom_regenerator.regenerate_sboms()
+
+        assert mock_construct_query.called
+        assert mock_organize_sbom_by_release_id.call_count == 1
+        assert mock_regenerate_release_groups.called
+        assert mock_regenerate_release_groups.call_count == 1
+
 
