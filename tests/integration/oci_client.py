@@ -2,6 +2,7 @@ import hashlib
 import json
 import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Literal
 
 import httpx
@@ -88,9 +89,6 @@ class ReferrersTagOCIClient:
             "oras",
             "push",
             image_pullspec,
-            # Add custom creation date annotation to keep digest stable
-            "--annotation",
-            "org.opencontainers.image.created=2025-11-06T12:59:01Z",
             "--config",
             # These are just dummy values that registry requires, but they
             # don't contain any real data.
@@ -378,3 +376,70 @@ class ReferrersTagOCIClient:
                 else:
                     tags_url = ""
         return tags
+
+    async def sign_image(self, image: Image, private_key: Path) -> None:
+        """
+        Sign an image in the registry using cosign.
+
+        Args:
+            image: The image to sign.
+            private_key: The path to the private key file.
+        """
+        image_pullspec = f"{image.repository}@{image.digest}"
+        cmd = [
+            "cosign",
+            "sign",
+            "--key",
+            str(private_key),
+            "--tlog-upload=false",
+            image_pullspec,
+        ]
+        code, stdout, stderr = await run_async_subprocess(
+            cmd,
+            env={"COSIGN_PASSWORD": ""},
+        )
+        if code != 0:
+            raise RuntimeError(
+                f"Failed to sign image {image_pullspec} in registry.\n"
+                f"CMD: {' '.join(cmd)}\n"
+                f"Error: {stderr.decode()}"
+            )
+        return None
+
+    async def push_attestation(
+        self, image: Image, attestation_path: Path, type: str, private_key: Path
+    ) -> None:
+        """
+        Push an attestation to the registry using cosign and associate it with
+        the specified image.
+
+        Args:
+            image: The image to attach the attestation to.
+            attestation_path: The path to the attestation file.
+            type: Attestation type (e.g., slsaprovenance02).
+            private_key: The path to the private key file.
+        """
+        cmd = [
+            "cosign",
+            "attest",
+            "--predicate",
+            str(attestation_path),
+            "--type",
+            type,
+            "--key",
+            str(private_key),
+            "--tlog-upload=false",
+            f"{image.repository}@{image.digest}",
+        ]
+        code, _, stderr = await run_async_subprocess(
+            cmd,
+            env={"COSIGN_PASSWORD": ""},
+        )
+        if code != 0:
+            raise RuntimeError(
+                "Failed to push attestation for image "
+                f"{image.repository}@{image.digest}.\n"
+                f"CMD: {' '.join(cmd)}\n"
+                f"Error: {stderr.decode()}"
+            )
+        return None
