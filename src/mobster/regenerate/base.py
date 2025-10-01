@@ -115,17 +115,7 @@ class SbomRegenerator:
 
             LOGGER.info("Gathering ReleaseIds for %s SBOMs.", self.sbom_type.value)
             tasks_gather_release_ids = []
-            # ======================================
-            # TODO: temporary for testing
-            counter = 0
-            # ======================================
             async for sbom in sboms:
-                # ======================================
-                # TODO: temporary for testing
-                counter += 1
-                if counter > 100:
-                    break
-                # ======================================
                 try:
                     tasks_gather_release_ids.append(
                         self.organize_sbom_by_release_id(sbom)
@@ -148,7 +138,7 @@ class SbomRegenerator:
             LOGGER.debug(self.sbom_release_groups)
         await self.regenerate_release_groups()
         LOGGER.info(
-            "Finished regeneration for %s release groups.", tasks_gather_release_ids
+            "Finished regeneration for %s release groups.", len(self.sbom_release_groups)
         )
 
     async def organize_sbom_by_release_id(self, sbom: SbomSummary) -> None:
