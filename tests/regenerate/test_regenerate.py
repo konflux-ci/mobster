@@ -109,7 +109,7 @@ def mock_download_sbom_json_with_attr(
             "created": "2025-08-20T19:15:58Z",
         },
         "packages": [],
-        "annotations": annotations
+        "annotations": annotations,
     }
     return json.dumps(sbom)
 
@@ -351,17 +351,17 @@ async def test_regenerate_sboms_success(
 
     with (
         patch(
-            'mobster.regenerate.base.SbomRegenerator.construct_query',
-            new_callable=AsyncMock
+            "mobster.regenerate.base.SbomRegenerator.construct_query",
+            new_callable=AsyncMock,
         ) as mock_construct_query,
         patch(
-            'mobster.regenerate.base.SbomRegenerator.organize_sbom_by_release_id',
-            new_callable=AsyncMock
+            "mobster.regenerate.base.SbomRegenerator.organize_sbom_by_release_id",
+            new_callable=AsyncMock,
         ) as mock_organize_sbom_by_release_id,
         patch(
-            'mobster.regenerate.base.SbomRegenerator.regenerate_release_groups',
-            new_callable=AsyncMock
-        ) as mock_regenerate_release_groups
+            "mobster.regenerate.base.SbomRegenerator.regenerate_release_groups",
+            new_callable=AsyncMock,
+        ) as mock_regenerate_release_groups,
     ):
         mock_construct_query.return_value = "test_query"
 
@@ -373,5 +373,3 @@ async def test_regenerate_sboms_success(
         assert mock_organize_sbom_by_release_id.call_count == 1
         assert mock_regenerate_release_groups.called
         assert mock_regenerate_release_groups.call_count == 1
-
-

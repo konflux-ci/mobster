@@ -128,20 +128,18 @@ class SbomRegenerator:
             await asyncio.gather(*tasks_gather_release_ids)
 
         LOGGER.info(
-            "Finished gathering ReleaseIds for %s SBOMs.",
-            len(tasks_gather_release_ids)
+            "Finished gathering ReleaseIds for %s SBOMs.", len(tasks_gather_release_ids)
         )
 
         LOGGER.info(
-            "Running regenerate for %s release groups..",
-            len(self.sbom_release_groups)
+            "Running regenerate for %s release groups..", len(self.sbom_release_groups)
         )
         if self.args.verbose:
             LOGGER.debug(self.sbom_release_groups)
         await self.regenerate_release_groups()
         LOGGER.info(
             "Finished regeneration for %s release groups.",
-            len(self.sbom_release_groups)
+            len(self.sbom_release_groups),
         )
 
     async def organize_sbom_by_release_id(self, sbom: SbomSummary) -> None:
@@ -369,23 +367,22 @@ class SbomRegenerator:
             # use timeout to avoid hung responses
             try:
                 got_snapshot = await asyncio.wait_for(
-                    self.get_s3_client().get_snapshot(path_snapshot, rid), 5)
+                    self.get_s3_client().get_snapshot(path_snapshot, rid), 5
+                )
                 got_release_data = await asyncio.wait_for(
-                    self.get_s3_client().get_release_data(path_release_data, rid), 5)
+                    self.get_s3_client().get_release_data(path_release_data, rid), 5
+                )
                 if got_snapshot and got_release_data:
                     break
                 LOGGER.warning(
-                    "S3 gather (attempt %s) failed for ReleaseId: ",
-                    retry,
-                    str(rid)
+                    "S3 gather (attempt %s) failed for ReleaseId: %s", retry, str(rid)
                 )
             except (TimeoutError, ValueError) as e:
                 if retry < max_download_retries:
                     await asyncio.sleep(0.5 * retry)
                     continue
                 LOGGER.error(
-                    "S3 gather max retries exceeded for ReleaseId: ",
-                    retry, str(rid)
+                    "S3 gather max retries exceeded for ReleaseId: %s", retry, str(rid)
                 )
                 raise SBOMError from e
         LOGGER.debug("input data gathered from S3 bucket, for release_id: %s", rid)
