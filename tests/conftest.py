@@ -11,6 +11,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+from spdx_tools.spdx.model.actor import Actor, ActorType
+from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.parser.parse_anything import parse_file
 
@@ -443,3 +445,14 @@ def spdx_parent_sbom_not_contextualized_json() -> dict[str, Any]:
         "rb",
     ) as in_file:
         return json.load(in_file)  # type: ignore[no-any-return]
+
+
+def create_annotation_with_spdx_id(spdx_id: str) -> Annotation:
+    """Create an annotation with a specific SPDX ID."""
+    return Annotation(
+        spdx_id,
+        AnnotationType.OTHER,
+        Actor(ActorType.TOOL, "test"),
+        datetime.now(),
+        "test comment",
+    )
