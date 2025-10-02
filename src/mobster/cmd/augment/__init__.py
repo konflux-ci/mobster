@@ -65,7 +65,7 @@ class AugmentConfig:
     verify: bool
     semaphore: asyncio.Semaphore
     output_dir: Path
-    release_repo_for_sbom_fetch: bool
+    release_repo_for_sbom_fetch: bool = False
     release_id: ReleaseId | None = None
 
 
@@ -265,7 +265,9 @@ async def update_sbom(
     async with config.semaphore:
         try:
             if config.release_repo_for_sbom_fetch:
-                release_img = Image(repository=repository.repo_url, digest=image.digest)
+                release_img = Image(
+                    repository=repository.public_repo_url, digest=image.digest
+                )
                 sbom, attestation_valid = await load_sbom(
                     release_img, config.cosign, config.verify
                 )

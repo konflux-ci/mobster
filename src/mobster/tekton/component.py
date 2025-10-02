@@ -205,10 +205,10 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
         args.ensured_sbom_dir(),
         args.snapshot_spec,
         args.release_id,
+        args.release_repo_for_sbom_fetch,
         cosign_client,
         args.augment_concurrency,
         args.attestation_concurrency,
-        args.release_repo_for_sbom_fetch,
     )
     config = args.to_upload_config()
 
