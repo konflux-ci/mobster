@@ -59,6 +59,7 @@ def parse_args() -> ProcessComponentArgs:
         "--release-repo-for-sbom-fetch",
         action="store_true",
         help="when fetching build SBOMs, use the release repo url",
+    )
     parser.add_argument("--attest-concurrency", type=int, default=4)
     parser.add_argument(
         "--rekor-key",
