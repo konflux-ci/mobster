@@ -459,4 +459,3 @@ async def test_regenerate_sboms_error(
                         raise AssertionError("expected: error")
                 except SystemExit:
                     assert "No ReleaseId found in SBOM 12345" in caplog.text
-

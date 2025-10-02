@@ -118,9 +118,7 @@ class SbomRegenerator:
             LOGGER.info("Gathering ReleaseIds for %s SBOMs.", self.sbom_type.value)
             tasks_gather_release_ids = []
             async for sbom in sboms:
-                tasks_gather_release_ids.append(
-                    self.organize_sbom_by_release_id(sbom)
-                )
+                tasks_gather_release_ids.append(self.organize_sbom_by_release_id(sbom))
 
             try:
                 await asyncio.gather(*tasks_gather_release_ids)
