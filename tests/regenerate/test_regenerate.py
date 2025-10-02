@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import os
 from collections.abc import Coroutine
 from datetime import datetime
@@ -15,6 +16,7 @@ import pytest
 import mobster.regenerate.base as regen_base
 from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.tpa import TPAClient
+from mobster.error import SBOMError
 from mobster.oci.cosign import CosignConfig
 from mobster.regenerate.base import SbomRegenerator
 from mobster.release import ReleaseId
@@ -375,3 +377,86 @@ async def test_regenerate_sboms_success(
         assert mock_organize_sbom_by_release_id.call_count == 1
         assert mock_regenerate_release_groups.called
         assert mock_regenerate_release_groups.call_count == 1
+
+
+@pytest.mark.asyncio
+@patch("mobster.regenerate.base.get_tpa_default_client")
+async def test_regenerate_sboms_error(
+    mock_get_client: MagicMock,
+    mock_tpa_client_with_http_response: AsyncMock,
+    mock_env_vars: None,
+    caplog: Any,
+) -> None:
+    setup_mock_tpa_client_with_context_manager(
+        mock_get_client, mock_tpa_client_with_http_response
+    )
+    dummy_release_id = "9e3efbfb-565d-46ef-96b7-8e2bbe0472a1"
+    sbom_summary_1 = get_mock_sbom("1", "A")
+    sbom_download_1 = mock_download_sbom_json_with_attr(
+        "1", "A", dummy_release_id, Path("/tmp/foo")
+    )
+
+    async def mock_list_sboms(query: str, sort: str, page_size: int) -> Any:
+        yield sbom_summary_1
+
+    async def mock_download_sbom(sbom_id: str, path: Path) -> Any:
+        yield sbom_download_1
+
+    list_sboms_mock = MagicMock(side_effect=mock_list_sboms)
+    mock_tpa_client_with_http_response.list_sboms = list_sboms_mock
+
+    download_sbom_mock = MagicMock(side_effect=mock_download_sbom)
+    mock_tpa_client_with_http_response.download_sbom = download_sbom_mock
+
+    args = mock_regenerate_args()
+    sbom_type = regen_base.SbomType.PRODUCT
+    sbom_regenerator = SbomRegenerator(args=args, sbom_type=sbom_type)
+
+    with (
+        patch(
+            "mobster.regenerate.base.SbomRegenerator.construct_query",
+            new_callable=AsyncMock,
+        ) as mock_construct_query,
+        patch(
+            "mobster.regenerate.base.SbomRegenerator.organize_sbom_by_release_id",
+            new_callable=AsyncMock,
+        ) as mock_organize_sbom_by_release_id,
+    ):
+        mock_construct_query.return_value = "test_query"
+        mock_organize_sbom_by_release_id.side_effect = SBOMError("Missing ReleaseId")
+
+        caplog_level = logging.ERROR
+        for fail_fast in [True, False]:
+            sbom_regenerator.args.fail_fast = fail_fast
+            with caplog.at_level(caplog_level):
+                try:
+                    await sbom_regenerator.regenerate_sboms()
+                    if fail_fast:
+                        raise AssertionError("expected: error")
+                except SystemExit as e:
+                    assert "Missing ReleaseId" in caplog.text
+                    assert type(e).__name__ == SystemExit.__name__
+
+    with (
+        patch(
+            "mobster.regenerate.base.SbomRegenerator.get_release_id",
+            new_callable=AsyncMock,
+        ) as mock_get_release_id,
+    ):
+        mock_get_release_id.side_effect = regen_base.MissingReleaseIdError(
+            "No ReleaseId found in SBOM 12345"
+        )
+        caplog_level = logging.ERROR
+        for ignore_missing_releaseid in [True, False]:
+            sbom_regenerator.args.ignore_missing_releaseid = ignore_missing_releaseid
+            if ignore_missing_releaseid:
+                caplog_level = logging.DEBUG
+            sbom_regenerator.args.fail_fast = True
+            with caplog.at_level(caplog_level):
+                try:
+                    await sbom_regenerator.regenerate_sboms()
+                    if not ignore_missing_releaseid:
+                        raise AssertionError("expected: error")
+                except SystemExit:
+                    assert "No ReleaseId found in SBOM 12345" in caplog.text
+

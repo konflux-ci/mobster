@@ -118,16 +118,16 @@ class SbomRegenerator:
             LOGGER.info("Gathering ReleaseIds for %s SBOMs.", self.sbom_type.value)
             tasks_gather_release_ids = []
             async for sbom in sboms:
-                try:
-                    tasks_gather_release_ids.append(
-                        self.organize_sbom_by_release_id(sbom)
-                    )
-                except SBOMError as e:
-                    LOGGER.error(e)
-                    if self.args.fail_fast:
-                        sys.exit(1)
+                tasks_gather_release_ids.append(
+                    self.organize_sbom_by_release_id(sbom)
+                )
 
-            await asyncio.gather(*tasks_gather_release_ids)
+            try:
+                await asyncio.gather(*tasks_gather_release_ids)
+            except SBOMError as e:
+                LOGGER.error(e)
+                if self.args.fail_fast:
+                    sys.exit(1)
 
         LOGGER.info(
             "Finished gathering ReleaseIds for %s SBOMs.", len(tasks_gather_release_ids)
