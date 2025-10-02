@@ -117,17 +117,7 @@ class SbomRegenerator:
 
             LOGGER.info("Gathering ReleaseIds for %s SBOMs.", self.sbom_type.value)
             tasks_gather_release_ids = []
-            # ======================================
-            # TODO: FOR TESTING ONLY
-            counter = 0
-            # ======================================
             async for sbom in sboms:
-                # ======================================
-                # TODO: FOR TESTING ONLY
-                counter += 1
-                if counter > 100:
-                    break
-                # ======================================
                 try:
                     tasks_gather_release_ids.append(
                         self.organize_sbom_by_release_id(sbom)
