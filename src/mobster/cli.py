@@ -8,7 +8,7 @@ from typing import Any
 from mobster.cmd import augment
 from mobster.cmd.delete import delete_tpa
 from mobster.cmd.download import download_tpa
-from mobster.cmd.generate import modelcar, oci_artifact, oci_image, oci_index, product
+from mobster.cmd.generate import modelcar, oci_artifact, oci_image, oci_index, product, vcs
 from mobster.cmd.upload import upload
 from mobster.image import ARTIFACT_PATTERN, PULLSPEC_PATTERN
 from mobster.release import ReleaseId
@@ -63,6 +63,7 @@ def generate_command_parser(subparsers: Any) -> None:
     generate_product_parser(generate_subparsers)
     generate_modelcar_parser(generate_subparsers)
     generate_oci_artifact_parser(generate_subparsers)
+    generate_vcs_parser(generate_subparsers)
 
 
 def generate_oci_image_parser(subparsers: Any) -> None:
@@ -251,6 +252,34 @@ def generate_modelcar_parser(subparsers: Any) -> None:
         help="Type of SBOM to generate (default: cyclonedx)",
     )
     modelcar_parser.set_defaults(func=modelcar.GenerateModelcarCommand)
+
+
+def generate_vcs_parser(subparsers: Any) -> None:
+    """
+    Generate the command parser for the vcs content type.
+    """
+    parser = subparsers.add_parser(
+        "vcs", help="Generate an SBOM document that references a VCS resource"
+    )
+    parser.add_argument(
+        "--name",
+        type=str,
+        help="Name of the SBOM.",
+        required=True,
+    )
+    parser.add_argument(
+        "--url",
+        type=str,
+        help="VCS URL to point to",
+        required=True,
+    )
+    parser.add_argument(
+        "--sbom-type",
+        choices=["cyclonedx", "spdx"],
+        default="cyclonedx",
+        help="Type of SBOM to generate (default: cyclonedx)",
+    )
+    parser.set_defaults(func=vcs.GenerateVCSCommand)
 
 
 def generate_oci_artifact_parser(subparsers: Any) -> None:
