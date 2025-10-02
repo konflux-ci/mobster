@@ -195,8 +195,11 @@ class ReferrersTagOCIClient:
         return stdout.decode().strip()
 
     async def attach_sbom(
-        self, image: Image, format: Literal["spdx", "cyclonedx"], sbom: bytes
-    ) -> None:
+        self,
+        image: Image,
+        format: Literal["spdx", "cyclonedx"],
+        sbom: bytes,
+    ) -> str:
         """
         Attach an SBOM to an image as a referrer.
 
@@ -204,6 +207,9 @@ class ReferrersTagOCIClient:
             image: The image to attach the SBOM to.
             format: The SBOM format (spdx or cyclonedx).
             sbom: The SBOM content as bytes.
+        Returns:
+            The reference to the pushed SBOM in the format
+            <repo url>:<tag>.sbom@sha256:<digest>
         """
         derived_tag = image.digest.replace(":", "-") + ".sbom"
 
@@ -226,6 +232,7 @@ class ReferrersTagOCIClient:
         # with spec
         config_digest = await self._push_blob(image.name, b"")
         await self._push_manifest(image.name, derived_tag, config_digest, layers)
+        return image.repository + ":" + derived_tag + "@" + sbom_blob_digest
 
     async def _push_blob(self, name: str, blob: bytes) -> str:
         """

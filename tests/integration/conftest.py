@@ -1,5 +1,8 @@
 import asyncio
+import subprocess
+import tempfile
 from collections.abc import AsyncGenerator, Generator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -65,6 +68,11 @@ def upload_concurrency() -> int:
 @pytest.fixture()
 def product_concurrency() -> int:
     return 8
+
+
+@pytest.fixture()
+def attestation_concurrency() -> int:
+    return 4
 
 
 @pytest.fixture(scope="session")
@@ -150,3 +158,35 @@ def test_id(request: pytest.FixtureRequest) -> str:
     removing the need for clearing TPA after each test case.
     """
     return str(request.node.name)
+
+
+@pytest.fixture(scope="session")
+def cosign_keys() -> tuple[Path, Path]:  # type: ignore[misc]
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with tempfile.NamedTemporaryFile() as password_tempfile:
+            password_tempfile.write(b"")
+            subprocess_return = subprocess.run(
+                ["cosign", "generate-key-pair"],
+                cwd=temp_dir,
+                stdin=password_tempfile,
+            )
+            assert subprocess_return.returncode == 0, (
+                f"{subprocess_return.stdout.decode()}, "
+                f"{subprocess_return.stderr.decode()}"
+            )
+        temp_dir_path = Path(temp_dir)
+        pub_key = temp_dir_path / "cosign.pub"
+        assert pub_key.exists()
+        priv_key = temp_dir_path / "cosign.key"
+        assert priv_key.exists()
+        yield priv_key, pub_key
+
+
+@pytest.fixture(scope="session")
+def cosign_sign_key(cosign_keys: tuple[Path, Path]) -> Path:
+    return cosign_keys[0]
+
+
+@pytest.fixture(scope="session")
+def cosign_verify_key(cosign_keys: tuple[Path, Path]) -> Path:
+    return cosign_keys[1]

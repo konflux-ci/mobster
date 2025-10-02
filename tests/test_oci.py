@@ -1,13 +1,15 @@
 import base64
 import datetime
+import hashlib
 import json
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from _pytest.logging import LogCaptureFixture
 from dateutil.parser import isoparse
 
 from mobster.error import SBOMError
@@ -17,8 +19,8 @@ from mobster.oci import (
     get_image_manifest,
     make_oci_auth_file,
 )
-from mobster.oci.artifact import SBOM, Provenance02
-from mobster.oci.cosign import CosignClient
+from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
+from mobster.oci.cosign import CosignClient, CosignConfig, RekorConfig
 from tests.cmd.test_augment import load_provenance
 
 
@@ -430,6 +432,7 @@ def test_sbom_bad_format(doc: dict[str, Any]) -> None:
 
 class TestCosignClient:
     verification_key = Path("/verification-key")
+    signing_key = Path("/signing_key")
 
     @pytest.fixture()
     def provenance_path(self, provenances_path: Path) -> Path:
@@ -483,7 +486,9 @@ class TestCosignClient:
 
     @pytest.fixture
     def client(self) -> CosignClient:
-        return CosignClient(self.verification_key)
+        return CosignClient(
+            CosignConfig(verify_key=self.verification_key, sign_key=self.signing_key)
+        )
 
     @pytest.mark.asyncio
     async def test_fetch_latest_provenance(
@@ -511,6 +516,53 @@ class TestCosignClient:
 
         prov = await client.fetch_latest_provenance(image)
         assert prov.predicate == make_provenance_predicate(new_date)
+
+    @pytest.mark.asyncio
+    async def test_fetch_attested_sbom(
+        self,
+        image: Image,
+        client: CosignClient,
+        monkeypatch: pytest.MonkeyPatch,
+        sbom_doc: dict[str, Any],
+    ) -> None:
+        expected_payload = {
+            "predicateType": "https://in-toto.io/Statement/v0.1",
+            "predicate": sbom_doc,
+        }
+        expected_attestation = {
+            "payload": base64.b64encode(json.dumps(expected_payload).encode()).decode()
+        }
+        attestation_raw = json.dumps(expected_attestation).encode()
+
+        async def fake_verify_attestation(*_: Any) -> list[bytes]:
+            return [attestation_raw]
+
+        monkeypatch.setattr(
+            client,
+            "_verify_attestation",
+            fake_verify_attestation,
+        )
+
+        sbom = await client.fetch_attested_sbom(image, SBOMFormat.SPDX_2_3)
+
+        assert sbom
+        assert sbom.doc == sbom_doc
+        assert sbom.reference == image.reference
+        assert sbom.digest == hashlib.sha256(attestation_raw).hexdigest()
+
+    @pytest.mark.asyncio
+    async def test_fetch_attested_sbom_no_attestations(
+        self, image: Image, client: CosignClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        async def fake_verify_attestation(*_: Any) -> list[bytes]:
+            return []
+
+        monkeypatch.setattr(
+            client,
+            "_verify_attestation",
+            fake_verify_attestation,
+        )
+        assert not await client.fetch_attested_sbom(image, SBOMFormat.CDX_V1_6)
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -586,7 +638,8 @@ class TestCosignClient:
         code: int,
     ) -> None:
         async def mock_run_async_subprocess(
-            cmd: Any, env: Any, retry_times: Any
+            *_: Any,
+            **__: Any,
         ) -> tuple[int, bytes, bytes]:
             return code, b"", b""
 
@@ -596,3 +649,134 @@ class TestCosignClient:
 
         with pytest.raises(SBOMError):
             await client.fetch_sbom(image)
+
+    @pytest.mark.asyncio
+    async def test_attest_sbom_no_signing_key(self) -> None:
+        client = CosignClient(CosignConfig())
+
+        with pytest.raises(SBOMError) as exc:
+            await client.attest_sbom(Path("/sbom"), "foo", SBOMFormat.SPDX_2_0)
+            assert exc.match(
+                "[Cosign] Cannot attest SBOM, no signing key was provided."
+            )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        [
+            "sbom_format",
+            "rekor_url",
+            "rekor_key",
+            "expected_keywords",
+            "subprocess_code",
+            "subprocess_stderr",
+            "raises_exc",
+        ],
+        [
+            (
+                SBOMFormat.CDX_V1_5,
+                "foo",
+                Path("/a"),
+                {"cyclonedx", "--rekor-url=foo"},
+                0,
+                b"warning: foo",
+                None,
+            ),
+            (
+                SBOMFormat.SPDX_2_3,
+                None,
+                None,
+                {"spdxjson", "--tlog-upload=false"},
+                1,
+                b"Me ded",
+                SBOMError,
+            ),
+        ],
+    )
+    @patch("mobster.oci.cosign.run_async_subprocess")
+    @patch("mobster.oci.cosign.make_oci_auth_file", MagicMock())
+    @patch("mobster.oci.cosign.tempfile.NamedTemporaryFile", MagicMock())
+    async def test_attest_sbom(
+        self,
+        mock_run_subprocess: AsyncMock,
+        sbom_format: SBOMFormat,
+        rekor_url: str | None,
+        rekor_key: Path | None,
+        expected_keywords: set[str],
+        subprocess_code: int,
+        subprocess_stderr: bytes,
+        raises_exc: type[Exception] | None,
+        client: CosignClient,
+        caplog: LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        if rekor_key and rekor_url:
+            rekor_config = RekorConfig(rekor_url, rekor_key)
+        else:
+            rekor_config = None
+        mock_run_subprocess.return_value = subprocess_code, b"", subprocess_stderr
+        kwargs = {
+            "sbom_path": Path("/foo"),
+            "image_ref": "quay.io/foo@sha256:a",
+            "sbom_format": sbom_format,
+        }
+        monkeypatch.setattr(client, "rekor_config", rekor_config)
+        if not raises_exc:
+            await client.attest_sbom(**kwargs)  # type: ignore[arg-type]
+        else:
+            with pytest.raises(raises_exc):
+                await client.attest_sbom(**kwargs)  # type: ignore[arg-type]
+                assert subprocess_stderr.decode() in caplog.messages[-1]
+        mock_run_subprocess.assert_awaited_once()
+        cosign_command = mock_run_subprocess.call_args_list[0].args[0]
+        assert cosign_command[0] == "cosign"
+        assert cosign_command[1] == "attest"
+        for expected_command_expression in expected_keywords:
+            assert expected_command_expression in cosign_command
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ["blob_type", "subprocess_code", "subprocess_stderr", "raises_exc"],
+        [
+            ("all", 0, b"", None),
+            ("sbom", 1, b"NO WAY (to execute this)", SBOMError),
+        ],
+    )
+    @patch("mobster.oci.cosign.run_async_subprocess")
+    async def test_clean(
+        self,
+        mock_subprocess: AsyncMock,
+        client: CosignClient,
+        blob_type: Literal["all", "signature", "attestation", "sbom"],
+        subprocess_code: int,
+        subprocess_stderr: bytes,
+        raises_exc: type[Exception] | None,
+        caplog: LogCaptureFixture,
+    ) -> None:
+        image_ref = "quay.io/test/repo@sha256:deadbeef"
+        mock_subprocess.return_value = subprocess_code, b"", subprocess_stderr
+        if raises_exc:
+            with pytest.raises(raises_exc):
+                await client.clean(image_ref, blob_type)
+                assert subprocess_stderr.decode() in caplog.messages[-1]
+        else:
+            await client.clean(image_ref, blob_type)
+        mock_subprocess.assert_awaited_once()
+        cosign_command = mock_subprocess.call_args_list[0].args[0]
+        assert cosign_command[0] == "cosign"
+        assert cosign_command[1] == "clean"
+        assert f"--type={blob_type}" in cosign_command
+
+    @pytest.mark.parametrize(
+        ["cosign_client", "can_sign"],
+        [
+            (CosignClient(CosignConfig()), False),
+            (CosignClient(CosignConfig(verify_key=Path("a"))), False),
+            (CosignClient(CosignConfig(sign_key=Path("a"))), True),
+            (
+                CosignClient(CosignConfig(verify_key=Path("a"), sign_key=Path("b"))),
+                True,
+            ),
+        ],
+    )
+    def test_can_sign(self, cosign_client: CosignClient, can_sign: bool) -> None:
+        assert cosign_client.can_sign() is can_sign

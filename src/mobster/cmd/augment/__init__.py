@@ -1,7 +1,7 @@
 """A module for augmenting SBOM documents."""
 
 import asyncio
-import gc
+import itertools
 import json
 import logging
 from dataclasses import dataclass
@@ -15,8 +15,8 @@ from mobster.cmd.augment.handlers import CycloneDXVersion1, SPDXVersion2
 from mobster.cmd.base import Command
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
-from mobster.oci.artifact import SBOM
-from mobster.oci.cosign import Cosign, CosignClient
+from mobster.oci.artifact import SBOM, SBOMFormat
+from mobster.oci.cosign import Cosign, CosignClient, CosignConfig
 from mobster.release import (
     Component,
     ReleaseId,
@@ -26,6 +26,25 @@ from mobster.release import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+@dataclass
+class SBOMRefDetail:
+    """
+    Result of SBOM augmentation process.
+    The SBOMs are not stored in-memory but in
+    the filesystem to ease the load on memory.
+
+    Attributes:
+        reference: Reference to the image this attestation belongs to
+        sbom_format: The format of the SBOM
+        path: Path to the local SBOM file
+    """
+
+    reference: str
+    sbom_format: SBOMFormat
+    path: Path
+    attestation_valid: bool
 
 
 @dataclass
@@ -74,15 +93,16 @@ class AugmentImageCommand(Command):
         snapshot = await make_snapshot(self.cli_args.snapshot, digest, semaphore)
 
         config = AugmentConfig(
-            cosign=CosignClient(self.cli_args.verification_key),
+            cosign=CosignClient(
+                CosignConfig(verify_key=self.cli_args.verification_key)
+            ),
             verify=self.cli_args.verification_key is not None,
             semaphore=semaphore,
             output_dir=self.cli_args.output,
             release_repo_for_sbom_fetch=self.cli_args.release_repo_for_sbom_fetch,
             release_id=self.cli_args.release_id,
         )
-
-        if not await update_sboms(config, snapshot):
+        if not all(await augment_sboms(config, snapshot)):
             self.exit_code = 1
 
     async def save(self) -> None:
@@ -153,7 +173,7 @@ async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:
         )
 
 
-async def load_sbom(image: Image, cosign: Cosign, verify: bool) -> SBOM:
+async def load_sbom(image: Image, cosign: Cosign, verify: bool) -> tuple[SBOM, bool]:
     """
     Download and parse the sbom for the image reference and verify that its digest
     matches that in the image provenance.
@@ -163,11 +183,24 @@ async def load_sbom(image: Image, cosign: Cosign, verify: bool) -> SBOM:
         cosign (Cosign): implementation of the Cosign protocol
         verify (bool): True if the SBOM's digest should be verified via the
             provenance of the image
+    Returns:
+        SBOM and True if its attestation was validated successfully,
+        SBOM and False otherwise
     """
     sbom = await cosign.fetch_sbom(image)
+    attestation_valid = True
     if verify:
-        await verify_sbom(sbom, image, cosign)
-    return sbom
+        try:
+            await verify_sbom(sbom, image, cosign)
+        except SBOMVerificationError:
+            LOGGER.exception(
+                "Attestation verification failed for image '%s'."
+                "The released images created from this image will"
+                "not be attested with a release time SBOM!",
+                image.reference,
+            )
+            attestation_valid = False
+    return sbom, attestation_valid
 
 
 async def write_sbom(sbom: Any, path: Path) -> None:
@@ -213,7 +246,7 @@ async def update_sbom(
     config: AugmentConfig,
     repository: ReleaseRepository,
     image: Image,
-) -> bool:
+) -> SBOMRefDetail | None:
     """
     Get an augmented SBOM of an image in a repository.
 
@@ -225,42 +258,57 @@ async def update_sbom(
         image: Object representing an image or an index image being released.
 
     Returns:
-        True if the SBOM was enriched, False otherwise.
+        Detail of the augmented SBOM if it was successfully enriched,
+        None otherwise.
     """
 
     async with config.semaphore:
         try:
             if config.release_repo_for_sbom_fetch:
                 release_img = Image(repository=repository.repo_url, digest=image.digest)
-                sbom = await load_sbom(release_img, config.cosign, config.verify)
+                sbom, attestation_valid = await load_sbom(
+                    release_img, config.cosign, config.verify
+                )
             else:
-                sbom = await load_sbom(image, config.cosign, config.verify)
+                sbom, attestation_valid = await load_sbom(
+                    image, config.cosign, config.verify
+                )
 
             if not update_sbom_in_situ(repository, image, sbom, config.release_id):
                 raise SBOMError(f"Unsupported SBOM format for image {image}.")
-            sbom.reference = repository.repo_url + "@" + image.digest
+            sbom.reference = repository.public_repo_url + "@" + image.digest
             path = config.output_dir / get_randomized_sbom_filename(sbom)
             await write_sbom(sbom.doc, path)
 
-            # run garbage collection manually to make sure the object is
-            # cleaned up before we release the lock
-            del sbom
-            gc.collect()
-
-            LOGGER.info("Successfully enriched SBOM for image %s", image)
-            return True
+            LOGGER.info(
+                "Successfully enriched SBOM for image %s "
+                "(released to %s and pushed to %s)",
+                image,
+                repository.public_repo_url,
+                repository.internal_repo_url,
+            )
+            return SBOMRefDetail(
+                repository.internal_repo_url + "@" + image.digest,
+                sbom.format,
+                path,
+                attestation_valid,
+            )
         except Exception:  # pylint: disable=broad-except
             # We catch all exceptions, because we're processing many SBOMs
             # concurrently and an uncaught exception would halt all concurrently
             # running updates.
-            LOGGER.exception("Failed to enrich SBOM for image %s.", image)
-            return False
+            LOGGER.exception(
+                "Failed to enrich SBOM for image %s (released to %s).",
+                image,
+                repository.public_repo_url,
+            )
+            return None
 
 
 async def update_component_sboms(
     config: AugmentConfig,
     component: Component,
-) -> bool:
+) -> list[SBOMRefDetail | None]:
     """
     Update SBOMs for a component.
 
@@ -299,13 +347,13 @@ async def update_component_sboms(
             for repo in component.release_repositories
         ]
     results = await asyncio.gather(*update_tasks)
-    return all(results)
+    return results
 
 
-async def update_sboms(
+async def augment_sboms(
     config: AugmentConfig,
     snapshot: Snapshot,
-) -> bool:
+) -> list[SBOMRefDetail | None]:
     """
     Update component SBOMs with release-time information based on a Snapshot.
 
@@ -322,5 +370,5 @@ async def update_sboms(
             for component in snapshot.components
         ],
     )
-
-    return all(results)
+    # Flatten the nested results
+    return list(itertools.chain(*results))
