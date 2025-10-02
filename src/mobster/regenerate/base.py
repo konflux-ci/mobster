@@ -26,6 +26,7 @@ from mobster.cli import parse_concurrency
 from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.tpa import get_tpa_default_client
 from mobster.error import SBOMError
+from mobster.oci.cosign import CosignConfig
 from mobster.release import ReleaseId
 from mobster.tekton.component import ProcessComponentArgs, process_component_sboms
 from mobster.tekton.product import ProcessProductArgs, process_product_sboms
@@ -78,6 +79,7 @@ class RegenerateArgs:  # pylint: disable=R0902
     s3_bucket_url: str
     mobster_versions: str
     concurrency: int
+    cosign_config: CosignConfig
     tpa_retries: int
     tpa_page_size: int
     dry_run: bool
@@ -115,7 +117,17 @@ class SbomRegenerator:
 
             LOGGER.info("Gathering ReleaseIds for %s SBOMs.", self.sbom_type.value)
             tasks_gather_release_ids = []
+            # ======================================
+            # TODO: FOR TESTING ONLY
+            counter = 0
+            # ======================================
             async for sbom in sboms:
+                # ======================================
+                # TODO: FOR TESTING ONLY
+                counter += 1
+                if counter > 100:
+                    break
+                # ======================================
                 try:
                     tasks_gather_release_ids.append(
                         self.organize_sbom_by_release_id(sbom)
@@ -426,9 +438,11 @@ class SbomRegenerator:
                         release_id=release_id,
                         labels={},
                         augment_concurrency=self.args.concurrency,
+                        cosign_config=self.args.cosign_config,
                         result_dir=self.args.output_path,
                         tpa_retries=self.args.tpa_retries,
                         upload_concurrency=self.args.concurrency,
+                        attestation_concurrency=self.args.concurrency,
                         skip_upload=self.args.dry_run,
                         release_repo_for_sbom_fetch=True,
                     )
@@ -453,6 +467,12 @@ def parse_args() -> RegenerateArgs:
     parser = argparse.ArgumentParser()
     add_args(parser)
     args = parser.parse_args()
+
+    cosign_config = CosignConfig(
+        sign_key=args.sign_key,
+        verify_key=args.verify_key,
+        sign_password=args.sign_password.encode("utf-8"),
+    )
     path_output_dir = prepare_output_paths(args.output_dir)
 
     LOGGER.debug(args)
@@ -463,6 +483,7 @@ def parse_args() -> RegenerateArgs:
         s3_bucket_url=args.s3_bucket_url,
         mobster_versions=args.mobster_versions,
         concurrency=args.concurrency,
+        cosign_config=cosign_config,
         tpa_retries=args.tpa_retries,
         tpa_page_size=args.tpa_page_size,
         dry_run=args.dry_run,
@@ -546,6 +567,27 @@ def add_args(parser: ArgumentParser) -> None:
         type=int,
         default=50,
         help="paging size (how many SBOMs) for query response sets",
+    )
+
+    parser.add_argument(
+        "--sign-key",
+        type=str,
+        default=None,
+        help="The signing (private) key file or k8s secret to use when signing "
+        "OCI attestation with SBOMs. The command just attaches "
+        "an SBOM if this argument is unfilled.",
+    )
+    parser.add_argument(
+        "--verify-key",
+        type=str,
+        default=None,
+        help="The cosign verification key for attest downloading and verification.",
+    )
+    parser.add_argument(
+        "--sign-password",
+        type=str,
+        default="",
+        help="The password protecting the signing key.",
     )
 
     # bool
