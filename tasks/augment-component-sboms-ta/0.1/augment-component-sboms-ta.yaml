@@ -223,6 +223,18 @@ spec:
             secretKeyRef:
               name: $(params.cosignSecretName)
               key: AWS_SECRET_ACCESS_KEY
+        - name: REKOR_URL
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosignSecretName)
+              key: REKOR_URL
+              optional: true
+        - name: REKOR_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosignSecretName)
+              key: REKOR_PUBLIC_KEY
+              optional: true
       computeResources:
         limits:
           memory: 1Gi
@@ -237,18 +249,26 @@ spec:
         # script below will verify that the release_id has the correct format.
         release_id=$(dirname "$(params.snapshotSpec)")
 
-        process_component_sboms \
-          --data-dir "$(params.dataDir)" \
-          --result-dir "$(params.resultsDirPath)" \
-          --snapshot-spec "$(params.snapshotSpec)" \
-          --atlas-api-url "$(params.atlasApiUrl)" \
-          --retry-s3-bucket "$(params.retryS3Bucket)" \
-          --release-id "$release_id" \
-          --augment-concurrency "$(params.augmentConcurrency)" \
-          --upload-concurrency "$(params.uploadConcurrency)" \
-          --result-dir "$(params.resultsDirPath)" \
-          --sign-key "$SIGN_KEY" \
+        mobster_args=(
+          --data-dir "$(params.dataDir)"
+          --snapshot-spec "$(params.snapshotSpec)"
+          --atlas-api-url "$(params.atlasApiUrl)"
+          --retry-s3-bucket "$(params.retryS3Bucket)"
+          --release-id "$release_id"
+          --augment-concurrency "$(params.augmentConcurrency)"
+          --upload-concurrency "$(params.uploadConcurrency)"
+          --result-dir "$(params.resultsDirPath)"
+          --sign-key "$SIGN_KEY"
           --verify-key "$(params.attestationPubKey)"
+        )
+        if [ -n "${REKOR_URL}" ]; then
+          mobster_args+=(--rekor-url "${REKOR_URL}")
+        fi
+        if [ -n "${REKOR_PUBLIC_KEY}" ]; then
+          mobster_args+=(--rekor-key "${REKOR_PUBLIC_KEY}")
+        fi
+
+        process_component_sboms "${mobster_args[@]}"
 
     - name: create-trusted-artifact
       ref:
