@@ -1,0 +1,3 @@
+from registry.redhat.io/ubi10:latest
+
+RUN touch a.txt
