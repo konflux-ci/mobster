@@ -47,10 +47,6 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
     Command to generate an SBOM document for an OCI image.
     """
 
-    # Change this once Contextual SBOM is ready.
-    # We should then look at the cli argument passed instead
-    _contextualize: bool = False
-
     @staticmethod
     async def dump_sbom_to_dict(
         sbom: Document | CycloneDX1BomWrapper,
@@ -166,7 +162,12 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
     ) -> Document | None:
         """
         Check if the contextual Workflow should be attempted
-        and try to run it. Catches all errors.
+        and try to run it. Contextual workflow modifies
+        mobster-produced component SBOM in place. Before
+        workflow a deep copy is created from this SBOM.
+        When any error during contextual SBOM workflow
+        emerges function returns None and original
+        (non-modified) SBOM is furtherly processed by mobster.
         Args:
             component_sbom_doc: The component SBOM created for this image.
             base_images_refs: List of references from the parsed Dockerfile.
@@ -178,7 +179,8 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 None otherwise.
         """
         if (
-            self._contextualize
+            self.cli_args.contextualize
+            and not self.cli_args.is_hermetic_build
             and isinstance(component_sbom_doc, Document)
             and base_images_refs
             and (parent_image_ref := base_images_refs[-1])
@@ -205,6 +207,10 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         # Parsing into objects
         if merged_sbom_dict.get("bomFormat") == "CycloneDX":
+            if self.cli_args.contextualize is True:
+                raise ArgumentError(
+                    None, "--contextualize is only allowed when processing SPDX format"
+                )
             sbom = CycloneDX1BomWrapper.from_dict(merged_sbom_dict)
         elif "spdxVersion" in merged_sbom_dict:
             sbom = await normalize_and_load_sbom(merged_sbom_dict)
