@@ -1,7 +1,6 @@
 import datetime
 import json
 from argparse import ArgumentError
-from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -78,6 +77,23 @@ async def test_GenerateOciImageCommand_execute(
     sbom_dict = await GenerateOciImageCommand.dump_sbom_to_dict(sbom)
 
     compare_sbom_dicts(sbom_dict, expected_sbom)
+
+
+@pytest.mark.asyncio
+@patch(
+    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
+)
+async def test_GenerateOciImageCommand_execute_cannot_contextualize_cyclonedx(
+    image_digest_file_content: str,
+    test_case_cyclonedx_with_additional: GenerateOciImageTestCase,
+) -> None:
+    test_case_cyclonedx_with_additional.args.contextualize = True
+    command = GenerateOciImageCommand(test_case_cyclonedx_with_additional.args)
+    with pytest.raises(
+        ArgumentError,
+        match="--contextualize is only allowed when processing SPDX format",
+    ):
+        await command.execute()
 
 
 @pytest.mark.asyncio
@@ -329,58 +345,6 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
 
 @pytest.mark.asyncio
 @patch("mobster.cmd.generate.oci_image.download_parent_image_sbom")
-async def test_GenerateOciImageCommand__execute_contextual_workflow_parent_is_ctx(
-    mock_download_parent: AsyncMock,
-    spdx_parent_sbom_contextualized_json: dict[str, Any],
-    spdx_component_sbom: Document,
-) -> None:
-    """
-    Testcases will be expanded when matching mechanism will be implemented in ISV-
-    Currently is matching mechanism dummy and matches only SPDX ID-s
-    (what will not be a case in full implementation)
-    """
-    mock_download_parent.return_value = spdx_parent_sbom_contextualized_json
-
-    command = GenerateOciImageCommand(MagicMock())
-    contextual_sbom = await command._execute_contextual_workflow(
-        deepcopy(spdx_component_sbom),
-        Image("registry.access.redhat.com/ubi8/ubi", "sha256:sha"),
-        "amd64",
-    )
-    with open(
-        "tests/sbom/test_oci_generate_data/contextual/output/expected_out_component_parent_contextualized.spdx.json",
-    ) as in_file:
-        assert await command.dump_sbom_to_dict(contextual_sbom) == json.load(in_file)  # type: ignore[arg-type]
-
-
-@pytest.mark.asyncio
-@patch("mobster.cmd.generate.oci_image.download_parent_image_sbom")
-async def test_GenerateOciImageCommand__execute_contextual_workflow_parent_not_ctx(
-    mock_download_parent: AsyncMock,
-    spdx_parent_sbom_not_contextualized_json: dict[str, Any],
-    spdx_component_sbom: Document,
-) -> None:
-    """
-    Testcases will be expanded when matching mechanism will be implemented in ISV-
-    Currently is matching mechanism dummy and matches only SPDX ID-s
-    (what will not be a case in full implementation)
-    """
-    mock_download_parent.return_value = spdx_parent_sbom_not_contextualized_json
-
-    command = GenerateOciImageCommand(MagicMock())
-    contextual_sbom = await command._execute_contextual_workflow(
-        deepcopy(spdx_component_sbom),
-        Image("registry.access.redhat.com/ubi8/ubi", "sha256:sha"),
-        "amd64",
-    )
-    with open(
-        "tests/sbom/test_oci_generate_data/contextual/output/expected_out_component_parent_not_contextualized.spdx.json",
-    ) as in_file:
-        assert await command.dump_sbom_to_dict(contextual_sbom) == json.load(in_file)  # type: ignore[arg-type]
-
-
-@pytest.mark.asyncio
-@patch("mobster.cmd.generate.oci_image.download_parent_image_sbom")
 async def test_GenerateOciImageCommand__execute_contextual_workflow_no_downloaded_sbom(
     mock_download_sbom: AsyncMock,
 ) -> None:
@@ -402,7 +366,8 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow(
     mock_execute_contextual: AsyncMock,
 ) -> None:
     command = GenerateOciImageCommand(MagicMock())
-    command._contextualize = True
+    command.cli_args.contextualize = True
+    command.cli_args.is_hermetic_build = False
     await command._assess_and_dispatch_contextual_workflow(
         MagicMock(spec=Document),
         ["foo:latest"],
@@ -413,6 +378,51 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow(
 
 
 @pytest.mark.asyncio
+@patch("mobster.cmd.generate.oci_image.download_parent_image_sbom")
+@patch("mobster.cmd.generate.oci_image.normalize_and_load_sbom")
+@patch("mobster.cmd.generate.oci_image.get_parent_spdx_id_from_component")
+@patch("mobster.cmd.generate.oci_image.get_descendant_of_items_from_used_parent")
+@patch("mobster.cmd.generate.oci_image.map_parent_to_component_and_modify_component")
+async def test_GenerateOciImageCommand__execute_contextual_workflow(
+    mock_map_parent_to_component_and_modify_component: AsyncMock,
+    mock_get_descendant_of_items_from_used_parent: MagicMock,
+    mock_get_parent_spdx_id_from_component: AsyncMock,
+    mock_normalize_and_load_sbom: AsyncMock,
+    mock_download_parent_image_sbom: AsyncMock,
+) -> None:
+    command = GenerateOciImageCommand(MagicMock())
+    mock_download_parent_image_sbom.return_value = "parent-sbom"
+    mock_normalize_and_load_sbom.return_value = "parent-doc"
+    mock_get_parent_spdx_id_from_component.return_value = "parent-id"
+    mock_get_descendant_of_items_from_used_parent.return_value = "descendant"
+    mock_map_parent_to_component_and_modify_component.return_value = "contextual-sbom"
+    await command._execute_contextual_workflow(
+        MagicMock(spec=Document),
+        Image("foo:latest", "sha256:1"),
+        "amd64",
+    )
+    expected_order = [
+        mock_download_parent_image_sbom,
+        mock_normalize_and_load_sbom,
+        mock_get_parent_spdx_id_from_component,
+        mock_get_descendant_of_items_from_used_parent,
+        mock_map_parent_to_component_and_modify_component,
+    ]
+
+    for mock_func in expected_order:
+        mock_func.assert_called_once()
+
+    actual_order = [
+        mock_download_parent_image_sbom,
+        mock_normalize_and_load_sbom,
+        mock_get_parent_spdx_id_from_component,
+        mock_get_descendant_of_items_from_used_parent,
+        mock_map_parent_to_component_and_modify_component,
+    ]
+    assert expected_order == actual_order
+
+
+@pytest.mark.asyncio
 @patch(
     "mobster.cmd.generate.oci_image.GenerateOciImageCommand._execute_contextual_workflow"
 )
@@ -420,7 +430,8 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_
     mock_execute_contextual: AsyncMock, caplog: LogCaptureFixture
 ) -> None:
     command = GenerateOciImageCommand(MagicMock())
-    command._contextualize = True
+    command.cli_args.contextualize = True
+    command.cli_args.is_hermetic_build = False
     mock_execute_contextual.side_effect = ValueError("a")
     await command._assess_and_dispatch_contextual_workflow(
         MagicMock(spec=Document),
