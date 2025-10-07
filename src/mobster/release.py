@@ -171,8 +171,9 @@ class ComponentModel(pdc.BaseModel):
         validation_alias=pdc.AliasChoices("containerImage", "image_reference"),
     )
     repository: str | None = pdc.Field(default=None)
-    rh_registry_repo: str = pdc.Field(
+    rh_registry_repo: str | None = pdc.Field(
         alias="rh-registry-repo",
+        default=None,
         validation_alias=pdc.AliasChoices("rh-registry-repo", "rh_registry_repo"),
     )
     tags: list[str] | None = pdc.Field(default=None)
