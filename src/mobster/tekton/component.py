@@ -187,9 +187,10 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
     else:
         LOGGER.debug(
-            f"skip_upload={args.skip_upload}, so no snapshot / "
-            f"release data upload to S3, for release_id="
-            f"{args.release_id}"
+            "skip_upload=%s, so no snapshot / "
+            "release data upload to S3, for release_id=%s",
+            args.skip_upload,
+            args.release_id,
         )
 
     cosign_client = CosignClient(
@@ -214,9 +215,9 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
 
     if args.skip_upload:
         LOGGER.debug(
-            f"skip_upload={args.skip_upload}, "
-            f"so no upload to TPA, for release_id="
-            f"{args.release_id}"
+            "skip_upload=%s, so no upload to TPA, for release_id=%s",
+            args.skip_upload,
+            args.release_id,
         )
     else:
         report = await upload_sboms(

@@ -113,7 +113,7 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     Args:
         args: Arguments containing data directory and configuration.
     """
-    sbom_path = args.ensured_sbom_dir() / "sbom.json"
+    sbom_path = args.ensured_sbom_dir() / f"sbom.{args.release_id}.json"
     s3 = connect_with_s3(args.retry_s3_bucket)
 
     if not args.skip_upload and s3:
@@ -125,9 +125,10 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
         await upload_release_data(s3, args.release_data, args.release_id)
     else:
         LOGGER.debug(
-            f"skip_upload={args.skip_upload}, so no snapshot / "
-            f"release data upload to S3, for release_id="
-            f"{args.release_id}"
+            "skip_upload=%s, so no snapshot / "
+            "release data upload to S3, for release_id=%s",
+            args.skip_upload,
+            args.release_id,
         )
 
     create_product_sbom(
@@ -140,9 +141,9 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
 
     if args.skip_upload:
         LOGGER.debug(
-            f"skip_upload={args.skip_upload}, "
-            f"so no upload to TPA, for release_id="
-            f"{args.release_id}"
+            "skip_upload=%s, no upload to TPA for release_id=%s",
+            args.skip_upload,
+            args.release_id,
         )
     else:
         report = await upload_sboms(

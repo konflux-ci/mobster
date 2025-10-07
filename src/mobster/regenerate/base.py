@@ -382,7 +382,9 @@ class SbomRegenerator:
                     await asyncio.sleep(0.5 * retry)
                     continue
                 LOGGER.error(
-                    "S3 gather max retries exceeded for ReleaseId: %s", retry, str(rid)
+                    "S3 gather max retries exceeded (%s) for ReleaseId: %s",
+                    retry,
+                    str(rid),
                 )
                 raise SBOMError from e
         LOGGER.debug("input data gathered from S3 bucket, for release_id: %s", rid)
