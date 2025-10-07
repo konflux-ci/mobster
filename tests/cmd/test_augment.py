@@ -39,6 +39,7 @@ class AugmentArgs:
     verification_key: Path | None
     reference: str | None
     concurrency: int = 1
+    release_repo_for_sbom_fetch: bool = False
     release_id: str | None = None
 
 

@@ -38,6 +38,7 @@ class ProcessComponentArgs(CommonArgs):
     """
 
     augment_concurrency: int
+    release_repo_for_sbom_fetch: bool
     attestation_concurrency: int
     cosign_config: CosignConfig
     rekor_config: RekorConfig | None = None
@@ -54,6 +55,11 @@ def parse_args() -> ProcessComponentArgs:
     add_common_args(parser)
     parser.add_argument("--augment-concurrency", type=int, default=8)
     parser.add_argument("--upload-concurrency", type=int, default=8)
+    parser.add_argument(
+        "--release-repo-for-sbom-fetch",
+        action="store_true",
+        help="when fetching build SBOMs, use the release repo url",
+    )
     parser.add_argument("--attest-concurrency", type=int, default=4)
     parser.add_argument(
         "--rekor-key",
@@ -111,6 +117,8 @@ def parse_args() -> ProcessComponentArgs:
         tpa_retries=args.tpa_retries,
         cosign_config=cosign_config,
         rekor_config=rekor_config,
+        skip_upload=args.skip_updload,
+        release_repo_for_sbom_fetch=args.release_repo_for_sbom_fetch,
     )
 
 
@@ -119,6 +127,7 @@ async def augment_component_sboms(
     sbom_path: Path,
     snapshot_spec: Path,
     release_id: ReleaseId,
+    release_repo_for_sbom_fetch: bool,
     cosign_client: Cosign,
     augment_concurrency: int,
     attest_concurrency: int,
@@ -130,6 +139,8 @@ async def augment_component_sboms(
         sbom_path: Path where the SBOM will be saved.
         snapshot_spec: Path to snapshot specification file.
         release_id: Release ID to store in SBOM file.
+        release_repo_for_sbom_fetch: when fetching build SBOMs,
+            use the release repo url.
         cosign_client: Cosign client
         augment_concurrency: Maximum number of concurrent augmentation operations.
         attest_concurrency: Maximum number of concurrent OCI attestation operations.
@@ -142,6 +153,7 @@ async def augment_component_sboms(
         semaphore=semaphore,
         output_dir=sbom_path,
         release_id=release_id,
+        release_repo_for_sbom_fetch=release_repo_for_sbom_fetch,
     )
     result_details = await augment_sboms(config, snapshot)
     if not all(result_details):
@@ -170,9 +182,15 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     """
     s3 = connect_with_s3(args.retry_s3_bucket)
 
-    if s3:
+    if not args.skip_upload and s3:
         LOGGER.info("Uploading snapshot to S3 with release_id=%s", args.release_id)
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
+    else:
+        LOGGER.debug(
+            f"skip_upload={args.skip_upload}, so no snapshot / "
+            f"release data upload to S3, for release_id="
+            f"{args.release_id}"
+        )
 
     cosign_client = CosignClient(
         cosign_config=CosignConfig(
@@ -187,18 +205,26 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
         args.ensured_sbom_dir(),
         args.snapshot_spec,
         args.release_id,
+        args.release_repo_for_sbom_fetch,
         cosign_client,
         args.augment_concurrency,
         args.attestation_concurrency,
     )
     config = args.to_upload_config()
 
-    report = await upload_sboms(
-        config,
-        s3,
-    )
-    artifact = get_component_artifact(report)
-    artifact.write_result(args.result_dir)
+    if args.skip_upload:
+        LOGGER.debug(
+            f"skip_upload={args.skip_upload}, "
+            f"so no upload to TPA, for release_id="
+            f"{args.release_id}"
+        )
+    else:
+        report = await upload_sboms(
+            config,
+            s3,
+        )
+        artifact = get_component_artifact(report)
+        artifact.write_result(args.result_dir)
 
 
 async def attest_sbom_to_registry(

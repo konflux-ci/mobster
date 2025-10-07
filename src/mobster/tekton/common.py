@@ -39,6 +39,8 @@ class CommonArgs:
         labels: labels to attach to uploaded SBOMs
         tpa_retries: how many retries for SBOM upload will be
             performed before failing
+        upload_concurrency: concurrency rate for uploads
+        skip_upload: whether to generate without uploading to Atlas and S3
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -51,6 +53,7 @@ class CommonArgs:
     result_dir: Path
     tpa_retries: int
     upload_concurrency: int
+    skip_upload: bool
 
     def ensured_sbom_dir(self) -> Path:
         """
@@ -92,6 +95,11 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument("--result-dir", type=Path, required=True)
     parser.add_argument("--atlas-api-url", type=str)
     parser.add_argument("--retry-s3-bucket", type=str)
+    parser.add_argument(
+        "--skip-upload",
+        action="store_true",
+        help="Whether to generate without uploading to Atlas and S3. (default: False)",
+    )
     parser.add_argument(
         "--labels",
         type=parse_tpa_labels,
