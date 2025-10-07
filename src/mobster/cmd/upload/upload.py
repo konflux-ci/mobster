@@ -219,6 +219,17 @@ class TPAUploadCommand(Command):
         )
 
     @staticmethod
+    def get_sbom_size(sbom_file: Path) -> float:
+        """
+        Args:
+            sbom_file: Absolute path to the SBOM file to upload
+
+        Returns:
+            int: size in kbytes of the sbom_file provided
+        """
+        return sbom_file.stat().st_size / 1024
+
+    @staticmethod
     async def upload_sbom_file(
         # pylint: disable=too-many-arguments,too-many-positional-arguments
         tpa_client: TPAClient,
@@ -248,7 +259,11 @@ class TPAUploadCommand(Command):
                 urn = await tpa_client.upload_sbom(
                     sbom_file, labels=labels, retries=retries
                 )
-                LOGGER.info("Successfully uploaded %s to TPA", sbom_file)
+                LOGGER.info(
+                    "Successfully uploaded %s to TPA (%s bytes)",
+                    sbom_file,
+                    TPAUploadCommand.get_sbom_size(sbom_file),
+                )
                 return urn
             except Exception:  # pylint: disable=broad-except
                 LOGGER.exception(

@@ -30,7 +30,9 @@ def command_args() -> MagicMock:
 @patch("mobster.cmd.upload.upload.TPAUploadCommand.gather_sboms")
 @patch("mobster.cmd.upload.upload.TPAClient")
 @patch("mobster.cmd.upload.upload.OIDCClientCredentials")
+@patch("mobster.cmd.upload.upload.TPAUploadCommand.get_sbom_size")
 async def test_execute_upload_from_directory(
+    mock_get_sbom_size: MagicMock,
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
     mock_gather_sboms: MagicMock,
@@ -45,6 +47,7 @@ async def test_execute_upload_from_directory(
         "urn:uuid:12345678-1234-5678-9012-123456789012"
     )
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
+    mock_get_sbom_size.return_value = 4096
 
     file_list = [Path("/test/dir/file1.json"), Path("/test/dir/file2.json")]
     mock_gather_sboms.return_value = file_list
@@ -73,7 +76,9 @@ async def test_execute_upload_from_directory(
 @pytest.mark.asyncio
 @patch("mobster.cmd.upload.upload.TPAClient")
 @patch("mobster.cmd.upload.upload.OIDCClientCredentials")
+@patch("mobster.cmd.upload.upload.TPAUploadCommand.get_sbom_size")
 async def test_execute_upload_single_file(
+    mock_get_sbom_size: MagicMock,
     mock_oidc: MagicMock,
     mock_tpa_client_class: MagicMock,
     tpa_env_vars: None,
@@ -87,6 +92,7 @@ async def test_execute_upload_single_file(
         "urn:uuid:12345678-1234-5678-9012-123456789012"
     )
     mock_oidc.return_value = MagicMock(spec=OIDCClientCredentials)
+    mock_get_sbom_size.return_value = 4096
 
     # Create command with args
     args = MagicMock()
@@ -184,6 +190,12 @@ async def test_execute_upload_exception(
 
     # Verify the command's exit_code is 1 since upload failed
     assert command.exit_code == 1
+
+
+def test_get_sbom_size() -> None:
+    current_dir = Path(__file__).parent.resolve()
+    mock_sbom_path = current_dir.parent.parent / "data/oci_artifact_sbom.spdx.json"
+    assert TPAUploadCommand.get_sbom_size(mock_sbom_path) == 4146 / 1024
 
 
 def test_gather_sboms(tmp_path: Path) -> None:
