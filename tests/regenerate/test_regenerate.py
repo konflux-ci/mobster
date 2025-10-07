@@ -295,6 +295,55 @@ def test_extract_release_id_missing() -> None:
         assert True
 
 
+@pytest.fixture
+def sbom_regenerator(mock_env_vars: None) -> SbomRegenerator:
+    """Fixture to provide a SbomRegenerator instance."""
+    args = mock_regenerate_args()
+    args.dry_run = False
+    return SbomRegenerator(args=args, sbom_type=regen_base.SbomType.PRODUCT)
+
+
+@pytest.mark.asyncio
+async def test_regenerate_sbom_release(sbom_regenerator: Any, caplog: Any) -> None:
+    """Test regenerate_sbom_release"""
+    with (
+        patch(
+            "mobster.regenerate.base.SbomRegenerator.gather_s3_input_data",
+            new_callable=AsyncMock,
+        ) as mock_gather_s3_input_data,
+        patch(
+            "mobster.regenerate.base.SbomRegenerator.process_sboms",
+            new_callable=AsyncMock,
+        ) as mock_process_sboms,
+        patch(
+            "mobster.regenerate.base.SbomRegenerator.delete_sbom",
+            new_callable=AsyncMock,
+        ) as mock_delete_sbom,
+    ):
+        mock_delete_sbom.return_value = httpx.Response(
+            200, request=httpx.Request("delete", "https://foo.bar")
+        )
+        mock_gather_s3_input_data.return_value = (
+            Path("snapshot.json"),
+            Path("release_data.json"),
+        )
+
+        release_id = ReleaseId.new()
+        sbom_regenerator.sbom_release_groups = {str(release_id): ["sbom-1", "sbom-2"]}
+
+        sbom_regenerator.args.dry_run = False
+
+        with caplog.at_level("INFO"):
+            await sbom_regenerator.regenerate_sbom_release(release_id)
+
+            assert mock_gather_s3_input_data.called
+            assert mock_process_sboms.called
+            assert mock_delete_sbom.called
+            assert mock_delete_sbom.call_count == 2
+            assert "Success: deleted original SBOM: sbom-1" in caplog.text
+            assert "Success: deleted original SBOM: sbom-2" in caplog.text
+
+
 async def async_test_wrapper(the_coro: Coroutine[Any, Any, Any]) -> Any:
     """convenience test wrapper for coroutine"""
     return await the_coro
@@ -328,6 +377,7 @@ async def test_regenerate_sboms_success(
     mock_get_client: MagicMock,
     mock_tpa_client_with_http_response: AsyncMock,
     mock_env_vars: None,
+    caplog: Any,
 ) -> None:
     setup_mock_tpa_client_with_context_manager(
         mock_get_client, mock_tpa_client_with_http_response
@@ -370,13 +420,17 @@ async def test_regenerate_sboms_success(
         mock_construct_query.return_value = "test_query"
 
         sbom_regenerator.args.fail_fast = False
+        sbom_regenerator.args.verbose = True
+        caplog_level = logging.DEBUG
 
-        await sbom_regenerator.regenerate_sboms()
+        with caplog.at_level(caplog_level):
+            await sbom_regenerator.regenerate_sboms()
 
-        assert mock_construct_query.called
-        assert mock_organize_sbom_by_release_id.call_count == 1
-        assert mock_regenerate_release_groups.called
-        assert mock_regenerate_release_groups.call_count == 1
+            assert "release groups: " in caplog.text
+            assert mock_construct_query.called
+            assert mock_organize_sbom_by_release_id.call_count == 1
+            assert mock_regenerate_release_groups.called
+            assert mock_regenerate_release_groups.call_count == 1
 
 
 @pytest.mark.asyncio
@@ -425,7 +479,8 @@ async def test_regenerate_sboms_error(
         mock_construct_query.return_value = "test_query"
         mock_organize_sbom_by_release_id.side_effect = SBOMError("Missing ReleaseId")
 
-        caplog_level = logging.ERROR
+        caplog_level = logging.DEBUG
+        sbom_regenerator.args.verbose = True
         for fail_fast in [True, False]:
             sbom_regenerator.args.fail_fast = fail_fast
             with caplog.at_level(caplog_level):
@@ -433,6 +488,7 @@ async def test_regenerate_sboms_error(
                     await sbom_regenerator.regenerate_sboms()
                     if fail_fast:
                         raise AssertionError("expected: error")
+                    assert "release groups: " in caplog.text
                 except SystemExit as e:
                     assert "Missing ReleaseId" in caplog.text
                     assert type(e).__name__ == SystemExit.__name__

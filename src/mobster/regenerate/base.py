@@ -135,7 +135,7 @@ class SbomRegenerator:
             "Running regenerate for %s release groups..", len(self.sbom_release_groups)
         )
         if self.args.verbose:
-            LOGGER.debug(self.sbom_release_groups)
+            LOGGER.debug("release groups: %s", self.sbom_release_groups)
         await self.regenerate_release_groups()
         LOGGER.info(
             "Finished regeneration for %s release groups.",
@@ -213,7 +213,7 @@ class SbomRegenerator:
                                 f"message: {response_delete.text}",
                             )
                         LOGGER.info("Success: deleted original SBOM: %s", sbom_id)
-                        return
+                        continue
         except SBOMError as e:
             if self.args.fail_fast:
                 raise e
