@@ -38,51 +38,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import get_package_by_spdx_id
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM
-
-
-def get_base_image_items(
-    spdx_element_id: str,
-    related_spdx_element_id: str,
-    legacy: bool,
-    grandparent: bool = False,
-) -> tuple[Package, Annotation, Relationship]:
-    if legacy and grandparent:
-        raise ValueError("Legacy SBOM-s does not bear grandparents.")
-    if legacy:
-        relationship = Relationship(
-            spdx_element_id, RelationshipType.BUILD_TOOL_OF, related_spdx_element_id
-        )
-    else:
-        # DESCENDANT_OF related_spdx_element_id and spdx_element_id
-        # are intentionally swapped to create a meaningful relationship
-        relationship = Relationship(
-            related_spdx_element_id, RelationshipType.DESCENDANT_OF, spdx_element_id
-        )
-    if grandparent:
-        annotation_comment = (
-            '{"name": "konflux:container:was_base_image",   "value": "true" }'
-        )
-    else:
-        annotation_comment = (
-            '{"name": "konflux:container:is_base_image",   "value": "true" }'
-        )
-    return (
-        Package(spdx_element_id, "name", SpdxNoAssertion()),
-        Annotation(
-            spdx_element_id,
-            AnnotationType.OTHER,
-            Actor(ActorType.TOOL, "ham"),
-            datetime.datetime.now(),
-            annotation_comment,
-        ),
-        relationship,
-    )
-
-
-def get_root_package_items() -> tuple[Package, Relationship]:
-    return Package("SPDXRef-spam", "name", SpdxNoAssertion()), Relationship(
-        "SPDXRef-DOCUMENT", RelationshipType.DESCRIBES, "SPDXRef-spam"
-    )
+from tests.conftest import get_base_image_items, get_root_package_items
 
 
 @pytest.mark.asyncio
@@ -95,7 +51,7 @@ def test_get_grandparent_from_parent_legacy_sbom() -> None:
             legacy=True,
         )
     )
-    root_package, root_relationship = get_root_package_items()
+    root_package, root_relationship = get_root_package_items("SPDXRef-parent")
     mock_doc.annotations = [
         base_image_annotation,
     ]
@@ -138,7 +94,7 @@ def test_get_grandparent_from_contextualized_parent_sbom() -> None:
             legacy=False,
         )
     )
-    root_package, root_relationship = get_root_package_items()
+    root_package, root_relationship = get_root_package_items("SPDXRef-parent")
     mock_doc.annotations = [
         grandparent_image_annotation,
         parent_image_annotation,
@@ -362,7 +318,7 @@ def test_process_descendant_of_grandparent_items_missing_annot(
             legacy=False,
         )
     )
-    root_package, root_relationship = get_root_package_items()
+    root_package, root_relationship = get_root_package_items("SPDXRef-parent")
 
     mock_doc.packages = [
         grandparent_image_package,
@@ -462,7 +418,7 @@ async def test_map_parent_to_component_and_modify_component(
             legacy=False,
         )
     )
-    root_package, root_relationship = get_root_package_items()
+    root_package, root_relationship = get_root_package_items("SPDXRef-parent")
 
     parent_sbom_doc.packages = [
         grandparent_image_package,
