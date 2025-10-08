@@ -25,7 +25,6 @@ def upload_config(monkeypatch: MonkeyPatch) -> UploadConfig:
         workers=1,
         labels={},
         retries=1,
-        paths=[Path("dir")],
     )
 
 
@@ -48,7 +47,7 @@ async def test_upload_sboms_transient_failure_tries_s3(
     client = mock_connect_to_s3.return_value
 
     with patch(
-        "mobster.tekton.common.upload_to_atlas",
+        "mobster.cmd.upload.upload.TPAUploadCommand.upload",
     ) as mock_upload:
         mock_upload.return_value = TPAUploadReport(
             success=[],
@@ -59,6 +58,7 @@ async def test_upload_sboms_transient_failure_tries_s3(
         await upload_sboms(
             upload_config,
             client,
+            paths=[Path("dir")],
         )
         mock_handle_atlas_transient_errors.assert_awaited()
 
@@ -73,7 +73,7 @@ async def test_upload_sboms_failure(
     """
 
     with patch(
-        "mobster.tekton.common.upload_to_atlas",
+        "mobster.cmd.upload.upload.TPAUploadCommand.upload",
     ) as mock_upload:
         mock_upload.return_value = TPAUploadReport(
             success=[],
@@ -85,4 +85,5 @@ async def test_upload_sboms_failure(
             await upload_sboms(
                 upload_config,
                 s3_client=None,
+                paths=[Path("dir")],
             )
