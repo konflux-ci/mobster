@@ -17,7 +17,6 @@ import mobster.regenerate.base as regen_base
 from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.error import SBOMError
-from mobster.oci.cosign import CosignConfig
 from mobster.regenerate.base import SbomRegenerator
 from mobster.release import ReleaseId
 from mobster.tekton.s3 import S3Client
@@ -32,7 +31,6 @@ def mock_regenerate_args() -> regen_base.RegenerateArgs:
         s3_bucket_url="https://test-url",
         mobster_versions="1.2.3,4.5.6",
         concurrency=100,
-        cosign_config=CosignConfig(None, None, b""),
         tpa_retries=20,
         tpa_page_size=100,
         dry_run=True,

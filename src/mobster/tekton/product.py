@@ -127,7 +127,6 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     Args:
         args: Arguments containing data directory and configuration.
     """
-    sbom_path = args.ensured_sbom_dir() / f"sbom.{args.release_id}.json"
     s3 = connect_with_s3(args.retry_s3_bucket)
 
     if not args.skip_upload and s3:

@@ -41,7 +41,7 @@ class ProcessComponentArgs(CommonArgs):
 
     augment_concurrency: int
     attestation_concurrency: int
-    cosign_config: CosignConfig
+    cosign_config: CosignConfig | None = None
     rekor_config: RekorConfig | None = None
 
 
@@ -189,44 +189,52 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
             args.release_id,
         )
 
-    cosign_client = CosignClient(
-        cosign_config=CosignConfig(
-            verify_key=args.cosign_config.verify_key,
-            sign_key=args.cosign_config.sign_key,
-            sign_password=args.cosign_config.sign_password,
-        ),
-        rekor_config=args.rekor_config,
-    )
-    LOGGER.info("Starting SBOM augmentation")
-
-    with tempfile.TemporaryDirectory() as sbom_dir:
-        await augment_component_sboms(
-            Path(sbom_dir),
-            args.snapshot_spec,
-            args.release_id,
-            cosign_client,
-            args.augment_concurrency,
-            args.attestation_concurrency,
+    if args.cosign_config is not None:
+        cosign_client = CosignClient(
+            cosign_config=CosignConfig(
+                verify_key=args.cosign_config.verify_key,
+                sign_key=args.cosign_config.sign_key,
+                sign_password=args.cosign_config.sign_password,
+            ),
+            rekor_config=args.rekor_config,
         )
+        LOGGER.info("Starting SBOM augmentation")
 
-        if args.skip_upload:
-            LOGGER.debug(
-                "skip_upload=%s, so no upload to TPA, for release_id=%s",
-                args.skip_upload,
+        with tempfile.TemporaryDirectory() as sbom_dir:
+            await augment_component_sboms(
+                Path(sbom_dir),
+                args.snapshot_spec,
                 args.release_id,
-            )
-        else:
-            atlas_config = get_atlas_upload_config(
-                base_url=args.atlas_api_url,
-                retries=args.atlas_retries,
-                workers=args.upload_concurrency,
-                labels=args.labels,
+                cosign_client,
+                args.augment_concurrency,
+                args.attestation_concurrency,
             )
 
-            report = await upload_sboms(atlas_config, s3, list(Path(sbom_dir).iterdir()))
+            if args.skip_upload:
+                LOGGER.debug(
+                    "skip_upload=%s, so no upload to TPA, for release_id=%s",
+                    args.skip_upload,
+                    args.release_id,
+                )
+            else:
+                atlas_config = get_atlas_upload_config(
+                    base_url=args.atlas_api_url,
+                    retries=args.atlas_retries,
+                    workers=args.upload_concurrency,
+                    labels=args.labels,
+                )
 
-    artifact = get_component_artifact(report)
-    artifact.write_result(args.result_dir)
+                report = await upload_sboms(
+                    atlas_config, s3, list(Path(sbom_dir).iterdir())
+                )
+
+                artifact = get_component_artifact(report)
+                artifact.write_result(args.result_dir)
+    else:
+        LOGGER.debug(
+            "No cosign_config provided, skipping augment/attest for release_id=%s",
+            args.release_id,
+        )
 
 
 async def attest_sbom_to_registry(
