@@ -41,6 +41,7 @@ class CommonArgs:
             performed before failing
         upload_concurrency: concurrency rate for uploads
         skip_upload: whether to generate without uploading to Atlas and S3
+            (used in SBOM regeneration for performing non-destructive 'dry runs')
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -72,7 +73,8 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument(
         "--skip-upload",
         action="store_true",
-        help="Whether to generate without uploading to Atlas and S3. (default: False)",
+        help="Whether to generate without uploading to Atlas and S3. (default: False)"
+             "(used in SBOM regeneration for performing non-destructive 'dry runs')",
     )
     parser.add_argument(
         "--labels",
