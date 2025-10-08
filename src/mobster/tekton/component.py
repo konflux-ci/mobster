@@ -117,7 +117,7 @@ def parse_args() -> ProcessComponentArgs:
         tpa_retries=args.tpa_retries,
         cosign_config=cosign_config,
         rekor_config=rekor_config,
-        skip_upload=args.skip_updload,
+        skip_upload=args.skip_upload,
         release_repo_for_sbom_fetch=args.release_repo_for_sbom_fetch,
     )
 

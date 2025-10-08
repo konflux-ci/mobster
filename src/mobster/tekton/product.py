@@ -65,7 +65,7 @@ def parse_args() -> ProcessProductArgs:
         concurrency=args.concurrency,
         labels=args.labels,
         tpa_retries=args.tpa_retries,
-        skip_upload=args.skip_updload,
+        skip_upload=args.skip_upload,
     )  # pylint:disable=duplicate-code
 
 
