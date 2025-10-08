@@ -144,7 +144,7 @@ class SbomRegenerator:
         """get the SBOM's ReleaseId and add it to that release group for regen"""
         LOGGER.debug("Gathering ReleaseId for SBOM: %s", sbom.id)
         try:
-            release_id = await self.get_release_id(sbom)
+            release_id = await self.download_and_extract_release_id(sbom)
             self.sbom_release_groups[str(release_id)].append(sbom.id)
             LOGGER.debug(
                 "Finished gathering ReleaseId (%s) for SBOM: %s", release_id, sbom.id
@@ -188,23 +188,6 @@ class SbomRegenerator:
             if self.args.fail_fast:
                 raise e
             LOGGER.warning(str(e))
-
-    async def get_release_id(self, sbom: SbomSummary) -> ReleaseId:
-        """
-        get the given SBOM's release_id
-        """
-        try:
-            # check if the given summary already contains it
-            release_id = self.extract_release_id(sbom.model_dump())
-        except MissingReleaseIdError:
-            # nothing found
-            try:
-                # download the complete SBOM and extract the release_id
-                release_id = await self.download_and_extract_release_id(sbom)
-            except MissingReleaseIdError as e:
-                LOGGER.warning("No ReleaseId found in SBOM %s", sbom.id)
-                raise e
-        return release_id
 
     @staticmethod
     def extract_release_id(sbom_dict: dict[str, Any]) -> ReleaseId:

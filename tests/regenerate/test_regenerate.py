@@ -198,13 +198,13 @@ async def test_organize_sbom_by_release_id(
     mock_release_id = MagicMock(ReleaseId)
 
     sbom_regenerator = SbomRegenerator(mock_args, regen_base.SbomType.PRODUCT)
-    sbom_regenerator.get_release_id = AsyncMock(  # type: ignore[method-assign]
+    sbom_regenerator.download_and_extract_release_id = AsyncMock(  # type: ignore[method-assign]
         return_value=mock_release_id
     )
 
     await sbom_regenerator.organize_sbom_by_release_id(sbom1)
 
-    sbom_regenerator.get_release_id.assert_called_with(sbom1)
+    sbom_regenerator.download_and_extract_release_id.assert_called_with(sbom1)
 
 
 def test_prepare_output_paths(tmp_path: Path) -> None:
@@ -483,7 +483,7 @@ async def test_regenerate_sboms_error(
 
     with (
         patch(
-            "mobster.regenerate.base.SbomRegenerator.get_release_id",
+            "mobster.regenerate.base.SbomRegenerator.download_and_extract_release_id",
             new_callable=AsyncMock,
         ) as mock_get_release_id,
     ):
