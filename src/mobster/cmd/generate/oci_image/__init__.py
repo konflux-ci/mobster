@@ -180,7 +180,6 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         """
         if (
             self.cli_args.contextualize
-            and not self.cli_args.is_hermetic_build
             and isinstance(component_sbom_doc, Document)
             and base_images_refs
             and (parent_image_ref := base_images_refs[-1])
@@ -207,7 +206,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         # Parsing into objects
         if merged_sbom_dict.get("bomFormat") == "CycloneDX":
-            if self.cli_args.contextualize is True:
+            if self.cli_args.contextualize:
                 raise ArgumentError(
                     None, "--contextualize is only allowed when processing SPDX format"
                 )

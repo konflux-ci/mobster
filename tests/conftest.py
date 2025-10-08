@@ -14,9 +14,6 @@ import pytest
 from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
 from spdx_tools.spdx.model.document import Document
-from spdx_tools.spdx.model.package import Package
-from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
-from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.parser.parse_anything import parse_file
 
 from mobster import get_mobster_version
@@ -433,53 +430,4 @@ def create_annotation_with_spdx_id(spdx_id: str) -> Annotation:
         Actor(ActorType.TOOL, "test"),
         datetime.now(),
         "test comment",
-    )
-
-
-def get_base_image_items(
-    spdx_element_id: str,
-    related_spdx_element_id: str,
-    legacy: bool,
-    grandparent: bool = False,
-) -> tuple[Package, Annotation, Relationship]:
-    """
-    Helper function to generate image package with DESCENDANT_OF
-    or BUILD_TOOL_OF relationship and appropriate annotation.
-    """
-    if legacy and grandparent:
-        raise ValueError("Legacy SBOMs do not bear grandparents.")
-
-    # Relationship
-    if legacy:
-        rel = RelationshipType.BUILD_TOOL_OF
-        rel_args = (spdx_element_id, rel, related_spdx_element_id)
-    else:
-        rel = RelationshipType.DESCENDANT_OF
-        rel_args = (related_spdx_element_id, rel, spdx_element_id)
-    relationship = Relationship(*rel_args)
-
-    # Annotation
-    suffix = "is_ancestor_image" if grandparent else "is_base_image"
-    annotation_comment = f'{{"name": "konflux:container:{suffix}",   "value": "true" }}'
-
-    annotation = Annotation(
-        spdx_element_id,
-        AnnotationType.OTHER,
-        Actor(ActorType.TOOL, "ham"),
-        datetime.now(),
-        annotation_comment,
-    )
-
-    # Package
-    package = Package(spdx_element_id, "name", SpdxNoAssertion())
-
-    return package, annotation, relationship
-
-
-def get_root_package_items(spdx_id: str) -> tuple[Package, Relationship]:
-    """Helper function to generate root package and relationship items."""
-    return Package(spdx_id, "name", SpdxNoAssertion()), Relationship(
-        "SPDXRef-DOCUMENT",
-        RelationshipType.DESCRIBES,
-        spdx_id,
     )

@@ -148,12 +148,6 @@ def generate_oci_image_parser(subparsers: Any) -> None:
         help="Contextualize the SBOM",
         default=False,
     )
-    oci_image_parser.add_argument(
-        "--is-hermetic-build",
-        action="store_true",
-        help="Propagate to mobster information if build was hermetic",
-        default=False,
-    )
     oci_image_parser.set_defaults(func=oci_image.GenerateOciImageCommand)
 
 
