@@ -136,39 +136,30 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
         await upload_release_data(s3, args.release_data, args.release_id)
 
     if args.sbom_path is None:
-        used_tmp_file_for_sbom = True
         sbom_path = Path(
             tempfile.NamedTemporaryFile(suffix=".json").name  # pylint: disable=consider-using-with
         )
     else:
-        used_tmp_file_for_sbom = False
         sbom_path = args.sbom_path
 
-    try:
-        create_product_sbom(
-            sbom_path,
-            args.snapshot_spec,
-            args.release_data,
-            args.release_id,
-            args.concurrency,
-        )
+    create_product_sbom(
+        sbom_path,
+        args.snapshot_spec,
+        args.release_data,
+        args.release_id,
+        args.concurrency,
+    )
 
-        report = await upload_sboms(
-            get_atlas_upload_config(
-                base_url=args.atlas_api_url,
-                retries=args.atlas_retries,
-                workers=args.upload_concurrency,
-                labels=args.labels,
-            ),
-            s3,
-            paths=[sbom_path],
-        )
-    finally:
-        # We only delete the SBOM if we used a temporary file. If the path was
-        # supplied by an argument to the program, we want to keep it (for
-        # integration testing purposes).
-        if used_tmp_file_for_sbom:
-            sbom_path.unlink()
+    report = await upload_sboms(
+        get_atlas_upload_config(
+            base_url=args.atlas_api_url,
+            retries=args.atlas_retries,
+            workers=args.upload_concurrency,
+            labels=args.labels,
+        ),
+        s3,
+        paths=[sbom_path],
+    )
 
     artifact = get_product_artifact(report)
     artifact.write_result(args.result_dir)
