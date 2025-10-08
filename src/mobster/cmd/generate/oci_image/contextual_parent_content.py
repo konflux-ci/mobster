@@ -506,7 +506,7 @@ def _supply_ancestors_from_parent_to_component(
         if annot:
             if annot.annotation_comment:
                 annot.annotation_comment = annot.annotation_comment.replace(
-                    "is_base_image", "was_base_image"
+                    "is_base_image", "is_ancestor_image"
                 )
             component_sbom_doc.annotations.append(annot)
 

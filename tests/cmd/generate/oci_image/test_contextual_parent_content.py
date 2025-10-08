@@ -506,7 +506,7 @@ def test__supply_ancestors_from_parent_to_component() -> None:
     assert grandparent_package in result.packages
     assert (
         result.annotations[0].annotation_comment
-        == '{"name": "konflux:container:was_base_image",   "value": "true" }'
+        == '{"name": "konflux:container:is_ancestor_image",   "value": "true" }'
     )
     assert grandparent_relationship in result.relationships
 

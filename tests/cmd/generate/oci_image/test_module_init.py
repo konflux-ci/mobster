@@ -386,40 +386,41 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow(
 async def test_GenerateOciImageCommand__execute_contextual_workflow(
     mock_map_parent_to_component_and_modify_component: AsyncMock,
     mock_get_descendant_of_items_from_used_parent: MagicMock,
-    mock_get_parent_spdx_id_from_component: AsyncMock,
+    mock_get_parent_spdx_id_from_component: MagicMock,
     mock_normalize_and_load_sbom: AsyncMock,
     mock_download_parent_image_sbom: AsyncMock,
 ) -> None:
     command = GenerateOciImageCommand(MagicMock())
-    mock_download_parent_image_sbom.return_value = "parent-sbom"
-    mock_normalize_and_load_sbom.return_value = "parent-doc"
+
+    component_document = MagicMock(spec=Document)
+    parent_document = MagicMock(spec=Document)
+    image = Image("foo:latest", "sha256:1")
+    arch = "amd64"
+
+    mock_download_parent_image_sbom.return_value = parent_document
+    mock_normalize_and_load_sbom.return_value = parent_document
     mock_get_parent_spdx_id_from_component.return_value = "parent-id"
-    mock_get_descendant_of_items_from_used_parent.return_value = "descendant"
+    mock_get_descendant_of_items_from_used_parent.return_value = [
+        ("Package", "Relationship", "Annotation")
+    ]
     mock_map_parent_to_component_and_modify_component.return_value = "contextual-sbom"
-    await command._execute_contextual_workflow(
-        MagicMock(spec=Document),
-        Image("foo:latest", "sha256:1"),
-        "amd64",
+
+    await command._execute_contextual_workflow(component_document, image, arch)
+
+    mock_download_parent_image_sbom.assert_awaited_once_with(image, arch)
+    mock_normalize_and_load_sbom.assert_awaited_once_with(
+        parent_document, append_mobster=False
     )
-    expected_order = [
-        mock_download_parent_image_sbom,
-        mock_normalize_and_load_sbom,
-        mock_get_parent_spdx_id_from_component,
-        mock_get_descendant_of_items_from_used_parent,
-        mock_map_parent_to_component_and_modify_component,
-    ]
-
-    for mock_func in expected_order:
-        mock_func.assert_called_once()
-
-    actual_order = [
-        mock_download_parent_image_sbom,
-        mock_normalize_and_load_sbom,
-        mock_get_parent_spdx_id_from_component,
-        mock_get_descendant_of_items_from_used_parent,
-        mock_map_parent_to_component_and_modify_component,
-    ]
-    assert expected_order == actual_order
+    mock_get_parent_spdx_id_from_component.assert_called_once_with(component_document)
+    mock_get_descendant_of_items_from_used_parent.assert_called_once_with(
+        parent_document, "parent-id"
+    )
+    mock_map_parent_to_component_and_modify_component.assert_awaited_once_with(
+        parent_document,
+        component_document,
+        "parent-id",
+        [("Package", "Relationship", "Annotation")],
+    )
 
 
 @pytest.mark.asyncio
