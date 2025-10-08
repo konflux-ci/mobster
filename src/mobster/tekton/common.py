@@ -34,10 +34,10 @@ class CommonArgs:
         data_dir: main data directory defined in Tekton task
         result_dir: path to directory to store results to
         snapshot_spec: path to snapshot spec file
-        atlas_api_url: url of the TPA instance to use
+        atlas_api_url: url of the Atlas instance to use
         retry_s3_bucket: name of the S3 bucket to use for retries
         labels: labels to attach to uploaded SBOMs
-        tpa_retries: how many retries for SBOM upload will be
+        atlas_retries: how many retries for SBOM upload will be
             performed before failing
     """
 
@@ -49,7 +49,7 @@ class CommonArgs:
     release_id: ReleaseId
     labels: dict[str, str]
     result_dir: Path
-    tpa_retries: int
+    atlas_retries: int
     upload_concurrency: int
 
 
@@ -74,7 +74,7 @@ def add_common_args(parser: ArgumentParser) -> None:
         default={},
     )
     parser.add_argument(
-        "--tpa-retries",
+        "--atlas-retries",
         type=int,
         default=1,
         help="How many retries for SBOM upload will be performed "
@@ -82,7 +82,7 @@ def add_common_args(parser: ArgumentParser) -> None:
     )
 
 
-def get_tpa_upload_config(
+def get_atlas_upload_config(
     *,
     base_url: str,
     retries: int,
@@ -90,11 +90,11 @@ def get_tpa_upload_config(
     labels: dict[str, str],
 ) -> UploadConfig:
     """
-    Get the default TPA configuration for releases.
+    Get the default Atlas configuration for releases.
     """
-    tpa_auth = TPAUploadCommand.get_oidc_auth()
+    atlas_auth = TPAUploadCommand.get_oidc_auth()
     return UploadConfig(
-        auth=tpa_auth,
+        auth=atlas_auth,
         base_url=base_url,
         retries=retries,
         workers=workers,
@@ -111,7 +111,7 @@ async def upload_sboms(
     Upload SBOMs to Atlas with S3 fallback on transient errors.
 
     Args:
-        config: TPA upload configuration object.
+        config: Atlas upload configuration object.
         s3_client: S3Client object for retry uploads, or None if no retries.
         paths: List of paths to SBOMs to upload to Atlas
 
@@ -243,7 +243,7 @@ async def upload_release_data(
 
 def atlas_credentials_exist() -> bool:
     """
-    Check if Atlas TPA SSO credentials are present in environment.
+    Check if Atlas SSO credentials are present in environment.
 
     Returns:
         bool: True if all required Atlas credentials are present.

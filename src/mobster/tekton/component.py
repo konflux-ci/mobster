@@ -21,7 +21,7 @@ from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
     connect_with_s3,
-    get_tpa_upload_config,
+    get_atlas_upload_config,
     upload_sboms,
     upload_snapshot,
 )
@@ -110,7 +110,7 @@ def parse_args() -> ProcessComponentArgs:
         upload_concurrency=args.upload_concurrency,
         attestation_concurrency=args.attest_concurrency,
         labels=args.labels,
-        tpa_retries=args.tpa_retries,
+        atlas_retries=args.atlas_retries,
         cosign_config=cosign_config,
         rekor_config=rekor_config,
     )
@@ -196,14 +196,14 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
             args.attestation_concurrency,
         )
 
-        tpa_config = get_tpa_upload_config(
+        atlas_config = get_atlas_upload_config(
             base_url=args.atlas_api_url,
-            retries=args.tpa_retries,
+            retries=args.atlas_retries,
             workers=args.upload_concurrency,
             labels=args.labels,
         )
 
-        report = await upload_sboms(tpa_config, s3, list(Path(sbom_dir).iterdir()))
+        report = await upload_sboms(atlas_config, s3, list(Path(sbom_dir).iterdir()))
 
     artifact = get_component_artifact(report)
     artifact.write_result(args.result_dir)

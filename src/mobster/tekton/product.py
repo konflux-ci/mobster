@@ -17,7 +17,7 @@ from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
     connect_with_s3,
-    get_tpa_upload_config,
+    get_atlas_upload_config,
     upload_release_data,
     upload_sboms,
     upload_snapshot,
@@ -77,7 +77,7 @@ def parse_args() -> ProcessProductArgs:
         upload_concurrency=args.concurrency,
         concurrency=args.concurrency,
         labels=args.labels,
-        tpa_retries=args.tpa_retries,
+        atlas_retries=args.atlas_retries,
         sbom_path=args.sbom_path,
     )  # pylint:disable=duplicate-code
 
@@ -154,9 +154,9 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
         )
 
         report = await upload_sboms(
-            get_tpa_upload_config(
+            get_atlas_upload_config(
                 base_url=args.atlas_api_url,
-                retries=args.tpa_retries,
+                retries=args.atlas_retries,
                 workers=args.upload_concurrency,
                 labels=args.labels,
             ),
