@@ -434,7 +434,6 @@ class SbomRegenerator:
                         upload_concurrency=self.args.concurrency,
                         attestation_concurrency=self.args.concurrency,
                         skip_upload=self.args.dry_run,
-                        release_repo_for_sbom_fetch=True,
                     )
                 )
         except CalledProcessError as e:

@@ -38,7 +38,6 @@ class ProcessComponentArgs(CommonArgs):
     """
 
     augment_concurrency: int
-    release_repo_for_sbom_fetch: bool
     attestation_concurrency: int
     cosign_config: CosignConfig
     rekor_config: RekorConfig | None = None
@@ -118,7 +117,6 @@ def parse_args() -> ProcessComponentArgs:
         cosign_config=cosign_config,
         rekor_config=rekor_config,
         skip_upload=args.skip_upload,
-        release_repo_for_sbom_fetch=args.release_repo_for_sbom_fetch,
     )
 
 
@@ -127,7 +125,6 @@ async def augment_component_sboms(
     sbom_path: Path,
     snapshot_spec: Path,
     release_id: ReleaseId,
-    release_repo_for_sbom_fetch: bool,
     cosign_client: Cosign,
     augment_concurrency: int,
     attest_concurrency: int,
@@ -139,8 +136,6 @@ async def augment_component_sboms(
         sbom_path: Path where the SBOM will be saved.
         snapshot_spec: Path to snapshot specification file.
         release_id: Release ID to store in SBOM file.
-        release_repo_for_sbom_fetch: when fetching build SBOMs,
-            use the release repo url.
         cosign_client: Cosign client
         augment_concurrency: Maximum number of concurrent augmentation operations.
         attest_concurrency: Maximum number of concurrent OCI attestation operations.
@@ -153,7 +148,6 @@ async def augment_component_sboms(
         semaphore=semaphore,
         output_dir=sbom_path,
         release_id=release_id,
-        release_repo_for_sbom_fetch=release_repo_for_sbom_fetch,
     )
     result_details = await augment_sboms(config, snapshot)
     if not all(result_details):
@@ -206,7 +200,6 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
         args.ensured_sbom_dir(),
         args.snapshot_spec,
         args.release_id,
-        args.release_repo_for_sbom_fetch,
         cosign_client,
         args.augment_concurrency,
         args.attestation_concurrency,

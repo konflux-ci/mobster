@@ -57,7 +57,6 @@ class AugmentConfig:
         verify: Use pubkey verification for attestations
         semaphore: asyncio semaphore to limit the number of concurrent operations
         output_dir: Path to directory to save the augmented SBOMs to
-        release_repo_for_sbom_fetch: when fetching build SBOMs, use the release repo url
         release_id: ReleaseId to optionally inject into SBOMs
     """
 
@@ -65,7 +64,6 @@ class AugmentConfig:
     verify: bool
     semaphore: asyncio.Semaphore
     output_dir: Path
-    release_repo_for_sbom_fetch: bool = False
     release_id: ReleaseId | None = None
 
 
@@ -99,7 +97,6 @@ class AugmentImageCommand(Command):
             verify=self.cli_args.verification_key is not None,
             semaphore=semaphore,
             output_dir=self.cli_args.output,
-            release_repo_for_sbom_fetch=self.cli_args.release_repo_for_sbom_fetch,
             release_id=self.cli_args.release_id,
         )
         if not all(await augment_sboms(config, snapshot)):
@@ -265,17 +262,9 @@ async def update_sbom(
 
     async with config.semaphore:
         try:
-            if config.release_repo_for_sbom_fetch:
-                release_img = Image(
-                    repository=repository.public_repo_url, digest=image.digest
-                )
-                sbom, attestation_valid = await load_sbom(
-                    release_img, config.cosign, config.verify
-                )
-            else:
-                sbom, attestation_valid = await load_sbom(
-                    image, config.cosign, config.verify
-                )
+            sbom, attestation_valid = await load_sbom(
+                image, config.cosign, config.verify
+            )
 
             if not update_sbom_in_situ(repository, image, sbom, config.release_id):
                 raise SBOMError(f"Unsupported SBOM format for image {image}.")
