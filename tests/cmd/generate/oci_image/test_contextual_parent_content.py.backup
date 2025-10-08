@@ -176,10 +176,10 @@ def test_get_grandparent_from_contextualized_parent_sbom(mock_doc: MagicMock) ->
 
 
 def test_annotation_parse_fail(
-    mock_doc: MagicMock,
     caplog: LogCaptureFixture,
 ) -> None:
     caplog.set_level("DEBUG")
+    mock_doc = MagicMock()
     mock_doc.annotations = [
         Annotation(
             "invalid_annotation",
@@ -198,10 +198,10 @@ def test_annotation_parse_fail(
 
 
 def test_get_descendant_of_items_from_used_parent_scratch_or_oci_arch(
-    mock_doc: MagicMock,
     caplog: LogCaptureFixture,
 ) -> None:
     caplog.set_level("DEBUG")
+    mock_doc = MagicMock()
     mock_doc.annotations = []
     mock_doc.packages = []
     mock_doc.relationships = []
@@ -215,10 +215,10 @@ def test_get_descendant_of_items_from_used_parent_scratch_or_oci_arch(
 
 
 def test_get_descendant_of_items_from_used_parent_invalid_sbom_structure(
-    mock_doc: MagicMock,
     caplog: LogCaptureFixture,
 ) -> None:
     caplog.set_level("DEBUG")
+    mock_doc = MagicMock()
     mock_doc.creation_info.name = (
         "quay.io/test-org-cat-feeder/user-ns2/testrepo-giver@sha256:1"
     )
@@ -257,8 +257,8 @@ def test_get_descendant_of_items_from_used_parent_invalid_sbom_structure(
 )
 def test_get_descendant_of_items_from_used_parent_ancestor_is_legacy(
     mock_process_build_tool_of_grandparent_item: MagicMock,
-    mock_doc: MagicMock,
 ) -> None:
+    mock_doc = MagicMock()
     (
         grandparent_package,
         grandparent_annotation,
@@ -287,8 +287,8 @@ def test_get_descendant_of_items_from_used_parent_ancestor_is_legacy(
 )
 def test_get_descendant_of_items_from_used_parent_ancestor_is_contextual(
     mock_process_descendant_of_grandparent_items: MagicMock,
-    mock_doc: MagicMock,
 ) -> None:
+    mock_doc = MagicMock()
     (
         grandparent_package,
         grandparent_annotation,
@@ -322,9 +322,9 @@ def test_get_descendant_of_items_from_used_parent_grandparent_has_no_annot(
     mock_process_build_tool_of_grandparent_item: MagicMock,
     mock_process_descendant_of_grandparent_items: MagicMock,
     caplog: LogCaptureFixture,
-    mock_doc: MagicMock,
 ) -> None:
     caplog.set_level("DEBUG")
+    mock_doc = MagicMock()
 
     mock_doc.annotations = []  # missing
     mock_doc.packages = [
@@ -351,8 +351,8 @@ def test_get_descendant_of_items_from_used_parent_grandparent_has_no_annot(
 
 def test_process_descendant_of_grandparent_items_missing_annot(
     caplog: LogCaptureFixture,
-    mock_doc: MagicMock,
 ) -> None:
+    mock_doc = MagicMock()
     (
         grandparent_image_package,
         grandparent_image_annotation,
@@ -396,7 +396,8 @@ def test_process_descendant_of_grandparent_items_missing_annot(
     assert "Annotation not found for SPDXRef-grandgrandparent" in caplog.messages
 
 
-def test_get_parent_spdx_id_from_component(mock_doc: MagicMock) -> None:
+def test_get_parent_spdx_id_from_component() -> None:
+    mock_doc = MagicMock()
     mock_doc.relationships = [
         Relationship(
             "SPDXRef-component",
@@ -519,7 +520,8 @@ async def test_map_parent_to_component_and_modify_component(
         )
     else:
         assert (
-            unmodified_package_from_parent_relationship in result_sbom_doc.relationships
+            unmodified_package_from_parent_relationship
+            in result_sbom_doc.relationships
         )
 
     # ancestors must be added
@@ -617,10 +619,10 @@ def test__modify_relationship_in_component(
 
 
 def test_get_parent_spdx_id_from_component_no_descendant_of_in_component(
-    mock_doc: MagicMock,
     caplog: LogCaptureFixture,
 ) -> None:
     caplog.set_level("DEBUG")
+    mock_doc = MagicMock()
     mock_doc.relationships = [
         Relationship(
             "SPDXRef-spam-parent", RelationshipType.BUILD_TOOL_OF, "SPDXRef-spam"

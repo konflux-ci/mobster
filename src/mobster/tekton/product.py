@@ -6,6 +6,7 @@ import argparse as ap
 import asyncio
 import logging
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
     connect_with_s3,
+    get_atlas_upload_config,
     upload_release_data,
     upload_sboms,
     upload_snapshot,
@@ -32,10 +34,13 @@ class ProcessProductArgs(CommonArgs):
     Attributes:
         release_data: Path to release data file.
         concurrency: maximum number of concurrent operations
+        sbom_path: Path where the generated product SBOM should be stored. If
+            it's equal to None, a temporary file will be used instead.
     """
 
     release_data: Path
     concurrency: int
+    sbom_path: Path | None
 
 
 def parse_args() -> ProcessProductArgs:
@@ -49,6 +54,14 @@ def parse_args() -> ProcessProductArgs:
     add_common_args(parser)
     parser.add_argument("--release-data", type=Path, required=True)
     parser.add_argument("--concurrency", type=int, default=8)
+    parser.add_argument(
+        "--sbom-path",
+        type=Path,
+        help="Optional path specifying where the generated product SBOM "
+        "should be stored. If not provided, a temporary file will be used "
+        "and deleted at the end of the program."
+        "Should only be specified for integration testing purposes.",
+    )
     args = parser.parse_args()
 
     # the snapshot_spec and release_data are joined with the data_dir as
@@ -64,8 +77,9 @@ def parse_args() -> ProcessProductArgs:
         upload_concurrency=args.concurrency,
         concurrency=args.concurrency,
         labels=args.labels,
-        tpa_retries=args.tpa_retries,
+        atlas_retries=args.atlas_retries,
         skip_upload=args.skip_upload,
+        sbom_path=args.sbom_path,
     )  # pylint:disable=duplicate-code
 
 
@@ -131,6 +145,13 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
             args.release_id,
         )
 
+    if args.sbom_path is None:
+        sbom_path = Path(
+            tempfile.NamedTemporaryFile(suffix=".json").name  # pylint: disable=consider-using-with
+        )
+    else:
+        sbom_path = args.sbom_path
+
     create_product_sbom(
         sbom_path,
         args.snapshot_spec,
@@ -147,9 +168,16 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
         )
     else:
         report = await upload_sboms(
-            args.to_upload_config(),
+            get_atlas_upload_config(
+                base_url=args.atlas_api_url,
+                retries=args.atlas_retries,
+                workers=args.upload_concurrency,
+                labels=args.labels,
+            ),
             s3,
+            paths=[sbom_path],
         )
+
         artifact = get_product_artifact(report)
         artifact.write_result(args.result_dir)
 

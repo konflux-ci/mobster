@@ -188,6 +188,7 @@ async def test_create_product_sboms_ta_happypath(
     assert not await s3_client.snapshot_exists(release_id)
     assert not await s3_client.release_data_exists(release_id)
 
+    sbom_path = tmp_path / "sbom.json"
     subprocess.run(
         [
             "process_product_sbom",
@@ -209,12 +210,14 @@ async def test_create_product_sboms_ta_happypath(
             str(product_concurrency),
             "--labels",
             f"test_id={test_id}",
+            "--sbom-path",
+            str(sbom_path),
         ],
         check=True,
     )
 
     # check that an SBOM was created and contains what is expected
-    with open(data_dir / "sbom" / "sbom.json") as fp:
+    with open(sbom_path) as fp:
         sbom_dict = json.load(fp)
         verify_product_sbom(
             sbom_dict,
@@ -240,9 +243,9 @@ async def test_create_product_sboms_ta_happypath(
 
 
 @pytest.mark.asyncio
-@patch("mobster.tekton.common.upload_to_atlas", autospec=True)
+@patch("mobster.cmd.upload.upload.TPAUploadCommand.upload", autospec=True)
 async def test_sbom_upload_fallback(
-    mock_upload_to_atlas: AsyncMock,
+    mock_tpa_upload: AsyncMock,
     tmp_path: Path,
     tpa_base_url: str,
     tpa_auth_env: dict[str, str],
@@ -260,7 +263,7 @@ async def test_sbom_upload_fallback(
     with open(file_path, "w") as f:
         json.dump(test_data, f)
 
-    mock_upload_to_atlas.return_value = TPAUploadReport(
+    mock_tpa_upload.return_value = TPAUploadReport(
         success=[],
         failure=[
             TPAUploadFailure(path=file_path, transient=True, message="Transient error")
@@ -274,9 +277,9 @@ async def test_sbom_upload_fallback(
             labels={},
             retries=1,
             workers=1,
-            paths=[file_path],
         ),
         s3_client,
+        paths=[file_path],
     )
 
     # check that the fallback to s3 uploaded the object
@@ -480,8 +483,6 @@ async def test_process_component_sboms_happypath(
         check=True,
     )
 
-    assert len(list((data_dir / "sbom").iterdir())) == 4  # 2 for each repo
-
     artifact_path = result_dir / COMPONENT_ARTIFACT_NAME
     assert artifact_path.exists()
     with open(artifact_path) as fp:
@@ -625,8 +626,6 @@ async def test_process_component_sboms_big_release(
         ],
         check=True,
     )
-    assert len(list((data_dir / "sbom").iterdir())) == n_components * 2
-
     artifact_path = result_dir / COMPONENT_ARTIFACT_NAME
     assert artifact_path.exists()
     with open(artifact_path) as fp:

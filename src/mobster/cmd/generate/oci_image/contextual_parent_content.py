@@ -1,4 +1,7 @@
-"""Module accessing and modifying parent image content in SBOMs."""
+"""
+Module accessing used parent image content in SBOMs and
+modifying component content to indicate relationships with parent.
+"""
 
 import json
 import logging
@@ -460,14 +463,14 @@ async def map_parent_to_component_and_modify_component(
                     parent_root_packages,
                 )
 
-    _supply_descendants_from_parent_to_component(
+    _supply_ancestors_from_parent_to_component(
         component_sbom_doc,
         descendant_of_items_from_used_parent,
     )
     return component_sbom_doc
 
 
-def _supply_descendants_from_parent_to_component(
+def _supply_ancestors_from_parent_to_component(
     component_sbom_doc: Document,
     descendant_of_items_from_used_parent: list[
         tuple[Package, Relationship, Annotation]
@@ -479,6 +482,14 @@ def _supply_descendants_from_parent_to_component(
     used parent content to component SBOM. Expects that all
     relationships of component's packages already point to
     this packages in _modify_relationship_in_component function.
+
+    Supplied ancestors are grandparents of the component (parent
+    package annotation and relationship are already there) and
+    annotation comment must be modified for proper functioning
+    of the contextual workflow in situation
+    when this component will be used as base image for another
+    component, and get_grandparent_annotation will
+
 
     Args:
         component_sbom_doc: The full generated component SBOM.
@@ -493,6 +504,10 @@ def _supply_descendants_from_parent_to_component(
         component_sbom_doc.relationships.append(rel)
         component_sbom_doc.packages.append(pkg)
         if annot:
+            if annot.annotation_comment:
+                annot.annotation_comment = annot.annotation_comment.replace(
+                    "is_base_image", "is_ancestor_image"
+                )
             component_sbom_doc.annotations.append(annot)
 
     return component_sbom_doc
