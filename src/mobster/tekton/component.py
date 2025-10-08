@@ -5,6 +5,7 @@ Script used for processing component SBOMs in Tekton task.
 import argparse as ap
 import asyncio
 import logging
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
     connect_with_s3,
+    get_tpa_upload_config,
     upload_sboms,
     upload_snapshot,
 )
@@ -183,20 +185,30 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
         rekor_config=args.rekor_config,
     )
     LOGGER.info("Starting SBOM augmentation")
-    await augment_component_sboms(
-        args.ensured_sbom_dir(),
-        args.snapshot_spec,
-        args.release_id,
-        cosign_client,
-        args.augment_concurrency,
-        args.attestation_concurrency,
-    )
-    config = args.to_upload_config()
 
-    report = await upload_sboms(
-        config,
-        s3,
-    )
+    with tempfile.TemporaryDirectory() as sbom_dir:
+        await augment_component_sboms(
+            Path(sbom_dir),
+            args.snapshot_spec,
+            args.release_id,
+            cosign_client,
+            args.augment_concurrency,
+            args.attestation_concurrency,
+        )
+
+        tpa_config = get_tpa_upload_config(
+            base_url=args.atlas_api_url,
+            retries=args.tpa_retries,
+            workers=args.upload_concurrency,
+            paths=list(Path(sbom_dir).iterdir()),
+            labels=args.labels,
+        )
+
+        report = await upload_sboms(
+            tpa_config,
+            s3,
+        )
+
     artifact = get_component_artifact(report)
     artifact.write_result(args.result_dir)
 

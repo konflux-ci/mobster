@@ -52,32 +52,6 @@ class CommonArgs:
     tpa_retries: int
     upload_concurrency: int
 
-    def ensured_sbom_dir(self) -> Path:
-        """
-        Get the 'sbom' subdir, create it if not present.
-        Returns:
-            The Path object reference to the sbom subdir.
-        """
-        sbom_dir = self.data_dir / "sbom"
-        sbom_dir.mkdir(exist_ok=True)
-        return sbom_dir
-
-    def to_upload_config(self) -> UploadConfig:
-        """
-        Creates UploadConfig from the common args.
-        Returns:
-            The populated UploadConfig object.
-        """
-        auth = TPAUploadCommand.get_oidc_auth()
-        return UploadConfig(
-            auth=auth,
-            base_url=self.atlas_api_url,
-            retries=self.tpa_retries,
-            workers=self.upload_concurrency,
-            paths=list(self.ensured_sbom_dir().iterdir()),
-            labels=self.labels,
-        )
-
 
 def add_common_args(parser: ArgumentParser) -> None:
     """
@@ -105,6 +79,28 @@ def add_common_args(parser: ArgumentParser) -> None:
         default=1,
         help="How many retries for SBOM upload will be performed "
         "before falling back to S3.",
+    )
+
+
+def get_tpa_upload_config(
+    *,
+    base_url: str,
+    retries: int,
+    workers: int,
+    paths: list[Path],
+    labels: dict[str, str],
+) -> UploadConfig:
+    """
+    Get the default TPA configuration for releases.
+    """
+    tpa_auth = TPAUploadCommand.get_oidc_auth()
+    return UploadConfig(
+        auth=tpa_auth,
+        base_url=base_url,
+        retries=retries,
+        workers=workers,
+        paths=paths,
+        labels=labels,
     )
 
 
