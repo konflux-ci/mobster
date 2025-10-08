@@ -158,10 +158,10 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
                 base_url=args.atlas_api_url,
                 retries=args.tpa_retries,
                 workers=args.upload_concurrency,
-                paths=[sbom_path],
                 labels=args.labels,
             ),
             s3,
+            paths=[sbom_path],
         )
     finally:
         # We only delete the SBOM if we used a temporary file. If the path was

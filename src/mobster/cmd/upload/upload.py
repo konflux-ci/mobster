@@ -156,14 +156,12 @@ class UploadConfig:
         base_url: TPA base URL to use
         workers: number of maximum concurrent uploads
         labels: mapping of TPA label keys to label values for uploaded SBOMs
-        paths: list of paths to SBOMs to upload
     """
 
     auth: OIDCClientCredentials | None
     base_url: str
     workers: int
     labels: dict[str, str]
-    paths: list[Path]
     retries: int
 
 
@@ -189,12 +187,11 @@ class TPAUploadCommand(Command):
         config = UploadConfig(
             auth=auth,
             base_url=self.cli_args.tpa_base_url,
-            paths=sbom_files,
             workers=workers,
             labels=self.cli_args.labels,
             retries=self.cli_args.retries,
         )
-        report = await TPAUploadCommand.upload(config)
+        report = await TPAUploadCommand.upload(config, sbom_files)
 
         self.exit_code = 1 if report.has_failures() else 0
         if self.cli_args.report:
@@ -276,6 +273,7 @@ class TPAUploadCommand(Command):
     @staticmethod
     async def upload(
         config: UploadConfig,
+        paths: list[Path],
     ) -> TPAUploadReport:
         """
         Upload SBOM files to TPA given a directory or a file.
@@ -287,7 +285,7 @@ class TPAUploadCommand(Command):
             tuple[TPAUploadReport, int]: Upload report and exit code
         """
 
-        LOGGER.info("Found %s SBOMs to upload", len(config.paths))
+        LOGGER.info("Found %s SBOMs to upload", len(paths))
 
         semaphore = asyncio.Semaphore(config.workers)
 
@@ -300,14 +298,14 @@ class TPAUploadCommand(Command):
                     labels=config.labels,
                     retries=config.retries,
                 )
-                for sbom_file in config.paths
+                for sbom_file in paths
             ]
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
         LOGGER.info("Upload complete")
         return TPAUploadReport.build_report(
-            config.base_url, list(zip(config.paths, results, strict=True))
+            config.base_url, list(zip(paths, results, strict=True))
         )
 
     async def save(self) -> None:  # pragma: no cover

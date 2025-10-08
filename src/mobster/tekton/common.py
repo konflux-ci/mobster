@@ -87,7 +87,6 @@ def get_tpa_upload_config(
     base_url: str,
     retries: int,
     workers: int,
-    paths: list[Path],
     labels: dict[str, str],
 ) -> UploadConfig:
     """
@@ -99,7 +98,6 @@ def get_tpa_upload_config(
         base_url=base_url,
         retries=retries,
         workers=workers,
-        paths=paths,
         labels=labels,
     )
 
@@ -107,6 +105,7 @@ def get_tpa_upload_config(
 async def upload_sboms(
     config: UploadConfig,
     s3_client: S3Client | None,
+    paths: list[Path],
 ) -> TPAUploadReport:
     """
     Upload SBOMs to Atlas with S3 fallback on transient errors.
@@ -114,6 +113,7 @@ async def upload_sboms(
     Args:
         config: TPA upload configuration object.
         s3_client: S3Client object for retry uploads, or None if no retries.
+        paths: List of paths to SBOMs to upload to Atlas
 
     Raises:
         ValueError: If Atlas authentication credentials are missing or if S3
@@ -125,7 +125,7 @@ async def upload_sboms(
         raise ValueError("Missing Atlas authentication.")
 
     LOGGER.info("Starting SBOM upload to Atlas")
-    report = await upload_to_atlas(config)
+    report = await TPAUploadCommand.upload(config, paths)
     if report.has_non_transient_failures():
         raise RuntimeError(
             "SBOMs failed to be uploaded to Atlas: \n"
@@ -160,24 +160,6 @@ async def handle_atlas_transient_errors(paths: list[Path], s3_client: S3Client) 
 
     LOGGER.debug("Uploading (%s) files to S3.", len(paths))
     await asyncio.gather(*[s3_client.upload_file(failed_sbom) for failed_sbom in paths])
-
-
-async def upload_to_atlas(
-    config: UploadConfig,
-) -> TPAUploadReport:
-    """
-    Upload SBOMs to Atlas TPA instance.
-
-    Args:
-        config: Atlas SBOM upload configuration.
-
-    Raises:
-        AtlasUploadError: If a non-transient error occurs.
-
-    Returns:
-        TPAUploadReport: Parsed upload report from the upload command.
-    """
-    return await TPAUploadCommand.upload(config)
 
 
 def connect_with_s3(retry_s3_bucket: str | None) -> S3Client | None:

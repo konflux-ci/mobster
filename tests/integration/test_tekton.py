@@ -243,9 +243,9 @@ async def test_create_product_sboms_ta_happypath(
 
 
 @pytest.mark.asyncio
-@patch("mobster.tekton.common.upload_to_atlas", autospec=True)
+@patch("mobster.cmd.upload.upload.TPAUploadCommand.upload", autospec=True)
 async def test_sbom_upload_fallback(
-    mock_upload_to_atlas: AsyncMock,
+    mock_tpa_upload: AsyncMock,
     tmp_path: Path,
     tpa_base_url: str,
     tpa_auth_env: dict[str, str],
@@ -263,7 +263,7 @@ async def test_sbom_upload_fallback(
     with open(file_path, "w") as f:
         json.dump(test_data, f)
 
-    mock_upload_to_atlas.return_value = TPAUploadReport(
+    mock_tpa_upload.return_value = TPAUploadReport(
         success=[],
         failure=[
             TPAUploadFailure(path=file_path, transient=True, message="Transient error")
@@ -277,9 +277,9 @@ async def test_sbom_upload_fallback(
             labels={},
             retries=1,
             workers=1,
-            paths=[file_path],
         ),
         s3_client,
+        paths=[file_path],
     )
 
     # check that the fallback to s3 uploaded the object

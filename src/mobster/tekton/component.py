@@ -200,14 +200,10 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
             base_url=args.atlas_api_url,
             retries=args.tpa_retries,
             workers=args.upload_concurrency,
-            paths=list(Path(sbom_dir).iterdir()),
             labels=args.labels,
         )
 
-        report = await upload_sboms(
-            tpa_config,
-            s3,
-        )
+        report = await upload_sboms(tpa_config, s3, list(Path(sbom_dir).iterdir()))
 
     artifact = get_component_artifact(report)
     artifact.write_result(args.result_dir)
