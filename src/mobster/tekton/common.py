@@ -74,7 +74,7 @@ def add_common_args(parser: ArgumentParser) -> None:
         "--skip-upload",
         action="store_true",
         help="Whether to generate without uploading to Atlas and S3. (default: False)"
-             "(used in SBOM regeneration for performing non-destructive 'dry runs')",
+        "(used in SBOM regeneration for performing non-destructive 'dry runs')",
     )
     parser.add_argument(
         "--labels",
