@@ -186,34 +186,6 @@ class SbomRegenerator:
                     )
                 LOGGER.debug("Generate SBOM release: %s", str(release_id))
                 await self.process_sboms(release_id, path_release_data, path_snapshot)
-
-                for sbom_id in self.sbom_release_groups.get(str(release_id), []):
-                    if self.args.dry_run:
-                        LOGGER.info(
-                            "*Dry Run: 'delete' related SBOM: for "
-                            "SBOM release: %s -- SBOM id: %s",
-                            str(release_id),
-                            sbom_id,
-                        )
-                    else:
-                        LOGGER.info(
-                            "*Deleting related SBOM: for "
-                            "SBOM release: %s -- SBOM id: %s",
-                            str(release_id),
-                            sbom_id,
-                        )
-                        # delete
-                        response_delete = await self.delete_sbom(sbom_id)
-                        # check delete status
-                        if response_delete.status_code != 200:
-                            # delete failed, log & abort
-                            raise SBOMError(
-                                f"delete SBOM failed for SBOM: {sbom_id}, "
-                                f"status: {response_delete.status_code}, "
-                                f"message: {response_delete.text}",
-                            )
-                        LOGGER.info("Success: deleted original SBOM: %s", sbom_id)
-                        continue
         except SBOMError as e:
             if self.args.fail_fast:
                 raise e

@@ -315,14 +315,7 @@ async def test_regenerate_sbom_release(sbom_regenerator: Any, caplog: Any) -> No
             "mobster.regenerate.base.SbomRegenerator.process_sboms",
             new_callable=AsyncMock,
         ) as mock_process_sboms,
-        patch(
-            "mobster.regenerate.base.SbomRegenerator.delete_sbom",
-            new_callable=AsyncMock,
-        ) as mock_delete_sbom,
     ):
-        mock_delete_sbom.return_value = httpx.Response(
-            200, request=httpx.Request("delete", "https://foo.bar")
-        )
         mock_gather_s3_input_data.return_value = (
             Path("snapshot.json"),
             Path("release_data.json"),
@@ -333,15 +326,12 @@ async def test_regenerate_sbom_release(sbom_regenerator: Any, caplog: Any) -> No
 
         sbom_regenerator.args.dry_run = False
 
-        with caplog.at_level("INFO"):
+        with caplog.at_level("DEBUG"):
             await sbom_regenerator.regenerate_sbom_release(release_id)
 
             assert mock_gather_s3_input_data.called
             assert mock_process_sboms.called
-            assert mock_delete_sbom.called
-            assert mock_delete_sbom.call_count == 2
-            assert "Success: deleted original SBOM: sbom-1" in caplog.text
-            assert "Success: deleted original SBOM: sbom-2" in caplog.text
+            assert f"Generate SBOM release: {str(release_id)}" in caplog.text
 
 
 async def async_test_wrapper(the_coro: Coroutine[Any, Any, Any]) -> Any:
