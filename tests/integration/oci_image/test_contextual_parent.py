@@ -15,7 +15,6 @@ from tests.spdx_builder import AnnotatedPackage
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="waiting for package matching implementation")
 @pytest.mark.parametrize(
     ["contextualize_parent"],
     [
@@ -152,7 +151,6 @@ async def test_parent_content_contextualization(
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="waiting for package matching implementation")
 async def test_parent_content_contextualizaton_legacy(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
