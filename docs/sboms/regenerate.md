@@ -32,4 +32,13 @@ The optional `--output-dir <path>` argument may be included in cases where a
 predetermined static path is preferred.  Otherwise, the script creates and 
 uses a temporary directory. 
 
+The following environment variables are required to run the regeneration script:
 
+```
+export MOBSTER_TPA_SSO_TOKEN_URL=https://token.url
+export MOBSTER_TPA_SSO_ACCOUNT=account
+export MOBSTER_TPA_SSO_TOKEN=token
+
+export AWS_ACCESS_KEY_ID=key
+export AWS_SECRET_ACCESS_KEY=secret
+```
