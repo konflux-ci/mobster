@@ -154,6 +154,7 @@ async def augment_component_sboms(
     result_details = await augment_sboms(config, snapshot)
     if not all(result_details):
         raise SBOMError("Could not enrich all SBOMs!")
+    LOGGER.debug("Successfully augmented SBoms for ReleaseId: %s", str(release_id))
 
     if not cosign_client.can_sign():
         return
