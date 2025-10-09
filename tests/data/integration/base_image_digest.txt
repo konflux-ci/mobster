@@ -1,1 +1,0 @@
-registry.redhat.io/ubi10:latest registry.redhat.io/ubi10:latest@sha256:e2e6d908fbb30dd84ce0bcdf275130a72576bffcbf544d0d9813661870af8740
