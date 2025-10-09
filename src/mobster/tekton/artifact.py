@@ -36,7 +36,7 @@ class ProductArtifact(pydantic.BaseModel):
     @staticmethod
     def from_tpa_report(report: TPAUploadReport) -> "ProductArtifact":
         """
-        Build a product artifact from a TPA report.
+        Build a product artifact from an Atlas (TPA) report.
         """
         return ProductArtifact(product=[success.url for success in report.success])
 
@@ -51,7 +51,7 @@ class ComponentArtifact(pydantic.BaseModel):
     @staticmethod
     def from_tpa_report(report: TPAUploadReport) -> "ComponentArtifact":
         """
-        Build a component artifact from a TPA report.
+        Build a component artifact from an Atlas (TPA) report.
         """
         return ComponentArtifact(component=[success.url for success in report.success])
 
@@ -79,13 +79,13 @@ class SBOMArtifact(pydantic.BaseModel):
 
 def get_component_artifact(report: TPAUploadReport) -> SBOMArtifact:
     """
-    Get a component-type artifact from a TPA report.
+    Get a component-type artifact from an Atlas (TPA) report.
     """
     return SBOMArtifact(sboms=ComponentArtifact.from_tpa_report(report))
 
 
 def get_product_artifact(report: TPAUploadReport) -> SBOMArtifact:
     """
-    Get a product-type artifact from a TPA report.
+    Get a product-type artifact from an Atlas (TPA) report.
     """
     return SBOMArtifact(sboms=ProductArtifact.from_tpa_report(report))

@@ -106,6 +106,14 @@ spec:
       type: string
       description: Path to directory in the dataDir to store JSON task results to.
 
+    - name: cosignSecretName
+      type: string
+      description: K8s secret name with a cosign signing key used for SBOM attestation.
+
+    - name: attestationPubKey
+      type: string
+      description: K8s reference to a secret containing a key for verifying provenance attestations
+
   results:
     - description: Produced trusted data artifact
       name: sourceDataArtifact
@@ -145,7 +153,7 @@ spec:
           value: $(params.sourceDataArtifact)
 
     - name: process-component-sboms
-      image: quay.io/konflux-ci/mobster@sha256:d46f25aed27c9ffc737709866ddb2594d3c2c80319529d86520a0bf745596af1
+      image: quay.io/konflux-ci/mobster@sha256:f892227eed6c448b0f444eab6e1c8c8456ebd9b5bb8d629e6f7cc7492f25e626
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
           valueFrom:
@@ -175,6 +183,38 @@ spec:
               optional: true
         - name: AWS_DEFAULT_REGION
           value: "us-east-1"
+        - name: SIGN_KEY
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosignSecretName)
+              key: SIGN_KEY
+        - name: COSIGN_AWS_DEFAULT_REGION
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosignSecretName)
+              key: AWS_DEFAULT_REGION
+        - name: COSIGN_AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosignSecretName)
+              key: AWS_ACCESS_KEY_ID
+        - name: COSIGN_AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosignSecretName)
+              key: AWS_SECRET_ACCESS_KEY
+        - name: REKOR_URL
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosignSecretName)
+              key: REKOR_URL
+              optional: true
+        - name: REKOR_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cosignSecretName)
+              key: REKOR_PUBLIC_KEY
+              optional: true
       computeResources:
         limits:
           memory: 1Gi
@@ -189,15 +229,26 @@ spec:
         # script below will verify that the release_id has the correct format.
         release_id=$(dirname "$(params.snapshotSpec)")
 
-        process_component_sboms \
-          --data-dir "$(params.dataDir)" \
-          --snapshot-spec "$(params.snapshotSpec)" \
-          --atlas-api-url "$(params.atlasApiUrl)" \
-          --retry-s3-bucket "$(params.retryS3Bucket)" \
-          --release-id "$release_id" \
-          --augment-concurrency "$(params.augmentConcurrency)" \
-          --upload-concurrency "$(params.uploadConcurrency)" \
+        mobster_args=(
+          --data-dir "$(params.dataDir)"
+          --snapshot-spec "$(params.snapshotSpec)"
+          --atlas-api-url "$(params.atlasApiUrl)"
+          --retry-s3-bucket "$(params.retryS3Bucket)"
+          --release-id "$release_id"
+          --augment-concurrency "$(params.augmentConcurrency)"
+          --upload-concurrency "$(params.uploadConcurrency)"
           --result-dir "$(params.resultsDirPath)"
+          --sign-key "$SIGN_KEY"
+          --verify-key "$(params.attestationPubKey)"
+        )
+        if [ -n "${REKOR_URL}" ]; then
+          mobster_args+=(--rekor-url "${REKOR_URL}")
+        fi
+        if [ -n "${REKOR_PUBLIC_KEY}" ]; then
+          mobster_args+=(--rekor-key "${REKOR_PUBLIC_KEY}")
+        fi
+
+        process_component_sboms "${mobster_args[@]}"
 
     - name: create-trusted-artifact
       ref:

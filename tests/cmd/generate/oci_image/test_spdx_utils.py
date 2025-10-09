@@ -20,6 +20,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     find_spdx_root_packages,
     find_spdx_root_packages_spdxid,
     find_spdx_root_relationships,
+    get_annotations_by_spdx_id,
     is_virtual_root,
     normalize_actor,
     normalize_package,
@@ -30,6 +31,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 )
 from mobster.image import Image
 from mobster.sbom.spdx import get_mobster_tool_string
+from tests.conftest import create_annotation_with_spdx_id
 
 
 @pytest.mark.asyncio
@@ -805,3 +807,47 @@ async def test_update_package_in_spdx_sbom(
     sbom_doc_object = JsonLikeDictParser().parse(new_sbom)  # type: ignore[no-untyped-call]
     await update_package_in_spdx_sbom(sbom_doc_object, image_object, is_builder_image)
     assert sbom_doc_object == expected_outcome
+
+
+@pytest.mark.parametrize(
+    ["doc_annotations", "spdx_id", "expected_length"],
+    [
+        # Successful retrieval
+        (
+            [
+                create_annotation_with_spdx_id("SPDXRef-annotation1"),
+                create_annotation_with_spdx_id("SPDXRef-annotation2"),
+                create_annotation_with_spdx_id("SPDXRef-annotation2"),
+            ],
+            "SPDXRef-annotation2",
+            2,
+        ),
+        # Not found
+        (
+            [
+                create_annotation_with_spdx_id("SPDXRef-annotation1"),
+            ],
+            "SPDXRef-nonexistent",
+            0,
+        ),
+        # Empty annotations list
+        (
+            [],
+            "SPDXRef-annotation",
+            0,
+        ),
+    ],
+)
+def test_get_annotations_by_spdx_id(
+    doc_annotations: list[Annotation] | None,
+    spdx_id: str,
+    expected_length: int,
+) -> None:
+    """Test get_annotations_by_spdx_id function with various document configurations."""
+    doc = MagicMock(spec=Document)
+    doc.annotations = doc_annotations
+
+    result = get_annotations_by_spdx_id(doc, spdx_id)
+    assert len(result) == expected_length
+    if result:
+        assert all(annot.spdx_id == spdx_id for annot in result)

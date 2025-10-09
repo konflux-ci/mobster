@@ -34,10 +34,10 @@ class CommonArgs:
         data_dir: main data directory defined in Tekton task
         result_dir: path to directory to store results to
         snapshot_spec: path to snapshot spec file
-        atlas_api_url: url of the TPA instance to use
+        atlas_api_url: url of the Atlas instance to use
         retry_s3_bucket: name of the S3 bucket to use for retries
         labels: labels to attach to uploaded SBOMs
-        tpa_retries: how many retries for SBOM upload will be
+        atlas_retries: how many retries for SBOM upload will be
             performed before failing
     """
 
@@ -49,34 +49,8 @@ class CommonArgs:
     release_id: ReleaseId
     labels: dict[str, str]
     result_dir: Path
-    tpa_retries: int
+    atlas_retries: int
     upload_concurrency: int
-
-    def ensured_sbom_dir(self) -> Path:
-        """
-        Get the 'sbom' subdir, create it if not present.
-        Returns:
-            The Path object reference to the sbom subdir.
-        """
-        sbom_dir = self.data_dir / "sbom"
-        sbom_dir.mkdir(exist_ok=True)
-        return sbom_dir
-
-    def to_upload_config(self) -> UploadConfig:
-        """
-        Creates UploadConfig from the common args.
-        Returns:
-            The populated UploadConfig object.
-        """
-        auth = TPAUploadCommand.get_oidc_auth()
-        return UploadConfig(
-            auth=auth,
-            base_url=self.atlas_api_url,
-            retries=self.tpa_retries,
-            workers=self.upload_concurrency,
-            paths=list(self.ensured_sbom_dir().iterdir()),
-            labels=self.labels,
-        )
 
 
 def add_common_args(parser: ArgumentParser) -> None:
@@ -100,7 +74,7 @@ def add_common_args(parser: ArgumentParser) -> None:
         default={},
     )
     parser.add_argument(
-        "--tpa-retries",
+        "--atlas-retries",
         type=int,
         default=1,
         help="How many retries for SBOM upload will be performed "
@@ -108,16 +82,38 @@ def add_common_args(parser: ArgumentParser) -> None:
     )
 
 
+def get_atlas_upload_config(
+    *,
+    base_url: str,
+    retries: int,
+    workers: int,
+    labels: dict[str, str],
+) -> UploadConfig:
+    """
+    Get the default Atlas configuration for releases.
+    """
+    atlas_auth = TPAUploadCommand.get_oidc_auth()
+    return UploadConfig(
+        auth=atlas_auth,
+        base_url=base_url,
+        retries=retries,
+        workers=workers,
+        labels=labels,
+    )
+
+
 async def upload_sboms(
     config: UploadConfig,
     s3_client: S3Client | None,
+    paths: list[Path],
 ) -> TPAUploadReport:
     """
     Upload SBOMs to Atlas with S3 fallback on transient errors.
 
     Args:
-        config: TPA upload configuration object.
+        config: Atlas upload configuration object.
         s3_client: S3Client object for retry uploads, or None if no retries.
+        paths: List of paths to SBOMs to upload to Atlas
 
     Raises:
         ValueError: If Atlas authentication credentials are missing or if S3
@@ -129,7 +125,7 @@ async def upload_sboms(
         raise ValueError("Missing Atlas authentication.")
 
     LOGGER.info("Starting SBOM upload to Atlas")
-    report = await upload_to_atlas(config)
+    report = await TPAUploadCommand.upload(config, paths)
     if report.has_non_transient_failures():
         raise RuntimeError(
             "SBOMs failed to be uploaded to Atlas: \n"
@@ -164,24 +160,6 @@ async def handle_atlas_transient_errors(paths: list[Path], s3_client: S3Client) 
 
     LOGGER.debug("Uploading (%s) files to S3.", len(paths))
     await asyncio.gather(*[s3_client.upload_file(failed_sbom) for failed_sbom in paths])
-
-
-async def upload_to_atlas(
-    config: UploadConfig,
-) -> TPAUploadReport:
-    """
-    Upload SBOMs to Atlas TPA instance.
-
-    Args:
-        config: Atlas SBOM upload configuration.
-
-    Raises:
-        AtlasUploadError: If a non-transient error occurs.
-
-    Returns:
-        TPAUploadReport: Parsed upload report from the upload command.
-    """
-    return await TPAUploadCommand.upload(config)
 
 
 def connect_with_s3(retry_s3_bucket: str | None) -> S3Client | None:
@@ -265,7 +243,7 @@ async def upload_release_data(
 
 def atlas_credentials_exist() -> bool:
     """
-    Check if Atlas TPA SSO credentials are present in environment.
+    Check if Atlas SSO credentials are present in environment.
 
     Returns:
         bool: True if all required Atlas credentials are present.

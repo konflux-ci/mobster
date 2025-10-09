@@ -5,6 +5,7 @@ Script used for processing component SBOMs in Tekton task.
 import argparse as ap
 import asyncio
 import logging
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from mobster.tekton.common import (
     CommonArgs,
     add_common_args,
     connect_with_s3,
+    get_atlas_upload_config,
     upload_sboms,
     upload_snapshot,
 )
@@ -108,7 +110,7 @@ def parse_args() -> ProcessComponentArgs:
         upload_concurrency=args.upload_concurrency,
         attestation_concurrency=args.attest_concurrency,
         labels=args.labels,
-        tpa_retries=args.tpa_retries,
+        atlas_retries=args.atlas_retries,
         cosign_config=cosign_config,
         rekor_config=rekor_config,
     )
@@ -183,20 +185,26 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
         rekor_config=args.rekor_config,
     )
     LOGGER.info("Starting SBOM augmentation")
-    await augment_component_sboms(
-        args.ensured_sbom_dir(),
-        args.snapshot_spec,
-        args.release_id,
-        cosign_client,
-        args.augment_concurrency,
-        args.attestation_concurrency,
-    )
-    config = args.to_upload_config()
 
-    report = await upload_sboms(
-        config,
-        s3,
-    )
+    with tempfile.TemporaryDirectory() as sbom_dir:
+        await augment_component_sboms(
+            Path(sbom_dir),
+            args.snapshot_spec,
+            args.release_id,
+            cosign_client,
+            args.augment_concurrency,
+            args.attestation_concurrency,
+        )
+
+        atlas_config = get_atlas_upload_config(
+            base_url=args.atlas_api_url,
+            retries=args.atlas_retries,
+            workers=args.upload_concurrency,
+            labels=args.labels,
+        )
+
+        report = await upload_sboms(atlas_config, s3, list(Path(sbom_dir).iterdir()))
+
     artifact = get_component_artifact(report)
     artifact.write_result(args.result_dir)
 

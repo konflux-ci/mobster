@@ -11,6 +11,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+from spdx_tools.spdx.model.actor import Actor, ActorType
+from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.parser.parse_anything import parse_file
 
@@ -420,26 +422,12 @@ def spdx_parent_sbom_builder_removed() -> Document:
     )
 
 
-@pytest.fixture(scope="session")
-def spdx_component_sbom() -> Document:
-    return parse_file(  # type: ignore[no-any-return]
-        "tests/sbom/test_oci_generate_data/contextual/fake_component_sbom/component_sbom.spdx.json"
+def create_annotation_with_spdx_id(spdx_id: str) -> Annotation:
+    """Create an annotation with a specific SPDX ID."""
+    return Annotation(
+        spdx_id,
+        AnnotationType.OTHER,
+        Actor(ActorType.TOOL, "test"),
+        datetime.now(),
+        "test comment",
     )
-
-
-@pytest.fixture(scope="session")
-def spdx_parent_sbom_contextualized_json() -> dict[str, Any]:
-    with open(
-        "tests/sbom/test_oci_generate_data/contextual/fake_parent_sbom/parent_sbom_contextualized.json",
-        "rb",
-    ) as in_file:
-        return json.load(in_file)  # type: ignore[no-any-return]
-
-
-@pytest.fixture(scope="session")
-def spdx_parent_sbom_not_contextualized_json() -> dict[str, Any]:
-    with open(
-        "tests/sbom/test_oci_generate_data/contextual/fake_parent_sbom/parent_sbom_not_contextualized.json",
-        "rb",
-    ) as in_file:
-        return json.load(in_file)  # type: ignore[no-any-return]

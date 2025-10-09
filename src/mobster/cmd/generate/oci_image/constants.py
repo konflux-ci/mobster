@@ -22,3 +22,8 @@ BUILDER_IMAGE_PROPERTY = {
     "name": "konflux:container:is_builder_image:additional_builder_image",
     "value": "script-runner-image",
 }
+
+HERMETO_ANNOTATION_COMMENTS = [
+    '{"name": "cachi2:found_by", "value": "cachi2"}',
+    '{"name": "hermeto:found_by", "value": "hermeto"}',
+]
