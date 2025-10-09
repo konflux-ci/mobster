@@ -346,12 +346,6 @@ def generate_augment_oci_image_parser(subparsers: Any) -> None:
         help="UUID4 release_id to associate with the SBOM file",
     )
 
-    augment_oci_image_parser.add_argument(
-        "--release-repo-for-sbom-fetch",
-        action="store_true",
-        help="when fetching build SBOMs, use the release repo url",
-    )
-
     augment_oci_image_parser.set_defaults(func=augment.AugmentImageCommand)
 
 
