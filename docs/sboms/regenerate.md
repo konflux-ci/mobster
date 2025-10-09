@@ -3,10 +3,19 @@
 Mobster's SBOM regeneration script allows SBOM regeneration for cases where 
 product or component SBOMs were generated incorrectly or with errors.
 
-```sh
+```
 $ regenerate_component_sboms \
     --tpa-base-url https://atlas.url \
     --mobster-versions 0.1.1,0.1.2 \
+    --concurrency 10 \
+    --s3-bucket-url https://bucket.url \
+    --dry-run
+```
+
+```
+$ regenerate_product_sboms \
+    --tpa-base-url https://atlas.url \
+    --mobster-versions 0.2,0.3 \
     --concurrency 10 \
     --s3-bucket-url https://bucket.url \
     --dry-run
@@ -41,4 +50,19 @@ export MOBSTER_TPA_SSO_TOKEN=token
 
 export AWS_ACCESS_KEY_ID=key
 export AWS_SECRET_ACCESS_KEY=secret
+
+export REGISTRY_AUTH_FILE="/path/to/.docker/config.json"
 ```
+
+TPA SSO account/token values, and quay.io docker config, 
+can be found in bombino's ansible vault: 
+`<bombino>/ansible/vaults/<env>/*`
+
+For TPA SSO Token URL, use one of:
+
+(stage)<br/>
+`https://auth.stage.redhat.com/auth/realms/EmployeeIDP/protocol/openid-connect/token`
+
+(prod)<br/>
+`https://auth.redhat.com/auth/realms/EmployeeIDP/protocol/openid-connect/token`
+
