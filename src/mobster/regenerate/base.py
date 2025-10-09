@@ -26,6 +26,7 @@ from mobster.cli import parse_concurrency
 from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.tpa import get_tpa_default_client
 from mobster.error import SBOMError
+from mobster.oci.cosign import CosignConfig
 from mobster.release import ReleaseId
 from mobster.tekton.component import ProcessComponentArgs, process_component_sboms
 from mobster.tekton.product import ProcessProductArgs, process_product_sboms
@@ -389,6 +390,7 @@ class SbomRegenerator:
                         upload_concurrency=self.args.concurrency,
                         attestation_concurrency=self.args.concurrency,
                         skip_upload=self.args.dry_run,
+                        cosign_config=CosignConfig(),
                     )
                 )
         except CalledProcessError as e:
