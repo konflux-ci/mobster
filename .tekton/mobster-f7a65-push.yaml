@@ -335,7 +335,7 @@ spec:
         - name: name
           value: deprecated-image-check
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-deprecated-image-check@sha256:1f57224c21021b2d497bac73312386d7421ec949241280a20102192acf1d01d3
+          value: quay.io/konflux-ci/tekton-catalog/task-deprecated-image-check@sha256:f59175d9a0a60411738228dfe568af4684af4aa5e7e05c832927cb917801d489
         - name: kind
           value: task
         resolver: bundles
@@ -344,7 +344,12 @@ spec:
         operator: in
         values:
         - 'false'
-    - name: clair-scan
+    - matrix:
+        params:
+        - name: image-platform
+          value:
+          - $(params.build-platforms)
+      name: clair-scan
       params:
       - name: image-digest
         value: $(tasks.build-image-index.results.IMAGE_DIGEST)
@@ -357,7 +362,7 @@ spec:
         - name: name
           value: clair-scan
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-clair-scan@sha256:c5cb2e44d2b98eeb8f3a8edb39f3684e6d2342e8f080a7e1d9b0d6ecfb071d94
+          value: quay.io/konflux-ci/tekton-catalog/task-clair-scan@sha256:a7cc183967f89c4ac100d04ab8f81e54733beee60a0528208107c9a22d3c43af
         - name: kind
           value: task
         resolver: bundles
