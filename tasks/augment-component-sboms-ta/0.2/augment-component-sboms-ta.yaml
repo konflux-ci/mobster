@@ -203,18 +203,6 @@ spec:
             secretKeyRef:
               name: $(params.cosignSecretName)
               key: AWS_SECRET_ACCESS_KEY
-        - name: REKOR_URL
-          valueFrom:
-            secretKeyRef:
-              name: $(params.cosignSecretName)
-              key: REKOR_URL
-              optional: true
-        - name: REKOR_PUBLIC_KEY
-          valueFrom:
-            secretKeyRef:
-              name: $(params.cosignSecretName)
-              key: REKOR_PUBLIC_KEY
-              optional: true
       computeResources:
         limits:
           memory: 1Gi
@@ -241,12 +229,6 @@ spec:
           --sign-key "$SIGN_KEY"
           --verify-key "$(params.attestationPubKey)"
         )
-        if [ -n "${REKOR_URL}" ]; then
-          mobster_args+=(--rekor-url "${REKOR_URL}")
-        fi
-        if [ -n "${REKOR_PUBLIC_KEY}" ]; then
-          mobster_args+=(--rekor-key "${REKOR_PUBLIC_KEY}")
-        fi
 
         process_component_sboms "${mobster_args[@]}"
 
