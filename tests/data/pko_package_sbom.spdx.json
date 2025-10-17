@@ -1,0 +1,50 @@
+{
+    "SPDXID": "SPDXRef-DOCUMENT",
+    "creationInfo": {
+        "created": "2025-10-17T16:17:57Z",
+        "creators": [
+            "Organization: Red Hat",
+            "Tool: Konflux CI"
+        ]
+    },
+    "dataLicense": "CC0-1.0",
+    "name": "package",
+    "spdxVersion": "SPDX-2.3",
+    "documentNamespace": "https://konflux-ci.dev/spdxdocs/package-8102b6c2-0a05-42e0-bb71-41ea53ba8006",
+    "packages": [
+        {
+            "SPDXID": "SPDXRef-image-test-stub-98ec73283cf69518251f7408e14287f3df25a0cc6fc3bdef0107911163cbc1a8",
+            "checksums": [
+                {
+                    "algorithm": "SHA256",
+                    "checksumValue": "91601fa0cc411d47d8e777bba7d6e1e0576e226f5b33fb8babcaf6f266bf0fa2"
+                }
+            ],
+            "downloadLocation": "NOASSERTION",
+            "externalRefs": [
+                {
+                    "referenceCategory": "PACKAGE_MANAGER",
+                    "referenceLocator": "pkg:oci/test-stub@sha256:91601fa0cc411d47d8e777bba7d6e1e0576e226f5b33fb8babcaf6f266bf0fa2?repository_url=quay.io/app-sre/test-stub",
+                    "referenceType": "purl"
+                },
+                {
+                    "referenceCategory": "OTHER",
+                    "referenceLocator": "git+https://github.com/package-operator/package-operator.git#ref=ea2eddf4769f79d799102a0761d6c0a599b4421a&path=config/packages/test-stub",
+                    "referenceType": "vcs"
+                }
+            ],
+            "filesAnalyzed": false,
+            "licenseDeclared": "NOASSERTION",
+            "name": "test-stub",
+            "supplier": "Organization: Red Hat",
+            "versionInfo": "5bfd6fb"
+        }
+    ],
+    "relationships": [
+        {
+            "spdxElementId": "SPDXRef-DOCUMENT",
+            "relatedSpdxElement": "SPDXRef-image-test-stub-98ec73283cf69518251f7408e14287f3df25a0cc6fc3bdef0107911163cbc1a8",
+            "relationshipType": "DESCRIBES"
+        }
+    ]
+}

@@ -8,7 +8,14 @@ from typing import Any
 from mobster.cmd import augment
 from mobster.cmd.delete import delete_tpa
 from mobster.cmd.download import download_tpa
-from mobster.cmd.generate import modelcar, oci_artifact, oci_image, oci_index, product
+from mobster.cmd.generate import (
+    modelcar,
+    oci_artifact,
+    oci_image,
+    oci_index,
+    pko_package,
+    product,
+)
 from mobster.cmd.upload import upload
 from mobster.image import ARTIFACT_PATTERN, PULLSPEC_PATTERN
 from mobster.release import ReleaseId
@@ -63,6 +70,7 @@ def generate_command_parser(subparsers: Any) -> None:
     generate_product_parser(generate_subparsers)
     generate_modelcar_parser(generate_subparsers)
     generate_oci_artifact_parser(generate_subparsers)
+    generate_pko_package_parser(generate_subparsers)
 
 
 def generate_oci_image_parser(subparsers: Any) -> None:
@@ -251,6 +259,41 @@ def generate_modelcar_parser(subparsers: Any) -> None:
         help="Type of SBOM to generate (default: cyclonedx)",
     )
     modelcar_parser.set_defaults(func=modelcar.GenerateModelcarCommand)
+
+
+def generate_pko_package_parser(subparsers: Any) -> None:
+    """
+    Generate the command parser for pko packages.
+    """
+    parser = subparsers.add_parser(
+        "pko-package", help="Generate an SBOM document that describes a pko package"
+    )
+    parser.add_argument(
+        "--package-pullspec",
+        type=str,
+        required=True,
+        help="Image pullspec for the pko package in the format "
+        "<registry>/<repository>:<tag>",
+    )
+    parser.add_argument(
+        "--package-digest",
+        type=str,
+        required=True,
+        help="Image digest for the pko package in the format sha256:<digest>",
+    )
+    parser.add_argument(
+        "--url",
+        type=str,
+        help="VCS URL to point to",
+        required=True,
+    )
+    parser.add_argument(
+        "--sbom-type",
+        choices=["cyclonedx", "spdx"],
+        default="cyclonedx",
+        help="Type of SBOM to generate (default: cyclonedx)",
+    )
+    parser.set_defaults(func=pko_package.GeneratePkoPackageCommand)
 
 
 def generate_oci_artifact_parser(subparsers: Any) -> None:
