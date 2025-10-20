@@ -78,6 +78,7 @@ def parse_args() -> ProcessProductArgs:
         concurrency=args.concurrency,
         labels=args.labels,
         atlas_retries=args.atlas_retries,
+        skip_upload=args.skip_upload,
         sbom_path=args.sbom_path,
     )  # pylint:disable=duplicate-code
 
@@ -127,13 +128,21 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
         args: Arguments containing data directory and configuration.
     """
     s3 = connect_with_s3(args.retry_s3_bucket)
-    if s3:
+
+    if not args.skip_upload and s3:
         LOGGER.info(
             "Uploading snapshot and release data to S3 with release_id=%s",
             args.release_id,
         )
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
         await upload_release_data(s3, args.release_data, args.release_id)
+    else:
+        LOGGER.debug(
+            "skip_upload=%s, so no snapshot / "
+            "release data upload to S3, for release_id=%s",
+            args.skip_upload,
+            args.release_id,
+        )
 
     if args.sbom_path is None:
         sbom_path = Path(
@@ -150,19 +159,26 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
         args.concurrency,
     )
 
-    report = await upload_sboms(
-        get_atlas_upload_config(
-            base_url=args.atlas_api_url,
-            retries=args.atlas_retries,
-            workers=args.upload_concurrency,
-            labels=args.labels,
-        ),
-        s3,
-        paths=[sbom_path],
-    )
+    if args.skip_upload:
+        LOGGER.debug(
+            "skip_upload=%s, no upload to TPA for release_id=%s",
+            args.skip_upload,
+            args.release_id,
+        )
+    else:
+        report = await upload_sboms(
+            get_atlas_upload_config(
+                base_url=args.atlas_api_url,
+                retries=args.atlas_retries,
+                workers=args.upload_concurrency,
+                labels=args.labels,
+            ),
+            s3,
+            paths=[sbom_path],
+        )
 
-    artifact = get_product_artifact(report)
-    artifact.write_result(args.result_dir)
+        artifact = get_product_artifact(report)
+        artifact.write_result(args.result_dir)
 
 
 def main() -> None:

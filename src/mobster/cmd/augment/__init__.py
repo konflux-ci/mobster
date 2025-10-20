@@ -265,6 +265,7 @@ async def update_sbom(
             sbom, attestation_valid = await load_sbom(
                 image, config.cosign, config.verify
             )
+
             if not update_sbom_in_situ(repository, image, sbom, config.release_id):
                 raise SBOMError(f"Unsupported SBOM format for image {image}.")
             sbom.reference = repository.public_repo_url + "@" + image.digest
