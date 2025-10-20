@@ -361,6 +361,26 @@ async def _extend_spdx_with_base_images(
                 )
             )
         # Handle Parent image
+        ## If parent image is also used as a build tool, also add BUILD_TOOL_OF
+        for annotation in annotations:
+            # Only way to do this w/o major refactor seems to be decoding the
+            # jsonencoded annotations and checking if the root package has
+            # "konflux:container:is_builder_image:for_stage" somewhere
+            if annotation.spdx_id != packages[-1].spdx_id:
+                continue
+            if annotation.annotator.name != "konflux:jsonencoded":
+                continue
+            if (
+                json.loads(annotation.annotation_comment)["name"]
+                == "konflux:container:is_builder_image:for_stage"
+            ):
+                sbom.relationships.append(
+                    Relationship(
+                        spdx_element_id=packages[-1].spdx_id,
+                        relationship_type=RelationshipType.BUILD_TOOL_OF,
+                        related_spdx_element_id=root_spdxid,
+                    )
+                )
         sbom.relationships.append(
             Relationship(
                 spdx_element_id=root_spdxid,
