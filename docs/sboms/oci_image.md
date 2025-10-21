@@ -79,7 +79,7 @@ parent or builder images to child images.
 * Attached base image SBOM must be in SPDX format with version 2.X.
 * `--contextualize` flag is present
 
-If requirements are not fulfilled, non-contextual SBOM (not contextualized) will be produced.
+If requirements are not fulfilled, non-contextual SBOM will be produced.
 
 
 ## Functional breakdown
@@ -164,7 +164,7 @@ the component’s build process (some packages may be removed during build, for 
 package` will update `package` but also may remove other packages by resolving dependency tree).
 This could occasionally result false positives in the resulting SBOM sourced from parent content.
 
-# Structure of the generated SBOM (non-contextual SBOM - not contextualized)
+# Structure of the generated SBOM (non-contextual SBOM)
 
 The generated SBOM has following structure:
 ```
