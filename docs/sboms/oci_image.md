@@ -56,8 +56,13 @@ mobster --verbose  generate oci-image \
 Contextual SBOM is a feature that establishes relationships between container images and their parent
 (base) or builder images in the software supply chain. Instead of treating each
 image as isolated, it creates a hierarchical view showing how packages flow from
-parent or builder images to child images.
+parent or builder images to child images. Knowing the origin of the content establishes a
+foundation for targeted content and vulnerability tracking within the image hierarchy.
 
+This documentation is intended for anyone interested in contextual SBOM or directly using it.
+It aims to set clear expectations about the feature by defining the requirements for obtaining it,
+explaining how it is assembled and structured, outlining potential future changes, and describing
+its benefits and limitations.
 
 * Feature will be released gradually. Planned features:
     * ✅ **Contextual SBOM for non-hermetic build**
