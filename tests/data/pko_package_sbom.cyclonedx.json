@@ -1,0 +1,64 @@
+{
+  "components": [
+    {
+      "bom-ref": "BomRef.744978428666349.562091409045682",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/package-operator/package-operator.git#ref=ea2eddf4769f79d799102a0761d6c0a599b4421a&path=config/packages/test-stub"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "91601fa0cc411d47d8e777bba7d6e1e0576e226f5b33fb8babcaf6f266bf0fa2"
+        }
+      ],
+      "name": "test-stub",
+      "purl": "pkg:oci/test-stub@sha256:91601fa0cc411d47d8e777bba7d6e1e0576e226f5b33fb8babcaf6f266bf0fa2?repository_url=quay.io/app-sre/test-stub",
+      "type": "container",
+      "version": "5bfd6fb"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "BomRef.744978428666349.562091409045682"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "BomRef.744978428666349.562091409045682",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/package-operator/package-operator.git#ref=ea2eddf4769f79d799102a0761d6c0a599b4421a&path=config/packages/test-stub"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "91601fa0cc411d47d8e777bba7d6e1e0576e226f5b33fb8babcaf6f266bf0fa2"
+        }
+      ],
+      "name": "test-stub",
+      "purl": "pkg:oci/test-stub@sha256:91601fa0cc411d47d8e777bba7d6e1e0576e226f5b33fb8babcaf6f266bf0fa2?repository_url=quay.io/app-sre/test-stub",
+      "type": "container",
+      "version": "5bfd6fb"
+    },
+    "timestamp": "2025-10-16T14:00:57.123947+00:00",
+    "tools": {
+      "components": [
+        {
+          "name": "Mobster",
+          "type": "application",
+          "version": "1.0.0"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:7f4d3d62-f69e-48dd-9fc1-9fb0052f1e0d",
+  "version": 1,
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5"
+}
