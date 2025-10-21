@@ -12,19 +12,17 @@
       
       
       
-        <link rel="next" href="sboms/sbom_lifecycle/">
       
-      
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.22">
     
     
       
-        <title>Mobster - SBOM management tool</title>
+        <title>SBOM for pko packages - Mobster - SBOM management tool</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.84d31ad4.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
       
       
 
@@ -43,7 +41,7 @@
       
     
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -62,7 +60,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#mobster" class="md-skip">
+        <a href="#sbom-for-pko-packages" class="md-skip">
           Skip to content
         </a>
       
@@ -76,7 +74,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="Mobster - SBOM management tool" class="md-header__button md-logo" aria-label="Mobster - SBOM management tool" data-md-component="logo">
+    <a href="../.." title="Mobster - SBOM management tool" class="md-header__button md-logo" aria-label="Mobster - SBOM management tool" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -96,7 +94,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              SBOM for pko packages
             
           </span>
         </div>
@@ -179,11 +177,9 @@
   
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="." class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
         
   
   
@@ -204,7 +200,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="sboms/sbom_lifecycle/" class="md-tabs__link">
+        <a href="../sbom_lifecycle/" class="md-tabs__link">
           
   
   
@@ -224,7 +220,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="sboms/oci_image/" class="md-tabs__link">
+        <a href="../oci_image/" class="md-tabs__link">
           
   
   
@@ -242,7 +238,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="sboms/formats/" class="md-tabs__link">
+      <a href="../formats/" class="md-tabs__link">
         
   
   
@@ -263,7 +259,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="development-environment/" class="md-tabs__link">
+        <a href="../../development-environment/" class="md-tabs__link">
           
   
   
@@ -299,7 +295,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="Mobster - SBOM management tool" class="md-nav__button md-logo" aria-label="Mobster - SBOM management tool" data-md-component="logo">
+    <a href="../.." title="Mobster - SBOM management tool" class="md-nav__button md-logo" aria-label="Mobster - SBOM management tool" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -326,32 +322,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Overview
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -362,104 +336,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#getting-started" class="md-nav__link">
-    <span class="md-ellipsis">
-      Getting started
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Getting started">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-pip" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using pip
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-container-image" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using container image
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#development-environment" class="md-nav__link">
-    <span class="md-ellipsis">
-      Development environment
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#contributing" class="md-nav__link">
-    <span class="md-ellipsis">
-      Contributing
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#release-process" class="md-nav__link">
-    <span class="md-ellipsis">
-      Release process
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Documentation
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#license" class="md-nav__link">
-    <span class="md-ellipsis">
-      License
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -516,7 +392,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sboms/sbom_lifecycle/" class="md-nav__link">
+      <a href="../sbom_lifecycle/" class="md-nav__link">
         
   
   
@@ -539,7 +415,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sboms/oci_image_augmentation/" class="md-nav__link">
+      <a href="../oci_image_augmentation/" class="md-nav__link">
         
   
   
@@ -562,7 +438,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sboms/upload/" class="md-nav__link">
+      <a href="../upload/" class="md-nav__link">
         
   
   
@@ -585,7 +461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sboms/download/" class="md-nav__link">
+      <a href="../download/" class="md-nav__link">
         
   
   
@@ -660,7 +536,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sboms/oci_image/" class="md-nav__link">
+      <a href="../oci_image/" class="md-nav__link">
         
   
   
@@ -683,7 +559,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sboms/oci_index_sbom/" class="md-nav__link">
+      <a href="../oci_index_sbom/" class="md-nav__link">
         
   
   
@@ -706,7 +582,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sboms/oci_artifact/" class="md-nav__link">
+      <a href="../oci_artifact/" class="md-nav__link">
         
   
   
@@ -729,7 +605,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sboms/modelcar_sbom/" class="md-nav__link">
+      <a href="../modelcar_sbom/" class="md-nav__link">
         
   
   
@@ -752,7 +628,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sboms/product/" class="md-nav__link">
+      <a href="../product/" class="md-nav__link">
         
   
   
@@ -782,7 +658,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sboms/formats/" class="md-nav__link">
+      <a href="../formats/" class="md-nav__link">
         
   
   
@@ -849,7 +725,7 @@
   
   
     <li class="md-nav__item">
-      <a href="development-environment/" class="md-nav__link">
+      <a href="../../development-environment/" class="md-nav__link">
         
   
   
@@ -872,7 +748,7 @@
   
   
     <li class="md-nav__item">
-      <a href="integration-testing/" class="md-nav__link">
+      <a href="../../integration-testing/" class="md-nav__link">
         
   
   
@@ -895,7 +771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="release/" class="md-nav__link">
+      <a href="../../release/" class="md-nav__link">
         
   
   
@@ -937,61 +813,37 @@
   
 
 
-<h1 id="mobster">Mobster</h1>
-<p>The Mobster project is a Python-based tool and ecosystem to
-work with SBOM (Software Bill of Materials) documents. Its goal is to provide
-unified interface for generating, manipulating and consuming SBOM documents
-in various formats.</p>
-<p>The tools is designed to cover a whole lifecycle of SBOM documents.
-The major stages are:</p>
+<h1 id="sbom-for-pko-packages">SBOM for pko packages</h1>
+<p>The Mobster tool is capable of generating SBOMs for pko packages that contains
+an content generated by the
+<a href="https://github.com/konflux-ci/build-definitions/tree/main/task/package-operator-package/0.1">oci-copy</a> 
+tekton task.</p>
+<h2 id="usage">Usage</h2>
+<pre><code class="language-bash"># Generating an SBOM for the test-stub package.
+mobster generate \
+    --output pko-package.spdx.json \
+    pko-package \
+    --url &quot;git+https://github.com/package-operator/package-operator.git#ref=ea2eddf4769f79d799102a0761d6c0a599b4421a&amp;path=config/packages/test-stub&quot; \
+    --package-pullspec quay.io/app-sre/test-stub:5bfd6fb \
+    --package-digest sha256:91601fa0cc411d47d8e777bba7d6e1e0576e226f5b33fb8babcaf6f266bf0fa2 \
+    --sbom-type spdx
+
+</code></pre>
+<p><strong>List of arguments:</strong></p>
 <ul>
-<li><strong>Generation</strong>: Generate SBOMs document from various sources (Syft, Hermeto, etc.)</li>
-<li><strong>Augmentation</strong>: Augment SBOM documents with additional information that are not
-  present in the phase of generation. This phase is usually done in the
-  release phase where we know more information about the software.</li>
-<li><strong>Validation</strong>: Validate a quality of the SBOM document in different stages
-  of the lifecycle. The validation is done by the <a href="https://github.com/RedHatProductSecurity/security-data-guidelines/tree/main">Product Security team
-  guidelies</a>.</li>
-<li><strong>Distribution</strong>: Distribute the SBOM document to various set of locations (e.g. Trusted
-  Profile Analyzer, container registry, etc.)</li>
+<li><code>--package-pullspec IMAGE_PULLSPEC</code></li>
+<li>Pullspec of the pko package to describe in the format <registry>/<repository>:<tag></li>
+<li><code>--package-digest IMAGE_DIGEST</code></li>
+<li>Digest of the pko package to describe in the format sha256:<digest></li>
+<li><code>--url URL</code></li>
+<li>URL that describes the source from which the pko package was build.</li>
+<li><code>--sbom-type {cyclonedx,spdx}</code></li>
+<li>Type of SBOM to generate (default: cyclonedx)</li>
 </ul>
-<h2 id="getting-started">Getting started</h2>
-<p>To use the Mobster tool, you need to install it first. There are multiple ways to isnstall
-the tool:</p>
-<h3 id="using-pip">Using pip</h3>
-<pre><code class="language-bash">pip install mobster
-mobster --help
-</code></pre>
-<h3 id="using-container-image">Using container image</h3>
-<pre><code class="language-bash">podman pull quay.io/konflux-ci/mobster:latest
-podman run -it quay.io/konflux-ci/mobster:latest mobster --help
-</code></pre>
-<h2 id="development-environment">Development environment</h2>
-<p>Follow an instruction in the <a href="development-environment/">development-environment.md</a>
-file to set up your development environment.</p>
-<h2 id="contributing">Contributing</h2>
-<p>We welcome contributions to the Mobster project! If you would like to contribute, please follow these steps:</p>
-<ol>
-<li>Fork the repository</li>
-<li>Create a new branch for your feature or bug fix</li>
-<li>Make your changes and commit them with a clear message (following the
-   <a href="https://www.conventionalcommits.org/en/v1.0.0/">conventional commit</a> format)
-   (e.g. <code>feat: add new feature</code> or <code>fix: fix a bug</code>)</li>
-<li>Open a pull request to the main repository</li>
-<li>Make sure the CI checks pass and the code is properly formatted</li>
-<li>Wait for the review and address any comments or suggestions</li>
-<li>Once your changes are approved, they will be merged into the main branch</li>
-<li>Congratulations! You have successfully contributed to the Mobster project</li>
-</ol>
-<h2 id="release-process">Release process</h2>
-<p>The release process is automated using GitHub Actions and Konflux. The process
-is described in detail in the <a href="release/">release.md</a> file.</p>
-<h2 id="documentation">Documentation</h2>
-<p>The documentation for the Mobster project is available
-at the <a href="https://konflux-ci.dev/mobster/">Mobster Gitbub pages</a>.</p>
-<h2 id="license">License</h2>
-<p>This project is licensed under the Apache License 2.0. See the
-<a href="https://github.com/konflux-ci/mobster/blob/main/LICENSE">LICENSE</a> file for details.</p>
+<h2 id="example">Example</h2>
+<p>The example SBOM generated by the above command is available in
+- <a href="https://github.com/konflux-ci/mobster/blob/main/tests/data/pko_package_sbom.spdx.json">tests/data/pko_package_sbom.spdx.json</a>.
+- <a href="https://github.com/konflux-ci/mobster/blob/main/tests/data/pko_package_sbom.cyclonedx.json">tests/data/pko_package_sbom.cyclonedx.json</a>.</p>
 
 
 
@@ -1040,10 +892,10 @@ at the <a href="https://konflux-ci.dev/mobster/">Mobster Gitbub pages</a>.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": ".", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "toc.integrate"], "search": "assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "toc.integrate"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.f55a23d4.min.js"></script>
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
       
     
   </body>
