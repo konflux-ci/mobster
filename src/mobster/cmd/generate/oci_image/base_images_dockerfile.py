@@ -370,7 +370,7 @@ async def _extend_spdx_with_base_images(
                 )
             )
         else:
-        # Otherwise, relate this image as a descendant of the last package
+            # Otherwise, relate this image as a descendant of the last package
             sbom.relationships.append(
                 Relationship(
                     spdx_element_id=root_spdxid,
