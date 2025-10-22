@@ -1,5 +1,56 @@
 # Changelog
 
+## [1.1.0](https://github.com/konflux-ci/mobster/compare/v1.0.0...v1.1.0) (2025-10-22)
+
+
+### Features
+
+* Add pko package SBOM type ([3eb5f08](https://github.com/konflux-ci/mobster/commit/3eb5f08afb24bbd3f5c2d0db6b3ea0d441834690))
+* **ISV-5709:** implement mapping mechanism for component and parent packages ([084d74a](https://github.com/konflux-ci/mobster/commit/084d74aa911ed33b61e00bedec17bd50e920239f))
+* **ISV-5709:** implement mapping mechanism for component and parent packages ([8d698cc](https://github.com/konflux-ci/mobster/commit/8d698ccc8b6665d1901da203fbe929e3c67e9ac0))
+* **ISV-5818:** Attest the release-time SBOM to the registry. ([bae54a9](https://github.com/konflux-ci/mobster/commit/bae54a99bcf75d0b8fca1be4d0b1aed87a1692b6))
+* **ISV-5818:** Attest the release-time SBOM to the registry. ([138af5b](https://github.com/konflux-ci/mobster/commit/138af5bfbe48b2757151b46b2f4be5db4a3a3b36))
+* **ISV-5820:** Attest the release-time SBOM to the registry -- update Tekton tasks to use Rekor. ([476a634](https://github.com/konflux-ci/mobster/commit/476a634a109165a2f7ff1b1902e3570e89dd07b1))
+* **ISV-5820:** Attest the release-time SBOM to the registry -- update Tekton tasks. ([89be7f1](https://github.com/konflux-ci/mobster/commit/89be7f1b59771fbb467209e5a9a42e4c55ce6d53))
+* **ISV-5820:** Attest the release-time SBOM to the registry -- update Tekton tasks. ([11de06c](https://github.com/konflux-ci/mobster/commit/11de06c220e1e916bfdedc8434e85617915584e2))
+* **ISV-5820:** Attest the release-time SBOM to the registry -- update Tekton tasks. ([3e6bbab](https://github.com/konflux-ci/mobster/commit/3e6bbab665265e64f821df64cfe2041850d616dc))
+* **ISV-6069:** SBOM regeneration CLI script ([a4f7821](https://github.com/konflux-ci/mobster/commit/a4f78211d6c41f2d356146da69837ee5da48d2d9))
+* **ISV-6069:** SBOM regeneration CLI script ([3ea8df0](https://github.com/konflux-ci/mobster/commit/3ea8df080a05311581e7e147494f47f4759cc5d0))
+* **ISV-6069:** SBOM regeneration CLI script (add documentation) ([ed76304](https://github.com/konflux-ci/mobster/commit/ed76304a7762b2b25306346a72ccb9e0150e6ed9))
+* **ISV-6069:** SBOM regeneration CLI script (add documentation) ([25ac864](https://github.com/konflux-ci/mobster/commit/25ac864ac3ec9b161b75c07db80933da78f44ddb))
+* **ISV-6069:** SBOM regeneration CLI script (add documentation) ([c9308af](https://github.com/konflux-ci/mobster/commit/c9308afe052c42f4bccdbef8b0156154bb2cc1cc))
+* **ISV-6069:** SBOM regeneration CLI script (add logging) ([51a3e13](https://github.com/konflux-ci/mobster/commit/51a3e1352c1e0704301d25ea9293f349e0f7f483))
+* **ISV-6069:** SBOM regeneration CLI script (additional tests, logging) ([f6ed170](https://github.com/konflux-ci/mobster/commit/f6ed17060730371c36ddf8c356612eba8e68720c))
+* **ISV-6069:** SBOM regeneration CLI script (fix formatting) ([b55fc4b](https://github.com/konflux-ci/mobster/commit/b55fc4bc0e0074736bef0217da2b64bf546f5abb))
+* **ISV-6069:** SBOM regeneration CLI script (fix formatting/linter issues) ([66fbc40](https://github.com/konflux-ci/mobster/commit/66fbc403e3bfb6db3f8dc9ab3ca9919dbefc589f))
+* **ISV-6069:** SBOM regeneration CLI script (fix typo) ([2c5ac80](https://github.com/konflux-ci/mobster/commit/2c5ac803f010c4f0149c4a7def2ceddcafb4423b))
+* **ISV-6069:** SBOM regeneration CLI script (remove cosign config from regeneration script) ([bddde50](https://github.com/konflux-ci/mobster/commit/bddde5029bc4d4ec55c1fd4f243795e7cc403da9))
+* **ISV-6069:** SBOM regeneration CLI script (remove functionality for deleting previously generated SBOMs, since that could create potential problems with Product Security tooling) ([886df22](https://github.com/konflux-ci/mobster/commit/886df22c4afa65dffaa69f692923caa1c7cd3ae1))
+* **ISV-6069:** SBOM regeneration CLI script (remove functionality to optionally fetch from release_repo) ([41262f4](https://github.com/konflux-ci/mobster/commit/41262f4e577fa762efa916c611f8333c2a70c1f0))
+* **ISV-6069:** SBOM regeneration CLI script (remove no longer used cli args) ([2ebc806](https://github.com/konflux-ci/mobster/commit/2ebc8067aba8e3718e6048c19d6aa8e721df863c))
+* **ISV-6069:** SBOM regeneration CLI script (restore cosign config, ensure prov verify and attest are skipped) ([9d65122](https://github.com/konflux-ci/mobster/commit/9d651225aedaf9a864bd22a734d913ff67452af8))
+* **ISV-6069:** SBOM regeneration CLI script (simplify get release id) ([d9595b0](https://github.com/konflux-ci/mobster/commit/d9595b050d742fe84f9ef69f373d09768f8231fc))
+* **ISV-6199:** Enable contextual SBOM in mobster ([838b922](https://github.com/konflux-ci/mobster/commit/838b922c19c445216990ba7bcfb880f062481132))
+* **ISV-6199:** Enable contextual SBOM in mobster - add control arguments ([eaf7e1d](https://github.com/konflux-ci/mobster/commit/eaf7e1d7ec34644760046a467e42782b583dd6f6))
+* **ISV-6200:** Log uploaded sbom size info ([e3e3cbe](https://github.com/konflux-ci/mobster/commit/e3e3cbe41ac94b2bb18625c5370781fcba5dd56b))
+* **ISV-6200:** Log uploaded sbom size info ([cb57560](https://github.com/konflux-ci/mobster/commit/cb57560d5151b539d7bdc5b9dc3b579fa1793030))
+
+
+### Bug Fixes
+
+* addressed comments: test data clean-up, edited annotation label for grandparents, updated invalid test ([b161325](https://github.com/konflux-ci/mobster/commit/b16132545f2a1d58d7f979b9901709b573e8adbe))
+* addressed review comments ([b44a332](https://github.com/konflux-ci/mobster/commit/b44a3328924898650e256dacf790adee93bfaeb0))
+* enable integration tests ([b9747f2](https://github.com/konflux-ci/mobster/commit/b9747f280f823455aa9bcce188012a7cdc2359db))
+* Fixed bug making base image annotation unique for future contextualization ([5beb072](https://github.com/konflux-ci/mobster/commit/5beb07274448760538fd7d6611525dcfe9dcc944))
+* **ISV-6373:** use temporary storage for augmented/generated SBOMs ([a3b754f](https://github.com/konflux-ci/mobster/commit/a3b754f80aad668fb44182e3955ef37ce5843e42))
+* **ISV-6373:** use temporary storage for augmented/generated SBOMs ([94ea679](https://github.com/konflux-ci/mobster/commit/94ea6792bdbd69e4a5909b37c31ea4c6ede8eac3))
+* Revert Rekor activation in Release pipeline. ([9f05100](https://github.com/konflux-ci/mobster/commit/9f051004484ae2f2f2f969acf8f949deb173a390))
+* Revert Rekor activation in Release pipeline. ([5f7a1dc](https://github.com/konflux-ci/mobster/commit/5f7a1dca05425d85d4d0f0d67c484b4ad0b52ef7))
+* test related helper functions cleanup ([a8c3dc3](https://github.com/konflux-ci/mobster/commit/a8c3dc3225b4bb6f004acec8631296edb214f58b))
+* Update to latest version of task to address Conforma ([cadee02](https://github.com/konflux-ci/mobster/commit/cadee02814e8853a010f7674e9380fbdd8d851db))
+* Update to latest version of task to address Conforma ([1b2d590](https://github.com/konflux-ci/mobster/commit/1b2d59065fbe368c0f9819b54fba3acccb25793f))
+* updated unit tests of the component-modification functionality ([9cf8016](https://github.com/konflux-ci/mobster/commit/9cf8016d35a7d48a2f25b0558b3bdb5938b8d01b))
+
 ## [1.0.0](https://github.com/konflux-ci/mobster/compare/v0.7.0...v1.0.0) (2025-09-26)
 
 
