@@ -360,6 +360,15 @@ async def _extend_spdx_with_base_images(
                     related_spdx_element_id=root_spdxid,
                 )
             )
+        # Check if the parent is also used as a build tool
+        if base_image_refs[-1] in base_image_refs[:-1]:
+            sbom.relationships.append(
+                Relationship(
+                    spdx_element_id=packages[-1].spdx_id,
+                    relationship_type=RelationshipType.BUILD_TOOL_OF,
+                    related_spdx_element_id=root_spdxid,
+                )
+            )
         # Handle Parent image
         sbom.relationships.append(
             Relationship(
