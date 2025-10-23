@@ -621,6 +621,66 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#contextual-sbom" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contextual SBOM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requirements-for-executing-contextual-sbom-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Requirements for executing Contextual SBOM workflow
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functional-breakdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      Functional breakdown
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Functional breakdown">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#contextual-sbom-for-non-hermetic-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contextual SBOM for non-hermetic build
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#builder-content-contextualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Builder content contextualization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contextual-sbom-for-hermetic-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contextual SBOM for hermetic build
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -931,16 +991,146 @@ support combining SPDX and CycloneDX SBOMs.</p>
 <li><code>--dockerfile-target</code> -- if a build target was used for multi-stage build, use this argument to specify the build target</li>
 <li><code>--additional-base-images</code> -- optionally add references to other build images outside the parsed Dockerfile.
   expects the format <code>&lt;registry&gt;/&lt;repository&gt;:&lt;tag&gt;@sha256:&lt;digest value&gt;</code></li>
-<li><code>--contextualize</code> -- NOT IMPLEMENTED YET</li>
+<li><code>--contextualize</code> -- Allows SBOM contextualization (see <a href="#contextual-sbom">Contextual SBOM</a>)</li>
 <li><code>--output</code> -- where to save the SBOM. prints it to STDOUT if this is not specified</li>
 </ul>
-<h1 id="structure-of-the-generated-sbom">Structure of the generated SBOM</h1>
+<h2 id="contextual-sbom">Contextual SBOM</h2>
+<p>Contextual SBOM is a feature that establishes relationships between container images and their parent
+(base) or builder images in the software supply chain. Instead of treating each
+image as isolated, it creates a hierarchical view showing how packages flow from
+parent or builder images to child images. Knowing the origin of the content establishes a
+foundation for targeted content and vulnerability tracking within the image hierarchy.</p>
+<p>This documentation is intended for anyone interested in contextual SBOM or directly using it.
+It aims to set clear expectations about the feature by defining the requirements for obtaining it,
+explaining how it is assembled and structured, outlining potential future changes, and describing
+its benefits and limitations.</p>
+<ul>
+<li>Feature will be released gradually. Planned features:<ul>
+<li>✅ <strong>Contextual SBOM for non-hermetic build</strong><ul>
+<li>identification of the base image content in component in non-hermetic build</li>
+<li>achieved by matching packages from the base image SBOM to the component
+  SBOM and marking their origin with relationships</li>
+</ul>
+</li>
+<li>⏳ <strong>Builder content contextualization</strong><ul>
+<li>identification of the content copied from multistage build stages to component</li>
+<li>acquired by generating an SBOM from content copied from builder images
+  and merged into the final SBOM to indicate the origin of that content</li>
+</ul>
+</li>
+<li>⏳ <strong>Contextual SBOM for hermetic build</strong><ul>
+<li>differentiation of the base image content and component content in hermetic build</li>
+<li>assembled from base image content, hermeto content and - in multistage builds -
+  builder content</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="requirements-for-executing-contextual-sbom-workflow">Requirements for executing Contextual SBOM workflow</h2>
+<ul>
+<li>Base image of the component must be built by konflux and must have SBOM attached</li>
+<li>Attached base image SBOM must be in SPDX format with version 2.X.</li>
+<li><code>--contextualize</code> flag is present</li>
+</ul>
+<p>If requirements are not fulfilled, non-contextual SBOM will be produced.</p>
+<h2 id="functional-breakdown">Functional breakdown</h2>
+<ul>
+<li>Feature profoundly changes relationship structure of the SBOM<ul>
+<li><strong>Non-contextual SBOM:</strong> Relationships capture only first base image as component ancestor.
+  All package relationships point to component. There is no concept of the base/parent
+  image content, origin of the packages is unknown. Those are all SBOMs produced before
+  contextualization.</li>
+<li><strong>Contextual SBOM:</strong> Relationships capture all base images as component ancestors in
+  ordered chain up to last non-contextualized ancestor. Package relationships point
+  to those ancestors (or component itself) indicating origin of the package.</li>
+</ul>
+</li>
+<li>Mechanism of Contextual SBOM is different for the hermetic and non-hermetic build.</li>
+<li>Comparing to non-contextual SBOM, <strong>all packages remain present</strong>; none are removed.</li>
+<li>Gradual changes will remain <strong>backward compatible</strong> and will build on each other,
+  resulting in a richer and more accurate SBOM (e.g., base image content identification
+  in non-hermetic builds will later be enhanced with builder content for components with
+  multistage builds, forming the foundation for contextual SBOMs in hermetic builds).</li>
+<li>Contextual SBOMs are designed to be <strong>self-assembling</strong> and this works across hermetic and
+  non-hermetic builds interchangeably and also with contextualized or non-contextualized
+  parent SBOMs. 
+  It means that built component can be contextualized by its parent SBOM regardless if parent
+  SBOM is sourced from hermetic or non-hermetic build, or if it is contextualized or
+  non-contextualized. It also means that if parent SBOM is contextualized (is aware of its 
+  parent - or component's grandparent content), contextual information is preserved and
+  passed to the component.</li>
+<li>Contextual SBOM mechanism can be disabled by <em>not</em> including <code>--contextualize</code> flag in
+  <code>mobster generate oci-image</code> command - in that case, non-contextual SBOM will be produced.</li>
+</ul>
+<h3 id="contextual-sbom-for-non-hermetic-build">Contextual SBOM for non-hermetic build</h3>
+<p>Contextual SBOM for non-hermetic build is achieved by generating syft-based component SBOM,
+downloading a SBOM of the base image (if exists and has SPDX format) and matching packages
+from parent to component according to the chosen identifiers.
+<code>CONTAINS</code> relationships of the matched packages are modified in component SBOM indicating
+source of origin shifting relationships from component to parent or grandparents.</p>
+<p><em>Warning:</em> Matching mechanism is not perfect, because SPDX specification is missing
+consistent unique identifier across different packages and thus Contextual SBOM for
+non-hermetic build is for now the best effort considering differentiation between content
+added by component and its parent content. This means that not all content from parent
+can be identified in component. This might be improved in future versions.
+For now for every such Contextual SBOM document produced in non-hermetic build one can say:
+- this portion of the identified packages is sourced from parent (or grandparents)
+  of the component
+- packages that were not matched could be sourced either from parent (or
+  grandparents) or they were installed in component (in fact, this is current
+  state in non-contextual SBOM)</p>
+<h3 id="builder-content-contextualization">Builder content contextualization</h3>
+<p>Builder content is any content copied from builder images in multistage builds. This content
+will be identified by inspection of build layers in local buildah build artifacts storage.
+From this content, an SPDX SBOM is generated. The relationships will describe the origin of
+copied content from specific builder images, and this partial SBOM is subsequently merged
+into the final Contextual SBOM. This content;
+- will be produced only within contextual SBOM workflow for components with
+  multistage build
+- will be deduplicated against Contextual SBOM from non-hermetic build (builder packages
+  should be already captured in syft component scan)
+- will serve as last step for Contextual SBOM for hermetic build enablement</p>
+<h3 id="contextual-sbom-for-hermetic-build">Contextual SBOM for hermetic build</h3>
+<p>Contextual SBOM for hermetic build is not produced by matching of the packages between two
+SPDX documents but assembled from two (single-stage builds) or three (multi-stage builds)
+SBOMs:
+1. Downloaded parent content (if not available, contextual SBOM is skipped and non-contextual 
+   SBOM will be produced) defines the content of the base image. Might be previously
+   contextualized or not.
+2. Hermeto content is representation of content installed in component on the top of base
+   image (not including builder content - hermeto cannot see it)
+3. [In case of multistage builds] - Builder content defines the content copied from multistage
+   build stages to the component.</p>
+<p>Assembling SBOM this way is reducing dependence on syft - no syft scan has to be performed on
+built component, no deduplication is done with hermeto SBOM afterward. Another benefit of hermetic
+build contextual SBOMs is, the more ancestors of a component are built hermetically, the less
+Syft-detected content will appear in the component’s SBOM.
+Warning: It is important to understand that a downloaded parent SBOM content may be affected by
+the component’s build process (some packages may be removed during build, for example <code>dnf update
+package</code> will update <code>package</code> but also may remove other packages by resolving dependency tree).
+This could occasionally result false positives in the resulting SBOM sourced from parent content.</p>
+<h1 id="structure-of-the-generated-sbom-non-contextual-sbom">Structure of the generated SBOM (non-contextual SBOM)</h1>
+<p>The generated SBOM has following structure:</p>
+<pre><code> - SPDXRef-DOCUMENT
+    - SPDXRef-image (DESCRIBES)
+        - package A (CONTAINS)
+        - package B (CONTAINS)
+        - package C (CONTAINS)
+        - base image (DESCENDANT_OF)
+        - builder image 1 (BUILD_TOOL_OF)
+        - builder image 2 (BUILD_TOOL_OF)
+</code></pre>
+<h1 id="structure-of-the-generated-sbom-contextual-sbom">Structure of the generated SBOM (Contextual SBOM)</h1>
 <p>The generated SBOM has following structure:</p>
 <pre><code> - SPDXRef-DOCUMENT
     - SPDXRef-image (DESCRIBES)
         - package A (CONTAINS)
         - package B (CONTAINS)
         - base image (DESCENDANT_OF)
+            - package C (CONTAINS)
+            - grandparent image (DESCENDANT_OF)
+                - package D (CONTAINS)
         - builder image 1 (BUILD_TOOL_OF)
         - builder image 2 (BUILD_TOOL_OF)
 </code></pre>
