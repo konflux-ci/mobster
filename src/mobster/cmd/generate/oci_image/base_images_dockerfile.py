@@ -360,8 +360,10 @@ async def _extend_spdx_with_base_images(
                     related_spdx_element_id=root_spdxid,
                 )
             )
-        # If building from scratch, add the last package as a build tool
-        if base_image_refs[-1] is None:
+        # Check if the parent is also used as a build tool
+        # (or if builing from scratch, where the last package would also need
+        # to be counted as a build tool)
+        if base_image_refs[-1] in base_image_refs[:-1] or base_image_refs[-1] is None:
             sbom.relationships.append(
                 Relationship(
                     spdx_element_id=packages[-1].spdx_id,
@@ -369,8 +371,8 @@ async def _extend_spdx_with_base_images(
                     related_spdx_element_id=root_spdxid,
                 )
             )
-        else:
-            # Otherwise, relate this image as a descendant of the last package
+        # Otherwise, relate this image as a descendant of the last set package
+        if base_image_refs[-1] is not None:
             sbom.relationships.append(
                 Relationship(
                     spdx_element_id=root_spdxid,

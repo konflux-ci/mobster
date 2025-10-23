@@ -509,7 +509,7 @@ async def test__get_spdx_packages_from_base_images(
                     },
                 ],
             },
-            ["alpine:3.10", "foobar:v1"],
+            ["alpine:3.10", "foobar:v1", "alpine:3.10"],
             {
                 "alpine:3.10": Image.from_image_index_url_and_digest(
                     "alpine:3.10", "sha256:1"
@@ -539,27 +539,6 @@ async def test__get_spdx_packages_from_base_images(
                         download_location=SpdxNoAssertion(),
                     ),
                     Package(
-                        spdx_id="SPDXRef-image-alpine-204f767854409b9fcd248f74feb9f61e6e89fe60bb633fa93590c7a397db7fb9",
-                        name="alpine",
-                        version="3.10",
-                        supplier=Actor(
-                            actor_type=ActorType.ORGANIZATION, name="Red Hat"
-                        ),
-                        files_analyzed=False,
-                        checksums=[
-                            Checksum(algorithm=ChecksumAlgorithm.SHA256, value="1")
-                        ],
-                        license_declared=SpdxNoAssertion(),
-                        external_references=[
-                            ExternalPackageRef(
-                                category=ExternalPackageRefCategory.PACKAGE_MANAGER,
-                                reference_type="purl",
-                                locator="pkg:oci/alpine@sha256:1?repository_url=alpine",
-                            )
-                        ],
-                        download_location=SpdxNoAssertion(),
-                    ),
-                    Package(
                         spdx_id="SPDXRef-image-foobar-c1cf745519920203df7cb8ac3b38264ab832e5bcf59bdecf6a2face5d9178e9e",
                         name="foobar",
                         download_location=SpdxNoAssertion(),
@@ -580,6 +559,27 @@ async def test__get_spdx_packages_from_base_images(
                             )
                         ],
                     ),
+                    Package(
+                        spdx_id="SPDXRef-image-alpine-204f767854409b9fcd248f74feb9f61e6e89fe60bb633fa93590c7a397db7fb9",
+                        name="alpine",
+                        version="3.10",
+                        supplier=Actor(
+                            actor_type=ActorType.ORGANIZATION, name="Red Hat"
+                        ),
+                        files_analyzed=False,
+                        checksums=[
+                            Checksum(algorithm=ChecksumAlgorithm.SHA256, value="1")
+                        ],
+                        license_declared=SpdxNoAssertion(),
+                        external_references=[
+                            ExternalPackageRef(
+                                category=ExternalPackageRefCategory.PACKAGE_MANAGER,
+                                reference_type="purl",
+                                locator="pkg:oci/alpine@sha256:1?repository_url=alpine",
+                            )
+                        ],
+                        download_location=SpdxNoAssertion(),
+                    ),
                 ],
                 relationships=[
                     Relationship(
@@ -593,6 +593,11 @@ async def test__get_spdx_packages_from_base_images(
                         related_spdx_element_id="SPDXRef-foo",
                     ),
                     Relationship(
+                        spdx_element_id="SPDXRef-image-foobar-c1cf745519920203df7cb8ac3b38264ab832e5bcf59bdecf6a2face5d9178e9e",
+                        relationship_type=RelationshipType.BUILD_TOOL_OF,
+                        related_spdx_element_id="SPDXRef-foo",
+                    ),
+                    Relationship(
                         spdx_element_id="SPDXRef-image-alpine-204f767854409b9fcd248f74feb9f61e6e89fe60bb633fa93590c7a397db7fb9",
                         relationship_type=RelationshipType.BUILD_TOOL_OF,
                         related_spdx_element_id="SPDXRef-foo",
@@ -600,10 +605,19 @@ async def test__get_spdx_packages_from_base_images(
                     Relationship(
                         spdx_element_id="SPDXRef-foo",
                         relationship_type=RelationshipType.DESCENDANT_OF,
-                        related_spdx_element_id="SPDXRef-image-foobar-c1cf745519920203df7cb8ac3b38264ab832e5bcf59bdecf6a2face5d9178e9e",
+                        related_spdx_element_id="SPDXRef-image-alpine-204f767854409b9fcd248f74feb9f61e6e89fe60bb633fa93590c7a397db7fb9",
                     ),
                 ],
                 annotations=[
+                    Annotation(
+                        spdx_id="SPDXRef-image-foobar-c1cf745519920203df7cb8ac3b38264ab832e5bcf59bdecf6a2face5d9178e9e",
+                        annotation_type=AnnotationType.OTHER,
+                        annotator=Actor(
+                            actor_type=ActorType.TOOL, name="konflux:jsonencoded"
+                        ),
+                        annotation_date=datetime.datetime(1970, 1, 1),
+                        annotation_comment='{"name":"konflux:container:is_builder_image:for_stage","value":"1"}',
+                    ),
                     Annotation(
                         spdx_id="SPDXRef-image-alpine-204f767854409b9fcd248f74feb9f61e6e89fe60bb633fa93590c7a397db7fb9",
                         annotation_type=AnnotationType.OTHER,
@@ -614,7 +628,7 @@ async def test__get_spdx_packages_from_base_images(
                         annotation_comment='{"name":"konflux:container:is_builder_image:for_stage","value":"0"}',
                     ),
                     Annotation(
-                        spdx_id="SPDXRef-image-foobar-c1cf745519920203df7cb8ac3b38264ab832e5bcf59bdecf6a2face5d9178e9e",
+                        spdx_id="SPDXRef-image-alpine-204f767854409b9fcd248f74feb9f61e6e89fe60bb633fa93590c7a397db7fb9",
                         annotation_type=AnnotationType.OTHER,
                         annotator=Actor(
                             actor_type=ActorType.TOOL, name="konflux:jsonencoded"
