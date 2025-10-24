@@ -482,7 +482,7 @@ async def test__get_spdx_packages_from_base_images(
 @pytest.mark.parametrize(
     ["sbom_additional_fields", "base_image_refs", "base_images", "expected_output"],
     [
-        ( # image where parent is also used as build tool
+        (  # image where parent is also used as build tool
             {
                 "packages": [
                     {
@@ -639,7 +639,7 @@ async def test__get_spdx_packages_from_base_images(
                 ],
             ),
         ),
-        ( # image built from scratch
+        (  # image built from scratch
             {
                 "packages": [
                     {
