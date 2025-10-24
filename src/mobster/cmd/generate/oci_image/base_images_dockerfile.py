@@ -361,7 +361,7 @@ async def _extend_spdx_with_base_images(
                 )
             )
         # Check if the parent is also used as a build tool
-        # (or if builing from scratch, where the last package would also need
+        # (or if building from scratch, where the last package would also need
         # to be counted as a build tool)
         if base_image_refs[-1] in base_image_refs[:-1] or base_image_refs[-1] is None:
             sbom.relationships.append(
