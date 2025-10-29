@@ -180,6 +180,7 @@ async def test_GenerateOciIndexCommand_save(
 ) -> None:
     args = MagicMock()
     args.output = "/tmp/test.json"
+    args.validate = True
     command = GenerateOciIndexCommand(args)
 
     command._content = MagicMock()
