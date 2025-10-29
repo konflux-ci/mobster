@@ -141,5 +141,5 @@ class GenerateOciIndexCommand(GenerateCommand):
             write_file(
                 self._content,
                 str(self.cli_args.output),
-                validate=True,
+                validate=self.cli_args.validate,
             )

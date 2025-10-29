@@ -103,7 +103,7 @@ class GenerateProductCommand(GenerateCommand):
             stream: The stream to write to.
         """
         spdx_json_writer.write_document_to_stream(
-            document=document, stream=stream, validate=True
+            document=document, stream=stream, validate=self.cli_args.validate
         )
 
 
