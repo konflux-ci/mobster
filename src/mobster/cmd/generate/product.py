@@ -69,7 +69,7 @@ class GenerateProductCommand(GenerateCommand):
         assert self.release_notes, "release_notes not set"
         assert self.document, "document not set"
 
-        validate = self.cli_args.validate
+        validate = self.cli_args.skip_validation is False
         if self.cli_args.output:
             output_path = self.cli_args.output
             LOGGER.info("Saving SBOM to %s.", output_path)
