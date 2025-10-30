@@ -138,8 +138,9 @@ class GenerateOciIndexCommand(GenerateCommand):
         """
         if self.cli_args.output and self._content:
             LOGGER.info("Saving SBOM document to '%s'", self.cli_args.output)
+            validate = self.cli_args.skip_validation is False
             write_file(
                 self._content,
                 str(self.cli_args.output),
-                validate=True,
+                validate=validate,
             )

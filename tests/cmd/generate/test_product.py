@@ -40,6 +40,7 @@ class Args:
     snapshot: Path
     release_data: Path
     output: Path
+    skip_validation: bool
     release_id: ReleaseId
     concurrency: int
 
@@ -53,6 +54,7 @@ def generate_product_command_args(request: Any) -> Args:
         snapshot=Path("snapshot"),
         release_data=Path("data.json"),
         output=request.param[0],
+        skip_validation=False,
         release_id=request.param[1],
         concurrency=8,
     )
