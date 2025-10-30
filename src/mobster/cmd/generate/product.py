@@ -86,7 +86,9 @@ class GenerateProductCommand(GenerateCommand):
         """
         return await self._save(document, sys.stdout, validate)
 
-    async def _save_file(self, document: Document, output: Path, validate: bool) -> None:
+    async def _save_file(
+        self, document: Document, output: Path, validate: bool
+    ) -> None:
         """Validate and save the passed SPDX document to a specified path.
 
         Args:
