@@ -155,7 +155,10 @@ async def download_parent_image_sbom(
             "SBOM format is not supported for this workflow."
         )
         return None
-    LOGGER.debug("Contextual mechanism will be used.")
+    LOGGER.info(
+        "Contextual workflow will be used. Parent SBOM used for contextualization: %s",
+        sbom.doc["documentNamespace"],
+    )
     return sbom.doc
 
 
@@ -383,6 +386,9 @@ def associate_relationships_and_related_packages(
     """
     Associate relationships (related_spdx_element_id) and related
     packages (spdx_id) together for given relationship type.
+    First relationship index is built. Then packages and
+    relationships are associated based on index.
+
     Args:
         packages: List of Package objects.
         relationships: List of Relationship objects.
@@ -391,18 +397,130 @@ def associate_relationships_and_related_packages(
     Returns:
         List of tuples of related package and relationship objects.
     """
-    assoc_package_relationship = []
+    rel_index: dict[str, Relationship] = {}
+    for rel in relationships:
+        if rel.relationship_type == relationship_type and isinstance(
+            rel.related_spdx_element_id, str
+        ):
+            rel_index[rel.related_spdx_element_id] = rel
 
+    assoc_package_relationship = []
     for pkg in packages:
-        for rel in relationships:
-            if (
-                pkg.spdx_id == rel.related_spdx_element_id
-                and rel.relationship_type == relationship_type
-            ):
-                assoc_package_relationship.append((pkg, rel))
-                break
+        if pkg.spdx_id in rel_index:
+            assoc_package_relationship.append((pkg, rel_index[pkg.spdx_id]))
 
     return assoc_package_relationship
+
+
+class ComponentPackageIndex:
+    """
+    Multi-index structure for fast component package lookups.
+
+    Builds indexes based on checksums, verification codes, and PURLs
+    """
+
+    def __init__(self, component_packages: list[tuple[Package, Relationship]]):
+        """
+        Initialize and build all indexes.
+
+        Args:
+            component_packages: List of (Package, Relationship) tuples to index
+        """
+        self.checksum_index: dict[str, list[tuple[Package, Relationship]]] = {}
+        self.verification_code_index: dict[str, list[tuple[Package, Relationship]]] = {}
+        self.purl_index: dict[str, list[tuple[Package, Relationship]]] = {}
+        self.component_packages = component_packages
+        self.matched_packages: set[str] = set()
+
+        self._build_indexes()
+
+    def _build_indexes(self) -> None:
+        """
+        Build indexes for all identifiers. Index considers possibility
+        of multiple packages under same unique id in component SBOM
+        (multiple packages with same identifier).
+        """
+        for pkg, rel in self.component_packages:
+            if pkg.checksums:
+                checksum_key = self._create_checksum_key(pkg.checksums)
+                self.checksum_index.setdefault(checksum_key, []).append((pkg, rel))
+
+            if pkg.verification_code:
+                vc_key = pkg.verification_code.value
+                self.verification_code_index.setdefault(vc_key, []).append((pkg, rel))
+
+            purl = get_package_purl(pkg)
+            # Packages with missing or malformed purl, or
+            # purl without version are not indexed
+            if purl:
+                try:
+                    purl_obj = PackageURL.from_string(purl)
+                    if purl_obj.version:
+                        purl_key = self._create_purl_key(purl_obj)
+                        self.purl_index.setdefault(purl_key, []).append((pkg, rel))
+                except ValueError:
+                    pass
+
+    @staticmethod
+    def _create_checksum_key(checksums: list[Checksum]) -> str:
+        """Create unique key from checksums list."""
+        checksum_strs = [f"{c.algorithm}:{c.value}" for c in checksums]
+        return "|".join(sorted(checksum_strs))
+
+    @staticmethod
+    def _create_purl_key(purl: PackageURL) -> str:
+        """Create unique key from PURL object."""
+        return f"{purl.type}/{purl.namespace or ''}/{purl.name}@{purl.version}"
+
+    def find_candidates(
+        self, parent_package: Package
+    ) -> list[tuple[Package, Relationship]]:
+        """
+        Find candidate matches in component index for parent package
+        using prioritized strategy.
+
+        Priority: checksums -> verification_code -> purl
+
+        Args:
+            parent_package: Parent package to find candidates for
+                in component package index
+
+        Returns:
+            List of candidate (Package, Relationship) tuples
+        """
+        if parent_package.checksums:
+            checksum_key = self._create_checksum_key(parent_package.checksums)
+            if checksum_key in self.checksum_index:
+                return self.checksum_index[checksum_key]
+
+        if parent_package.verification_code:
+            vc_key = parent_package.verification_code.value
+            if vc_key in self.verification_code_index:
+                return self.verification_code_index[vc_key]
+
+        purl = get_package_purl(parent_package)
+        # Parent packages with absent checksum, pkg verification code,
+        # missing or malformed purl, or purl without version are not
+        # eligible to be used for searching in component index
+        # We cannot match such parent packages with component
+        if purl:
+            try:
+                purl_obj = PackageURL.from_string(purl)
+                if purl_obj.version:
+                    purl_key = self._create_purl_key(purl_obj)
+                    if purl_key in self.purl_index:
+                        return self.purl_index[purl_key]
+            except ValueError:
+                return []
+        return []
+
+    def mark_as_matched(self, spdx_id: str) -> None:
+        """Mark component package as matched."""
+        self.matched_packages.add(spdx_id)
+
+    def is_matched(self, spdx_id: str) -> bool:
+        """Check if component package was already matched."""
+        return spdx_id in self.matched_packages
 
 
 async def map_parent_to_component_and_modify_component(
@@ -432,36 +550,45 @@ async def map_parent_to_component_and_modify_component(
     """
     parent_root_packages = await find_spdx_root_packages_spdxid(parent_sbom_doc)
 
-    parent_package_with_contains_relationship = (
-        associate_relationships_and_related_packages(
-            parent_sbom_doc.packages,
-            parent_sbom_doc.relationships,
-            relationship_type=RelationshipType.CONTAINS,
-        )
+    parent_packages = associate_relationships_and_related_packages(
+        parent_sbom_doc.packages,
+        parent_sbom_doc.relationships,
+        relationship_type=RelationshipType.CONTAINS,
     )
-    component_package_with_contains_relationship = (
-        associate_relationships_and_related_packages(
-            component_sbom_doc.packages,
-            component_sbom_doc.relationships,
-            relationship_type=RelationshipType.CONTAINS,
-        )
+    component_packages = associate_relationships_and_related_packages(
+        component_sbom_doc.packages,
+        component_sbom_doc.relationships,
+        relationship_type=RelationshipType.CONTAINS,
     )
 
-    for (
-        parent_package,
-        parent_relationship,
-    ) in parent_package_with_contains_relationship:
-        for (
-            component_package,
-            component_relationship,
-        ) in component_package_with_contains_relationship:
-            if package_matched(parent_sbom_doc, parent_package, component_package):
+    component_index = ComponentPackageIndex(component_packages)
+
+    for parent_package, parent_relationship in parent_packages:
+        component_pkg_candidates = component_index.find_candidates(parent_package)
+
+        # No candidates for parent package
+        # in component found - check other parent package
+        if not component_pkg_candidates:
+            continue
+
+        for component_package, component_relationship in component_pkg_candidates:
+            # Skip component candidate if already matched
+            # (do not match duplicates in parent multiple times)
+            if component_index.is_matched(component_package.spdx_id):
+                continue
+
+            if package_matched(
+                parent_package=parent_package,
+                component_package=component_package,
+                parent_sbom_doc=parent_sbom_doc,
+            ):
                 _modify_relationship_in_component(
                     component_relationship,
                     parent_relationship,
                     parent_spdx_id_from_component,
                     parent_root_packages,
                 )
+                component_index.mark_as_matched(component_package.spdx_id)
 
     _supply_ancestors_from_parent_to_component(
         component_sbom_doc,

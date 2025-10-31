@@ -393,4 +393,4 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_
         "amd64",
     )
     mock_execute_contextual.assert_awaited_once()
-    assert "Could not create contextual SBOM!" in caplog.messages
+    assert "Contextual SBOM workflow failed." in caplog.messages

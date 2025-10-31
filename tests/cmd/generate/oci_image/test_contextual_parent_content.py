@@ -1,5 +1,6 @@
 import datetime
 import json
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
@@ -18,6 +19,7 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.oci_image.contextual_parent_content import (
+    ComponentPackageIndex,
     _modify_relationship_in_component,
     _supply_ancestors_from_parent_to_component,
     checksums_match,
@@ -434,101 +436,282 @@ def test_process_build_tool_of_grandparent_item() -> None:
     assert expected_relationship == relationship
 
 
+def create_package_with_identifier(
+    spdx_id: str,
+    identifier_type: str,
+    matching_value: bool = True,
+) -> Package:
+    """
+    Create test package with specified identifier type.
+
+    Args:
+        spdx_id: SPDX package ID
+        identifier_type: One of "checksum", "verification_code", or "purl"
+        matching_value: If True, use matching identifier value;
+            if False, use different value
+
+    Returns:
+        Package with appropriate identifier
+    """
+    kwargs: dict[str, Any] = {
+        "spdx_id": spdx_id,
+        "name": "package",
+        "download_location": SpdxNoAssertion(),
+    }
+
+    if identifier_type == "checksum":
+        value = "abc123def456" if matching_value else "different456"
+        kwargs["checksums"] = [Checksum(ChecksumAlgorithm.SHA256, value)]
+
+    elif identifier_type == "verification_code":
+        value = "verification123" if matching_value else "different123"
+        kwargs["verification_code"] = PackageVerificationCode(value=value)
+
+    elif identifier_type == "purl":
+        version = "1.0.0" if matching_value else "2.0.0"
+        kwargs["external_references"] = [
+            ExternalPackageRef(
+                ExternalPackageRefCategory.PACKAGE_MANAGER,
+                "purl",
+                f"pkg:npm/namespace/package@{version}",
+            )
+        ]
+
+    return Package(**kwargs)
+
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize("package_matched", (True, False))
-@patch("mobster.cmd.generate.oci_image.contextual_parent_content.package_matched")
+@pytest.mark.parametrize(
+    ["identifier_type", "should_match"],
+    [
+        ("checksum", True),
+        ("checksum", False),
+        ("verification_code", True),
+        ("verification_code", False),
+        ("purl", True),
+        ("purl", False),
+    ],
+)
 async def test_map_parent_to_component_and_modify_component(
-    mock_package_matched: MagicMock,
-    package_matched: bool,
+    identifier_type: str,
+    should_match: bool,
 ) -> None:
-    # ARRANGE
+    """
+    Test package matching via ComponentPackageIndex using different identifier types.
+
+    Verifies that:
+    1. Index finds packages by checksum, verification_code, or purl
+    2. Matching packages -> relationship modified to use parent SPDX ID
+    3. Non-matching packages -> relationship unchanged
+    4. Ancestor packages/relationships always added
+    """
+    parent_spdx_id = "SPDXRef-parent-name-from-component"
+
+    # Setup parent SBOM with grandparent and test package
     parent_sbom_doc = MagicMock(spec=Document)
-    component_sbom_doc = MagicMock(spec=Document)
-    parent_spdx_id_from_component = "SPDXRef-parent-name-from-component"
+    grandparent_pkg, grandparent_annot, grandparent_rel = get_base_image_items(
+        "SPDXRef-grandparent", "SPDXRef-parent", legacy=False
+    )
+    root_pkg, root_rel = get_root_package_items("SPDXRef-parent")
+    parent_test_pkg = create_package_with_identifier(
+        "SPDXRef-package-1", identifier_type
+    )
 
-    # prepare parent document with package
-    parent_image_package, parent_image_annotation, parent_image_relationship = (
-        get_base_image_items(
-            spdx_element_id="SPDXRef-grandparent",
-            related_spdx_element_id="SPDXRef-parent",
-            legacy=False,
-        )
-    )
-    root_package, root_relationship = get_root_package_items("SPDXRef-parent")
-    parent_sbom_doc.packages = [
-        parent_image_package,
-        root_package,
-        Package("SPDXRef-package-1", "package", SpdxNoAssertion()),
-    ]
-    parent_package_relationship = Relationship(
-        "SPDXRef-parent", RelationshipType.CONTAINS, "SPDXRef-package-1"
-    )
+    parent_sbom_doc.packages = [grandparent_pkg, root_pkg, parent_test_pkg]
     parent_sbom_doc.relationships = [
-        parent_image_relationship,
-        root_relationship,
-        parent_package_relationship,
+        grandparent_rel,
+        root_rel,
+        Relationship("SPDXRef-parent", RelationshipType.CONTAINS, "SPDXRef-package-1"),
     ]
-    parent_sbom_doc.annotations = [
-        parent_image_annotation,
-    ]
+    parent_sbom_doc.annotations = [grandparent_annot]
 
-    # prepare component descendant of the previous parent with single package
-    (
-        component_image_package,
-        component_image_annotation,
-        component_image_relationship,
-    ) = get_base_image_items(
-        spdx_element_id=parent_spdx_id_from_component,
-        related_spdx_element_id="SPDXRef-component",
-        legacy=False,
+    # Setup component SBOM with matching/non-matching package
+    component_sbom_doc = MagicMock(spec=Document)
+    component_img_pkg, component_annot, component_rel = get_base_image_items(
+        parent_spdx_id, "SPDXRef-component", legacy=False
     )
-    component_package_from_parent = Package(
-        "SPDXRef-package-1", "package", SpdxNoAssertion()
+    component_test_pkg = create_package_with_identifier(
+        "SPDXRef-package-1", identifier_type, matching_value=should_match
     )
-    component_sbom_doc.packages = [
-        component_image_package,
-        component_package_from_parent,
-    ]
-    component_sbom_doc.annotations = [component_image_annotation]
-    unmodified_package_from_parent_relationship = Relationship(
+
+    original_rel = Relationship(
         "SPDXRef-component", RelationshipType.CONTAINS, "SPDXRef-package-1"
     )
-    component_sbom_doc.relationships = [
-        component_image_relationship,
-        unmodified_package_from_parent_relationship,
-    ]
+    component_sbom_doc.packages = [component_img_pkg, component_test_pkg]
+    component_sbom_doc.relationships = [component_rel, original_rel]
+    component_sbom_doc.annotations = [component_annot]
 
-    mock_package_matched.return_value = package_matched
-
-    # ACT
-    result_sbom_doc = await map_parent_to_component_and_modify_component(
+    # Execute contextualization
+    result = await map_parent_to_component_and_modify_component(
         parent_sbom_doc,
         component_sbom_doc,
-        parent_spdx_id_from_component,
-        [(parent_image_package, parent_image_relationship, parent_image_annotation)],
+        parent_spdx_id,
+        [(grandparent_pkg, grandparent_rel, grandparent_annot)],
     )
 
-    # ASSERT
-    # if package is matched relationship must be modified with
-    # parent name from component itself if not it must stay unmodified
-    if package_matched:
-        assert any(
-            parent_spdx_id_from_component == rel.spdx_element_id
-            for rel in result_sbom_doc.relationships
-            if rel.relationship_type == RelationshipType.CONTAINS
+    # Verify relationship modification
+    contains_rels = [
+        r
+        for r in result.relationships
+        if r.relationship_type == RelationshipType.CONTAINS
+    ]
+    if should_match:
+        assert any(r.spdx_element_id == parent_spdx_id for r in contains_rels), (
+            f"Matching {identifier_type}: relationship should bear {parent_spdx_id}"
         )
     else:
-        assert (
-            unmodified_package_from_parent_relationship in result_sbom_doc.relationships
+        assert original_rel in result.relationships, (
+            f"Non-matching {identifier_type}: original relationship should remain"
         )
 
-    # ancestors must be added
-    assert parent_image_package in result_sbom_doc.packages
-    assert any(
-        "is_ancestor_image" in annot.annotation_comment
-        for annot in result_sbom_doc.annotations
+    # Verify ancestors always added from parent
+    assert grandparent_pkg in result.packages
+    assert grandparent_rel in result.relationships
+    assert any("is_ancestor_image" in a.annotation_comment for a in result.annotations)
+
+
+@pytest.mark.parametrize(
+    ["identifier_type", "identifier_value", "should_index"],
+    [
+        ("checksum", "abc123", True),
+        ("verification_code", "vc123", True),
+        ("purl_with_version", "pkg:npm/package@1.0.0", True),
+        ("purl_no_version", "pkg:npm/package", False),
+        ("purl_invalid", "invalid-format", False),
+        ("none", "", False),
+    ],
+)
+def test_component_package_index_all_identifiers(
+    identifier_type: str, identifier_value: str, should_index: bool
+) -> None:
+    """
+    Test ComponentPackageIndex handles all identifier types and edge cases.
+    """
+    component_pkg_kwargs: dict[str, Any] = {
+        "spdx_id": "SPDXRef-test",
+        "name": "test-pkg",
+        "download_location": SpdxNoAssertion(),
+    }
+    parent_pkg_kwargs: dict[str, Any] = {
+        "spdx_id": "SPDXRef-parent",
+        "name": "test-pkg",
+        "download_location": SpdxNoAssertion(),
+    }
+
+    if identifier_type == "checksum":
+        component_pkg_kwargs["checksums"] = [
+            Checksum(ChecksumAlgorithm.SHA256, identifier_value)
+        ]
+        parent_pkg_kwargs["checksums"] = [
+            Checksum(ChecksumAlgorithm.SHA256, identifier_value)
+        ]
+    elif identifier_type == "verification_code":
+        component_pkg_kwargs["verification_code"] = PackageVerificationCode(
+            value=identifier_value
+        )
+        parent_pkg_kwargs["verification_code"] = PackageVerificationCode(
+            value=identifier_value
+        )
+    elif identifier_type.startswith("purl"):
+        component_pkg_kwargs["external_references"] = [
+            ExternalPackageRef(
+                ExternalPackageRefCategory.PACKAGE_MANAGER, "purl", identifier_value
+            )
+        ]
+        parent_pkg_kwargs["external_references"] = [
+            ExternalPackageRef(
+                ExternalPackageRefCategory.PACKAGE_MANAGER, "purl", identifier_value
+            )
+        ]
+    # none: packages are missing unique identifiers
+
+    pkg: Package = Package(**component_pkg_kwargs)
+    parent_pkg: Package = Package(**parent_pkg_kwargs)
+    rel = Relationship("SPDXRef-component", RelationshipType.CONTAINS, "SPDXRef-test")
+    index = ComponentPackageIndex([(pkg, rel)])
+
+    # Verify index population based on identifier type
+    if identifier_type == "checksum":
+        assert len(index.checksum_index) == (1 if should_index else 0)
+        assert len(index.verification_code_index) == 0
+        assert len(index.purl_index) == 0
+    elif identifier_type == "verification_code":
+        assert len(index.checksum_index) == 0
+        assert len(index.verification_code_index) == (1 if should_index else 0)
+        assert len(index.purl_index) == 0
+    else:  # purl_* or none
+        assert len(index.checksum_index) == 0
+        assert len(index.verification_code_index) == 0
+        assert len(index.purl_index) == (1 if should_index else 0)
+
+    # Verify find_candidates
+    candidates = index.find_candidates(parent_pkg)
+    assert len(candidates) == (1 if should_index else 0)
+    if should_index:
+        assert candidates[0] == (pkg, rel)
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.generate.oci_image.contextual_parent_content.package_matched")
+async def test_skip_already_matched_component_package(
+    mock_package_matched: MagicMock,
+) -> None:
+    """
+    Test that already matched component packages are skipped.
+    When parent contains duplicate packages (packages with same "unique" id)
+    package_matched() should be called only once.
+    The second parent package finds the same
+    candidate but skips it because it's already matched.
+    """
+    shared_checksum = Checksum(ChecksumAlgorithm.SHA256, "duplicate123")
+    parent_spdx_id = "SPDXRef-parent-from-component"
+
+    # Parent SBOM: 2 duplicate packages with same checksum
+    parent_sbom_doc = MagicMock(spec=Document)
+    parent_root = Package("SPDXRef-parent", "parent", SpdxNoAssertion())
+    parent_pkg_1 = Package(
+        "SPDXRef-p1", "duplicate-pkg", SpdxNoAssertion(), checksums=[shared_checksum]
     )
-    assert parent_image_relationship in result_sbom_doc.relationships
+    parent_pkg_2 = Package(
+        "SPDXRef-p2", "duplicate-pkg", SpdxNoAssertion(), checksums=[shared_checksum]
+    )
+
+    parent_sbom_doc.packages = [parent_root, parent_pkg_1, parent_pkg_2]
+    parent_sbom_doc.relationships = [
+        Relationship("SPDXRef-DOCUMENT", RelationshipType.DESCRIBES, "SPDXRef-parent"),
+        Relationship("SPDXRef-parent", RelationshipType.CONTAINS, "SPDXRef-p1"),
+        Relationship("SPDXRef-parent", RelationshipType.CONTAINS, "SPDXRef-p2"),
+    ]
+    parent_sbom_doc.annotations = []
+
+    # Component SBOM: 1 package with matching checksum
+    component_sbom_doc = MagicMock(spec=Document)
+    component_root = Package("SPDXRef-component", "component", SpdxNoAssertion())
+    component_pkg = Package(
+        "SPDXRef-c1", "duplicate-pkg", SpdxNoAssertion(), checksums=[shared_checksum]
+    )
+
+    component_sbom_doc.packages = [component_root, component_pkg]
+    component_sbom_doc.relationships = [
+        Relationship(
+            "SPDXRef-DOCUMENT", RelationshipType.DESCRIBES, "SPDXRef-component"
+        ),
+        Relationship(
+            "SPDXRef-component", RelationshipType.DESCENDANT_OF, parent_spdx_id
+        ),
+        Relationship("SPDXRef-component", RelationshipType.CONTAINS, "SPDXRef-c1"),
+    ]
+    component_sbom_doc.annotations = []
+
+    mock_package_matched.return_value = True
+    await map_parent_to_component_and_modify_component(
+        parent_sbom_doc, component_sbom_doc, parent_spdx_id, []
+    )
+
+    assert mock_package_matched.call_count == 1, (
+        f"Expected package_matched called 1 time, "
+        f"got {mock_package_matched.call_count}. "
+    )
 
 
 def test__supply_ancestors_from_parent_to_component() -> None:

@@ -36,7 +36,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 )
 from mobster.image import Image
 from mobster.sbom.merge import merge_sboms
-from mobster.utils import identify_arch, load_sbom_from_json
+from mobster.utils import duration, identify_arch, load_sbom_from_json
 
 logging.captureWarnings(True)  # CDX validation uses `warn()`
 LOGGER = logging.getLogger(__name__)
@@ -63,6 +63,11 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             return convert(sbom, DocumentConverter())  # type: ignore[no-untyped-call]
         return sbom.to_dict()
 
+    @duration(
+        "Starting SBOM validation...",
+        "Validation of final SBOM finished in %.4f seconds",
+        logging.DEBUG,
+    )
     async def _soft_validate_content(self) -> None:
         """
         Validate the SBOM created and log the result as a warning.
@@ -107,8 +112,8 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         return await load_sbom_from_json(self.cli_args.from_hermeto)
 
+    @staticmethod
     async def _execute_contextual_workflow(
-        self,
         component_sbom_doc: Document,
         parent_image_ref: Image,
         arch: str,
@@ -153,6 +158,10 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         )
         return contextual_sbom
 
+    @duration(
+        "Starting Contextual SBOM workflow...",
+        "Contextual workflow finished in %.4f seconds",
+    )
     async def _assess_and_dispatch_contextual_workflow(
         self,
         component_sbom_doc: Document | CycloneDX1BomWrapper,
@@ -187,11 +196,14 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             try:
                 parent_image_obj = base_images[parent_image_ref]
                 copied_component_sbom_doc = deepcopy(component_sbom_doc)
-                return await self._execute_contextual_workflow(
+                contextual_sbom = await self._execute_contextual_workflow(
                     copied_component_sbom_doc, parent_image_obj, image_arch
                 )
+                LOGGER.info("Contextual SBOM workflow finished successfully.")
+                return contextual_sbom
             except Exception:  # pylint: disable=broad-exception-caught
-                LOGGER.exception("Could not create contextual SBOM!")
+                LOGGER.exception("Contextual SBOM workflow failed.")
+        LOGGER.info("Could not create contextual SBOM.")
         return None
 
     async def execute(self) -> Any:
@@ -296,5 +308,5 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         if output_file is None:
             print(json.dumps(output_dict))
         else:
-            with open(output_file, "w", encoding="utf-8") as write_stram:
-                json.dump(output_dict, write_stram)
+            with open(output_file, "w", encoding="utf-8") as write_stream:
+                json.dump(output_dict, write_stream)
