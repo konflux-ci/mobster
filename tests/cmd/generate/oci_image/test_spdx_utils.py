@@ -21,6 +21,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     find_spdx_root_packages_spdxid,
     find_spdx_root_relationships,
     get_annotations_by_spdx_id,
+    get_package_purl,
     is_virtual_root,
     normalize_actor,
     normalize_package,
@@ -851,3 +852,86 @@ def test_get_annotations_by_spdx_id(
     assert len(result) == expected_length
     if result:
         assert all(annot.spdx_id == spdx_id for annot in result)
+
+
+@pytest.mark.parametrize(
+    ["package", "expected_result"],
+    [
+        pytest.param(
+            Package(
+                "SPDXRef-package",
+                "test-package",
+                SpdxNoAssertion(),
+                external_references=[
+                    ExternalPackageRef(
+                        ExternalPackageRefCategory.PACKAGE_MANAGER,
+                        "purl",
+                        "pkg:npm/test-package@1.0.0",
+                    )
+                ],
+            ),
+            "pkg:npm/test-package@1.0.0",
+            id="successful-purl-extraction",
+        ),
+        pytest.param(
+            Package("SPDXRef-package", "test-package", SpdxNoAssertion()),
+            None,
+            id="no-external-references",
+        ),
+        pytest.param(
+            Package(
+                "SPDXRef-package",
+                "test-package",
+                SpdxNoAssertion(),
+                external_references=[
+                    ExternalPackageRef(
+                        ExternalPackageRefCategory.SECURITY,
+                        "purl",
+                        "pkg:npm/test-package@1.0.0",
+                    )
+                ],
+            ),
+            None,
+            id="wrong-external-reference-category",
+        ),
+        pytest.param(
+            Package(
+                "SPDXRef-package",
+                "test-package",
+                SpdxNoAssertion(),
+                external_references=[
+                    ExternalPackageRef(
+                        ExternalPackageRefCategory.PACKAGE_MANAGER,
+                        "maven",
+                        "pkg:npm/test-package@1.0.0",
+                    )
+                ],
+            ),
+            None,
+            id="wrong-external-reference-type",
+        ),
+        pytest.param(
+            Package(
+                "SPDXRef-package",
+                "test-package",
+                SpdxNoAssertion(),
+                external_references=[
+                    ExternalPackageRef(
+                        ExternalPackageRefCategory.SECURITY,
+                        "cpe",
+                        "cpe:2.3:a:test:package:1.0.0",
+                    ),
+                    ExternalPackageRef(
+                        ExternalPackageRefCategory.PACKAGE_MANAGER,
+                        "purl",
+                        "pkg:npm/test-package@1.0.0",
+                    ),
+                ],
+            ),
+            "pkg:npm/test-package@1.0.0",
+            id="multiple-external-references",
+        ),
+    ],
+)
+def test_get_package_purl(package: Package, expected_result: str | None) -> None:
+    assert get_package_purl(package) == expected_result

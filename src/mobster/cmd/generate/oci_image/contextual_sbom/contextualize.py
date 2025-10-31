@@ -7,21 +7,21 @@ import json
 import logging
 from typing import Any, Literal
 
-from packageurl import PackageURL
-from spdx_tools.spdx.model.actor import ActorType
 from spdx_tools.spdx.model.annotation import Annotation
-from spdx_tools.spdx.model.checksum import Checksum
 from spdx_tools.spdx.model.document import Document
-from spdx_tools.spdx.model.package import ExternalPackageRefCategory, Package
+from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
 from mobster.cmd.generate.oci_image.constants import (
-    HERMETO_ANNOTATION_COMMENTS,
     IS_BASE_IMAGE_ANNOTATION,
+)
+from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
+    ComponentPackageIndex,
+    associate_relationships_and_related_packages,
+    package_matched,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
     find_spdx_root_packages_spdxid,
-    get_annotations_by_spdx_id,
     get_package_by_spdx_id,
 )
 from mobster.error import SBOMError
@@ -155,7 +155,10 @@ async def download_parent_image_sbom(
             "SBOM format is not supported for this workflow."
         )
         return None
-    LOGGER.debug("Contextual mechanism will be used.")
+    LOGGER.info(
+        "Contextual workflow will be used. Parent SBOM used for contextualization: %s",
+        sbom.doc["documentNamespace"],
+    )
     return sbom.doc
 
 
@@ -375,36 +378,6 @@ def get_descendant_of_items_from_used_parent(
     )
 
 
-def associate_relationships_and_related_packages(
-    packages: list[Package],
-    relationships: list[Relationship],
-    relationship_type: RelationshipType,
-) -> list[tuple[Package, Relationship]]:
-    """
-    Associate relationships (related_spdx_element_id) and related
-    packages (spdx_id) together for given relationship type.
-    Args:
-        packages: List of Package objects.
-        relationships: List of Relationship objects.
-        relationship_type: Relationship type.
-
-    Returns:
-        List of tuples of related package and relationship objects.
-    """
-    assoc_package_relationship = []
-
-    for pkg in packages:
-        for rel in relationships:
-            if (
-                pkg.spdx_id == rel.related_spdx_element_id
-                and rel.relationship_type == relationship_type
-            ):
-                assoc_package_relationship.append((pkg, rel))
-                break
-
-    return assoc_package_relationship
-
-
 async def map_parent_to_component_and_modify_component(
     parent_sbom_doc: Document,
     component_sbom_doc: Document,
@@ -432,36 +405,45 @@ async def map_parent_to_component_and_modify_component(
     """
     parent_root_packages = await find_spdx_root_packages_spdxid(parent_sbom_doc)
 
-    parent_package_with_contains_relationship = (
-        associate_relationships_and_related_packages(
-            parent_sbom_doc.packages,
-            parent_sbom_doc.relationships,
-            relationship_type=RelationshipType.CONTAINS,
-        )
+    parent_packages = associate_relationships_and_related_packages(
+        parent_sbom_doc.packages,
+        parent_sbom_doc.relationships,
+        relationship_type=RelationshipType.CONTAINS,
     )
-    component_package_with_contains_relationship = (
-        associate_relationships_and_related_packages(
-            component_sbom_doc.packages,
-            component_sbom_doc.relationships,
-            relationship_type=RelationshipType.CONTAINS,
-        )
+    component_packages = associate_relationships_and_related_packages(
+        component_sbom_doc.packages,
+        component_sbom_doc.relationships,
+        relationship_type=RelationshipType.CONTAINS,
     )
 
-    for (
-        parent_package,
-        parent_relationship,
-    ) in parent_package_with_contains_relationship:
-        for (
-            component_package,
-            component_relationship,
-        ) in component_package_with_contains_relationship:
-            if package_matched(parent_sbom_doc, parent_package, component_package):
+    component_index = ComponentPackageIndex(component_packages)
+
+    for parent_package, parent_relationship in parent_packages:
+        component_pkg_candidates = component_index.find_candidates(parent_package)
+
+        # No candidates for parent package
+        # in component found - check other parent package
+        if not component_pkg_candidates:
+            continue
+
+        for component_package, component_relationship in component_pkg_candidates:
+            # Skip component candidate if already matched
+            # (do not match duplicates in parent multiple times)
+            if component_index.is_matched(component_package.spdx_id):
+                continue
+
+            if package_matched(
+                parent_package=parent_package,
+                component_package=component_package,
+                parent_sbom_doc=parent_sbom_doc,
+            ):
                 _modify_relationship_in_component(
                     component_relationship,
                     parent_relationship,
                     parent_spdx_id_from_component,
                     parent_root_packages,
                 )
+                component_index.mark_as_matched(component_package.spdx_id)
 
     _supply_ancestors_from_parent_to_component(
         component_sbom_doc,
@@ -572,163 +554,3 @@ def _modify_relationship_in_component(
     # in reality
     else:
         component_relationship.spdx_element_id = parent_relationship.spdx_element_id
-
-
-def generated_by_hermeto(annotations: list[Annotation]) -> bool:
-    """
-    Will determine if the package was generated by hermeto/cachi2 based on its
-    annotation.
-
-    Args:
-        annotations: list of annotations of the package.
-
-    Returns:
-        True if the annotation indicates that the package was generated by
-        hermeto/cachi2, False otherwise.
-    """
-    if not annotations:
-        return False
-
-    return any(
-        annot.annotator.actor_type == ActorType.TOOL
-        and annot.annotation_comment in HERMETO_ANNOTATION_COMMENTS
-        for annot in annotations
-    )
-
-
-def get_package_purl(package: Package) -> str | None:
-    """
-    The purl of a package (external reference of category PACKAGE-MANAGER and purl type)
-
-    Args:
-        package: The package to find the purl of.
-
-    Returns:
-        The purl of the given package or None.
-    """
-    for ref in package.external_references:
-        if (
-            ref.category == ExternalPackageRefCategory.PACKAGE_MANAGER
-            and ref.reference_type == "purl"
-        ):
-            return ref.locator
-    return None
-
-
-def validate_and_compare_purls(
-    parent_purl: str | None,
-    component_purl: str | None,
-) -> bool:
-    """
-    Validate that the purls contains the required fields (type, name and version). Then
-    compare the compare purls based on the required fields and the namespace.
-
-    Args:
-        parent_purl: The parent purl to validate and compare with the component purl.
-        component_purl: The component purl to validate and compare with the parent purl.
-
-    Returns:
-        True if the purls match after validation, False if either purl is invalid, or
-        the validated purls don't match.
-    """
-    # ValueError is thrown if a purl is None, or missing type or name.
-    try:
-        parent_purl_obj = PackageURL.from_string(parent_purl)  # type: ignore[arg-type]
-        component_purl_obj = PackageURL.from_string(component_purl)  # type: ignore[arg-type]
-    except ValueError:
-        return False
-
-    if not parent_purl_obj.version or not component_purl_obj.version:
-        return False
-
-    return (
-        parent_purl_obj.type == component_purl_obj.type
-        and parent_purl_obj.name == component_purl_obj.name
-        and parent_purl_obj.version == component_purl_obj.version
-        and parent_purl_obj.namespace == component_purl_obj.namespace
-    )
-
-
-def checksums_match(
-    parent_checksums: list[Checksum], component_checksums: list[Checksum]
-) -> bool:
-    """
-    Compare two lists of Package Checksum objects. All checksums must match.
-
-    Args:
-        parent_checksums: List of Checksum objects from parent package.
-        component_checksums: List of Checksum objects from component package.
-
-    Returns:
-        True if any ofthe checksums match, False otherwise.
-    """
-    # The Checksum objects are not hashable and do not have to_string(), convert them to
-    # strings in a custom way
-    parent_checksums_str = [
-        str(checksum.algorithm) + ":" + checksum.value for checksum in parent_checksums
-    ]
-    component_checksums_str = [
-        str(checksum.algorithm) + ":" + checksum.value
-        for checksum in component_checksums
-    ]
-    return set(parent_checksums_str) == set(component_checksums_str)
-
-
-def package_matched(
-    parent_sbom_doc: Document,
-    parent_package: Package,
-    component_package: Package,
-) -> bool:
-    """
-    Determine if a component package matches a parent package for SBOM
-    contextualization. The matching strategy depends on the tool that generated the
-    packages:
-
-    **Hermeto-to-Syft matching:**
-    - Parent packages generated by Hermeto are compared to component packages generated
-      by Syft.
-    - Matching is done by comparing validated purls (type, name, version, and optionally
-      namespace). If either purl fails validation, the packages are considered not
-      matched.
-
-    **Syft-to-Syft matching:**
-    - Both parent and component packages are generated by Syft.
-    - Uses prioritized matching with identifiers checked from most to least specific:
-      1. Package checksums (all items in the lists must match)
-      2. Package verification codes
-      3. Validated purls (type, name, version, and optionally namespace). If either purl
-         fails validation, the packages are considered not matched.
-
-    There is no Hermeto-to-Hermeto matching because Hermeto produces component-only
-    content that was added during build. Therefore a Hermeto-generated component package
-    should never be matched with any parent content. On the other hand, Syft scans the
-    entire image including parent content, so Syft-generated components can potentially
-    be matched with parent packages generated by either tool.
-
-    Args:
-        parent_sbom_doc: The parent SBOM document.
-        parent_package: The parent package.
-        component_package: The component package.
-
-    Returns:
-        True if the packages match based on the criteria above, False otherwise.
-    """
-    parent_package_annotations = get_annotations_by_spdx_id(
-        parent_sbom_doc, parent_package.spdx_id
-    )
-
-    parent_purl = get_package_purl(parent_package)
-    component_purl = get_package_purl(component_package)
-
-    # Hermeto-to-syft matching
-    if generated_by_hermeto(parent_package_annotations):
-        return validate_and_compare_purls(parent_purl, component_purl)
-
-    # Syft-to-syft matching: Check identifiers from most specific to least specific
-    if parent_package.checksums or component_package.checksums:
-        return checksums_match(parent_package.checksums, component_package.checksums)
-
-    if parent_package.verification_code or component_package.verification_code:
-        return parent_package.verification_code == component_package.verification_code
-
-    return validate_and_compare_purls(parent_purl, component_purl)
