@@ -1,7 +1,6 @@
 import datetime
 import json
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _pytest.logging import LogCaptureFixture
@@ -9,92 +8,32 @@ from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
 from spdx_tools.spdx.model.checksum import Checksum, ChecksumAlgorithm
 from spdx_tools.spdx.model.document import Document
-from spdx_tools.spdx.model.package import (
-    ExternalPackageRef,
-    ExternalPackageRefCategory,
-    Package,
-    PackageVerificationCode,
-)
+from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
-from mobster.cmd.generate.oci_image.contextual_parent_content import (
-    ComponentPackageIndex,
+from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     _modify_relationship_in_component,
     _supply_ancestors_from_parent_to_component,
-    checksums_match,
     download_parent_image_sbom,
-    generated_by_hermeto,
     get_descendant_of_items_from_used_parent,
     get_grandparent_annotation,
-    get_package_purl,
     get_parent_spdx_id_from_component,
     get_relationship_by_spdx_id,
     map_parent_to_component_and_modify_component,
-    package_matched,
     process_build_tool_of_grandparent_item,
     process_descendant_of_grandparent_items,
-    validate_and_compare_purls,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import get_package_by_spdx_id
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM
 
-
-def get_base_image_items(
-    spdx_element_id: str,
-    related_spdx_element_id: str,
-    legacy: bool,
-    grandparent: bool = False,
-) -> tuple[Package, Annotation, Relationship]:
-    """
-    Helper function to generate image package with DESCENDANT_OF
-    or BUILD_TOOL_OF relationship and appropriate annotation.
-    """
-    if legacy and grandparent:
-        raise ValueError("Legacy SBOMs do not bear grandparents.")
-
-    # Relationship
-    if legacy:
-        rel = RelationshipType.BUILD_TOOL_OF
-        rel_args = (spdx_element_id, rel, related_spdx_element_id)
-    else:
-        rel = RelationshipType.DESCENDANT_OF
-        rel_args = (related_spdx_element_id, rel, spdx_element_id)
-    relationship = Relationship(*rel_args)
-
-    # Annotation
-    suffix = "is_ancestor_image" if grandparent else "is_base_image"
-    annotation_comment = f'{{"name": "konflux:container:{suffix}",   "value": "true" }}'
-
-    annotation = Annotation(
-        spdx_element_id,
-        AnnotationType.OTHER,
-        Actor(ActorType.TOOL, "ham"),
-        datetime.datetime.now(),
-        annotation_comment,
-    )
-
-    # Package
-    package = Package(spdx_element_id, "name", SpdxNoAssertion())
-
-    return package, annotation, relationship
-
-
-def get_root_package_items(spdx_id: str) -> tuple[Package, Relationship]:
-    """Helper function to generate root package and relationship items."""
-    return Package(spdx_id, "name", SpdxNoAssertion()), Relationship(
-        "SPDXRef-DOCUMENT",
-        RelationshipType.DESCRIBES,
-        spdx_id,
-    )
-
-
-@pytest.fixture
-def mock_doc() -> MagicMock:
-    """Fixture for creating a mock Document with spec."""
-    return MagicMock(spec=Document)
+from .conftest import (
+    create_package_with_identifier,
+    get_base_image_items,
+    get_root_package_items,
+)
 
 
 @pytest.mark.asyncio
@@ -255,7 +194,7 @@ def test_get_descendant_of_items_from_used_parent_invalid_sbom_structure(
 
 
 @patch(
-    "mobster.cmd.generate.oci_image.contextual_parent_content.process_build_tool_of_grandparent_item"
+    "mobster.cmd.generate.oci_image.contextual_sbom.contextualize.process_build_tool_of_grandparent_item"
 )
 def test_get_descendant_of_items_from_used_parent_ancestor_is_legacy(
     mock_process_build_tool_of_grandparent_item: MagicMock,
@@ -285,7 +224,7 @@ def test_get_descendant_of_items_from_used_parent_ancestor_is_legacy(
 
 
 @patch(
-    "mobster.cmd.generate.oci_image.contextual_parent_content.process_descendant_of_grandparent_items"
+    "mobster.cmd.generate.oci_image.contextual_sbom.contextualize.process_descendant_of_grandparent_items"
 )
 def test_get_descendant_of_items_from_used_parent_ancestor_is_contextual(
     mock_process_descendant_of_grandparent_items: MagicMock,
@@ -315,10 +254,10 @@ def test_get_descendant_of_items_from_used_parent_ancestor_is_contextual(
 
 
 @patch(
-    "mobster.cmd.generate.oci_image.contextual_parent_content.process_descendant_of_grandparent_items"
+    "mobster.cmd.generate.oci_image.contextual_sbom.contextualize.process_descendant_of_grandparent_items"
 )
 @patch(
-    "mobster.cmd.generate.oci_image.contextual_parent_content.process_build_tool_of_grandparent_item"
+    "mobster.cmd.generate.oci_image.contextual_sbom.contextualize.process_build_tool_of_grandparent_item"
 )
 def test_get_descendant_of_items_from_used_parent_grandparent_has_no_annot(
     mock_process_build_tool_of_grandparent_item: MagicMock,
@@ -436,50 +375,6 @@ def test_process_build_tool_of_grandparent_item() -> None:
     assert expected_relationship == relationship
 
 
-def create_package_with_identifier(
-    spdx_id: str,
-    identifier_type: str,
-    matching_value: bool = True,
-) -> Package:
-    """
-    Create test package with specified identifier type.
-
-    Args:
-        spdx_id: SPDX package ID
-        identifier_type: One of "checksum", "verification_code", or "purl"
-        matching_value: If True, use matching identifier value;
-            if False, use different value
-
-    Returns:
-        Package with appropriate identifier
-    """
-    kwargs: dict[str, Any] = {
-        "spdx_id": spdx_id,
-        "name": "package",
-        "download_location": SpdxNoAssertion(),
-    }
-
-    if identifier_type == "checksum":
-        value = "abc123def456" if matching_value else "different456"
-        kwargs["checksums"] = [Checksum(ChecksumAlgorithm.SHA256, value)]
-
-    elif identifier_type == "verification_code":
-        value = "verification123" if matching_value else "different123"
-        kwargs["verification_code"] = PackageVerificationCode(value=value)
-
-    elif identifier_type == "purl":
-        version = "1.0.0" if matching_value else "2.0.0"
-        kwargs["external_references"] = [
-            ExternalPackageRef(
-                ExternalPackageRefCategory.PACKAGE_MANAGER,
-                "purl",
-                f"pkg:npm/namespace/package@{version}",
-            )
-        ]
-
-    return Package(**kwargs)
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ["identifier_type", "should_match"],
@@ -570,89 +465,8 @@ async def test_map_parent_to_component_and_modify_component(
     assert any("is_ancestor_image" in a.annotation_comment for a in result.annotations)
 
 
-@pytest.mark.parametrize(
-    ["identifier_type", "identifier_value", "should_index"],
-    [
-        ("checksum", "abc123", True),
-        ("verification_code", "vc123", True),
-        ("purl_with_version", "pkg:npm/package@1.0.0", True),
-        ("purl_no_version", "pkg:npm/package", False),
-        ("purl_invalid", "invalid-format", False),
-        ("none", "", False),
-    ],
-)
-def test_component_package_index_all_identifiers(
-    identifier_type: str, identifier_value: str, should_index: bool
-) -> None:
-    """
-    Test ComponentPackageIndex handles all identifier types and edge cases.
-    """
-    component_pkg_kwargs: dict[str, Any] = {
-        "spdx_id": "SPDXRef-test",
-        "name": "test-pkg",
-        "download_location": SpdxNoAssertion(),
-    }
-    parent_pkg_kwargs: dict[str, Any] = {
-        "spdx_id": "SPDXRef-parent",
-        "name": "test-pkg",
-        "download_location": SpdxNoAssertion(),
-    }
-
-    if identifier_type == "checksum":
-        component_pkg_kwargs["checksums"] = [
-            Checksum(ChecksumAlgorithm.SHA256, identifier_value)
-        ]
-        parent_pkg_kwargs["checksums"] = [
-            Checksum(ChecksumAlgorithm.SHA256, identifier_value)
-        ]
-    elif identifier_type == "verification_code":
-        component_pkg_kwargs["verification_code"] = PackageVerificationCode(
-            value=identifier_value
-        )
-        parent_pkg_kwargs["verification_code"] = PackageVerificationCode(
-            value=identifier_value
-        )
-    elif identifier_type.startswith("purl"):
-        component_pkg_kwargs["external_references"] = [
-            ExternalPackageRef(
-                ExternalPackageRefCategory.PACKAGE_MANAGER, "purl", identifier_value
-            )
-        ]
-        parent_pkg_kwargs["external_references"] = [
-            ExternalPackageRef(
-                ExternalPackageRefCategory.PACKAGE_MANAGER, "purl", identifier_value
-            )
-        ]
-    # none: packages are missing unique identifiers
-
-    pkg: Package = Package(**component_pkg_kwargs)
-    parent_pkg: Package = Package(**parent_pkg_kwargs)
-    rel = Relationship("SPDXRef-component", RelationshipType.CONTAINS, "SPDXRef-test")
-    index = ComponentPackageIndex([(pkg, rel)])
-
-    # Verify index population based on identifier type
-    if identifier_type == "checksum":
-        assert len(index.checksum_index) == (1 if should_index else 0)
-        assert len(index.verification_code_index) == 0
-        assert len(index.purl_index) == 0
-    elif identifier_type == "verification_code":
-        assert len(index.checksum_index) == 0
-        assert len(index.verification_code_index) == (1 if should_index else 0)
-        assert len(index.purl_index) == 0
-    else:  # purl_* or none
-        assert len(index.checksum_index) == 0
-        assert len(index.verification_code_index) == 0
-        assert len(index.purl_index) == (1 if should_index else 0)
-
-    # Verify find_candidates
-    candidates = index.find_candidates(parent_pkg)
-    assert len(candidates) == (1 if should_index else 0)
-    if should_index:
-        assert candidates[0] == (pkg, rel)
-
-
 @pytest.mark.asyncio
-@patch("mobster.cmd.generate.oci_image.contextual_parent_content.package_matched")
+@patch("mobster.cmd.generate.oci_image.contextual_sbom.contextualize.package_matched")
 async def test_skip_already_matched_component_package(
     mock_package_matched: MagicMock,
 ) -> None:
@@ -922,447 +736,3 @@ async def test_download_parent_image_sbom_cdx(
         "Contextual mechanism won't be used, SBOM format is not supported for "
         "this workflow." in caplog.messages
     )
-
-
-@pytest.mark.parametrize(
-    ["annotations", "expected_result"],
-    [
-        pytest.param(
-            [
-                Annotation(
-                    "SPDXRef-annotation",
-                    AnnotationType.OTHER,
-                    Actor(ActorType.TOOL, "cachi2"),
-                    datetime.datetime.now(),
-                    '{"name": "cachi2:found_by", "value": "cachi2"}',
-                ),
-                Annotation(
-                    "SPDXRef-annotation",
-                    AnnotationType.OTHER,
-                    Actor(ActorType.TOOL, "other-tool"),
-                    datetime.datetime.now(),
-                    '{"name": "other-tool:found_by", "value": "other-tool"}',
-                ),
-            ],
-            True,
-            id="cachi2-detection",
-        ),
-        pytest.param(
-            [
-                Annotation(
-                    "SPDXRef-annotation",
-                    AnnotationType.OTHER,
-                    Actor(ActorType.TOOL, "hermeto"),
-                    datetime.datetime.now(),
-                    '{"name": "hermeto:found_by", "value": "hermeto"}',
-                ),
-                Annotation(
-                    "SPDXRef-annotation",
-                    AnnotationType.OTHER,
-                    Actor(ActorType.TOOL, "other-tool"),
-                    datetime.datetime.now(),
-                    '{"name": "other-tool:found_by", "value": "other-tool"}',
-                ),
-            ],
-            True,
-            id="hermeto-detection",
-        ),
-        pytest.param(
-            [
-                Annotation(
-                    "SPDXRef-annotation",
-                    AnnotationType.OTHER,
-                    Actor(ActorType.TOOL, "other-tool"),
-                    datetime.datetime.now(),
-                    '{"name": "other-tool:found_by", "value": "other-tool"}',
-                ),
-            ],
-            False,
-            id="non-hermeto-detection",
-        ),
-        pytest.param(
-            [
-                Annotation(
-                    "SPDXRef-annotation",
-                    AnnotationType.OTHER,
-                    Actor(ActorType.PERSON, "user"),
-                    datetime.datetime.now(),
-                    '{"name": "cachi2:found_by", "value": "cachi2"}',
-                ),
-            ],
-            False,
-            id="wrong-actor-type",
-        ),
-        pytest.param(
-            [],
-            False,
-            id="empty-annotations",
-        ),
-    ],
-)
-def test_generated_by_hermeto(
-    annotations: list[Annotation], expected_result: bool
-) -> None:
-    assert generated_by_hermeto(annotations) is expected_result
-
-
-@pytest.mark.parametrize(
-    ["package", "expected_result"],
-    [
-        pytest.param(
-            Package(
-                "SPDXRef-package",
-                "test-package",
-                SpdxNoAssertion(),
-                external_references=[
-                    ExternalPackageRef(
-                        ExternalPackageRefCategory.PACKAGE_MANAGER,
-                        "purl",
-                        "pkg:npm/test-package@1.0.0",
-                    )
-                ],
-            ),
-            "pkg:npm/test-package@1.0.0",
-            id="successful-purl-extraction",
-        ),
-        pytest.param(
-            Package("SPDXRef-package", "test-package", SpdxNoAssertion()),
-            None,
-            id="no-external-references",
-        ),
-        pytest.param(
-            Package(
-                "SPDXRef-package",
-                "test-package",
-                SpdxNoAssertion(),
-                external_references=[
-                    ExternalPackageRef(
-                        ExternalPackageRefCategory.SECURITY,
-                        "purl",
-                        "pkg:npm/test-package@1.0.0",
-                    )
-                ],
-            ),
-            None,
-            id="wrong-external-reference-category",
-        ),
-        pytest.param(
-            Package(
-                "SPDXRef-package",
-                "test-package",
-                SpdxNoAssertion(),
-                external_references=[
-                    ExternalPackageRef(
-                        ExternalPackageRefCategory.PACKAGE_MANAGER,
-                        "maven",
-                        "pkg:npm/test-package@1.0.0",
-                    )
-                ],
-            ),
-            None,
-            id="wrong-external-reference-type",
-        ),
-        pytest.param(
-            Package(
-                "SPDXRef-package",
-                "test-package",
-                SpdxNoAssertion(),
-                external_references=[
-                    ExternalPackageRef(
-                        ExternalPackageRefCategory.SECURITY,
-                        "cpe",
-                        "cpe:2.3:a:test:package:1.0.0",
-                    ),
-                    ExternalPackageRef(
-                        ExternalPackageRefCategory.PACKAGE_MANAGER,
-                        "purl",
-                        "pkg:npm/test-package@1.0.0",
-                    ),
-                ],
-            ),
-            "pkg:npm/test-package@1.0.0",
-            id="multiple-external-references",
-        ),
-    ],
-)
-def test_get_package_purl(package: Package, expected_result: str | None) -> None:
-    assert get_package_purl(package) == expected_result
-
-
-@pytest.mark.parametrize(
-    ["component_purl", "parent_purl", "expected_result"],
-    [
-        # Successful validation, required fields and namespace match, qualifiers ignored
-        pytest.param(
-            "pkg:npm/test-namespace/test-package@1.0.0?arch=amd64&distro=fedora&os=linux&checksum=sha256:abc123",
-            "pkg:npm/test-namespace/test-package@1.0.0?arch=x86_64&distro=ubuntu&os=linux&checksum=sha256:def456",
-            True,
-            id="successful-validation",
-        ),
-        pytest.param(
-            "pkg:npm/test-namespace/test-package@1.0.0",
-            "pkg:npm/test-package@1.0.0",
-            False,
-            id="namespace-missing",
-        ),
-        pytest.param(
-            "pkg:npm/test-namespace/test-package@1.0.0",
-            "pkg:npm/different-namespace/test-package@1.0.0",
-            False,
-            id="namespace-mismatch",
-        ),
-        pytest.param(
-            "invalid-purl", "pkg:npm/test-package@1.0.0", False, id="invalid-format"
-        ),
-        pytest.param(
-            "pkg:npm@1.0.0", "pkg:npm/test-package@1.0.0", False, id="missing-name"
-        ),
-        pytest.param(
-            "pkg:npm/test-package",
-            "pkg:npm/test-package@1.0.0",
-            False,
-            id="missing-version",
-        ),
-        pytest.param("", "pkg:npm/test-package@1.0.0", False, id="empty-string-one"),
-        pytest.param("", "", False, id="empty-string-both"),
-        pytest.param(
-            None, "pkg:npm/test-package@1.0.0", False, id="none-component-purl"
-        ),
-        pytest.param("pkg:npm/test-package@1.0.0", None, False, id="none-parent-purl"),
-        pytest.param(None, None, False, id="none-both"),
-    ],
-)
-def test_validate_and_compare_purls(
-    component_purl: str, parent_purl: str, expected_result: bool
-) -> None:
-    assert validate_and_compare_purls(component_purl, parent_purl) == expected_result
-
-
-@pytest.mark.parametrize(
-    ["parent_checksums", "component_checksums", "expected_result"],
-    [
-        # Successful matches for all checksums
-        pytest.param(
-            [
-                Checksum(ChecksumAlgorithm.SHA256, "abc123def456"),
-                Checksum(ChecksumAlgorithm.SHA256, "xyz789"),
-            ],
-            [
-                Checksum(ChecksumAlgorithm.SHA256, "abc123def456"),
-                Checksum(ChecksumAlgorithm.SHA256, "xyz789"),
-            ],
-            True,
-            id="successful-matches",
-        ),
-        pytest.param(
-            [
-                Checksum(ChecksumAlgorithm.SHA256, "abc123def456"),
-                Checksum(ChecksumAlgorithm.SHA1, "xyz789"),
-            ],
-            [
-                Checksum(ChecksumAlgorithm.SHA256, "different123"),
-                Checksum(ChecksumAlgorithm.MD5, "different456"),
-            ],
-            False,
-            id="no-matches",
-        ),
-        pytest.param(
-            [
-                Checksum(ChecksumAlgorithm.SHA256, "abc123def456"),
-                Checksum(ChecksumAlgorithm.SHA1, "xyz789"),
-            ],
-            [
-                Checksum(ChecksumAlgorithm.SHA256, "abc123def456"),
-                Checksum(ChecksumAlgorithm.SHA1, "xyz789"),
-                Checksum(ChecksumAlgorithm.MD5, "different"),
-            ],
-            False,
-            id="some-common-items-but-not-all-match",
-        ),
-        pytest.param(
-            [Checksum(ChecksumAlgorithm.SHA256, "abc123def456")],
-            [],
-            False,
-            id="one-empty-list",
-        ),
-        pytest.param(
-            [Checksum(ChecksumAlgorithm.SHA256, "abc123def456")],
-            [Checksum(ChecksumAlgorithm.SHA1, "abc123def456")],
-            False,
-            id="different-algorithms-same-value",
-        ),
-    ],
-)
-def test_checksums_match(
-    parent_checksums: list[Checksum],
-    component_checksums: list[Checksum],
-    expected_result: bool,
-) -> None:
-    assert checksums_match(parent_checksums, component_checksums) is expected_result
-
-
-@pytest.mark.parametrize(
-    ["purls_match", "expected_result"],
-    [
-        (True, True),
-        (False, False),
-    ],
-)
-@patch(
-    "mobster.cmd.generate.oci_image.contextual_parent_content.get_annotations_by_spdx_id"
-)
-@patch("mobster.cmd.generate.oci_image.contextual_parent_content.get_package_purl")
-@patch(
-    "mobster.cmd.generate.oci_image.contextual_parent_content.validate_and_compare_purls"
-)
-@patch("mobster.cmd.generate.oci_image.contextual_parent_content.generated_by_hermeto")
-def test_package_matched_hermeto_to_syft(
-    mock_generated_by_hermeto: MagicMock,
-    mock_validate_and_compare_purls: MagicMock,
-    mock_get_package_purl: MagicMock,
-    mock_get_annotations_by_spdx_id: MagicMock,
-    purls_match: bool,
-    expected_result: bool,
-) -> None:
-    """Test package matching for hermeto-generated packages."""
-    mock_validate_and_compare_purls.return_value = purls_match
-    mock_generated_by_hermeto.return_value = True
-
-    parent_doc = MagicMock(spec=Document)
-    parent_package = MagicMock(spec=Package)
-    component_package = MagicMock(spec=Package)
-
-    result = package_matched(parent_doc, parent_package, component_package)
-
-    mock_get_annotations_by_spdx_id.assert_called_once_with(
-        parent_doc, parent_package.spdx_id
-    )
-    mock_get_package_purl.assert_has_calls(
-        [
-            call(parent_package),
-            call(component_package),
-        ]
-    )
-    mock_validate_and_compare_purls.assert_called_once()
-    mock_generated_by_hermeto.assert_called_once()
-
-    assert result is expected_result
-
-
-@pytest.mark.parametrize(
-    [
-        "parent_checksums",
-        "component_checksums",
-        "parent_verification_code",
-        "component_verification_code",
-        "purls_match",
-        "expected_result",
-    ],
-    [
-        pytest.param(
-            [Checksum(ChecksumAlgorithm.SHA256, "abc123def456")],
-            [Checksum(ChecksumAlgorithm.SHA256, "abc123def456")],
-            PackageVerificationCode(value="abc123"),
-            PackageVerificationCode(value="different123"),
-            False,
-            True,
-            id="checksums-match-others-mismatch",
-        ),
-        pytest.param(
-            [Checksum(ChecksumAlgorithm.SHA256, "abc123def456")],
-            [Checksum(ChecksumAlgorithm.SHA256, "abc123def456")],
-            None,
-            None,
-            False,
-            True,
-            id="checksums-match-others-missing",
-        ),
-        pytest.param(
-            [],
-            [],
-            PackageVerificationCode(value="abc123"),
-            PackageVerificationCode(value="abc123"),
-            False,
-            True,
-            id="only-verification-codes-match",
-        ),
-        pytest.param(
-            [],
-            [],
-            None,
-            None,
-            True,
-            True,
-            id="only-purls-match",
-        ),
-        pytest.param(
-            [Checksum(ChecksumAlgorithm.SHA256, "abc123def456")],
-            [Checksum(ChecksumAlgorithm.SHA256, "different123def456")],
-            PackageVerificationCode(value="abc123"),
-            PackageVerificationCode(value="abc123"),
-            True,
-            False,
-            id="checksums-mismatch-others-match",
-        ),
-        pytest.param(
-            [Checksum(ChecksumAlgorithm.SHA256, "abc123def456")],
-            [],
-            PackageVerificationCode(value="abc123"),
-            None,
-            True,
-            False,
-            id="one-checksum-and-one-verification-code-missing-purls-match",
-        ),
-        pytest.param(
-            [],
-            [],
-            None,
-            None,
-            False,
-            False,
-            id="checksums-and-verification-codes-missing-purls-mismatch",
-        ),
-    ],
-)
-@patch(
-    "mobster.cmd.generate.oci_image.contextual_parent_content.get_annotations_by_spdx_id"
-)
-@patch("mobster.cmd.generate.oci_image.contextual_parent_content.get_package_purl")
-@patch(
-    "mobster.cmd.generate.oci_image.contextual_parent_content.validate_and_compare_purls"
-)
-@patch("mobster.cmd.generate.oci_image.contextual_parent_content.generated_by_hermeto")
-def test_package_matched_syft_to_syft(
-    mock_generated_by_hermeto: MagicMock,
-    mock_validate_and_compare_purls: MagicMock,
-    mock_get_package_purl: MagicMock,
-    mock_get_annotations_by_spdx_id: MagicMock,
-    parent_checksums: list[Checksum],
-    component_checksums: list[Checksum],
-    parent_verification_code: PackageVerificationCode,
-    component_verification_code: PackageVerificationCode,
-    purls_match: bool,
-    expected_result: bool,
-) -> None:
-    mock_validate_and_compare_purls.return_value = purls_match
-    mock_generated_by_hermeto.return_value = False
-
-    parent_doc = MagicMock(spec=Document)
-    parent_package = MagicMock(spec=Package)
-    parent_package.checksums = parent_checksums
-    parent_package.verification_code = parent_verification_code
-    component_package = MagicMock(spec=Package)
-    component_package.checksums = component_checksums
-    component_package.verification_code = component_verification_code
-
-    result = package_matched(parent_doc, parent_package, component_package)
-
-    mock_get_package_purl.assert_has_calls(
-        [
-            call(parent_package),
-            call(component_package),
-        ]
-    )
-    mock_generated_by_hermeto.assert_called_once()
-
-    assert result is expected_result
