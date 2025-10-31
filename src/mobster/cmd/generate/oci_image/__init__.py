@@ -24,7 +24,7 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     get_digest_for_image_ref,
     get_image_objects_from_file,
 )
-from mobster.cmd.generate.oci_image.contextual_parent_content import (
+from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     download_parent_image_sbom,
     get_descendant_of_items_from_used_parent,
     get_parent_spdx_id_from_component,
