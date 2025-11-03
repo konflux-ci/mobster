@@ -267,6 +267,7 @@ class GenerateOciImageCommandArgs:
     base_image_digest_file: Path | None = None
     output: Path | None = None
     contextualize: bool = False
+    skip_validation: bool = False
 
 
 @dataclass
