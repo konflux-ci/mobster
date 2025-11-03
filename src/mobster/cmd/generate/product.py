@@ -83,6 +83,7 @@ class GenerateProductCommand(GenerateCommand):
 
         Args:
             document: The SPDX document to output.
+            validate: Whether or not to validate the document.
         """
         return await self._save(document, sys.stdout, validate)
 
@@ -94,6 +95,7 @@ class GenerateProductCommand(GenerateCommand):
         Args:
             document: The SPDX document to save.
             output: The file path to save to.
+            validate: Whether or not to validate the document.
         """
         with open(output, "w", encoding="utf-8") as fp:
             await self._save(document, fp, validate)
@@ -104,6 +106,7 @@ class GenerateProductCommand(GenerateCommand):
         Args:
             document: The SPDX document to save.
             stream: The stream to write to.
+            validate: Whether or not to validate the document.
         """
         spdx_json_writer.write_document_to_stream(
             document=document, stream=stream, validate=validate
