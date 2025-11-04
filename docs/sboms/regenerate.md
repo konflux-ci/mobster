@@ -41,6 +41,9 @@ The optional `--output-dir <path>` argument may be included in cases where a
 predetermined static path is preferred.  Otherwise, the script creates and 
 uses a temporary directory. 
 
+The optional `--output-dir <path>` argument allows you to skip the validation
+of the SBOM.
+
 The following environment variables are required to run the regeneration script:
 
 ```
