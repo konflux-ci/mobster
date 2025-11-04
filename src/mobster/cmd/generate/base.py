@@ -56,8 +56,9 @@ class GenerateCommandWithOutputTypeSelector(GenerateCommand, ABC):
                     outputter = JsonV1Dot5(self._content)
                     file.write(outputter.output_as_string(indent=2))
             else:
+                validate = self.cli_args.skip_validation is False
                 write_file(
                     self._content,
                     str(self.cli_args.output),
-                    validate=True,
+                    validate=validate,
                 )

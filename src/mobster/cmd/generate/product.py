@@ -69,41 +69,47 @@ class GenerateProductCommand(GenerateCommand):
         assert self.release_notes, "release_notes not set"
         assert self.document, "document not set"
 
+        validate = self.cli_args.skip_validation is False
         if self.cli_args.output:
             output_path = self.cli_args.output
             LOGGER.info("Saving SBOM to %s.", output_path)
-            await self._save_file(self.document, output_path)
+            await self._save_file(self.document, output_path, validate)
         else:
             LOGGER.info("Outputting SBOM to stdout.")
-            await self._save_stdout(self.document)
+            await self._save_stdout(self.document, validate)
 
-    async def _save_stdout(self, document: Document) -> None:
+    async def _save_stdout(self, document: Document, validate: bool) -> None:
         """Validate and print the passed SPDX document to stdout.
 
         Args:
             document: The SPDX document to output.
+            validate: Whether or not to validate the document.
         """
-        return await self._save(document, sys.stdout)
+        return await self._save(document, sys.stdout, validate)
 
-    async def _save_file(self, document: Document, output: Path) -> None:
+    async def _save_file(
+        self, document: Document, output: Path, validate: bool
+    ) -> None:
         """Validate and save the passed SPDX document to a specified path.
 
         Args:
             document: The SPDX document to save.
             output: The file path to save to.
+            validate: Whether or not to validate the document.
         """
         with open(output, "w", encoding="utf-8") as fp:
-            await self._save(document, fp)
+            await self._save(document, fp, validate)
 
-    async def _save(self, document: Document, stream: Any) -> None:
+    async def _save(self, document: Document, stream: Any, validate: bool) -> None:
         """Validate and save the passed SPDX document to a stream.
 
         Args:
             document: The SPDX document to save.
             stream: The stream to write to.
+            validate: Whether or not to validate the document.
         """
         spdx_json_writer.write_document_to_stream(
-            document=document, stream=stream, validate=True
+            document=document, stream=stream, validate=validate
         )
 
 

@@ -49,6 +49,7 @@ mobster --verbose  generate oci-image \
   expects the format `<registry>/<repository>:<tag>@sha256:<digest value>`
 - `--contextualize` -- Allows SBOM contextualization (see [Contextual SBOM](#contextual-sbom))
 - `--output` -- where to save the SBOM. prints it to STDOUT if this is not specified
+- `--skip-validation` -- skips validation of the SBOM
 
 
 ## Contextual SBOM

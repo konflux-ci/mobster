@@ -59,6 +59,12 @@ def generate_command_parser(subparsers: Any) -> None:
     generate_subparsers = generate_parser.add_subparsers(dest="type", required=True)
 
     generate_parser.add_argument(
+        "--skip-validation",
+        help="Skip validating the SBOM before output.",
+        action="store_true",
+    )
+
+    generate_parser.add_argument(
         "--output",
         type=Path,
         help="Path to the output file. If not provided, the output will be printed"

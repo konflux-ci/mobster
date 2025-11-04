@@ -28,7 +28,7 @@ This argument should always be used for testing/validation.
 The required `--tpa-base-url <url>` argument indicates the base url for 
 the relevant TPA instance with SBOMs in need of regeneration.
 
-The required `--mobster-versions <comma,separated,list>`argument indicates which 
+The required `--mobster-versions <comma,separated,list>` argument indicates which 
 mobster version(s) originally generated the problem SBOMs.
 
 The optional `--concurrency <int>` argument sets the number of concurrent threads 

@@ -280,7 +280,8 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         )
         sbom = contextual_sbom or sbom
         self._content = sbom
-        await self._soft_validate_content()
+        if not self.cli_args.skip_validation:
+            await self._soft_validate_content()
         return self._content
 
     async def save(self) -> None:
