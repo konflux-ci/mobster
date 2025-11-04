@@ -28,7 +28,7 @@ This argument should always be used for testing/validation.
 The required `--tpa-base-url <url>` argument indicates the base url for 
 the relevant TPA instance with SBOMs in need of regeneration.
 
-The required `--mobster-versions <comma,separated,list>`argument indicates which 
+The required `--mobster-versions <comma,separated,list>` argument indicates which 
 mobster version(s) originally generated the problem SBOMs.
 
 The optional `--concurrency <int>` argument sets the number of concurrent threads 
@@ -41,7 +41,7 @@ The optional `--output-dir <path>` argument may be included in cases where a
 predetermined static path is preferred.  Otherwise, the script creates and 
 uses a temporary directory. 
 
-The optional `--output-dir <path>` argument allows you to skip the validation
+The optional `--skip-validation` argument allows you to skip the validation
 of the SBOM.
 
 The following environment variables are required to run the regeneration script:
