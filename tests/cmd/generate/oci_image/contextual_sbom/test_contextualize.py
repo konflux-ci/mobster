@@ -12,6 +12,12 @@ from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
+from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
+    MatchBy,
+    PackageInfo,
+    PackageMatchInfo,
+    PackageProducer,
+)
 from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     download_parent_image_sbom,
     get_descendant_of_items_from_used_parent,
@@ -519,7 +525,13 @@ async def test_skip_already_matched_component_package(
     ]
     component_sbom_doc.annotations = []
 
-    mock_package_matched.return_value = True
+    mock_package_matched.return_value = PackageMatchInfo(
+        matched=True,
+        match_by=MatchBy.CHECKSUM,
+        parent_info=PackageInfo("SPDXRef-p1", PackageProducer.SYFT),
+        component_info=PackageInfo("SPDXRef-c1", PackageProducer.SYFT),
+        identifier_value="duplicate123",
+    )
     await map_parent_to_component_and_modify_component(
         parent_sbom_doc, component_sbom_doc, parent_spdx_id, []
     )

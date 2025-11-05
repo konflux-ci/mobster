@@ -8,9 +8,16 @@ from spdx_tools.spdx.model.annotation import Annotation
 from spdx_tools.spdx.model.checksum import Checksum
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import Package
-from spdx_tools.spdx.model.relationship import Relationship
+from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
-from mobster.cmd.generate.oci_image.constants import HERMETO_ANNOTATION_COMMENTS
+from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
+    HERMETO_ANNOTATION_COMMENTS,
+    MatchBy,
+    PackageInfo,
+    PackageMatchInfo,
+    PackageProducer,
+)
+from mobster.cmd.generate.oci_image.contextual_sbom.logging import MatchingStatistics
 from mobster.cmd.generate.oci_image.spdx_utils import (
     get_annotations_by_spdx_id,
     get_package_purl,
@@ -33,19 +40,24 @@ class ComponentRelationshipResolver:
     4. Tracking already matched packages to avoid duplicate matching
     """
 
-    def __init__(self, component_packages: list[tuple[Package, Relationship]]):
+    def __init__(
+        self,
+        component_packages: list[tuple[Package, Relationship]],
+        stats: MatchingStatistics,
+    ):
         """
         Initialize and build all indexes.
 
         Args:
-            component_packages: List of (component Package, component
-                Relationship) tuples to index
+            component_packages: List of (component Package, component Relationship) tuples to index
+            stats: Statistics tracker for recording packages without unique IDs
         """
         self.checksum_index: dict[str, list[tuple[Package, Relationship]]] = {}
         self.verification_code_index: dict[str, list[tuple[Package, Relationship]]] = {}
         self.purl_index: dict[str, list[tuple[Package, Relationship]]] = {}
         self.component_packages = component_packages
         self.matched_packages: set[str] = set()
+        self.stats = stats
 
         self._build_indexes()
 
@@ -54,15 +66,21 @@ class ComponentRelationshipResolver:
         Build indexes for all identifiers. Index considers possibility
         of multiple packages under same unique id in component SBOM
         (multiple packages with same identifier).
+
+        Also records component packages without any unique identifier.
         """
         for pkg, rel in self.component_packages:
+            has_unique_id = False
+
             if pkg.checksums:
                 checksum_key = self._create_checksum_key(pkg.checksums)
                 self.checksum_index.setdefault(checksum_key, []).append((pkg, rel))
+                has_unique_id = True
 
             if pkg.verification_code:
                 vc_key = pkg.verification_code.value
                 self.verification_code_index.setdefault(vc_key, []).append((pkg, rel))
+                has_unique_id = True
 
             purl = get_package_purl(pkg)
             # Packages with missing or malformed purl, or
@@ -73,10 +91,15 @@ class ComponentRelationshipResolver:
                     if purl_obj.version:
                         purl_key = self._create_purl_key(purl_obj)
                         self.purl_index.setdefault(purl_key, []).append((pkg, rel))
+                        has_unique_id = True
                 except ValueError:
                     LOGGER.warning(
                         "Could not parse component's SBOM package URL %s", purl
                     )
+
+            # Record component packages without any unique identifier
+            if not has_unique_id:
+                self.stats.record_component_package_without_unique_id(pkg.spdx_id)
 
     @staticmethod
     def _create_checksum_key(checksums: list[Checksum]) -> str:
@@ -98,6 +121,8 @@ class ComponentRelationshipResolver:
 
         Priority: checksums -> verification_code -> purl
 
+        Also records parent packages without any unique identifier.
+
         Args:
             parent_package: Parent package to find matching candidates for
                 in the indexed component SBOM
@@ -116,6 +141,7 @@ class ComponentRelationshipResolver:
                 return self.verification_code_index[vc_key]
 
         purl = get_package_purl(parent_package)
+        has_valid_purl = False
         # Parent packages with absent checksum, pkg verification code,
         # missing or malformed purl, or purl without version are not
         # eligible for matching against component packages.
@@ -124,12 +150,23 @@ class ComponentRelationshipResolver:
             try:
                 purl_obj = PackageURL.from_string(purl)
                 if purl_obj.version:
+                    has_valid_purl = True
                     purl_key = self._create_purl_key(purl_obj)
                     if purl_key in self.purl_index:
                         return self.purl_index[purl_key]
             except ValueError:
                 LOGGER.warning("Could not parse parent's SBOM package URL %s", purl)
                 return []
+
+        # Record parent packages without any unique identifier
+        # (no checksums, no verification_code, and no valid purl with version)
+        if (
+            not parent_package.checksums
+            and not parent_package.verification_code
+            and not has_valid_purl
+        ):
+            self.stats.record_parent_package_without_unique_id(parent_package.spdx_id)
+
         return []
 
     def mark_as_matched(self, spdx_id: str) -> None:
@@ -315,20 +352,22 @@ def validate_and_compare_purls(
 ) -> bool:
     """
     Validate that the purls contains the required fields (type, name and version). Then
-    compare the compare purls based on the required fields and the namespace.
+    compare the purls based on the required fields and the namespace.
 
     Args:
         parent_purl: The parent purl to validate and compare with the component purl.
         component_purl: The component purl to validate and compare with the parent purl.
 
     Returns:
-        True if the purls match after validation, False if either purl is invalid, or
-        the validated purls don't match.
+        True if purls match, False otherwise
     """
+    if not parent_purl or not component_purl:
+        return False
+
     # ValueError is thrown if a purl is None, or missing type or name.
     try:
-        parent_purl_obj = PackageURL.from_string(parent_purl)  # type: ignore[arg-type]
-        component_purl_obj = PackageURL.from_string(component_purl)  # type: ignore[arg-type]
+        parent_purl_obj = PackageURL.from_string(parent_purl)
+        component_purl_obj = PackageURL.from_string(component_purl)
     except ValueError:
         return False
 
@@ -341,6 +380,21 @@ def validate_and_compare_purls(
         and parent_purl_obj.version == component_purl_obj.version
         and parent_purl_obj.namespace == component_purl_obj.namespace
     )
+
+
+def format_checksums_identifier(checksums: list[Checksum]) -> list[str]:
+    """
+    Format checksums as sorted, pipe-separated identifier string.
+    The Checksum objects are not hashable and do not have to_string()
+    method, and we have to convert them to strings in a custom way
+
+    Args:
+        checksums: List of Checksum objects.
+
+    Returns:
+        Sorted, pipe-separated string of checksums.
+    """
+    return [f"{checksum.algorithm}:{checksum.value}" for checksum in checksums]
 
 
 def checksums_match(
@@ -356,76 +410,9 @@ def checksums_match(
     Returns:
         True if all the checksums match, False otherwise.
     """
-    # The Checksum objects are not hashable and do not have to_string(), convert them to
-    # strings in a custom way
-    parent_checksums_str = [
-        str(checksum.algorithm) + ":" + checksum.value for checksum in parent_checksums
-    ]
-    component_checksums_str = [
-        str(checksum.algorithm) + ":" + checksum.value
-        for checksum in component_checksums
-    ]
+    parent_checksums_str = format_checksums_identifier(parent_checksums)
+    component_checksums_str = format_checksums_identifier(component_checksums)
     return set(parent_checksums_str) == set(component_checksums_str)
-
-
-def package_matched(
-    parent_sbom_doc: Document,
-    parent_package: Package,
-    component_package: Package,
-) -> bool:
-    """
-    Determine if a component package matches a parent package for SBOM
-    contextualization. The matching strategy depends on the tool that generated the
-    packages:
-
-    **Hermeto-to-Syft matching:**
-    - Parent packages generated by Hermeto are compared to component packages generated
-      by Syft.
-    - Matching is done by comparing validated purls (type, name, version, and optionally
-      namespace). If either purl fails validation, the packages are considered not
-      matched.
-
-    **Syft-to-Syft matching:**
-    - Both parent and component packages are generated by Syft.
-    - Uses prioritized matching with identifiers checked from most to least specific:
-      1. Package checksums (all items in the lists must match)
-      2. Package verification codes
-      3. Validated purls (type, name, version, and optionally namespace). If either purl
-         fails validation, the packages are considered not matched.
-
-    There is no Hermeto-to-Hermeto matching because Hermeto produces component-only
-    content that was added during build. Therefore a Hermeto-generated component package
-    should never be matched with any parent content. On the other hand, Syft scans the
-    entire image including parent content, so Syft-generated components can potentially
-    be matched with parent packages generated by either tool.
-
-    Args:
-        parent_sbom_doc: The parent SBOM document.
-        parent_package: The parent package.
-        component_package: The component package.
-
-    Returns:
-        True if the packages match based on the criteria above, False otherwise.
-    """
-    parent_package_annotations = get_annotations_by_spdx_id(
-        parent_sbom_doc, parent_package.spdx_id
-    )
-
-    parent_purl = get_package_purl(parent_package)
-    component_purl = get_package_purl(component_package)
-
-    # Hermeto-to-syft matching
-    if generated_by_hermeto(parent_package_annotations):
-        return validate_and_compare_purls(parent_purl, component_purl)
-
-    # Syft-to-syft matching: Check identifiers from most specific to least specific
-    if parent_package.checksums or component_package.checksums:
-        return checksums_match(parent_package.checksums, component_package.checksums)
-
-    if parent_package.verification_code or component_package.verification_code:
-        return parent_package.verification_code == component_package.verification_code
-
-    return validate_and_compare_purls(parent_purl, component_purl)
 
 
 def generated_by_hermeto(annotations: list[Annotation]) -> bool:
@@ -447,4 +434,125 @@ def generated_by_hermeto(annotations: list[Annotation]) -> bool:
         annot.annotator.actor_type == ActorType.TOOL
         and annot.annotation_comment in HERMETO_ANNOTATION_COMMENTS
         for annot in annotations
+    )
+
+
+def package_matched(
+    parent_sbom_doc: Document,
+    component_sbom_doc: Document,
+    parent_package: Package,
+    component_package: Package,
+) -> PackageMatchInfo:
+    """
+    Determine if a component package matches a parent package for SBOM
+    contextualization. The matching strategy depends on the tool that generated the
+    packages:
+
+    **Hermeto-to-Syft matching:**
+    - Parent packages generated by Hermeto are compared to component packages generated
+      by Syft.
+    - Matching is done by comparing validated purls (type, name, version, and optionally
+      namespace). If either purl fails validation, the packages are considered not
+      matched.
+
+    **Syft-to-Syft matching:**
+    - Both parent and component packages are generated by Syft.
+    - Uses prioritized matching with identifiers checked from most to least specific:
+      1. Package checksums (all items in the lists must match)
+      2. Package verification codes
+      3. Validated purls (type, name, version, and optionally namespace). If either purl
+         fails validation, the packages are considered not matched.
+
+    There is no Hermeto-to-Hermeto matching because Hermeto produces component-only
+    content that was added during build. Therefore, a Hermeto-generated component
+    package should never be matched with any parent content. On the other hand, Syft
+    scans the entire image including parent content, so Syft-generated components can
+    potentially be matched with parent packages generated by either tool.
+
+    Args:
+        parent_sbom_doc: The parent SBOM document.
+        component_sbom_doc: The component SBOM document.
+        parent_package: The parent package.
+        component_package: The component package.
+
+    Returns:
+        PackageMatchInfo containing match result and metadata about both packages
+    """
+    parent_purl = get_package_purl(parent_package)
+    component_purl = get_package_purl(component_package)
+
+    parent_producer = (
+        PackageProducer.HERMETO
+        if generated_by_hermeto(
+            get_annotations_by_spdx_id(parent_sbom_doc, parent_package.spdx_id)
+        )
+        else PackageProducer.SYFT
+    )
+
+    component_producer = (
+        PackageProducer.HERMETO
+        if generated_by_hermeto(
+            get_annotations_by_spdx_id(component_sbom_doc, component_package.spdx_id)
+        )
+        else PackageProducer.SYFT
+    )
+
+    # Create package info objects
+    parent_info = PackageInfo(parent_package.spdx_id, parent_producer)
+    component_info = PackageInfo(component_package.spdx_id, component_producer)
+
+    # Hermeto-to-syft matching
+    if parent_producer == PackageProducer.HERMETO:
+        matched = validate_and_compare_purls(parent_purl, component_purl)
+        return PackageMatchInfo(
+            matched=matched,
+            match_by=MatchBy.PURL,
+            parent_info=parent_info,
+            component_info=component_info,
+            identifier_value=parent_purl if matched else None,
+        )
+
+    # Syft-to-syft matching: Check identifiers from most specific to least specific
+
+    if parent_package.checksums and component_package.checksums:
+        matched = checksums_match(parent_package.checksums, component_package.checksums)
+        identifier_value = (
+            "|".join(sorted(format_checksums_identifier(parent_package.checksums)))
+            if matched
+            else None
+        )
+        return PackageMatchInfo(
+            matched=matched,
+            match_by=MatchBy.CHECKSUM,
+            parent_info=parent_info,
+            component_info=component_info,
+            identifier_value=identifier_value,
+        )
+
+    if (
+        parent_package.verification_code
+        and parent_package.verification_code.value
+        and component_package.verification_code
+        and component_package.verification_code.value
+    ):
+        matched = (
+            parent_package.verification_code == component_package.verification_code
+        )
+        return PackageMatchInfo(
+            matched=matched,
+            match_by=MatchBy.PACKAGE_VERIFICATION_CODE,
+            parent_info=parent_info,
+            component_info=component_info,
+            identifier_value=parent_package.verification_code.value
+            if matched
+            else None,
+        )
+
+    matched = validate_and_compare_purls(parent_purl, component_purl)
+    return PackageMatchInfo(
+        matched=matched,
+        match_by=MatchBy.PURL,
+        parent_info=parent_info,
+        component_info=component_info,
+        identifier_value=parent_purl if matched else None,
     )

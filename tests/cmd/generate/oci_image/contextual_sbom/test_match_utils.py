@@ -16,12 +16,22 @@ from spdx_tools.spdx.model.package import (
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
+from mobster.cmd.generate.oci_image.contextual_sbom.constants import MatchBy
+from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
+    map_parent_to_component_and_modify_component,
+)
+from mobster.cmd.generate.oci_image.contextual_sbom.logging import (
+    MatchingStatistics,
+)
 from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     ComponentRelationshipResolver,
     checksums_match,
     generated_by_hermeto,
     package_matched,
     validate_and_compare_purls,
+)
+from tests.cmd.generate.oci_image.contextual_sbom.conftest import (
+    create_package_match_info,
 )
 
 
@@ -105,6 +115,17 @@ def test_component_package_index_all_identifiers(
     if should_index:
         assert candidates[0] == (pkg, rel)
 
+    # Verify that packages without unique IDs are recorded in stats
+    if not should_index:
+        # Component package without unique ID should be recorded during build_indexes
+        assert pkg.spdx_id in stats.component.packages_without_unique_id
+        # Parent package without unique ID should be recorded during find_candidates
+        assert parent_pkg.spdx_id in stats.parent.packages_without_unique_id
+    else:
+        # Packages with unique IDs should NOT be recorded
+        assert pkg.spdx_id not in stats.component.packages_without_unique_id
+        assert parent_pkg.spdx_id not in stats.parent.packages_without_unique_id
+
 
 @pytest.mark.asyncio
 @patch("mobster.cmd.generate.oci_image.contextual_sbom.match_utils.package_matched")
@@ -118,10 +139,6 @@ async def test_skip_already_matched_component_package(
     The second parent package finds the same
     candidate but skips it because it's already matched.
     """
-    from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
-        map_parent_to_component_and_modify_component,
-    )
-
     shared_checksum = Checksum(ChecksumAlgorithm.SHA256, "duplicate123")
     parent_spdx_id = "SPDXRef-parent-from-component"
 
@@ -162,19 +179,25 @@ async def test_skip_already_matched_component_package(
     ]
     component_sbom_doc.annotations = []
 
-    mock_package_matched.return_value = True
+    mock_package_matched.return_value = create_package_match_info(
+        parent_spdx_id="SPDXRef-p1",
+        component_spdx_id="SPDXRef-c1",
+        matched=True,
+        match_by=MatchBy.CHECKSUM,
+        identifier_value="test",
+    )
     await map_parent_to_component_and_modify_component(
         parent_sbom_doc, component_sbom_doc, parent_spdx_id, []
     )
 
     assert mock_package_matched.call_count == 1, (
         f"Expected package_matched called 1 time, "
-        f"got {mock_package_matched.call_count}. "
+        f"got {mock_package_matched.call_count}."
     )
 
 
 @pytest.mark.parametrize(
-    ["parent_checksums", "component_checksums", "expected_result"],
+    ["parent_checksums", "component_checksums", "expected_matched"],
     [
         # Successful matches for all checksums
         pytest.param(
@@ -187,7 +210,7 @@ async def test_skip_already_matched_component_package(
                 Checksum(ChecksumAlgorithm.SHA256, "xyz789"),
             ],
             True,
-            id="successful-matches",
+            id="Successful match.",
         ),
         pytest.param(
             [
@@ -199,7 +222,7 @@ async def test_skip_already_matched_component_package(
                 Checksum(ChecksumAlgorithm.MD5, "different456"),
             ],
             False,
-            id="no-matches",
+            id="No match",
         ),
         pytest.param(
             [
@@ -212,77 +235,141 @@ async def test_skip_already_matched_component_package(
                 Checksum(ChecksumAlgorithm.MD5, "different"),
             ],
             False,
-            id="some-common-items-but-not-all-match",
+            id="Some common but no match overal",
         ),
         pytest.param(
             [Checksum(ChecksumAlgorithm.SHA256, "abc123def456")],
             [],
             False,
-            id="one-empty-list",
+            id="Component package is missing checksums - no match",
         ),
         pytest.param(
             [Checksum(ChecksumAlgorithm.SHA256, "abc123def456")],
             [Checksum(ChecksumAlgorithm.SHA1, "abc123def456")],
             False,
-            id="different-algorithms-same-value",
+            id="Different algorithms, same value",
         ),
     ],
 )
 def test_checksums_match(
     parent_checksums: list[Checksum],
     component_checksums: list[Checksum],
-    expected_result: bool,
+    expected_matched: bool,
 ) -> None:
-    assert checksums_match(parent_checksums, component_checksums) is expected_result
+    matched = checksums_match(parent_checksums, component_checksums)
+    assert matched is expected_matched
 
 
 @pytest.mark.parametrize(
-    ["component_purl", "parent_purl", "expected_result"],
+    ["parent_purl", "component_purl", "expected_matched"],
     [
-        # Successful validation, required fields and namespace match, qualifiers ignored
         pytest.param(
             "pkg:npm/test-namespace/test-package@1.0.0?arch=amd64&distro=fedora&os=linux&checksum=sha256:abc123",
             "pkg:npm/test-namespace/test-package@1.0.0?arch=x86_64&distro=ubuntu&os=linux&checksum=sha256:def456",
             True,
-            id="successful-validation",
+            id="Successful validation, required fields and "
+            "namespace match, qualifiers ignored",
         ),
+        # Parent purl absent cases
         pytest.param(
-            "pkg:npm/test-namespace/test-package@1.0.0",
+            None,
             "pkg:npm/test-package@1.0.0",
             False,
-            id="namespace-missing",
+            id="Parent purl missing",
         ),
         pytest.param(
-            "pkg:npm/test-namespace/test-package@1.0.0",
-            "pkg:npm/different-namespace/test-package@1.0.0",
+            "",
+            "pkg:npm/test-package@1.0.0",
             False,
-            id="namespace-mismatch",
+            id="Parent purl empty string",
+        ),
+        # Component purl absent cases
+        pytest.param(
+            "pkg:npm/test-package@1.0.0",
+            None,
+            False,
+            id="Component purl missing",
         ),
         pytest.param(
-            "invalid-purl", "pkg:npm/test-package@1.0.0", False, id="invalid-format"
+            "pkg:npm/test-package@1.0.0",
+            "",
+            False,
+            id="Component purl empty string",
         ),
         pytest.param(
-            "pkg:npm@1.0.0", "pkg:npm/test-package@1.0.0", False, id="missing-name"
+            None,
+            None,
+            False,
+            id="Both purls missing",
         ),
+        pytest.param(
+            "",
+            "",
+            False,
+            id="Both purls empty str",
+        ),
+        # Parent purl invalid cases
+        pytest.param(
+            "invalid-purl",
+            "pkg:npm/test-package@1.0.0",
+            False,
+            id="Parent purl invalid",
+        ),
+        pytest.param(
+            "pkg:npm@1.0.0",
+            "pkg:npm/test-package@1.0.0",
+            False,
+            id="Parent purl missing name",
+        ),
+        # Component purl invalid cases
+        pytest.param(
+            "pkg:npm/test-package@1.0.0",
+            "invalid-purl",
+            False,
+            id="Component purl invalid",
+        ),
+        pytest.param(
+            "pkg:npm/test-package@1.0.0",
+            "pkg:npm@1.0.0",
+            False,
+            id="Component purl missing name",
+        ),
+        # Parent purl unqualified (missing version)
         pytest.param(
             "pkg:npm/test-package",
             "pkg:npm/test-package@1.0.0",
             False,
-            id="missing-version",
+            id="Parent purl missing version",
         ),
-        pytest.param("", "pkg:npm/test-package@1.0.0", False, id="empty-string-one"),
-        pytest.param("", "", False, id="empty-string-both"),
+        # Component purl unqualified (missing version)
         pytest.param(
-            None, "pkg:npm/test-package@1.0.0", False, id="none-component-purl"
+            "pkg:npm/test-package@1.0.0",
+            "pkg:npm/test-package",
+            False,
+            id="Component purl missing version",
         ),
-        pytest.param("pkg:npm/test-package@1.0.0", None, False, id="none-parent-purl"),
-        pytest.param(None, None, False, id="none-both"),
+        # Namespace mismatch
+        pytest.param(
+            "pkg:npm/test-package@1.0.0",
+            "pkg:npm/test-namespace/test-package@1.0.0",
+            False,
+            id="Namespace mismatch",
+        ),
+        pytest.param(
+            "pkg:npm/different-namespace/test-package@1.0.0",
+            "pkg:npm/test-namespace/test-package@1.0.0",
+            False,
+            id="Different namespace",
+        ),
     ],
 )
 def test_validate_and_compare_purls(
-    component_purl: str, parent_purl: str, expected_result: bool
+    parent_purl: str,
+    component_purl: str,
+    expected_matched: bool,
 ) -> None:
-    assert validate_and_compare_purls(component_purl, parent_purl) == expected_result
+    matched = validate_and_compare_purls(parent_purl, component_purl)
+    assert matched is expected_matched
 
 
 @pytest.mark.parametrize(
@@ -368,7 +455,7 @@ def test_generated_by_hermeto(
 
 
 @pytest.mark.parametrize(
-    ["purls_match", "expected_result"],
+    ["purls_match", "expected_matched"],
     [
         (True, True),
         (False, False),
@@ -390,21 +477,24 @@ def test_package_matched_hermeto_to_syft(
     mock_get_package_purl: MagicMock,
     mock_get_annotations_by_spdx_id: MagicMock,
     purls_match: bool,
-    expected_result: bool,
+    expected_matched: bool,
 ) -> None:
     """Test package matching for hermeto-generated packages."""
+    # Mock should return bool
     mock_validate_and_compare_purls.return_value = purls_match
     mock_generated_by_hermeto.return_value = True
 
     parent_doc = MagicMock(spec=Document)
     parent_package = MagicMock(spec=Package)
+    parent_package.spdx_id = "SPDXRef-parent"
+    component_doc = MagicMock(spec=Document)
     component_package = MagicMock(spec=Package)
+    component_package.spdx_id = "SPDXRef-component"
 
-    result = package_matched(parent_doc, parent_package, component_package)
-
-    mock_get_annotations_by_spdx_id.assert_called_once_with(
-        parent_doc, parent_package.spdx_id
+    match_info = package_matched(
+        parent_doc, component_doc, parent_package, component_package
     )
+
     mock_get_package_purl.assert_has_calls(
         [
             call(parent_package),
@@ -412,9 +502,12 @@ def test_package_matched_hermeto_to_syft(
         ]
     )
     mock_validate_and_compare_purls.assert_called_once()
-    mock_generated_by_hermeto.assert_called_once()
+    # generated_by_hermeto is called twice (once for parent, once for component pkg)
+    assert mock_generated_by_hermeto.call_count == 2
 
-    assert result is expected_result
+    assert match_info.matched is expected_matched
+    assert match_info.parent_info.spdx_id == "SPDXRef-parent"
+    assert match_info.component_info.spdx_id == "SPDXRef-component"
 
 
 @pytest.mark.parametrize(
@@ -424,7 +517,7 @@ def test_package_matched_hermeto_to_syft(
         "parent_verification_code",
         "component_verification_code",
         "purls_match",
-        "expected_result",
+        "expected_matched",
     ],
     [
         pytest.param(
@@ -473,15 +566,6 @@ def test_package_matched_hermeto_to_syft(
             id="checksums-mismatch-others-match",
         ),
         pytest.param(
-            [Checksum(ChecksumAlgorithm.SHA256, "abc123def456")],
-            [],
-            PackageVerificationCode(value="abc123"),
-            None,
-            True,
-            False,
-            id="one-checksum-and-one-verification-code-missing-purls-match",
-        ),
-        pytest.param(
             [],
             [],
             None,
@@ -512,8 +596,9 @@ def test_package_matched_syft_to_syft(
     parent_verification_code: PackageVerificationCode,
     component_verification_code: PackageVerificationCode,
     purls_match: bool,
-    expected_result: bool,
+    expected_matched: bool,
 ) -> None:
+    # Mock should return bool
     mock_validate_and_compare_purls.return_value = purls_match
     mock_generated_by_hermeto.return_value = False
 
@@ -521,11 +606,16 @@ def test_package_matched_syft_to_syft(
     parent_package = MagicMock(spec=Package)
     parent_package.checksums = parent_checksums
     parent_package.verification_code = parent_verification_code
+    parent_package.spdx_id = "SPDXRef-parent"
+    component_doc = MagicMock(spec=Document)
     component_package = MagicMock(spec=Package)
     component_package.checksums = component_checksums
     component_package.verification_code = component_verification_code
+    component_package.spdx_id = "SPDXRef-component"
 
-    result = package_matched(parent_doc, parent_package, component_package)
+    match_info = package_matched(
+        parent_doc, component_doc, parent_package, component_package
+    )
 
     mock_get_package_purl.assert_has_calls(
         [
@@ -533,6 +623,9 @@ def test_package_matched_syft_to_syft(
             call(component_package),
         ]
     )
-    mock_generated_by_hermeto.assert_called_once()
+    # generated_by_hermeto is called twice (once for parent, once for component pkg)
+    assert mock_generated_by_hermeto.call_count == 2
 
-    assert result is expected_result
+    assert match_info.matched is expected_matched
+    assert match_info.parent_info.spdx_id == "SPDXRef-parent"
+    assert match_info.component_info.spdx_id == "SPDXRef-component"

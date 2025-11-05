@@ -16,6 +16,13 @@ from spdx_tools.spdx.model.package import (
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
+from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
+    MatchBy,
+    PackageInfo,
+    PackageMatchInfo,
+    PackageProducer,
+)
+
 
 def get_base_image_items(
     spdx_element_id: str,
@@ -114,3 +121,47 @@ def create_package_with_identifier(
         ]
 
     return Package(**kwargs)
+
+
+def create_annotation_with_spdx_id(spdx_id: str) -> Annotation:
+    """Create annotation with specified SPDX ID for testing."""
+    return Annotation(
+        spdx_id,
+        AnnotationType.OTHER,
+        Actor(ActorType.TOOL, "test-tool"),
+        datetime.datetime.now(),
+        "test annotation",
+    )
+
+
+def create_package_match_info(
+    parent_spdx_id: str,
+    component_spdx_id: str,
+    matched: bool,
+    parent_producer: PackageProducer = PackageProducer.SYFT,
+    component_producer: PackageProducer = PackageProducer.SYFT,
+    match_by: MatchBy = MatchBy.CHECKSUM,
+    identifier_value: str | None = None,
+) -> PackageMatchInfo:
+    """
+    Create a PackageMatchInfo for testing.
+
+    Args:
+        parent_spdx_id: SPDX ID of the parent package
+        component_spdx_id: SPDX ID of the component package
+        matched: Whether the packages matched
+        parent_producer: Tool that produced the parent package
+        component_producer: Tool that produced the component package
+        match_by: How the match was performed/attempted
+        identifier_value: The value that matched (only used if matched=True)
+
+    Returns:
+        PackageMatchInfo with specified match result
+    """
+    return PackageMatchInfo(
+        matched=matched,
+        match_by=match_by,
+        parent_info=PackageInfo(parent_spdx_id, parent_producer),
+        component_info=PackageInfo(component_spdx_id, component_producer),
+        identifier_value=identifier_value if matched else None,
+    )
