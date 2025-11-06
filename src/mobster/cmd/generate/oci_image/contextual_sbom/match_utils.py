@@ -77,7 +77,7 @@ class ComponentRelationshipResolver:
                 self.checksum_index.setdefault(checksum_key, []).append((pkg, rel))
                 has_unique_id = True
 
-            if pkg.verification_code:
+            if pkg.verification_code and pkg.verification_code.value:
                 vc_key = pkg.verification_code.value
                 self.verification_code_index.setdefault(vc_key, []).append((pkg, rel))
                 has_unique_id = True
@@ -135,7 +135,7 @@ class ComponentRelationshipResolver:
             if checksum_key in self.checksum_index:
                 return self.checksum_index[checksum_key]
 
-        if parent_package.verification_code:
+        if parent_package.verification_code and parent_package.verification_code.value:
             vc_key = parent_package.verification_code.value
             if vc_key in self.verification_code_index:
                 return self.verification_code_index[vc_key]
@@ -359,7 +359,8 @@ def validate_and_compare_purls(
         component_purl: The component purl to validate and compare with the parent purl.
 
     Returns:
-        True if purls match, False otherwise
+        True if the purls match after validation, False if either purl is invalid, or
+        the validated purls don't match.
     """
     if not parent_purl or not component_purl:
         return False
@@ -512,8 +513,7 @@ def package_matched(
             identifier_value=parent_purl if matched else None,
         )
 
-    # Syft-to-syft matching: Check identifiers from most specific to least specific
-
+    # Syft-to-syft matching: Check identifiers from most specific to the least specific
     if parent_package.checksums and component_package.checksums:
         matched = checksums_match(parent_package.checksums, component_package.checksums)
         identifier_value = (

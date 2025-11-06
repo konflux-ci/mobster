@@ -307,9 +307,6 @@ class MatchingStatistics:
     def log_summary_structured(self) -> None:
         """
         Log structured statistics as JSON for Splunk ingestion.
-
-        This provides a machine-readable format for centralized logging systems
-        to easily parse, query, and create dashboards from matching statistics.
         """
         # Prepare duplicate identifier data for structured logging
         (
@@ -571,7 +568,7 @@ class MatchingStatistics:
         # Log structured JSON for Splunk/centralized logging
         self.log_summary_structured()
 
-        # Log all statistics sections
+        # Log all statistics sections for debug mode
         self._log_package_counts()
         self._log_match_method_breakdown()
         self._log_match_producer_breakdown()

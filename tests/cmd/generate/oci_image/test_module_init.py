@@ -385,7 +385,7 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_
 ) -> None:
     command = GenerateOciImageCommand(MagicMock())
     command.cli_args.contextualize = True
-    mock_execute_contextual.side_effect = ValueError("a")
+    mock_execute_contextual.side_effect = ValueError("error")
     await command._assess_and_dispatch_contextual_workflow(
         MagicMock(spec=Document),
         ["foo:latest"],
@@ -393,4 +393,4 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_
         "amd64",
     )
     mock_execute_contextual.assert_awaited_once()
-    assert "Contextual SBOM workflow failed." in caplog.messages
+    assert "Contextual SBOM workflow failed: error" in caplog.messages
