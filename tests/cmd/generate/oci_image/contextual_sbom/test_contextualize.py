@@ -394,7 +394,11 @@ def test_process_build_tool_of_grandparent_item() -> None:
         ("purl", False),
     ],
 )
+@patch(
+    "mobster.cmd.generate.oci_image.contextual_sbom.contextualize.MatchingStatistics"
+)
 async def test_map_parent_to_component_and_modify_component(
+    mock_stats_class: MagicMock,
     identifier_type: str,
     should_match: bool,
 ) -> None:
@@ -407,8 +411,13 @@ async def test_map_parent_to_component_and_modify_component(
     2. Matching packages -> relationship modified to use parent SPDX ID
     3. Non-matching packages -> relationship unchanged
     4. Ancestor packages/relationships always added
+    5. Statistics are properly recorded and logged
     """
     parent_spdx_id = "SPDXRef-parent-name-from-component"
+
+    # Setup mock stats instance
+    mock_stats = MagicMock()
+    mock_stats_class.return_value = mock_stats
 
     # Setup parent SBOM with grandparent and test package
     parent_sbom_doc = MagicMock(spec=Document)
@@ -472,11 +481,29 @@ async def test_map_parent_to_component_and_modify_component(
     assert grandparent_rel in result.relationships
     assert any("is_ancestor_image" in a.annotation_comment for a in result.annotations)
 
+    # Verify statistics were recorded
+    mock_stats.record_component_packages.assert_called_once()
+    mock_stats.record_parent_packages.assert_called_once()
+
+    component_packages_call = mock_stats.record_component_packages.call_args[0][0]
+    parent_packages_call = mock_stats.record_parent_packages.call_args[0][0]
+
+    assert len(component_packages_call) == 1
+    assert len(parent_packages_call) == 1
+
+    if should_match:
+        mock_stats.record_component_package_match.assert_called_once()
+        mock_stats.record_parent_package_match.assert_called_once()
+    else:
+        mock_stats.record_component_package_match.assert_not_called()
+        mock_stats.record_parent_package_match.assert_not_called()
+
 
 @pytest.mark.asyncio
 @patch("mobster.cmd.generate.oci_image.contextual_sbom.match_utils.package_matched")
 async def test_skip_already_matched_component_package(
     mock_package_matched: MagicMock,
+    mock_stats_class: MagicMock,
 ) -> None:
     """
     Test that already matched component packages are skipped.
@@ -484,9 +511,17 @@ async def test_skip_already_matched_component_package(
     package_matched() should be called only once.
     The second parent package finds the same
     candidate but skips it because it's already matched.
+
+    Also verifies that statistics properly record:
+    - Component package matched once
+    - Both parent packages recorded as matched (even though duplicate)
     """
     shared_checksum = Checksum(ChecksumAlgorithm.SHA256, "duplicate123")
     parent_spdx_id = "SPDXRef-parent-from-component"
+
+    # Setup mock stats instance
+    mock_stats = MagicMock()
+    mock_stats_class.return_value = mock_stats
 
     # Parent SBOM: 2 duplicate packages with same checksum
     parent_sbom_doc = MagicMock(spec=Document)
@@ -536,10 +571,30 @@ async def test_skip_already_matched_component_package(
         parent_sbom_doc, component_sbom_doc, parent_spdx_id, []
     )
 
+    # Verify package_matched called only once (duplicate skipped)
     assert mock_package_matched.call_count == 1, (
         f"Expected package_matched called 1 time, "
         f"got {mock_package_matched.call_count}. "
     )
+
+    # Verify statistics
+    mock_stats.record_component_packages.assert_called_once()
+    mock_stats.record_parent_packages.assert_called_once()
+
+    mock_stats.record_component_package_match.assert_called_once()
+
+    # Both parent packages should be recorded as matched
+    assert mock_stats.record_parent_package_match.call_count == 2
+    parent_match_calls = [
+        call[0][0] for call in mock_stats.record_parent_package_match.call_args_list
+    ]
+    assert "SPDXRef-p1" in parent_match_calls
+    assert "SPDXRef-p2" in parent_match_calls
+
+    # Check that component package was recorded
+    component_packages_call = mock_stats.record_component_packages.call_args[0][0]
+    component_package_ids = [pkg.spdx_id for pkg, _ in component_packages_call]
+    assert "SPDXRef-c1" in component_package_ids
 
 
 def test__supply_ancestors_from_parent_to_component() -> None:
