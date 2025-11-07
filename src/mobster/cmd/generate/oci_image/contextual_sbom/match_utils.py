@@ -1,12 +1,14 @@
 """Utilities for matching packages between parent and component SBOMs."""
 
+import logging
+
 from packageurl import PackageURL
 from spdx_tools.spdx.model.actor import ActorType
 from spdx_tools.spdx.model.annotation import Annotation
 from spdx_tools.spdx.model.checksum import Checksum
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import Package
-from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
+from spdx_tools.spdx.model.relationship import Relationship
 
 from mobster.cmd.generate.oci_image.constants import HERMETO_ANNOTATION_COMMENTS
 from mobster.cmd.generate.oci_image.spdx_utils import (
@@ -14,12 +16,21 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     get_package_purl,
 )
 
+LOGGER = logging.getLogger(__name__)
 
-class ComponentPackageIndex:
+
+class ComponentRelationshipResolver:
     """
-    Multi-index structure for fast component package lookups.
+    Resolves and modifies component SBOM relationships based on parent package
+    matches.
 
-    Builds indexes based on checksums, verification codes, and PURLs
+    This class provides a multi-index structure for fast component package
+    lookups and handles the complete workflow of:
+    1. Indexing component packages by checksums, verification codes, and PURLs
+    2. Finding matching packages between parent and component SBOMs
+    3. Resolving and modifying component relationships to point to
+       parent/grandparent packages
+    4. Tracking already matched packages to avoid duplicate matching
     """
 
     def __init__(self, component_packages: list[tuple[Package, Relationship]]):
@@ -27,7 +38,8 @@ class ComponentPackageIndex:
         Initialize and build all indexes.
 
         Args:
-            component_packages: List of (Package, Relationship) tuples to index
+            component_packages: List of (component Package, component
+                Relationship) tuples to index
         """
         self.checksum_index: dict[str, list[tuple[Package, Relationship]]] = {}
         self.verification_code_index: dict[str, list[tuple[Package, Relationship]]] = {}
@@ -62,7 +74,9 @@ class ComponentPackageIndex:
                         purl_key = self._create_purl_key(purl_obj)
                         self.purl_index.setdefault(purl_key, []).append((pkg, rel))
                 except ValueError:
-                    pass
+                    LOGGER.warning(
+                        "Could not parse component's SBOM package URL %s", purl
+                    )
 
     @staticmethod
     def _create_checksum_key(checksums: list[Checksum]) -> str:
@@ -79,14 +93,14 @@ class ComponentPackageIndex:
         self, parent_package: Package
     ) -> list[tuple[Package, Relationship]]:
         """
-        Find candidate matches in component index for parent package
-        using prioritized strategy.
+        Find candidate component packages that may match the given parent package
+        using prioritized identifier-based lookup strategy.
 
         Priority: checksums -> verification_code -> purl
 
         Args:
-            parent_package: Parent package to find candidates for
-                in component package index
+            parent_package: Parent package to find matching candidates for
+                in the indexed component SBOM
 
         Returns:
             List of candidate (Package, Relationship) tuples
@@ -104,8 +118,8 @@ class ComponentPackageIndex:
         purl = get_package_purl(parent_package)
         # Parent packages with absent checksum, pkg verification code,
         # missing or malformed purl, or purl without version are not
-        # eligible to be used for searching in component index
-        # We cannot match such parent packages with component
+        # eligible for matching against component packages.
+        # The resolver cannot match such parent packages with component packages.
         if purl:
             try:
                 purl_obj = PackageURL.from_string(purl)
@@ -114,6 +128,7 @@ class ComponentPackageIndex:
                     if purl_key in self.purl_index:
                         return self.purl_index[purl_key]
             except ValueError:
+                LOGGER.warning("Could not parse parent's SBOM package URL %s", purl)
                 return []
         return []
 
@@ -124,6 +139,174 @@ class ComponentPackageIndex:
     def is_matched(self, spdx_id: str) -> bool:
         """Check if component package was already matched."""
         return spdx_id in self.matched_packages
+
+    def get_match(
+        self,
+        parent_package: Package,
+        parent_sbom_doc: Document,
+    ) -> tuple[Package, Relationship] | None:
+        """
+        Find first matching component package for given parent package.
+
+        This method encapsulates the matching logic by:
+        1. Finding candidates using the index
+        2. Filtering out already matched packages
+        3. Validating the match using package_matched()
+        4. Returning the first valid match
+
+        Args:
+            parent_package: Parent package to find match for
+            parent_sbom_doc: Parent SBOM document for validation
+
+        Returns:
+            Tuple of (component Package, component Relationship) if match found,
+            None otherwise
+        """
+        candidates = self.find_candidates(parent_package)
+
+        for component_package, component_relationship in candidates:
+            # Skip if already matched (avoid matching duplicates multiple times)
+            if self.is_matched(component_package.spdx_id):
+                continue
+
+            # Validate the match
+            if package_matched(
+                parent_package=parent_package,
+                component_package=component_package,
+                parent_sbom_doc=parent_sbom_doc,
+            ):
+                return (component_package, component_relationship)
+
+        return None
+
+    def resolve_component_relationships(
+        self,
+        parent_packages: list[tuple[Package, Relationship]],
+        parent_sbom_doc: Document,
+        parent_spdx_id_from_component: str,
+        parent_root_packages: list[str],
+    ) -> None:
+        """
+        Resolve and modify component relationships based on parent package matches.
+
+        For each parent package that has a matching component package:
+        1. Find the match using get_match()
+        2. Modify the component relationship to point to parent or grandparent
+        3. Mark the component package as matched
+
+        Args:
+            parent_packages: List of (Package, Relationship) tuples from parent SBOM
+            parent_sbom_doc: Parent SBOM document for validation
+            parent_spdx_id_from_component: SPDX ID of parent from component SBOM
+            parent_root_packages: Root package IDs from parent SBOM
+        """
+        for parent_package, parent_relationship in parent_packages:
+            match = self.get_match(parent_package, parent_sbom_doc)
+
+            if match:
+                component_package, component_relationship = match
+                self._modify_relationship_in_component(
+                    component_relationship,
+                    parent_relationship,
+                    parent_spdx_id_from_component,
+                    parent_root_packages,
+                )
+                self.mark_as_matched(component_package.spdx_id)
+
+    @staticmethod
+    def supply_ancestors(
+        component_sbom_doc: Document,
+        descendant_of_items_from_used_parent: list[
+            tuple[Package, Relationship, Annotation]
+        ],
+    ) -> None:
+        """
+        Supply all DESCENDANT_OF relationships (and related packages and annotations)
+        from parent SBOM to component SBOM.
+
+        This method adds ancestor packages (grandparents of the component) to the
+        component SBOM. It modifies annotation comments from "is_base_image" to
+        "is_ancestor_image" to ensure proper functioning when this component is used
+        as a base image for another component.
+
+        Note: This method expects that component package relationships already point
+        to the correct parent/grandparent packages (modified by
+        resolve_component_relationships).
+
+        Args:
+            component_sbom_doc: The component SBOM document to be modified in-place
+            descendant_of_items_from_used_parent: All DESCENDANT_OF relationships,
+                associated packages and their annotations from parent SBOM
+        """
+        for pkg, rel, annot in descendant_of_items_from_used_parent:
+            component_sbom_doc.relationships.append(rel)
+            component_sbom_doc.packages.append(pkg)
+            if annot:
+                if annot.annotation_comment:
+                    annot.annotation_comment = annot.annotation_comment.replace(
+                        "is_base_image", "is_ancestor_image"
+                    )
+                component_sbom_doc.annotations.append(annot)
+
+    @staticmethod
+    def _modify_relationship_in_component(
+        component_relationship: Relationship,
+        parent_relationship: Relationship,
+        parent_spdx_id_from_component: str,
+        parent_root_packages: list[str],
+    ) -> None:
+        """
+        Function modifies relationship in component SBOM.
+        If package from parent image content was found in
+        component content by package_matched function,
+        relationship of the package in component content
+        is swapped to parent or grandparents
+        (if parent is contextualized)
+
+        Args:
+            component_relationship: Component relationship to-be-modified.
+
+            parent_relationship: Parent relationship.
+                A) If parent has been contextualized there are two options of the
+                component's relationship modification after packages match,
+                depending on the information in used parent SBOM:
+                1. component CONTAINS package -> grandparent CONTAINS package
+                2. component CONTAINS package ->
+                parent (parent_spdx_id_from_component) CONTAINS package
+                B) If downloaded used parent is not contextualized there is only
+                one option for the component's relationship modification:
+                component CONTAINS package ->
+                1. parent (parent_spdx_id_from_component) CONTAINS package
+
+            parent_spdx_id_from_component: The name of the used parent that
+                is determined at component SBOM generation.
+
+            parent_root_packages: This decides if CONTAINS relationship is copied
+                (grandparent) or modified (every package in non-contextualized parent
+                OR every other package in contextualized parent that is not bound to
+                its parent (component's grandparent)).
+
+        Returns: None. Component SBOM is modified in-place.
+        """
+        # Contextualized parent: matched package is bound to parent itself
+        # (not to any of the grandparents),
+        # and when we want to point relationship from component to parent
+        # we need to use parent name from generated component
+        # Non-contextualized parent: all the packages are bound to the
+        # parent, we need to use parent name from generated component
+        if parent_relationship.spdx_element_id in parent_root_packages:
+            component_relationship.spdx_element_id = parent_spdx_id_from_component
+
+        # Contextualized parent: matched package is not bound to the root package(s) but
+        # bound to some grandparent of the parent by previous contextualization - we
+        # need to preserve this relationship
+        # Non-contextualized parent or parent without another parent (no grandparent for
+        # component): should never reach this branch, because all
+        # the packages will always be bound to parent itself - all relationships will
+        # refer to root packages, no grandparents are present by contextualization or
+        # in reality
+        else:
+            component_relationship.spdx_element_id = parent_relationship.spdx_element_id
 
 
 def validate_and_compare_purls(
@@ -265,37 +448,3 @@ def generated_by_hermeto(annotations: list[Annotation]) -> bool:
         and annot.annotation_comment in HERMETO_ANNOTATION_COMMENTS
         for annot in annotations
     )
-
-
-def associate_relationships_and_related_packages(
-    packages: list[Package],
-    relationships: list[Relationship],
-    relationship_type: RelationshipType,
-) -> list[tuple[Package, Relationship]]:
-    """
-    Associate relationships (related_spdx_element_id) and related
-    packages (spdx_id) together for given relationship type.
-    First relationship index is built. Then packages and
-    relationships are associated based on index.
-
-    Args:
-        packages: List of Package objects.
-        relationships: List of Relationship objects.
-        relationship_type: Relationship type.
-
-    Returns:
-        List of tuples of related package and relationship objects.
-    """
-    rel_index: dict[str, Relationship] = {}
-    for rel in relationships:
-        if rel.relationship_type == relationship_type and isinstance(
-            rel.related_spdx_element_id, str
-        ):
-            rel_index[rel.related_spdx_element_id] = rel
-
-    assoc_package_relationship = []
-    for pkg in packages:
-        if pkg.spdx_id in rel_index:
-            assoc_package_relationship.append((pkg, rel_index[pkg.spdx_id]))
-
-    return assoc_package_relationship

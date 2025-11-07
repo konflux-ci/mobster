@@ -17,7 +17,7 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
-    ComponentPackageIndex,
+    ComponentRelationshipResolver,
     checksums_match,
     generated_by_hermeto,
     package_matched,
@@ -40,7 +40,7 @@ def test_component_package_index_all_identifiers(
     identifier_type: str, identifier_value: str, should_index: bool
 ) -> None:
     """
-    Test ComponentPackageIndex handles all identifier types and edge cases.
+    Test ComponentRelationshipResolver handles all identifier types and edge cases.
     """
     component_pkg_kwargs: dict[str, Any] = {
         "spdx_id": "SPDXRef-test",
@@ -83,7 +83,7 @@ def test_component_package_index_all_identifiers(
     pkg: Package = Package(**component_pkg_kwargs)
     parent_pkg: Package = Package(**parent_pkg_kwargs)
     rel = Relationship("SPDXRef-component", RelationshipType.CONTAINS, "SPDXRef-test")
-    index = ComponentPackageIndex([(pkg, rel)])
+    index = ComponentRelationshipResolver([(pkg, rel)])
 
     # Verify index population based on identifier type
     if identifier_type == "checksum":
@@ -107,7 +107,7 @@ def test_component_package_index_all_identifiers(
 
 
 @pytest.mark.asyncio
-@patch("mobster.cmd.generate.oci_image.contextual_sbom.contextualize.package_matched")
+@patch("mobster.cmd.generate.oci_image.contextual_sbom.match_utils.package_matched")
 async def test_skip_already_matched_component_package(
     mock_package_matched: MagicMock,
 ) -> None:

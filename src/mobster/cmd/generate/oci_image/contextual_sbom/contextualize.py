@@ -16,9 +16,7 @@ from mobster.cmd.generate.oci_image.constants import (
     IS_BASE_IMAGE_ANNOTATION,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
-    ComponentPackageIndex,
-    associate_relationships_and_related_packages,
-    package_matched,
+    ComponentRelationshipResolver,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
     find_spdx_root_packages_spdxid,
@@ -378,6 +376,40 @@ def get_descendant_of_items_from_used_parent(
     )
 
 
+def associate_relationships_and_related_packages(
+    packages: list[Package],
+    relationships: list[Relationship],
+    relationship_type: RelationshipType,
+) -> list[tuple[Package, Relationship]]:
+    """
+    Associate relationships (related_spdx_element_id) and related
+    packages (spdx_id) together for given relationship type.
+    First relationship index is built. Then packages and
+    relationships are associated based on index.
+
+    Args:
+        packages: List of Package objects.
+        relationships: List of Relationship objects.
+        relationship_type: Relationship type.
+
+    Returns:
+        List of tuples of related package and relationship objects.
+    """
+    rel_index: dict[str, Relationship] = {}
+    for rel in relationships:
+        if rel.relationship_type == relationship_type and isinstance(
+            rel.related_spdx_element_id, str
+        ):
+            rel_index[rel.related_spdx_element_id] = rel
+
+    assoc_package_relationship = []
+    for pkg in packages:
+        if pkg.spdx_id in rel_index:
+            assoc_package_relationship.append((pkg, rel_index[pkg.spdx_id]))
+
+    return assoc_package_relationship
+
+
 async def map_parent_to_component_and_modify_component(
     parent_sbom_doc: Document,
     component_sbom_doc: Document,
@@ -416,141 +448,17 @@ async def map_parent_to_component_and_modify_component(
         relationship_type=RelationshipType.CONTAINS,
     )
 
-    component_index = ComponentPackageIndex(component_packages)
+    resolver = ComponentRelationshipResolver(component_packages)
 
-    for parent_package, parent_relationship in parent_packages:
-        component_pkg_candidates = component_index.find_candidates(parent_package)
+    resolver.resolve_component_relationships(
+        parent_packages,
+        parent_sbom_doc,
+        parent_spdx_id_from_component,
+        parent_root_packages,
+    )
 
-        # No candidates for parent package
-        # in component found - check other parent package
-        if not component_pkg_candidates:
-            continue
-
-        for component_package, component_relationship in component_pkg_candidates:
-            # Skip component candidate if already matched
-            # (do not match duplicates in parent multiple times)
-            if component_index.is_matched(component_package.spdx_id):
-                continue
-
-            if package_matched(
-                parent_package=parent_package,
-                component_package=component_package,
-                parent_sbom_doc=parent_sbom_doc,
-            ):
-                _modify_relationship_in_component(
-                    component_relationship,
-                    parent_relationship,
-                    parent_spdx_id_from_component,
-                    parent_root_packages,
-                )
-                component_index.mark_as_matched(component_package.spdx_id)
-
-    _supply_ancestors_from_parent_to_component(
+    resolver.supply_ancestors(
         component_sbom_doc,
         descendant_of_items_from_used_parent,
     )
     return component_sbom_doc
-
-
-def _supply_ancestors_from_parent_to_component(
-    component_sbom_doc: Document,
-    descendant_of_items_from_used_parent: list[
-        tuple[Package, Relationship, Annotation]
-    ],
-) -> Document:
-    """
-    Function supply all DESCENDANT_OF relationships
-    (and related packages and annotations) from downloaded
-    used parent content to component SBOM. Expects that all
-    relationships of component's packages already point to
-    this packages in _modify_relationship_in_component function.
-
-    Supplied ancestors are grandparents of the component (parent
-    package annotation and relationship are already there) and
-    annotation comment must be modified for proper functioning
-    of the contextual workflow in situation
-    when this component will be used as base image for another
-    component, and get_grandparent_annotation will
-
-
-    Args:
-        component_sbom_doc: The full generated component SBOM.
-        descendant_of_items_from_used_parent: All DESCENDANT_OF
-            relationships, associated packages
-            and their annotations
-
-    Returns:
-        Component SBOM that is fully contextualized.
-    """
-    for pkg, rel, annot in descendant_of_items_from_used_parent:
-        component_sbom_doc.relationships.append(rel)
-        component_sbom_doc.packages.append(pkg)
-        if annot:
-            if annot.annotation_comment:
-                annot.annotation_comment = annot.annotation_comment.replace(
-                    "is_base_image", "is_ancestor_image"
-                )
-            component_sbom_doc.annotations.append(annot)
-
-    return component_sbom_doc
-
-
-def _modify_relationship_in_component(
-    component_relationship: Relationship,
-    parent_relationship: Relationship,
-    parent_spdx_id_from_component: str,
-    parent_root_packages: list[str],
-) -> None:
-    """
-    Function modifies relationship in component SBOM.
-    If package from parent image content was found in
-    component content by package_matched function,
-    relationship of the package in component content
-    is swapped to parent or grandparents
-    (if parent is contextualized)
-
-    Args:
-        component_relationship: Component relationship to-be-modified.
-
-        parent_relationship: Parent relationship.
-            A) If parent has been contextualized there are two options of the
-            component's relationship modification after packages match,
-            depending on the information in used parent SBOM:
-            1. component CONTAINS package -> grandparent CONTAINS package
-            2. component CONTAINS package ->
-            parent (parent_spdx_id_from_component) CONTAINS package
-            B) If downloaded used parent is not contextualized there is only
-            one option for the component's relationship modification:
-            component CONTAINS package ->
-            1. parent (parent_spdx_id_from_component) CONTAINS package
-
-        parent_spdx_id_from_component: The name of the used parent that
-            is determined at component SBOM generation.
-
-        parent_root_packages: This decides if CONTAINS relationship is copied
-            (grandparent) or modified (every package in non-contextualized parent
-            OR every other package in contextualized parent that is not bound to
-            its parent (component's grandparent)).
-
-
-    Returns: None. Component SBOM is modified in-place.
-    """
-    # Contextualized parent: matched package is bound to parent itself
-    # (not to any of the grandparents),
-    # and when we want to point relationship from component to parent
-    # we need to use parent name from generated component
-    # Non-contextualized parent: all the packages are bound to the
-    # parent, we need to use parent name from generated component
-    if parent_relationship.spdx_element_id in parent_root_packages:
-        component_relationship.spdx_element_id = parent_spdx_id_from_component
-
-    # Contextualized parent: matched package is not bound to the root package(s) but
-    # bound to some grandparent of the parent by previous contextualization - we
-    # need to preserve this relationship
-    # Non-contextualized parent or parent without another parent (no grandparent for
-    # component): should never reach this branch, because all
-    # the packages will always be bound to parent itself - all relationships will
-    # refer to root packages, no grandparents are present by contextualization or
-    # in reality
-    else:
-        component_relationship.spdx_element_id = parent_relationship.spdx_element_id

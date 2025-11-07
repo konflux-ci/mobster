@@ -13,8 +13,6 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
-    _modify_relationship_in_component,
-    _supply_ancestors_from_parent_to_component,
     download_parent_image_sbom,
     get_descendant_of_items_from_used_parent,
     get_grandparent_annotation,
@@ -23,6 +21,9 @@ from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     map_parent_to_component_and_modify_component,
     process_build_tool_of_grandparent_item,
     process_descendant_of_grandparent_items,
+)
+from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
+    ComponentRelationshipResolver,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import get_package_by_spdx_id
 from mobster.error import SBOMError
@@ -392,10 +393,11 @@ async def test_map_parent_to_component_and_modify_component(
     should_match: bool,
 ) -> None:
     """
-    Test package matching via ComponentPackageIndex using different identifier types.
+    Test package matching via ComponentRelationshipResolver using different
+    identifier types.
 
     Verifies that:
-    1. Index finds packages by checksum, verification_code, or purl
+    1. Resolver finds packages by checksum, verification_code, or purl
     2. Matching packages -> relationship modified to use parent SPDX ID
     3. Non-matching packages -> relationship unchanged
     4. Ancestor packages/relationships always added
@@ -466,7 +468,7 @@ async def test_map_parent_to_component_and_modify_component(
 
 
 @pytest.mark.asyncio
-@patch("mobster.cmd.generate.oci_image.contextual_sbom.contextualize.package_matched")
+@patch("mobster.cmd.generate.oci_image.contextual_sbom.match_utils.package_matched")
 async def test_skip_already_matched_component_package(
     mock_package_matched: MagicMock,
 ) -> None:
@@ -550,15 +552,15 @@ def test__supply_ancestors_from_parent_to_component() -> None:
         ),
     ]
 
-    result = _supply_ancestors_from_parent_to_component(
+    ComponentRelationshipResolver.supply_ancestors(
         component_sbom_doc, descendant_of_items_from_used_parent
     )
-    assert grandparent_package in result.packages
+    assert grandparent_package in component_sbom_doc.packages
     assert (
-        result.annotations[0].annotation_comment
+        component_sbom_doc.annotations[0].annotation_comment
         == '{"name": "konflux:container:is_ancestor_image",   "value": "true" }'
     )
-    assert grandparent_relationship in result.relationships
+    assert grandparent_relationship in component_sbom_doc.relationships
 
 
 @pytest.mark.parametrize(
@@ -603,7 +605,7 @@ def test__modify_relationship_in_component(
     parent_root_packages: list[str],
     result: Relationship,
 ) -> None:
-    _modify_relationship_in_component(
+    ComponentRelationshipResolver._modify_relationship_in_component(
         component_relationship,
         parent_relationship,
         parent_spdx_id_from_component,
