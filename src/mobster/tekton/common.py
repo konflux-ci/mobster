@@ -137,7 +137,7 @@ async def upload_sboms(
     LOGGER.info("Starting SBOM upload to Atlas")
     report = await TPAUploadCommand.upload(config, paths)
     if report.has_non_transient_failures():
-        LOGGER.error(
+        LOGGER.error(  # pylint: disable=logging-not-lazy
             "SBOMs failed to be uploaded to Atlas: \n"
             + "\n".join(
                 [
