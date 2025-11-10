@@ -137,7 +137,7 @@ async def upload_sboms(
     LOGGER.info("Starting SBOM upload to Atlas")
     report = await TPAUploadCommand.upload(config, paths)
     if report.has_non_transient_failures():
-        raise RuntimeError(
+        LOGGER.error(
             "SBOMs failed to be uploaded to Atlas: \n"
             + "\n".join(
                 [
@@ -146,6 +146,7 @@ async def upload_sboms(
                 ]
             )
         )
+        return report
 
     if report.has_transient_failures() and s3_client is not None:
         LOGGER.warning("Encountered transient Atlas error, falling back to S3.")
