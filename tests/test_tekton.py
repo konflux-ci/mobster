@@ -87,4 +87,6 @@ async def test_upload_sboms_failure(
             s3_client=None,
             paths=[Path("dir")],
         )
+        # WARNING: this change is only temporary. Please see
+        # https://issues.redhat.com/browse/ISV-6481
         assert "SBOMs failed to be uploaded to Atlas: " in caplog.messages[-1]
