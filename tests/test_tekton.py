@@ -66,6 +66,7 @@ async def test_upload_sboms_transient_failure_tries_s3(
 @pytest.mark.asyncio
 async def test_upload_sboms_failure(
     upload_config: UploadConfig,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """
     Verify that the upload_to_atlas function fails with a runtime error when
@@ -81,9 +82,11 @@ async def test_upload_sboms_failure(
                 TPAUploadFailure(path=Path("dummy"), message="error", transient=False)
             ],
         )
-        with pytest.raises(RuntimeError):
-            await upload_sboms(
-                upload_config,
-                s3_client=None,
-                paths=[Path("dir")],
-            )
+        await upload_sboms(
+            upload_config,
+            s3_client=None,
+            paths=[Path("dir")],
+        )
+        # WARNING: this change is only temporary. Please see
+        # https://issues.redhat.com/browse/ISV-6481
+        assert "SBOMs failed to be uploaded to Atlas: " in caplog.messages[-1]
