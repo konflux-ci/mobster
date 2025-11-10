@@ -93,7 +93,23 @@ def test_component_package_index_all_identifiers(
     pkg: Package = Package(**component_pkg_kwargs)
     parent_pkg: Package = Package(**parent_pkg_kwargs)
     rel = Relationship("SPDXRef-component", RelationshipType.CONTAINS, "SPDXRef-test")
-    index = ComponentRelationshipResolver([(pkg, rel)])
+
+    # Create mock documents
+    parent_doc = MagicMock(spec=Document)
+    parent_doc.packages = [parent_pkg]
+    parent_doc.annotations = []
+
+    component_doc = MagicMock(spec=Document)
+    component_doc.packages = [pkg]
+    component_doc.annotations = []
+
+    stats = MatchingStatistics()
+    index = ComponentRelationshipResolver(
+        [(pkg, rel)],
+        parent_doc,
+        component_doc,
+        stats,
+    )
 
     # Verify index population based on identifier type
     if identifier_type == "checksum":

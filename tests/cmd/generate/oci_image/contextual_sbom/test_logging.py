@@ -302,10 +302,10 @@ def test_duplicate_identifier_tracking() -> None:
     stats.record_component_package_match(match_info2)
     stats.record_component_package_match(match_info3)
 
-    assert len(stats.duplicate_checksums) == 1
-    assert "SHA256:duplicate" in stats.duplicate_checksums
-    assert "SHA256:unique" not in stats.duplicate_checksums
-    assert len(stats.duplicate_checksums["SHA256:duplicate"]) == 2
+    assert len(stats.duplicates.duplicate_checksums) == 1
+    assert "SHA256:duplicate" in stats.duplicates.duplicate_checksums
+    assert "SHA256:unique" not in stats.duplicates.duplicate_checksums
+    assert len(stats.duplicates.duplicate_checksums["SHA256:duplicate"]) == 2
 
 
 def test_log_summary_structured(caplog: LogCaptureFixture) -> None:

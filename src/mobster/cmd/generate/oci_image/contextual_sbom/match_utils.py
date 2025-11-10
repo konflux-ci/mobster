@@ -1,6 +1,7 @@
 """Utilities for matching packages between parent and component SBOMs."""
 
 import logging
+from collections.abc import Generator
 
 from packageurl import PackageURL
 from spdx_tools.spdx.model.actor import ActorType
@@ -8,7 +9,7 @@ from spdx_tools.spdx.model.annotation import Annotation
 from spdx_tools.spdx.model.checksum import Checksum
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import Package
-from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
+from spdx_tools.spdx.model.relationship import Relationship
 
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     HERMETO_ANNOTATION_COMMENTS,
@@ -26,6 +27,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 LOGGER = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-instance-attributes
 class ComponentRelationshipResolver:
     """
     Resolves and modifies component SBOM relationships based on parent package
@@ -43,19 +45,27 @@ class ComponentRelationshipResolver:
     def __init__(
         self,
         component_packages: list[tuple[Package, Relationship]],
+        parent_sbom_doc: Document,
+        component_sbom_doc: Document,
         stats: MatchingStatistics,
     ):
         """
         Initialize and build all indexes.
 
         Args:
-            component_packages: List of (component Package, component Relationship) tuples to index
-            stats: Statistics tracker for recording packages without unique IDs
+            component_packages: List of (component Package, component
+                Relationship) tuples to index
+            parent_sbom_doc: Parent SBOM document
+            component_sbom_doc: Component SBOM document
+            stats: Statistics tracker for recording packages without
+                unique IDs
         """
         self.checksum_index: dict[str, list[tuple[Package, Relationship]]] = {}
         self.verification_code_index: dict[str, list[tuple[Package, Relationship]]] = {}
         self.purl_index: dict[str, list[tuple[Package, Relationship]]] = {}
         self.component_packages = component_packages
+        self.parent_sbom_doc = parent_sbom_doc
+        self.component_sbom_doc = component_sbom_doc
         self.matched_packages: set[str] = set()
         self.stats = stats
 
@@ -156,7 +166,6 @@ class ComponentRelationshipResolver:
                         return self.purl_index[purl_key]
             except ValueError:
                 LOGGER.warning("Could not parse parent's SBOM package URL %s", purl)
-                return []
 
         # Record parent packages without any unique identifier
         # (no checksums, no verification_code, and no valid purl with version)
@@ -180,46 +189,48 @@ class ComponentRelationshipResolver:
     def get_match(
         self,
         parent_package: Package,
-        parent_sbom_doc: Document,
-    ) -> tuple[Package, Relationship] | None:
+    ) -> Generator[tuple[Package, Relationship, PackageMatchInfo], None, None]:
         """
-        Find first matching component package for given parent package.
+        Find matching component packages for given parent package.
 
         This method encapsulates the matching logic by:
         1. Finding candidates using the index
         2. Filtering out already matched packages
         3. Validating the match using package_matched()
-        4. Returning the first valid match
+        4. Yielding all valid matches
 
         Args:
             parent_package: Parent package to find match for
-            parent_sbom_doc: Parent SBOM document for validation
 
-        Returns:
-            Tuple of (component Package, component Relationship) if match found,
-            None otherwise
+        Yields:
+            Tuple of (component Package, component Relationship,
+                PackageMatchInfo) for each match
         """
         candidates = self.find_candidates(parent_package)
+
+        if not candidates:
+            return
+
+        self.stats.record_parent_package_match(parent_package.spdx_id)
 
         for component_package, component_relationship in candidates:
             # Skip if already matched (avoid matching duplicates multiple times)
             if self.is_matched(component_package.spdx_id):
                 continue
 
-            # Validate the match
-            if package_matched(
+            match_info = package_matched(
                 parent_package=parent_package,
+                component_sbom_doc=self.component_sbom_doc,
                 component_package=component_package,
-                parent_sbom_doc=parent_sbom_doc,
-            ):
-                return (component_package, component_relationship)
+                parent_sbom_doc=self.parent_sbom_doc,
+            )
 
-        return None
+            if match_info.matched:
+                yield component_package, component_relationship, match_info
 
     def resolve_component_relationships(
         self,
         parent_packages: list[tuple[Package, Relationship]],
-        parent_sbom_doc: Document,
         parent_spdx_id_from_component: str,
         parent_root_packages: list[str],
     ) -> None:
@@ -230,29 +241,24 @@ class ComponentRelationshipResolver:
         1. Find the match using get_match()
         2. Modify the component relationship to point to parent or grandparent
         3. Mark the component package as matched
-
-        Args:
-            parent_packages: List of (Package, Relationship) tuples from parent SBOM
-            parent_sbom_doc: Parent SBOM document for validation
-            parent_spdx_id_from_component: SPDX ID of parent from component SBOM
-            parent_root_packages: Root package IDs from parent SBOM
         """
         for parent_package, parent_relationship in parent_packages:
-            match = self.get_match(parent_package, parent_sbom_doc)
+            for component_package, component_relationship, match_info in self.get_match(
+                parent_package
+            ):
+                if match_info:
+                    self._modify_relationship_in_component(
+                        component_relationship,
+                        parent_relationship,
+                        parent_spdx_id_from_component,
+                        parent_root_packages,
+                    )
+                    self.mark_as_matched(component_package.spdx_id)
+                    # Record component package matched against parent
+                    self.stats.record_component_package_match(match_info)
 
-            if match:
-                component_package, component_relationship = match
-                self._modify_relationship_in_component(
-                    component_relationship,
-                    parent_relationship,
-                    parent_spdx_id_from_component,
-                    parent_root_packages,
-                )
-                self.mark_as_matched(component_package.spdx_id)
-
-    @staticmethod
     def supply_ancestors(
-        component_sbom_doc: Document,
+        self,
         descendant_of_items_from_used_parent: list[
             tuple[Package, Relationship, Annotation]
         ],
@@ -271,19 +277,18 @@ class ComponentRelationshipResolver:
         resolve_component_relationships).
 
         Args:
-            component_sbom_doc: The component SBOM document to be modified in-place
             descendant_of_items_from_used_parent: All DESCENDANT_OF relationships,
                 associated packages and their annotations from parent SBOM
         """
         for pkg, rel, annot in descendant_of_items_from_used_parent:
-            component_sbom_doc.relationships.append(rel)
-            component_sbom_doc.packages.append(pkg)
+            self.component_sbom_doc.relationships.append(rel)
+            self.component_sbom_doc.packages.append(pkg)
             if annot:
                 if annot.annotation_comment:
                     annot.annotation_comment = annot.annotation_comment.replace(
                         "is_base_image", "is_ancestor_image"
                     )
-                component_sbom_doc.annotations.append(annot)
+                self.component_sbom_doc.annotations.append(annot)
 
     @staticmethod
     def _modify_relationship_in_component(

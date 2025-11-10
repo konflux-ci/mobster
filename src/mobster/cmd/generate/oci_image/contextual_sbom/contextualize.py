@@ -449,17 +449,26 @@ async def map_parent_to_component_and_modify_component(
         relationship_type=RelationshipType.CONTAINS,
     )
 
-    resolver = ComponentRelationshipResolver(component_packages)
+    stats = MatchingStatistics()
+    # Record total amount of packages both in parent and component
+    stats.record_component_packages(component_packages)
+    stats.record_parent_packages(parent_packages)
+
+    resolver = ComponentRelationshipResolver(
+        component_packages,
+        parent_sbom_doc,
+        component_sbom_doc,
+        stats,
+    )
 
     resolver.resolve_component_relationships(
-        parent_packages,
-        parent_sbom_doc,
-        parent_spdx_id_from_component,
-        parent_root_packages,
+        parent_packages, parent_spdx_id_from_component, parent_root_packages
     )
 
     resolver.supply_ancestors(
-        component_sbom_doc,
         descendant_of_items_from_used_parent,
     )
+
+    stats.log_summary_debug()
+
     return component_sbom_doc

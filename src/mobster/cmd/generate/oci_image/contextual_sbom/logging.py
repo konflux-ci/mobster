@@ -85,7 +85,6 @@ class ProducerMatchStats:
 class DuplicateTracker:
     """
     Tracks duplicate identifiers across matches.
-
     Maps identifier values to sets of (parent_spdx_id, component_spdx_id) tuples
     that matched using that identifier.
     """
@@ -223,21 +222,6 @@ class MatchingStatistics:
         """
         self.parent.packages_without_unique_id.add(spdx_id)
 
-    @property
-    def duplicate_checksums(self) -> dict[str, set[tuple[str, str]]]:
-        """Checksums that matched multiple package pairs."""
-        return self.duplicates.duplicate_checksums
-
-    @property
-    def duplicate_verification_codes(self) -> dict[str, set[tuple[str, str]]]:
-        """Verification codes that matched multiple package pairs."""
-        return self.duplicates.duplicate_verification_codes
-
-    @property
-    def duplicate_purls(self) -> dict[str, set[tuple[str, str]]]:
-        """PURLs that matched multiple package pairs."""
-        return self.duplicates.duplicate_purls
-
     def _prepare_duplicate_identifier_data(
         self,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
@@ -245,7 +229,6 @@ class MatchingStatistics:
         Prepare duplicate identifier data for structured logging.
         This serves for inspection of duplicate "unique" identifiers.
         Limits duplicate research only to matched content between parent and component.
-
         This function transforms duplicate identifier mappings into structured data
         suitable for JSON logging and analysis. Each duplicate identifier
         (checksum, verification code, or PURL) that matched multiple package
@@ -256,14 +239,13 @@ class MatchingStatistics:
             parent and component using this identifier
         - spdx_id_pairs: List of all (parent, component) SPDX ID pairs that
             matched
-
         Returns:
             Tuple of three lists: (checksums_data, verification_codes_data,
             purls_data). Each list contains dictionaries with 'identifier',
             'match_count', and 'spdx_id_pairs' keys.
         """
         duplicate_checksums_data = []
-        for checksum, matches in self.duplicate_checksums.items():
+        for checksum, matches in self.duplicates.duplicate_checksums.items():
             duplicate_checksums_data.append(
                 {
                     "identifier": checksum,
@@ -275,7 +257,7 @@ class MatchingStatistics:
             )
 
         duplicate_verification_codes_data = []
-        for code, matches in self.duplicate_verification_codes.items():
+        for code, matches in self.duplicates.duplicate_verification_codes.items():
             duplicate_verification_codes_data.append(
                 {
                     "identifier": code,
@@ -287,7 +269,7 @@ class MatchingStatistics:
             )
 
         duplicate_purls_data = []
-        for purl, matches in self.duplicate_purls.items():
+        for purl, matches in self.duplicates.duplicate_purls.items():
             duplicate_purls_data.append(
                 {
                     "identifier": purl,
@@ -506,29 +488,30 @@ class MatchingStatistics:
         Includes checksums, verification codes, and purls.
         """
         total_duplicates = (
-            len(self.duplicate_checksums)
-            + len(self.duplicate_verification_codes)
-            + len(self.duplicate_purls)
+            len(self.duplicates.duplicate_checksums)
+            + len(self.duplicates.duplicate_verification_codes)
+            + len(self.duplicates.duplicate_purls)
         )
         if total_duplicates == 0:
+            LOGGER.debug("--- No Duplicate Identifiers Detected ---")
             return
 
         LOGGER.debug("--- Duplicate Identifiers Detected ---")
         LOGGER.debug(
             "Duplicate checksums: %d",
-            len(self.duplicate_checksums),
+            len(self.duplicates.duplicate_checksums),
         )
         LOGGER.debug(
             "Duplicate package verification codes: %d",
-            len(self.duplicate_verification_codes),
+            len(self.duplicates.duplicate_verification_codes),
         )
         LOGGER.debug(
             "Duplicate purls: %d",
-            len(self.duplicate_purls),
+            len(self.duplicates.duplicate_purls),
         )
 
-        if self.duplicate_checksums:
-            for checksum, matches in self.duplicate_checksums.items():
+        if self.duplicates.duplicate_checksums:
+            for checksum, matches in self.duplicates.duplicate_checksums.items():
                 spdx_pairs = "\n    ".join(
                     [f"(parent: {p} | component: {c})" for p, c in matches]
                 )
@@ -539,8 +522,8 @@ class MatchingStatistics:
                     spdx_pairs,
                 )
 
-        if self.duplicate_verification_codes:
-            for code, matches in self.duplicate_verification_codes.items():
+        if self.duplicates.duplicate_verification_codes:
+            for code, matches in self.duplicates.duplicate_verification_codes.items():
                 spdx_pairs = "\n    ".join(
                     [f"(parent: {p} | component: {c})" for p, c in matches]
                 )
@@ -551,8 +534,8 @@ class MatchingStatistics:
                     spdx_pairs,
                 )
 
-        if self.duplicate_purls:
-            for purl, matches in self.duplicate_purls.items():
+        if self.duplicates.duplicate_purls:
+            for purl, matches in self.duplicates.duplicate_purls.items():
                 spdx_pairs = "\n    ".join(
                     [f"(parent: {p} | component: {c})" for p, c in matches]
                 )
