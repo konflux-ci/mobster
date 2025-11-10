@@ -91,7 +91,7 @@ markers = [
 addopts = '-m "not slow"'
 
 [tool.poetry.group.dev.dependencies]
-pytest = {extras = ["pytest-reportlog"], version = "^8.4.1"}
+pytest = {extras = ["pytest-reportlog"], version = "^9.0.0"}
 ruff = "^0.12.0"
 pytest-cov = "^6.1.1"
 bandit = "^1.8.3"
