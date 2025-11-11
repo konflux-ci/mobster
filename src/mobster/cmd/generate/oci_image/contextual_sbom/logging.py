@@ -85,8 +85,15 @@ class ProducerMatchStats:
 class DuplicateTracker:
     """
     Tracks duplicate identifiers across matches.
-    Maps identifier values to sets of (parent_spdx_id, component_spdx_id) tuples
+    Maps identifier values to sets of
+    (parent_spdx_id, component_spdx_id) tuples
     that matched using that identifier.
+
+    Duplicates represent multiple packages
+    with same identifier in component SBOM.
+    If there are multiple match candidates
+    in component SBOM for parent package
+    we record those.
     """
 
     checksums: dict[str, set[tuple[str, str]]] = field(
