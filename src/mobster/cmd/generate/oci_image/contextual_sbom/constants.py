@@ -9,7 +9,7 @@ HERMETO_ANNOTATION_COMMENTS = [
 ]
 
 
-class PackageProducer(str, Enum):
+class PackageProducer(Enum):
     """
     Indicates which tool generated the package.
     """
@@ -28,7 +28,7 @@ class PackageInfo:
     producer: PackageProducer
 
 
-class MatchBy(str, Enum):
+class MatchBy(Enum):
     """
     Information which identifier was used for match.
     """

@@ -193,8 +193,8 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 )
                 LOGGER.info("Contextual SBOM workflow finished successfully.")
                 return contextual_sbom
-            except Exception as exc:  # pylint: disable=broad-exception-caught
-                LOGGER.exception("Contextual SBOM workflow failed: %s", exc)
+            except Exception:  # pylint: disable=broad-exception-caught
+                LOGGER.exception("Contextual SBOM workflow failed.")
         LOGGER.info("Could not create contextual SBOM.")
         return None
 
