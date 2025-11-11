@@ -35,8 +35,9 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     normalize_and_load_sbom,
 )
 from mobster.image import Image
+from mobster.log import log_elapsed
 from mobster.sbom.merge import merge_sboms
-from mobster.utils import duration, identify_arch, load_sbom_from_json
+from mobster.utils import identify_arch, load_sbom_from_json
 
 logging.captureWarnings(True)  # CDX validation uses `warn()`
 LOGGER = logging.getLogger(__name__)
@@ -63,11 +64,6 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             return convert(sbom, DocumentConverter())  # type: ignore[no-untyped-call]
         return sbom.to_dict()
 
-    @duration(
-        "Starting SBOM validation...",
-        "Validation of final SBOM finished in %.4f seconds",
-        logging.DEBUG,
-    )
     async def _soft_validate_content(self) -> None:
         """
         Validate the SBOM created and log the result as a warning.
@@ -158,10 +154,6 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         )
         return contextual_sbom
 
-    @duration(
-        "Starting Contextual SBOM workflow...",
-        "Contextual workflow finished in %.4f seconds",
-    )
     async def _assess_and_dispatch_contextual_workflow(
         self,
         component_sbom_doc: Document | CycloneDX1BomWrapper,
@@ -286,14 +278,15 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             await extend_sbom_with_image_reference(
                 sbom, image_object, is_builder_image=True
             )
-
-        contextual_sbom = await self._assess_and_dispatch_contextual_workflow(
-            sbom, base_images_refs, base_images_map, image_arch
-        )
+        with log_elapsed("Contextual workflow"):
+            contextual_sbom = await self._assess_and_dispatch_contextual_workflow(
+                sbom, base_images_refs, base_images_map, image_arch
+            )
         sbom = contextual_sbom or sbom
         self._content = sbom
         if not self.cli_args.skip_validation:
-            await self._soft_validate_content()
+            with log_elapsed("Validation of final SBOM"):
+                await self._soft_validate_content()
         return self._content
 
     async def save(self) -> None:

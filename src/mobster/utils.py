@@ -1,83 +1,16 @@
 """A place for utility functions used across the application."""
 
 import asyncio
-import functools
 import json
 import logging
 import os
 import platform
 import re
-import time
-from collections.abc import Callable
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any
 
 LOGGER = logging.getLogger(__name__)
-
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def duration(
-    start_log: str, end_log: str, level: int = logging.INFO
-) -> Callable[[F], F]:
-    """
-    Parametrizable decorator for measuring and logging function execution time.
-
-    Args:
-        start_log: Log message at the start of function execution
-        end_log: Log message at the end, must contain %.4f placeholder
-            for execution time in seconds
-        level: Logging level (default: logging.INFO)
-
-    Returns:
-        Decorator function
-
-    Example:
-        @duration(
-            "Starting validation...",
-            "Validation completed in %.4f seconds"
-        )
-        async def validate():
-            ...
-
-        @duration(
-            "Starting debug task...",
-            "Debug task completed in %.4f seconds",
-            level=logging.DEBUG
-        )
-        async def debug_task():
-            ...
-    """
-
-    def decorator(func: F) -> F:
-        @functools.wraps(func)
-        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
-            LOGGER.log(level, start_log)
-            start = time.perf_counter()
-            try:
-                result = await func(*args, **kwargs)
-                return result
-            finally:
-                end = time.perf_counter()
-                LOGGER.log(level, end_log, end - start)
-
-        @functools.wraps(func)
-        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-            LOGGER.log(level, start_log)
-            start = time.perf_counter()
-            try:
-                result = func(*args, **kwargs)
-                return result
-            finally:
-                end = time.perf_counter()
-                LOGGER.log(level, end_log, end - start)
-
-        if asyncio.iscoroutinefunction(func):
-            return async_wrapper  # type: ignore[return-value]
-        return sync_wrapper  # type: ignore[return-value]
-
-    return decorator
 
 
 def normalize_file_name(current_name: str) -> str:

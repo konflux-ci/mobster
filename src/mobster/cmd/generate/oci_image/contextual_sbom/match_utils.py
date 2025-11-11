@@ -354,7 +354,7 @@ def checksums_match(
         component_checksums: List of Checksum objects from component package.
 
     Returns:
-        True if any ofthe checksums match, False otherwise.
+        True if all the checksums match, False otherwise.
     """
     # The Checksum objects are not hashable and do not have to_string(), convert them to
     # strings in a custom way
