@@ -44,17 +44,18 @@ def setup_logging(verbose: bool) -> None:
 
 
 @contextmanager
-def log_elapsed(name: str) -> Generator[None, None, None]:
+def log_elapsed(name: str, level: int = logging.DEBUG) -> Generator[None, None, None]:
     """
     Log time elapsed in the with block.
 
     Example:
-        >>> with log_elapsed("sleep"):
+        >>> with log_elapsed("sleep", logging.INFO):
                 time.sleep(1)
         "sleep completed in 1s"
 
     Args:
         name: The name of the action to log elapsed time of
+        level: The logging level to use
     """
 
     start_time = time.time()
@@ -62,4 +63,4 @@ def log_elapsed(name: str) -> Generator[None, None, None]:
         yield
     finally:
         elapsed = time.time() - start_time
-        LOGGER.debug("%s completed in %.2fs", name, elapsed)
+        LOGGER.log(level, "%s completed in %.2fs", name, elapsed)

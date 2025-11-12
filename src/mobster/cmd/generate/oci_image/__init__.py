@@ -278,14 +278,14 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             await extend_sbom_with_image_reference(
                 sbom, image_object, is_builder_image=True
             )
-        with log_elapsed("Contextual workflow"):
+        with log_elapsed("Contextual workflow", logging.INFO):
             contextual_sbom = await self._assess_and_dispatch_contextual_workflow(
                 sbom, base_images_refs, base_images_map, image_arch
             )
         sbom = contextual_sbom or sbom
         self._content = sbom
         if not self.cli_args.skip_validation:
-            with log_elapsed("Validation of final SBOM"):
+            with log_elapsed("Validation of final SBOM", logging.INFO):
                 await self._soft_validate_content()
         return self._content
 
