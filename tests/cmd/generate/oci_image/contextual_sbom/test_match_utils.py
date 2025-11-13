@@ -175,6 +175,7 @@ async def test_skip_already_matched_component_package(
         Relationship("SPDXRef-parent", RelationshipType.CONTAINS, "SPDXRef-p2"),
     ]
     parent_sbom_doc.annotations = []
+    parent_sbom_doc.creation_info.document_namespace = "https://test/parent"
 
     # Component SBOM: 1 package with matching checksum
     component_sbom_doc = MagicMock(spec=Document)
@@ -194,6 +195,7 @@ async def test_skip_already_matched_component_package(
         Relationship("SPDXRef-component", RelationshipType.CONTAINS, "SPDXRef-c1"),
     ]
     component_sbom_doc.annotations = []
+    component_sbom_doc.creation_info.document_namespace = "https://test/component"
 
     mock_package_matched.return_value = create_package_match_info(
         parent_spdx_id="SPDXRef-p1",

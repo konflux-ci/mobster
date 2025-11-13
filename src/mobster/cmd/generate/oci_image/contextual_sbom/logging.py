@@ -130,6 +130,8 @@ class MatchingStatistics:
     Organized into logical groups for better maintainability and clarity.
     """
 
+    parent_sbom_reference: str = ""
+    component_sbom_reference: str = ""
     component: PackageStats = field(default_factory=PackageStats)
     parent: PackageStats = field(default_factory=PackageStats)
     match_methods: MatchIdentifierStats = field(default_factory=MatchIdentifierStats)
@@ -306,6 +308,8 @@ class MatchingStatistics:
 
         stats_data = {
             "event_type": "contextual_sbom_matching_statistics",
+            "parent_sbom_reference": self.parent_sbom_reference,
+            "component_sbom_reference": self.component_sbom_reference,
             "component_packages": {
                 "total": len(self.component.all_packages),
                 "matched": len(self.component.matched_packages),

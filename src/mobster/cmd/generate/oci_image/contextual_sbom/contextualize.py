@@ -450,6 +450,10 @@ async def map_parent_to_component_and_modify_component(
     )
 
     stats = MatchingStatistics()
+    # Set parent and component SBOM references for logging
+    stats.parent_sbom_reference = parent_sbom_doc.creation_info.document_namespace
+    stats.component_sbom_reference = component_sbom_doc.creation_info.document_namespace
+
     # Record total amount of packages both in parent and component
     stats.record_component_packages(component_packages)
     stats.record_parent_packages(parent_packages)
