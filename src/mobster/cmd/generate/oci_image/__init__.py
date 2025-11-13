@@ -24,7 +24,7 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     get_digest_for_image_ref,
     get_image_objects_from_file,
 )
-from mobster.cmd.generate.oci_image.contextual_parent_content import (
+from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     download_parent_image_sbom,
     get_descendant_of_items_from_used_parent,
     get_parent_spdx_id_from_component,
@@ -35,6 +35,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     normalize_and_load_sbom,
 )
 from mobster.image import Image
+from mobster.log import log_elapsed
 from mobster.sbom.merge import merge_sboms
 from mobster.utils import identify_arch, load_sbom_from_json
 
@@ -107,8 +108,8 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         return await load_sbom_from_json(self.cli_args.from_hermeto)
 
+    @staticmethod
     async def _execute_contextual_workflow(
-        self,
         component_sbom_doc: Document,
         parent_image_ref: Image,
         arch: str,
@@ -187,11 +188,14 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             try:
                 parent_image_obj = base_images[parent_image_ref]
                 copied_component_sbom_doc = deepcopy(component_sbom_doc)
-                return await self._execute_contextual_workflow(
+                contextual_sbom = await self._execute_contextual_workflow(
                     copied_component_sbom_doc, parent_image_obj, image_arch
                 )
+                LOGGER.info("Contextual SBOM workflow finished successfully.")
+                return contextual_sbom
             except Exception:  # pylint: disable=broad-exception-caught
-                LOGGER.exception("Could not create contextual SBOM!")
+                LOGGER.exception("Contextual SBOM workflow failed.")
+        LOGGER.info("Could not create contextual SBOM.")
         return None
 
     async def execute(self) -> Any:
@@ -274,14 +278,15 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             await extend_sbom_with_image_reference(
                 sbom, image_object, is_builder_image=True
             )
-
-        contextual_sbom = await self._assess_and_dispatch_contextual_workflow(
-            sbom, base_images_refs, base_images_map, image_arch
-        )
+        with log_elapsed("Contextual workflow", logging.INFO):
+            contextual_sbom = await self._assess_and_dispatch_contextual_workflow(
+                sbom, base_images_refs, base_images_map, image_arch
+            )
         sbom = contextual_sbom or sbom
         self._content = sbom
         if not self.cli_args.skip_validation:
-            await self._soft_validate_content()
+            with log_elapsed("Validation of final SBOM", logging.INFO):
+                await self._soft_validate_content()
         return self._content
 
     async def save(self) -> None:
@@ -296,5 +301,5 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         if output_file is None:
             print(json.dumps(output_dict))
         else:
-            with open(output_file, "w", encoding="utf-8") as write_stram:
-                json.dump(output_dict, write_stram)
+            with open(output_file, "w", encoding="utf-8") as write_stream:
+                json.dump(output_dict, write_stream)

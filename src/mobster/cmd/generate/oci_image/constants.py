@@ -1,17 +1,4 @@
-"""Package with static definitions related to oci-image."""
-
-from enum import Enum
-
-
-class ContentType(Enum):
-    """Enum for content types."""
-
-    COMPONENT = "COMPONENT CONTENT"
-    COMPONENT_ONLY = "COMPONENT-ONLY CONTENT"
-    PARENT = "PARENT CONTENT"
-    BUILDER = "BUILDER CONTENT"
-    EXTERNAL = "EXTERNAL CONTENT"
-
+"""Constants for OCI image SBOM generation."""
 
 IS_BASE_IMAGE_ANNOTATION = {
     "name": "konflux:container:is_base_image",
@@ -22,8 +9,3 @@ BUILDER_IMAGE_PROPERTY = {
     "name": "konflux:container:is_builder_image:additional_builder_image",
     "value": "script-runner-image",
 }
-
-HERMETO_ANNOTATION_COMMENTS = [
-    '{"name": "cachi2:found_by", "value": "cachi2"}',
-    '{"name": "hermeto:found_by", "value": "hermeto"}',
-]
