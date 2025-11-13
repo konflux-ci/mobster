@@ -12,9 +12,8 @@ from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
-from mobster.cmd.generate.oci_image.constants import (
-    IS_BASE_IMAGE_ANNOTATION,
-)
+from mobster.cmd.generate.oci_image.constants import IS_BASE_IMAGE_ANNOTATION
+from mobster.cmd.generate.oci_image.contextual_sbom.logging import MatchingStatistics
 from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     ComponentRelationshipResolver,
 )
@@ -421,7 +420,9 @@ async def map_parent_to_component_and_modify_component(
     """
     Function maps packages from downloaded used parent to the
     component content, and modifies relationships in component,
-    when package is sourced from parent (or grandparents)
+    when package is sourced from parent (or grandparents).
+    During process, statistics from matching proces are
+    collected for later logging.
     Args:
         parent_sbom_doc: Downloaded used parent image SBOM
             (can be contextualized or not).
@@ -448,17 +449,30 @@ async def map_parent_to_component_and_modify_component(
         relationship_type=RelationshipType.CONTAINS,
     )
 
-    resolver = ComponentRelationshipResolver(component_packages)
+    stats = MatchingStatistics()
+    # Set parent and component SBOM references for logging
+    stats.parent_sbom_reference = parent_sbom_doc.creation_info.document_namespace
+    stats.component_sbom_reference = component_sbom_doc.creation_info.document_namespace
+
+    # Record total amount of packages both in parent and component
+    stats.record_component_packages(component_packages)
+    stats.record_parent_packages(parent_packages)
+
+    resolver = ComponentRelationshipResolver(
+        component_packages,
+        parent_sbom_doc,
+        component_sbom_doc,
+        stats,
+    )
 
     resolver.resolve_component_relationships(
-        parent_packages,
-        parent_sbom_doc,
-        parent_spdx_id_from_component,
-        parent_root_packages,
+        parent_packages, parent_spdx_id_from_component, parent_root_packages
     )
 
     resolver.supply_ancestors(
-        component_sbom_doc,
         descendant_of_items_from_used_parent,
     )
+
+    stats.log_summary_debug()
+
     return component_sbom_doc

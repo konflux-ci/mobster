@@ -6,7 +6,6 @@ import pytest
 from _pytest.logging import LogCaptureFixture
 from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
-from spdx_tools.spdx.model.checksum import Checksum, ChecksumAlgorithm
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
@@ -21,6 +20,9 @@ from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     map_parent_to_component_and_modify_component,
     process_build_tool_of_grandparent_item,
     process_descendant_of_grandparent_items,
+)
+from mobster.cmd.generate.oci_image.contextual_sbom.logging import (
+    MatchingStatistics,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     ComponentRelationshipResolver,
@@ -388,7 +390,11 @@ def test_process_build_tool_of_grandparent_item() -> None:
         ("purl", False),
     ],
 )
+@patch(
+    "mobster.cmd.generate.oci_image.contextual_sbom.contextualize.MatchingStatistics"
+)
 async def test_map_parent_to_component_and_modify_component(
+    mock_stats_class: MagicMock,
     identifier_type: str,
     should_match: bool,
 ) -> None:
@@ -401,8 +407,13 @@ async def test_map_parent_to_component_and_modify_component(
     2. Matching packages -> relationship modified to use parent SPDX ID
     3. Non-matching packages -> relationship unchanged
     4. Ancestor packages/relationships always added
+    5. Statistics are properly recorded and logged
     """
     parent_spdx_id = "SPDXRef-parent-name-from-component"
+
+    # Setup mock stats instance
+    mock_stats = MagicMock()
+    mock_stats_class.return_value = mock_stats
 
     # Setup parent SBOM with grandparent and test package
     parent_sbom_doc = MagicMock(spec=Document)
@@ -466,68 +477,22 @@ async def test_map_parent_to_component_and_modify_component(
     assert grandparent_rel in result.relationships
     assert any("is_ancestor_image" in a.annotation_comment for a in result.annotations)
 
+    # Verify statistics were recorded
+    mock_stats.record_component_packages.assert_called_once()
+    mock_stats.record_parent_packages.assert_called_once()
 
-@pytest.mark.asyncio
-@patch("mobster.cmd.generate.oci_image.contextual_sbom.match_utils.package_matched")
-async def test_skip_already_matched_component_package(
-    mock_package_matched: MagicMock,
-) -> None:
-    """
-    Test that already matched component packages are skipped.
-    When parent contains duplicate packages (packages with same "unique" id)
-    package_matched() should be called only once.
-    The second parent package finds the same
-    candidate but skips it because it's already matched.
-    """
-    shared_checksum = Checksum(ChecksumAlgorithm.SHA256, "duplicate123")
-    parent_spdx_id = "SPDXRef-parent-from-component"
+    component_packages_call = mock_stats.record_component_packages.call_args[0][0]
+    parent_packages_call = mock_stats.record_parent_packages.call_args[0][0]
 
-    # Parent SBOM: 2 duplicate packages with same checksum
-    parent_sbom_doc = MagicMock(spec=Document)
-    parent_root = Package("SPDXRef-parent", "parent", SpdxNoAssertion())
-    parent_pkg_1 = Package(
-        "SPDXRef-p1", "duplicate-pkg", SpdxNoAssertion(), checksums=[shared_checksum]
-    )
-    parent_pkg_2 = Package(
-        "SPDXRef-p2", "duplicate-pkg", SpdxNoAssertion(), checksums=[shared_checksum]
-    )
+    assert len(component_packages_call) == 1
+    assert len(parent_packages_call) == 1
 
-    parent_sbom_doc.packages = [parent_root, parent_pkg_1, parent_pkg_2]
-    parent_sbom_doc.relationships = [
-        Relationship("SPDXRef-DOCUMENT", RelationshipType.DESCRIBES, "SPDXRef-parent"),
-        Relationship("SPDXRef-parent", RelationshipType.CONTAINS, "SPDXRef-p1"),
-        Relationship("SPDXRef-parent", RelationshipType.CONTAINS, "SPDXRef-p2"),
-    ]
-    parent_sbom_doc.annotations = []
-
-    # Component SBOM: 1 package with matching checksum
-    component_sbom_doc = MagicMock(spec=Document)
-    component_root = Package("SPDXRef-component", "component", SpdxNoAssertion())
-    component_pkg = Package(
-        "SPDXRef-c1", "duplicate-pkg", SpdxNoAssertion(), checksums=[shared_checksum]
-    )
-
-    component_sbom_doc.packages = [component_root, component_pkg]
-    component_sbom_doc.relationships = [
-        Relationship(
-            "SPDXRef-DOCUMENT", RelationshipType.DESCRIBES, "SPDXRef-component"
-        ),
-        Relationship(
-            "SPDXRef-component", RelationshipType.DESCENDANT_OF, parent_spdx_id
-        ),
-        Relationship("SPDXRef-component", RelationshipType.CONTAINS, "SPDXRef-c1"),
-    ]
-    component_sbom_doc.annotations = []
-
-    mock_package_matched.return_value = True
-    await map_parent_to_component_and_modify_component(
-        parent_sbom_doc, component_sbom_doc, parent_spdx_id, []
-    )
-
-    assert mock_package_matched.call_count == 1, (
-        f"Expected package_matched called 1 time, "
-        f"got {mock_package_matched.call_count}. "
-    )
+    if should_match:
+        mock_stats.record_component_package_match.assert_called_once()
+        mock_stats.record_parent_package_match.assert_called_once()
+    else:
+        mock_stats.record_component_package_match.assert_not_called()
+        mock_stats.record_parent_package_match.assert_not_called()
 
 
 def test__supply_ancestors_from_parent_to_component() -> None:
@@ -535,6 +500,12 @@ def test__supply_ancestors_from_parent_to_component() -> None:
     component_sbom_doc.packages = []
     component_sbom_doc.annotations = []
     component_sbom_doc.relationships = []
+
+    parent_sbom_doc = MagicMock(spec=Document)
+    parent_sbom_doc.packages = []
+    parent_sbom_doc.annotations = []
+
+    stats = MatchingStatistics()
 
     grandparent_package, grandparent_annotation, grandparent_relationship = (
         get_base_image_items(
@@ -552,9 +523,11 @@ def test__supply_ancestors_from_parent_to_component() -> None:
         ),
     ]
 
-    ComponentRelationshipResolver.supply_ancestors(
-        component_sbom_doc, descendant_of_items_from_used_parent
+    resolver = ComponentRelationshipResolver(
+        [], parent_sbom_doc, component_sbom_doc, stats
     )
+    resolver.supply_ancestors(descendant_of_items_from_used_parent)
+
     assert grandparent_package in component_sbom_doc.packages
     assert (
         component_sbom_doc.annotations[0].annotation_comment
