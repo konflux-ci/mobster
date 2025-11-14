@@ -279,34 +279,39 @@ async def test_GenerateOciImageCommand__soft_validate_content_cdx(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ["syft_boms", "hermeto_bom", "expected_action"],
+    ["syft_boms", "hermeto_bom", "image_pullspec", "expected_action"],
     [
         # no SBOMs
-        (None, None, "raise_error"),
+        (None, None, None, "raise_error"),
         # single syft
-        ([Path("syft.json")], None, "load_syft"),
+        ([Path("syft.json")], None, None, "load_syft"),
         # multiple syft
-        ([Path("syft1.json"), Path("syft2.json")], None, "merge"),
+        ([Path("syft1.json"), Path("syft2.json")], None, None, "merge"),
         # syft + hermeto
-        ([Path("syft.json")], Path("hermeto.json"), "merge"),
+        ([Path("syft.json")], Path("hermeto.json"), None, "merge"),
         # multiple syft + hermeto
-        ([Path("syft1.json"), Path("syft2.json")], Path("hermeto.json"), "merge"),
+        ([Path("syft1.json"), Path("syft2.json")], Path("hermeto.json"), None, "merge"),
         # only hermeto
-        (None, Path("hermeto.json"), "load_hermeto"),
+        (None, Path("hermeto.json"), None, "load_hermeto"),
+        (None, None, "foo:latest", "scan_syft"),
     ],
 )
+@patch("mobster.cmd.generate.oci_image.syft.scan_image")
 @patch("mobster.cmd.generate.oci_image.load_sbom_from_json")
 @patch("mobster.cmd.generate.oci_image.merge_sboms")
 async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_merge: MagicMock,
     mock_load_sbom: AsyncMock,
+    mock_syft_scan: AsyncMock,
     syft_boms: list[Path],
     hermeto_bom: Path | None,
+    image_pullspec: str | None,
     expected_action: Literal["raise_error", "load_syft", "load_hermeto", "merge"],
 ) -> None:
     command = GenerateOciImageCommand(MagicMock())
     command.cli_args.from_hermeto = hermeto_bom
     command.cli_args.from_syft = syft_boms
+    command.cli_args.image_pullspec = image_pullspec
 
     mock_syft_data = {"name": "syft_data"}
     mock_hermeto_data = {"name": "hermeto_data"}
@@ -341,6 +346,11 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
             mock_merge.assert_called_once_with(syft_boms, hermeto_bom)
             assert result == mock_merged_data
             mock_load_sbom.assert_not_awaited()
+
+        elif expected_action == "scan_syft":
+            mock_syft_scan.assert_awaited_once_with(image_pullspec)
+            mock_load_sbom.assert_not_awaited()
+            mock_merge.assert_not_called()
 
 
 @pytest.mark.asyncio

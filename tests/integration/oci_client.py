@@ -88,6 +88,9 @@ class ReferrersTagOCIClient:
             "oras",
             "push",
             image_pullspec,
+            # Add custom creation date annotation to keep digest stable
+            "--annotation",
+            "org.opencontainers.image.created=2025-11-06T12:59:01Z",
             "--config",
             # These are just dummy values that registry requires, but they
             # don't contain any real data.
@@ -312,3 +315,66 @@ class ReferrersTagOCIClient:
             resp.raise_for_status()
             digest = resp.headers["location"].split("/")[-1]
             return digest
+
+    async def cleanup(self) -> None:
+        """
+        Cleanup any image resources stored in registry.
+        """
+        repo_list = await self.list_repositories()
+        for repo in repo_list:
+            tags = await self.list_tags(repo)
+            for tag in tags:
+                delete_url = f"{self.registry_url}/v2/{repo}/manifests/{tag}"
+                async with httpx.AsyncClient() as client:
+                    resp = await client.delete(delete_url)
+                    resp.raise_for_status()
+
+    async def list_repositories(self) -> list[str]:
+        """
+        List all repositories in the registry.
+
+        Returns:
+            list[str]: List of repository names.
+        """
+        repo_list = []
+        url = f"{self.registry_url}/v2/_catalog?n=100"
+        async with httpx.AsyncClient() as client:
+            while url:
+                resp = await client.get(url)
+                resp.raise_for_status()
+                data = resp.json()
+                repo_list.extend(data.get("repositories", []))
+                link_header = resp.headers.get("Link")
+                if link_header and 'rel="next"' in link_header:
+                    # Extract next URL from Link header
+                    url = url = (
+                        f"{self.registry_url}{link_header.split('<')[1].split('>')[0]}"
+                    )
+                else:
+                    url = ""
+        return repo_list
+
+    async def list_tags(self, repository_name: str) -> list[str]:
+        """
+        List all tags for a given repository.
+
+        Args:
+            repository_name (str): The name of the repository.
+        """
+        tags = []
+        tags_url = f"{self.registry_url}/v2/{repository_name}/tags/list?n=100"
+        async with httpx.AsyncClient() as client:
+            while tags_url:
+                resp = await client.get(tags_url)
+                resp.raise_for_status()
+                data = resp.json()
+                tags.extend(data.get("tags", []))
+                link_header = resp.headers.get("Link")
+                if link_header and 'rel="next"' in link_header:
+                    # Extract next URL from Link header
+                    tags_url = (
+                        f"{self.registry_url}{link_header.split('<')[1].split('>')[0]}"
+                    )
+                else:
+                    tags_url = ""
+        return tags

@@ -6,6 +6,7 @@ tasks.
 import json
 import subprocess
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -409,7 +410,8 @@ async def test_process_component_sboms_happypath(
     snapshot_path = Path("snapshot.json")
     release_id = ReleaseId.new()
 
-    repo_name = "release"
+    repo_name = str(uuid.uuid4()).replace("-", "")[:10]
+
     registry = registry_url.removeprefix("http://")
     repo_with_registry = f"{registry}/{repo_name}"
     image = await create_image_with_build_sbom(

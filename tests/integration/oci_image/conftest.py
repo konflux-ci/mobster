@@ -21,8 +21,8 @@ class GenerateData:
     """
 
     image: Image
-    input_sbom_path: Path
     output_sbom_path: Path
+    input_sbom_path: Path | None = None
     df_json_path: Path | None = None
     base_images_path: Path | None = None
     contextualize: bool = True
@@ -32,19 +32,28 @@ def run_mobster_generate(gdata: GenerateData) -> None:
     """
     Run a mobster generate oci image command with the supplied arguments.
     """
-    cmd = [
-        "mobster",
-        "generate",
-        "--output",
-        str(gdata.output_sbom_path),
-        "oci-image",
-        "--from-syft",
-        str(gdata.input_sbom_path),
-        "--image-digest",
-        gdata.image.digest,
-        "--image-pullspec",
-        f"{gdata.image.repository}:{gdata.image.tag}",
-    ]
+    cmd = ["mobster", "generate", "--output", str(gdata.output_sbom_path), "oci-image"]
+    if gdata.input_sbom_path is not None:
+        cmd.extend(
+            [
+                "--from-syft",
+                str(gdata.input_sbom_path),
+            ]
+        )
+    if gdata.image is not None and gdata.image.digest is not None:
+        cmd.extend(
+            [
+                "--image-digest",
+                gdata.image.digest,
+            ]
+        )
+    if gdata.image is not None and gdata.image.repository is not None:
+        cmd.extend(
+            [
+                "--image-pullspec",
+                f"{gdata.image.repository}:{gdata.image.tag}",
+            ]
+        )
 
     if gdata.contextualize:
         cmd.append("--contextualize")

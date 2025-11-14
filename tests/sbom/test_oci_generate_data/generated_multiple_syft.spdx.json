@@ -1617,30 +1617,6 @@
       "versionInfo": "2024b-2.el9"
     },
     {
-      "SPDXID": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "71c7ec827876417693bd3feb615a5c70753b78667cb27c17cb3a5346a6955da5"
-        }
-      ],
-      "downloadLocation": "NOASSERTION",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE_MANAGER",
-          "referenceLocator": "pkg:oci/registry.access.redhat.com/ubi9/ubi-micro@sha256:71c7ec827876417693bd3feb615a5c70753b78667cb27c17cb3a5346a6955da5?arch=amd64&tag=9.5",
-          "referenceType": "purl"
-        }
-      ],
-      "filesAnalyzed": false,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "name": "registry.access.redhat.com/ubi9/ubi-micro",
-      "primaryPackagePurpose": "CONTAINER",
-      "supplier": "NOASSERTION",
-      "versionInfo": "9.5"
-    },
-    {
       "SPDXID": "SPDXRef-image-konflux-test-0b947c0ad395438e31ccc30ce44e25bfcbab7446d81698c7723213c42310cca5",
       "annotations": [
         {
@@ -1713,118 +1689,113 @@
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-basesystem-fcabd006cb3bfe7d",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-bash-a6062d7253817d9d",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-coreutils-single-bc07797a46d14a80",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-filesystem-5423c4a724c69dca",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-glibc-ab6bbd6d165109d2",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-glibc-common-5d2e03b4ae3e405b",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-glibc-minimal-langpack-d35bdd9cfa0b8d62",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-gpg-pubkey-6a4614b48b443e33",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-gpg-pubkey-0b9edfc7dd36b25d",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-libacl-6a12891a28711ed0",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-libattr-246362466b6f01d4",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-libcap-e129417de8081c72",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-libgcc-492434936db2f877",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-libselinux-79db8c526f87ba3b",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-libsepol-9891839d8f699944",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-ncurses-base-a0d19211c8c4589b",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-ncurses-libs-31b40b2b21390159",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-pcre2-1a97d50a68b062d7",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-pcre2-syntax-8f3dd37865073b05",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-redhat-release-bbf1d165194eceb0",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
       "relatedSpdxElement": "SPDXRef-Package-rpm-setup-befa3e6a19701472",
       "relationshipType": "CONTAINS"
     },
     {
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
-      "relatedSpdxElement": "SPDXRef-Package-rpm-tzdata-f21803b5b9d9adef",
-      "relationshipType": "CONTAINS"
-    },
-    {
       "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8",
-      "relatedSpdxElement": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-tzdata-f21803b5b9d9adef",
       "relationshipType": "CONTAINS"
     },
     {

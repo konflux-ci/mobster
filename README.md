@@ -36,6 +36,14 @@ podman pull quay.io/konflux-ci/mobster:latest
 podman run -it quay.io/konflux-ci/mobster:latest mobster --help
 ```
 
+#### Additional dependencies
+Some features of Mobster require additional dependencies to be installed outside of Python
+ecosystem. To use those features, you need to install the following tools:
+
+- [**oras**](https://github.com/oras-project/oras): Used for pushing and pulling SBOM documents to/from OCI registries.
+- [**cosign**](https://github.com/sigstore/cosign): Used for signing and verifying SBOM documents in OCI registries.
+- [**syft**](https://github.com/anchore/syft): Used for generating SBOM documents from container images and filesystems.
+
 ## Development environment
 
 Follow an instruction in the [development-environment.md](docs/development-environment.md)
