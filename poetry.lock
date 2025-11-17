@@ -2283,14 +2283,14 @@ pytest = ">=7"
 
 [[package]]
 name = "pytest-reportlog"
-version = "0.4.0"
+version = "1.0.0"
 description = "Replacement for the --resultlog option, focused in simplicity and extensibility"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "pytest-reportlog-0.4.0.tar.gz", hash = "sha256:c9f2079504ee51f776d3118dcf5e4730f163d3dcf26ebc8f600c1fa307bf638c"},
-    {file = "pytest_reportlog-0.4.0-py3-none-any.whl", hash = "sha256:5db4d00586546d8c6b95c66466629f1e913440c36d97795a673d2e19c5cedd5c"},
+    {file = "pytest_reportlog-1.0.0-py3-none-any.whl", hash = "sha256:3fc837ef3be6e50f33b52aaf99f88bfbb2ec525febbc3990389d24bbfba28753"},
+    {file = "pytest_reportlog-1.0.0.tar.gz", hash = "sha256:75aec3a92bb53456c3e028605a636579d26f31c6f1e035ad9f706c203cfcb74e"},
 ]
 
 [package.dependencies]
@@ -3985,4 +3985,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "9255887d7463d9df02a6e3360a8b759d41e7763b6948c22544af0f650100c8aa"
+content-hash = "3dd669016fdf09a26c857da3104c9d3414d64fc0c0125447142442da5d7c6d0c"
