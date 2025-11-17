@@ -51,6 +51,47 @@ mobster --verbose  generate oci-image \
 - `--output` -- where to save the SBOM. prints it to STDOUT if this is not specified
 - `--skip-validation` -- skips validation of the SBOM
 
+## Generating a (non-hermetic) SBOM from scratch
+
+To build an SBOM with only the OCI image, you will need to run several tools to
+get prerequisite files to use in the `mobster generate` command. These two tools are:
+
+* Syft (https://github.com/anchore/syft): for initial scanning and SBOM generation
+* dockerfile-json (https://github.com/keilerkonzept/dockerfile-json): for
+  generating a human-readable Dockerfile/Containerfile manifest
+
+Download and install them before this process.
+
+Assuming you have the Containerfile, and the OCI image stored in a repository
+(or your localhost), the process is as follows:
+
+1. Use Syft to generate the intermediate SBOM to use in `--from-syft`, in SPDX format:
+
+```sh
+syft scan quay.io/konflux-ci/mobster:latest --output spdx-json > syft.json
+```
+
+2. Use dockerfile-json to generate a machine-readable Dockerfile/Containerfile
+   description for the tool to use:
+
+```sh
+dockerfile-json ./Containerfile > containerfile.json
+```
+
+3. Run `mobster generate` with the prerequisite files and the same OCI image
+   URL you used in the previous steps:
+
+```sh
+mobster generate \
+	--output full-sbom.json \
+	oci-image \
+	--from-syft syft.json \
+	--parsed-dockerfile-path containerfile.json \
+	--image-pullspec quay.io/konflux-ci/mobster:latest
+```
+
+Once the command is complete, you should see the full Mobster SBOM in
+`full-sbom.json` in your working directory.
 
 ## Contextual SBOM
 
