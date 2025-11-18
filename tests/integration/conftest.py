@@ -48,9 +48,11 @@ def s3_endpoint_url(request: Any) -> str:
     return request.config.getoption("--s3-endpoint-url")  # type: ignore
 
 
-@pytest.fixture
-def oci_client(registry_url: str) -> ReferrersTagOCIClient:
-    return ReferrersTagOCIClient(registry_url)
+@pytest_asyncio.fixture
+async def oci_client(registry_url: str) -> AsyncGenerator[ReferrersTagOCIClient, None]:
+    client = ReferrersTagOCIClient(registry_url)
+    await client.cleanup()
+    yield client
 
 
 # WARNING: The concurrency settings MUST match production Tekton Task params.
