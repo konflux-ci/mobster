@@ -157,6 +157,12 @@ def generate_oci_image_parser(subparsers: Any) -> None:
         "Expects the format <registry>/<repository>:<tag>@sha256:<digest value>",
     )
     oci_image_parser.add_argument(
+        "--arch",
+        type=str,
+        help="Image architecture. If not selected the OS arch is used.",
+        default=None,
+    )
+    oci_image_parser.add_argument(
         "--contextualize",
         action="store_true",
         help="Contextualize the SBOM",

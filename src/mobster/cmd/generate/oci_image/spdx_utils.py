@@ -216,6 +216,19 @@ async def is_virtual_root(package: Package) -> bool:
     return not package_name or package_name.startswith((".", "/"))
 
 
+def is_syft_oci_image_root(package: Package) -> bool:
+    """
+    Check if the package is a Syft OCI image root package.
+
+    Syft creates a root package for OCI images with specific naming patterns.
+
+    Args:
+        package (spdx_tools.spdx.model.package.Package):
+            A package element from the SBOM.
+    """
+    return package.spdx_id.startswith("SPDXRef-DocumentRoot-Image-")
+
+
 async def redirect_spdx_virtual_root_to_new_root(
     sbom: Document, virtual_root_id: str, new_root_id: str
 ) -> None:
@@ -252,7 +265,7 @@ async def redirect_current_roots_to_new_root(
     """
     current_roots = await find_spdx_root_packages(sbom)
     for current_root in current_roots:
-        if await is_virtual_root(current_root):
+        if await is_virtual_root(current_root) or is_syft_oci_image_root(current_root):
             # In case the document is described by the virtual root node
             # let's remove it and replace it with the new root node
 
