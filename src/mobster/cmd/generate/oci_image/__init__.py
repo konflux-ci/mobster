@@ -16,6 +16,7 @@ from spdx_tools.spdx.validation.document_validator import validate_full_spdx_doc
 from spdx_tools.spdx.writer.write_utils import convert
 
 import mobster.utils
+from mobster import syft
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
 from mobster.cmd.generate.oci_image.base_images_dockerfile import (
@@ -92,10 +93,15 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         Raises:
             ArgumentError: If neither Syft nor Hermeto SBOMs are provided.
         """
-        if self.cli_args.from_hermeto is None and self.cli_args.from_syft is None:
+        if (
+            self.cli_args.from_hermeto is None
+            and self.cli_args.from_syft is None
+            and self.cli_args.image_pullspec is None
+        ):
             raise ArgumentError(
                 None,
-                "At least one of --from-syft or --from-hermeto must be provided",
+                "At least one of --from-syft, --from-hermeto or --image-pullspec"
+                " must be provided",
             )
 
         if self.cli_args.from_syft is not None:
@@ -105,8 +111,10 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                     self.cli_args.from_syft, self.cli_args.from_hermeto
                 )
             return await load_sbom_from_json(self.cli_args.from_syft[0])
+        if self.cli_args.from_hermeto is not None:
+            return await load_sbom_from_json(self.cli_args.from_hermeto)
 
-        return await load_sbom_from_json(self.cli_args.from_hermeto)
+        return await syft.scan_image(self.cli_args.image_pullspec)
 
     @staticmethod
     async def _execute_contextual_workflow(
@@ -222,20 +230,21 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         # Extending with image reference
         if self.cli_args.image_pullspec:
+            image_arch = self.cli_args.arch or mobster.utils.identify_arch()
             if not self.cli_args.image_digest:
                 LOGGER.info(
                     "Provided pullspec but not digest."
                     " Resolving the digest using oras..."
                 )
                 self.cli_args.image_digest = await get_digest_for_image_ref(
-                    self.cli_args.image_pullspec
+                    self.cli_args.image_pullspec, image_arch
                 )
             if not self.cli_args.image_digest:
                 raise ValueError(
                     "No value for image digest was provided "
                     "and the image is not visible to oras!"
                 )
-            image_arch = mobster.utils.identify_arch()
+
             image = Image.from_image_index_url_and_digest(
                 self.cli_args.image_pullspec,
                 self.cli_args.image_digest,

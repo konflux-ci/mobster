@@ -95,7 +95,7 @@ async def get_base_images_refs_from_dockerfile(
     return base_images_pullspecs
 
 
-async def get_digest_for_image_ref(image_ref: str) -> str | None:
+async def get_digest_for_image_ref(image_ref: str, arch: Any = None) -> str | None:
     """
     Fetches the digest of a pullspec using oras.
     Args:
@@ -105,15 +105,16 @@ async def get_digest_for_image_ref(image_ref: str) -> str | None:
         str | None: The digest if fetched correctly. None otherwise.
     """
     with make_oci_auth_file(image_ref) as auth_file:
-        code, stdout, stderr = await run_async_subprocess(
-            [
-                "oras",
-                "resolve",
-                "--registry-config",
-                str(auth_file),
-                f"{image_ref}",
-            ],
-        )
+        cmd = [
+            "oras",
+            "resolve",
+            "--registry-config",
+            str(auth_file),
+            f"{image_ref}",
+        ]
+        if arch:
+            cmd.extend(["--platform", f"linux/{arch}"])
+        code, stdout, stderr = await run_async_subprocess(cmd)
         if (not code) and stdout:
             return stdout.decode().strip()
         LOGGER.warning(

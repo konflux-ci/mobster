@@ -268,6 +268,7 @@ class GenerateOciImageCommandArgs:
     output: Path | None = None
     contextualize: bool = False
     skip_validation: bool = False
+    arch: str | None = None
 
 
 @dataclass
