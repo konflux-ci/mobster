@@ -79,7 +79,8 @@ dockerfile-json ./Containerfile > containerfile.json
 ```
 
 3. Run `mobster generate` with the prerequisite files and the same OCI image
-   URL you used in the previous steps:
+   URL you used in the previous steps (note the argument order, `--output`
+   should come before `oci-image`):
 
 ```sh
 mobster generate \
