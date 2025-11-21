@@ -197,6 +197,9 @@ spec:
               optional: true
         - name: AWS_DEFAULT_REGION
           value: "us-east-1"
+        # Workaround for https://issues.redhat.com/browse/SRVKP-9385
+        - name: SSL_CERT_FILE
+          value: /etc/pki/tls/cert.pem
       script: |
         #!/usr/bin/env bash
         set -eux

@@ -203,6 +203,9 @@ spec:
             secretKeyRef:
               name: $(params.cosignSecretName)
               key: AWS_SECRET_ACCESS_KEY
+        # Workaround for https://issues.redhat.com/browse/SRVKP-9385
+        - name: SSL_CERT_FILE
+          value: /etc/pki/tls/cert.pem
       computeResources:
         limits:
           memory: 1Gi
