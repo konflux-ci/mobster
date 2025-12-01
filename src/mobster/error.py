@@ -5,7 +5,7 @@ This module contains errors raised in SBOM generation.
 
 class SBOMError(Exception):
     """
-    Exception that can be raised during SBOM generation and enrichment.
+    Exception that can be raised during SBOM generation and augmentation.
     """
 
     def __init__(self, *args: object, **kwargs: object) -> None:

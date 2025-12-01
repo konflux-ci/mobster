@@ -256,7 +256,7 @@ async def update_sbom(
         image: Object representing an image or an index image being released.
 
     Returns:
-        Detail of the augmented SBOM if it was successfully enriched,
+        Detail of the augmented SBOM if it was successfully augmented,
         None otherwise.
     """
 
@@ -273,7 +273,7 @@ async def update_sbom(
             await write_sbom(sbom.doc, path)
 
             LOGGER.info(
-                "Successfully enriched SBOM for image %s "
+                "Successfully augmented SBOM for image %s "
                 "(released to %s and pushed to %s)",
                 image,
                 repository.public_repo_url,
@@ -290,7 +290,7 @@ async def update_sbom(
             # concurrently and an uncaught exception would halt all concurrently
             # running updates.
             LOGGER.exception(
-                "Failed to enrich SBOM for image %s (released to %s).",
+                "Failed to augment SBOM for image %s (released to %s).",
                 image,
                 repository.public_repo_url,
             )
@@ -311,7 +311,7 @@ async def update_component_sboms(
         component: Object representing a component being released.
 
     Returns:
-        True if all SBOMs were successfully enriched, False otherwise.
+        True if all SBOMs were successfully augmented, False otherwise.
     """
     if isinstance(component.image, IndexImage):
         # If the image of a component is a multiarch image, we update the SBOMs
@@ -354,7 +354,7 @@ async def augment_sboms(
         snapshot: An object representing a snapshot being released.
 
     Returns:
-        True if all SBOMs were successfully enriched, False otherwise.
+        True if all SBOMs were successfully augmented, False otherwise.
     """
     results = await asyncio.gather(
         *[

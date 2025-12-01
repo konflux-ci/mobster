@@ -1,6 +1,6 @@
 """
 Module containing classes and functions used in the release phase of SBOM
-enrichment.
+augmentation.
 """
 
 import asyncio
