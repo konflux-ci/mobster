@@ -2,13 +2,15 @@
 Integration tests for S3Client.
 """
 
+import asyncio
+import datetime
 import json
 from pathlib import Path
 
 import pytest
 
 from mobster.cmd.generate.product import ReleaseData, ReleaseNotes
-from mobster.release import ComponentModel, SnapshotModel
+from mobster.release import ComponentModel, ReleaseId, SnapshotModel
 from mobster.tekton.s3 import S3Client
 
 
@@ -203,3 +205,109 @@ async def test_is_prefix_empty(s3_client: S3Client, tmp_path: Path) -> None:
     # check that it's empty again after clearing it
     await s3_client.clear_bucket()
     assert await s3_client.is_prefix_empty("/") is True
+
+
+@pytest.mark.asyncio
+async def test_get_release_ids_between(s3_client: S3Client) -> None:
+    """
+    Test getting ReleaseIds for objects modified between timestamps.
+
+    Creates some objects, waits 10 seconds, creates another object,
+    then verifies the method correctly filters by timestamp.
+    """
+    # Create initial release data objects
+    release_id_1 = ReleaseId.new()
+    release_id_2 = ReleaseId.new()
+    release_id_3 = ReleaseId.new()
+
+    release_data_1 = ReleaseData(
+        releaseNotes=ReleaseNotes(
+            product_name="Test Product 1",
+            product_version="1.0.0",
+            cpe="cpe:/a:redhat:test_product_1:1.0.0",
+        )
+    )
+    release_data_2 = ReleaseData(
+        releaseNotes=ReleaseNotes(
+            product_name="Test Product 2",
+            product_version="2.0.0",
+            cpe="cpe:/a:redhat:test_product_2:2.0.0",
+        )
+    )
+    release_data_3 = ReleaseData(
+        releaseNotes=ReleaseNotes(
+            product_name="Test Product 3",
+            product_version="3.0.0",
+            cpe="cpe:/a:redhat:test_product_3:3.0.0",
+        )
+    )
+
+    # Record timestamp before first batch
+    before_first_batch = datetime.datetime.now(datetime.timezone.utc)
+
+    # Upload first batch of objects
+    await s3_client.upload_input_data(release_data_1, release_id_1)
+    await s3_client.upload_input_data(release_data_2, release_id_2)
+    await s3_client.upload_input_data(release_data_3, release_id_3)
+
+    # Record timestamp after first batch (with small buffer for S3 processing)
+    await asyncio.sleep(1)  # Small delay to ensure S3 has processed uploads
+    after_first_batch = datetime.datetime.now(datetime.timezone.utc)
+
+    # Wait 10 seconds to ensure timestamp difference
+    await asyncio.sleep(5)
+
+    # Create and upload another object after the wait
+    release_id_4 = ReleaseId.new()
+    release_data_4 = ReleaseData(
+        releaseNotes=ReleaseNotes(
+            product_name="Test Product 4",
+            product_version="4.0.0",
+            cpe="cpe:/a:redhat:test_product_4:4.0.0",
+        )
+    )
+    await s3_client.upload_input_data(release_data_4, release_id_4)
+
+    # Record timestamp after second batch (with small buffer for S3 processing)
+    await asyncio.sleep(1)  # Small delay to ensure S3 has processed upload
+    after_second_batch = datetime.datetime.now(datetime.timezone.utc)
+
+    # Test: Get release IDs from before the wait (should include first 3)
+    early_release_ids = await s3_client.get_release_ids_between(
+        before_first_batch, after_first_batch
+    )
+    early_release_id_strs = {str(rid) for rid in early_release_ids}
+
+    # Should include the first 3 release IDs
+    assert str(release_id_1) in early_release_id_strs
+    assert str(release_id_2) in early_release_id_strs
+    assert str(release_id_3) in early_release_id_strs
+    # Should NOT include the 4th one (uploaded after the wait)
+    assert str(release_id_4) not in early_release_id_strs
+
+    # Test: Get release IDs from after the wait (should include only the 4th one)
+    # Use a timestamp slightly after the wait started
+    after_wait_start = after_first_batch + datetime.timedelta(seconds=1)
+    late_release_ids = await s3_client.get_release_ids_between(
+        after_wait_start, after_second_batch
+    )
+    late_release_id_strs = {str(rid) for rid in late_release_ids}
+
+    # Should include the 4th release ID
+    assert str(release_id_4) in late_release_id_strs
+    # Should NOT include the first 3 (uploaded before the wait)
+    assert str(release_id_1) not in late_release_id_strs
+    assert str(release_id_2) not in late_release_id_strs
+    assert str(release_id_3) not in late_release_id_strs
+
+    # Test: Get all release IDs (should include all 4)
+    all_release_ids = await s3_client.get_release_ids_between(
+        before_first_batch, after_second_batch
+    )
+    all_release_id_strs = {str(rid) for rid in all_release_ids}
+
+    assert str(release_id_1) in all_release_id_strs
+    assert str(release_id_2) in all_release_id_strs
+    assert str(release_id_3) in all_release_id_strs
+    assert str(release_id_4) in all_release_id_strs
+    assert len(all_release_id_strs) == 4

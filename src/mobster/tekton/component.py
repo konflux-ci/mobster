@@ -114,6 +114,7 @@ def parse_args() -> ProcessComponentArgs:
         cosign_config=cosign_config,
         rekor_config=rekor_config,
         skip_upload=args.skip_upload,
+        skip_s3_upload=False,
     )
 
 
@@ -178,7 +179,7 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
     """
     s3 = connect_with_s3(args.retry_s3_bucket)
 
-    if not args.skip_upload and s3:
+    if (not args.skip_s3_upload) and (not args.skip_upload) and s3:
         LOGGER.info("Uploading snapshot to S3 with release_id=%s", args.release_id)
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
     else:

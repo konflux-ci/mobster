@@ -3,6 +3,7 @@ Async S3 client used for SBOM operations.
 """
 
 import asyncio
+import datetime
 from io import BytesIO
 from pathlib import Path
 
@@ -281,3 +282,48 @@ class S3Client:
                     Bucket=self.bucket, Prefix=prefix
                 )
             return "Contents" not in response
+
+    async def get_release_ids_between(
+        self, since: datetime.datetime, until: datetime.datetime
+    ) -> list[ReleaseId]:
+        """
+        Get ReleaseIds for objects last modified between the provided timestamps.
+        Args:
+            since: Start timestamp (inclusive).
+            until: End timestamp (inclusive).
+        Returns:
+            List of ReleaseIds for objects modified between the timestamps.
+        Raises:
+            ClientError: If an error occurs during the S3 operation.
+        """
+        release_ids: list[ReleaseId] = []
+        prefix = f"{self.release_data_prefix}/"
+
+        # Normalize input datetimes to UTC for comparison with S3 timestamps
+        # S3 returns timezone-aware datetimes in UTC
+        if since.tzinfo is None:
+            since = since.replace(tzinfo=datetime.timezone.utc)
+        else:
+            since = since.astimezone(datetime.timezone.utc)
+        if until.tzinfo is None:
+            until = until.replace(tzinfo=datetime.timezone.utc)
+        else:
+            until = until.astimezone(datetime.timezone.utc)
+
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint_url
+        ) as s3_client:
+            paginator = s3_client.get_paginator("list_objects_v2")
+
+            async for page in paginator.paginate(Bucket=self.bucket, Prefix=prefix):
+                if "Contents" in page:
+                    for obj in page["Contents"]:
+                        last_modified = obj["LastModified"]
+                        # S3 LastModified is timezone-aware in UTC
+                        if since <= last_modified <= until:
+                            # Extract release ID from key: "release-data/{release_id}"
+                            key = obj["Key"]
+                            release_id_str = key[len(prefix) :]
+                            if release_id_str:
+                                release_ids.append(ReleaseId(release_id_str))
+        return release_ids

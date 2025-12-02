@@ -1,25 +1,18 @@
 """A module for re-generating SBOM documents for products."""
 
-import asyncio
 import logging
 
-from mobster.log import setup_logging
 from mobster.regenerate.base import (
-    SbomRegenerator,
     SbomType,
-    parse_args,
 )
+from mobster.regenerate.run import run
 
 LOGGER = logging.getLogger(__name__)
 
 
 def main() -> None:
     """Re-generate an SBOM document for a product."""
-    setup_logging(verbose=True)
-    LOGGER.info("Starting product SBOM re-generation.")
-    args = parse_args()
-    regen = SbomRegenerator(args, SbomType.PRODUCT)
-    asyncio.run(regen.regenerate_sboms())
+    run(SbomType.PRODUCT)
 
 
 if __name__ == "__main__":  # pragma: no cover
