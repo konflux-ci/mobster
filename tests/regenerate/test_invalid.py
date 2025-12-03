@@ -11,7 +11,7 @@ import pytest
 
 from mobster.cmd.upload.model import SbomSummary
 from mobster.regenerate.base import MissingReleaseIdError, SbomType
-from mobster.regenerate.invalid import FaultySBOMRegenerator, RegenerateArgs
+from mobster.regenerate.invalid import FaultySbomRegenerator, RegenerateArgs
 from mobster.release import ReleaseId
 
 
@@ -42,7 +42,7 @@ def regenerate_args(tmp_path: Path) -> RegenerateArgs:
 
 def test_construct_query(regenerate_args: RegenerateArgs, mock_env_vars: None) -> None:
     """Test construct_query creates correct TPA query"""
-    regenerator = FaultySBOMRegenerator(regenerate_args, SbomType.PRODUCT)
+    regenerator = FaultySbomRegenerator(regenerate_args, SbomType.PRODUCT)
 
     query = regenerator.construct_query()
 
@@ -62,7 +62,7 @@ def test_extract_release_id_from_annotations() -> None:
         ]
     }
 
-    result = FaultySBOMRegenerator.extract_release_id(sbom_dict)
+    result = FaultySbomRegenerator.extract_release_id(sbom_dict)
 
     assert result.id == release_id.id
 
@@ -77,7 +77,7 @@ def test_extract_release_id_from_properties() -> None:
         ]
     }
 
-    result = FaultySBOMRegenerator.extract_release_id(sbom_dict)
+    result = FaultySbomRegenerator.extract_release_id(sbom_dict)
 
     assert result.id == release_id.id
 
@@ -90,7 +90,7 @@ def test_extract_release_id_missing() -> None:
     }
 
     with pytest.raises(MissingReleaseIdError):
-        FaultySBOMRegenerator.extract_release_id(sbom_dict)
+        FaultySbomRegenerator.extract_release_id(sbom_dict)
 
 
 @pytest.mark.asyncio
@@ -98,7 +98,7 @@ async def test_organize_sbom_by_release_id_success(
     regenerate_args: RegenerateArgs, mock_env_vars: None
 ) -> None:
     """Test organize_sbom_by_release_id adds release_id to groups"""
-    regenerator = FaultySBOMRegenerator(regenerate_args, SbomType.PRODUCT)
+    regenerator = FaultySbomRegenerator(regenerate_args, SbomType.PRODUCT)
     release_id = ReleaseId.new()
     sbom = SbomSummary(
         id="test-sbom-id",
@@ -132,7 +132,7 @@ async def test_delete_sbom(
     regenerate_args: RegenerateArgs, mock_env_vars: None
 ) -> None:
     """Test delete_sbom calls TPA client delete"""
-    regenerator = FaultySBOMRegenerator(regenerate_args, SbomType.PRODUCT)
+    regenerator = FaultySbomRegenerator(regenerate_args, SbomType.PRODUCT)
     sbom_id = "test-sbom-id"
     mock_response = httpx.Response(
         200, request=httpx.Request("DELETE", "https://example.com")
@@ -159,7 +159,7 @@ async def test_download_and_extract_release_id_success(
     Test download_and_extract_release_id successfully downloads
     and extracts release_id
     """
-    regenerator = FaultySBOMRegenerator(regenerate_args, SbomType.PRODUCT)
+    regenerator = FaultySbomRegenerator(regenerate_args, SbomType.PRODUCT)
     release_id = ReleaseId.new()
     sbom = SbomSummary(
         id="test-sbom-id",
@@ -207,7 +207,7 @@ async def test_download_and_extract_release_id_retry_on_error(
     regenerate_args: RegenerateArgs, mock_env_vars: None, tmp_path: Path
 ) -> None:
     """Test download_and_extract_release_id retries on RequestError"""
-    regenerator = FaultySBOMRegenerator(regenerate_args, SbomType.PRODUCT)
+    regenerator = FaultySbomRegenerator(regenerate_args, SbomType.PRODUCT)
     release_id = ReleaseId.new()
     sbom = SbomSummary(
         id="test-sbom-id",
@@ -266,7 +266,7 @@ async def test_download_and_extract_release_id_file_not_found_retry(
     regenerate_args: RegenerateArgs, mock_env_vars: None, tmp_path: Path
 ) -> None:
     """Test download_and_extract_release_id retries on FileNotFoundError"""
-    regenerator = FaultySBOMRegenerator(regenerate_args, SbomType.PRODUCT)
+    regenerator = FaultySbomRegenerator(regenerate_args, SbomType.PRODUCT)
     release_id = ReleaseId.new()
     sbom = SbomSummary(
         id="test-sbom-id",
@@ -323,7 +323,7 @@ async def test_download_and_extract_release_id_missing_release_id(
     Test download_and_extract_release_id raises MissingReleaseIdError
     when not found
     """
-    regenerator = FaultySBOMRegenerator(regenerate_args, SbomType.PRODUCT)
+    regenerator = FaultySbomRegenerator(regenerate_args, SbomType.PRODUCT)
     sbom = SbomSummary(
         id="test-sbom-id",
         name="test-sbom",

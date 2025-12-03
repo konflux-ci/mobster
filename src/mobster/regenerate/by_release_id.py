@@ -22,7 +22,7 @@ class RegenerateReleaseArgs(CommonArgs):
     release_ids: list[ReleaseId]
 
 
-class ReleaseSBOMRegenerator(SbomRegenerator):
+class ReleaseSbomRegenerator(SbomRegenerator):
     """
     Regenerate SBOMs by given release IDs.
     """

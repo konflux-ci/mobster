@@ -8,7 +8,7 @@ import pytest
 from mobster.regenerate.base import SbomType
 from mobster.regenerate.by_release_id import (
     RegenerateReleaseArgs,
-    ReleaseSBOMRegenerator,
+    ReleaseSbomRegenerator,
 )
 from mobster.release import ReleaseId
 
@@ -45,7 +45,7 @@ async def test_regenerate_sboms_verbose_logging(
 ) -> None:
     """Test regenerate_sboms logs release groups when verbose"""
     release_args.verbose = True
-    regenerator = ReleaseSBOMRegenerator(release_args, SbomType.PRODUCT)
+    regenerator = ReleaseSbomRegenerator(release_args, SbomType.PRODUCT)
     with patch.object(regenerator, "regenerate_release_groups", new_callable=AsyncMock):
         with caplog.at_level("DEBUG"):
             await regenerator.regenerate_sboms()
@@ -85,7 +85,7 @@ def test_get_releases_from_file(
     with open(release_file, "w", encoding="utf-8") as f:
         f.write(formatted_content)
 
-    result = ReleaseSBOMRegenerator.get_releases_from_file(release_file)
+    result = ReleaseSbomRegenerator.get_releases_from_file(release_file)
 
     assert len(result) == expected_count
 

@@ -17,7 +17,8 @@ import mobster.regenerate.base as regen_base
 from mobster.cmd.upload.model import SbomSummary
 from mobster.cmd.upload.tpa import TPAClient
 from mobster.error import SBOMError
-from mobster.regenerate.invalid import FaultySBOMRegenerator, RegenerateArgs
+from mobster.regenerate.cli import parse_args
+from mobster.regenerate.invalid import FaultySbomRegenerator, RegenerateArgs
 from mobster.release import ReleaseId
 from mobster.tekton.s3 import S3Client
 from tests.conftest import setup_mock_tpa_client_with_context_manager
@@ -119,7 +120,7 @@ def mock_download_sbom_json_with_attr(
 def test_gather_s3_input_data(mock_env_vars: None) -> None:
     """tests fetching S3 bucket data"""
     args = mock_regenerate_args()
-    sbom_regenerator = FaultySBOMRegenerator(args, regen_base.SbomType.PRODUCT)
+    sbom_regenerator = FaultySbomRegenerator(args, regen_base.SbomType.PRODUCT)
     sbom_regenerator.s3_client = AsyncMock(spec=S3Client)
     rid = ReleaseId.new()
 
@@ -175,7 +176,6 @@ def test_parse_args(
 ) -> None:
     """Test the parse_args function for proper argument parsing."""
     monkeypatch.setattr("sys.argv", ["program_name"] + dummy_args)
-    from mobster.regenerate.cli import parse_args
 
     args = parse_args()
     assert isinstance(args, RegenerateArgs)
@@ -200,7 +200,7 @@ async def test_organize_sbom_by_release_id(
     sbom1 = get_mock_sbom(id="a", name="sbom_1")
     mock_release_id = MagicMock(ReleaseId)
 
-    sbom_regenerator = FaultySBOMRegenerator(mock_args, regen_base.SbomType.PRODUCT)
+    sbom_regenerator = FaultySbomRegenerator(mock_args, regen_base.SbomType.PRODUCT)
     sbom_regenerator.download_and_extract_release_id = AsyncMock(  # type: ignore[method-assign]
         return_value=mock_release_id
     )
@@ -262,7 +262,7 @@ def test_extract_release_id_with_annotations() -> None:
             {"comment": f"release_id={expected_release_id.id}"},
         ]
     }
-    result = FaultySBOMRegenerator.extract_release_id(sbom_dict)
+    result = FaultySbomRegenerator.extract_release_id(sbom_dict)
     assert expected_release_id.id == result.id
 
 
@@ -274,7 +274,7 @@ def test_extract_release_id_with_properties() -> None:
             {"name": "release_id", "value": f"{expected_release_id.id}"},
         ]
     }
-    result = FaultySBOMRegenerator.extract_release_id(sbom_dict)
+    result = FaultySbomRegenerator.extract_release_id(sbom_dict)
     assert expected_release_id.id == result.id
 
 
@@ -294,7 +294,7 @@ def test_extract_release_id_missing() -> None:
         ],
     }
     try:
-        FaultySBOMRegenerator.extract_release_id(sbom_dict)
+        FaultySbomRegenerator.extract_release_id(sbom_dict)
         # shouldn't get here, so fail
         raise AssertionError()
     except regen_base.MissingReleaseIdError:
@@ -303,11 +303,11 @@ def test_extract_release_id_missing() -> None:
 
 
 @pytest.fixture
-def sbom_regenerator(mock_env_vars: None) -> FaultySBOMRegenerator:
+def sbom_regenerator(mock_env_vars: None) -> FaultySbomRegenerator:
     """Fixture to provide a SbomRegenerator instance."""
     args = mock_regenerate_args()
     args.dry_run = False
-    return FaultySBOMRegenerator(args=args, sbom_type=regen_base.SbomType.PRODUCT)
+    return FaultySbomRegenerator(args=args, sbom_type=regen_base.SbomType.PRODUCT)
 
 
 @pytest.mark.asyncio
@@ -399,15 +399,15 @@ async def test_regenerate_sboms_success(
 
     args = mock_regenerate_args()
     sbom_type = regen_base.SbomType.PRODUCT
-    sbom_regenerator = FaultySBOMRegenerator(args=args, sbom_type=sbom_type)
+    sbom_regenerator = FaultySbomRegenerator(args=args, sbom_type=sbom_type)
 
     with (
         patch(
-            "mobster.regenerate.invalid.FaultySBOMRegenerator.construct_query",
+            "mobster.regenerate.invalid.FaultySbomRegenerator.construct_query",
             return_value="test_query",
         ) as mock_construct_query,
         patch(
-            "mobster.regenerate.invalid.FaultySBOMRegenerator.organize_sbom_by_release_id",
+            "mobster.regenerate.invalid.FaultySbomRegenerator.organize_sbom_by_release_id",
             new_callable=AsyncMock,
         ) as mock_organize_sbom_by_release_id,
         patch(
@@ -460,15 +460,15 @@ async def test_regenerate_sboms_error(
 
     args = mock_regenerate_args()
     sbom_type = regen_base.SbomType.PRODUCT
-    sbom_regenerator = FaultySBOMRegenerator(args=args, sbom_type=sbom_type)
+    sbom_regenerator = FaultySbomRegenerator(args=args, sbom_type=sbom_type)
 
     with (
         patch(
-            "mobster.regenerate.invalid.FaultySBOMRegenerator.construct_query",
+            "mobster.regenerate.invalid.FaultySbomRegenerator.construct_query",
             return_value="test_query",
         ),
         patch(
-            "mobster.regenerate.invalid.FaultySBOMRegenerator.organize_sbom_by_release_id",
+            "mobster.regenerate.invalid.FaultySbomRegenerator.organize_sbom_by_release_id",
             new_callable=AsyncMock,
         ) as mock_organize_sbom_by_release_id,
     ):
@@ -490,7 +490,7 @@ async def test_regenerate_sboms_error(
 
     with (
         patch(
-            "mobster.regenerate.invalid.FaultySBOMRegenerator.download_and_extract_release_id",
+            "mobster.regenerate.invalid.FaultySbomRegenerator.download_and_extract_release_id",
             new_callable=AsyncMock,
         ) as mock_get_release_id,
     ):

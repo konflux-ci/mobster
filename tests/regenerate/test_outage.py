@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from mobster.regenerate.base import SbomType
-from mobster.regenerate.outage import OutageSBOMGenerator, RegenerateOutageArgs
+from mobster.regenerate.outage import OutageSbomGenerator, RegenerateOutageArgs
 from mobster.release import ReleaseId
 
 
@@ -40,8 +40,8 @@ def outage_args(tmp_path: Path) -> RegenerateOutageArgs:
 def test_outage_sbom_generator_init(
     outage_args: RegenerateOutageArgs, mock_env_vars: None
 ) -> None:
-    """Test OutageSBOMGenerator initialization"""
-    generator = OutageSBOMGenerator(outage_args, SbomType.PRODUCT)
+    """Test OutageSbomGenerator initialization"""
+    generator = OutageSbomGenerator(outage_args, SbomType.PRODUCT)
 
     assert generator.args == outage_args
     assert generator.sbom_type == SbomType.PRODUCT
@@ -53,7 +53,7 @@ async def test_populate_releases(
     outage_args: RegenerateOutageArgs, mock_env_vars: None
 ) -> None:
     """Test populate_releases fetches release IDs from S3"""
-    generator = OutageSBOMGenerator(outage_args, SbomType.PRODUCT)
+    generator = OutageSbomGenerator(outage_args, SbomType.PRODUCT)
     release_id_1 = ReleaseId.new()
     release_id_2 = ReleaseId.new()
 
@@ -79,7 +79,7 @@ async def test_regenerate_sboms_verbose_logging(
 ) -> None:
     """Test regenerate_sboms logs release groups when verbose"""
     outage_args.verbose = True
-    generator = OutageSBOMGenerator(outage_args, SbomType.PRODUCT)
+    generator = OutageSbomGenerator(outage_args, SbomType.PRODUCT)
     release_id = ReleaseId.new()
 
     generator.s3_client = AsyncMock()

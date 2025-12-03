@@ -20,7 +20,7 @@ class RegenerateOutageArgs(CommonArgs):
     until: datetime.datetime
 
 
-class OutageSBOMGenerator(SbomRegenerator):
+class OutageSbomGenerator(SbomRegenerator):
     """
     This regenerator is intended to be used when infrastructure outages
     appear.

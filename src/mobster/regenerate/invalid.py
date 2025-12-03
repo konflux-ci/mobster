@@ -42,7 +42,7 @@ class RegenerateArgs(CommonArgs):  # pylint: disable=R0902
     ignore_missing_releaseid: bool
 
 
-class FaultySBOMRegenerator(SbomRegenerator):
+class FaultySbomRegenerator(SbomRegenerator):
     """
     This class regenerates SBOMs for Mobster's specific version in case
     of a bug in the specified version.

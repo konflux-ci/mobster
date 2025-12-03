@@ -316,14 +316,16 @@ class S3Client:
             paginator = s3_client.get_paginator("list_objects_v2")
 
             async for page in paginator.paginate(Bucket=self.bucket, Prefix=prefix):
-                if "Contents" in page:
-                    for obj in page["Contents"]:
-                        last_modified = obj["LastModified"]
-                        # S3 LastModified is timezone-aware in UTC
-                        if since <= last_modified <= until:
-                            # Extract release ID from key: "release-data/{release_id}"
-                            key = obj["Key"]
-                            release_id_str = key[len(prefix) :]
-                            if release_id_str:
-                                release_ids.append(ReleaseId(release_id_str))
+                if "Contents" not in page:
+                    continue
+                for obj in page["Contents"]:
+                    last_modified = obj["LastModified"]
+                    # S3 LastModified is timezone-aware in UTC
+                    if not since <= last_modified <= until:
+                        continue
+                    # Extract release ID from key: "release-data/{release_id}"
+                    key = obj["Key"]
+                    release_id_str = key[len(prefix) :]
+                    if release_id_str:
+                        release_ids.append(ReleaseId(release_id_str))
         return release_ids

@@ -48,7 +48,7 @@ def test_run_with_regenerate_args(
     mock_regen_instance.regenerate_sboms = MagicMock(return_value=None)
 
     with patch(
-        "mobster.regenerate.run.FaultySBOMRegenerator",
+        "mobster.regenerate.run.FaultySbomRegenerator",
         return_value=mock_regen_instance,
     ) as mock_regenerator_cls:
         run(sbom_type)
@@ -93,7 +93,7 @@ def test_run_with_outage_args(
     mock_regen_instance.regenerate_sboms = MagicMock(return_value=None)
 
     with patch(
-        "mobster.regenerate.run.OutageSBOMGenerator",
+        "mobster.regenerate.run.OutageSbomGenerator",
         return_value=mock_regen_instance,
     ) as mock_regenerator_cls:
         run(sbom_type)
@@ -136,7 +136,7 @@ def test_run_with_release_args(
     mock_regen_instance.regenerate_sboms = MagicMock(return_value=None)
 
     with patch(
-        "mobster.regenerate.run.ReleaseSBOMRegenerator",
+        "mobster.regenerate.run.ReleaseSbomRegenerator",
         return_value=mock_regen_instance,
     ) as mock_regenerator_cls:
         run(sbom_type)

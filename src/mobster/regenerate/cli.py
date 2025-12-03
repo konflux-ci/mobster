@@ -12,7 +12,7 @@ from mobster.cli import parse_concurrency
 from mobster.regenerate.base import GENERATED_SBOMS_PREFIX
 from mobster.regenerate.by_release_id import (
     RegenerateReleaseArgs,
-    ReleaseSBOMRegenerator,
+    ReleaseSbomRegenerator,
 )
 from mobster.regenerate.invalid import RegenerateArgs
 from mobster.regenerate.outage import RegenerateOutageArgs
@@ -57,24 +57,27 @@ def parse_args() -> RegenerateArgs | RegenerateOutageArgs | RegenerateReleaseArg
         "tpa_retries": args.tpa_retries,
     }
     result_args: RegenerateOutageArgs | RegenerateArgs | RegenerateReleaseArgs
-    if args.command == "outage":
-        result_args = RegenerateOutageArgs(
-            since=args.since, until=args.until, **common_args
-        )
-    elif args.command == "invalid":
-        result_args = RegenerateArgs(
-            mobster_versions=args.mobster_versions,
-            tpa_page_size=args.tpa_page_size,
-            ignore_missing_releaseid=args.ignore_missing_releaseid,
-            **common_args,
-        )
-    else:
-        result_args = RegenerateReleaseArgs(
-            release_ids=ReleaseSBOMRegenerator.get_releases_from_file(
-                args.release_id_file
-            ),
-            **common_args,
-        )
+    match args.command:
+        case "outage":
+            result_args = RegenerateOutageArgs(
+                since=args.since, until=args.until, **common_args
+            )
+        case "invalid":
+            result_args = RegenerateArgs(
+                mobster_versions=args.mobster_versions,
+                tpa_page_size=args.tpa_page_size,
+                ignore_missing_releaseid=args.ignore_missing_releaseid,
+                **common_args,
+            )
+        case "release":
+            result_args = RegenerateReleaseArgs(
+                release_ids=ReleaseSbomRegenerator.get_releases_from_file(
+                    args.release_id_file
+                ),
+                **common_args,
+            )
+        case _:
+            raise RuntimeError(f"Unknown command: {args.command}")
 
     LOGGER.debug(result_args)
     return result_args
