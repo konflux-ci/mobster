@@ -31,6 +31,9 @@ class ReleaseId:
     def __str__(self) -> str:
         return str(self.id)
 
+    def __repr__(self) -> str:
+        return f"ReleaseId(id={self.id})"
+
 
 @dataclass
 class ReleaseRepository:
@@ -141,7 +144,10 @@ class ComponentRepositoryModel(pdc.BaseModel):
     of a Snapshot.
     """
 
-    rh_registry_repo: str = pdc.Field(alias="rh-registry-repo")
+    rh_registry_repo: str = pdc.Field(
+        alias="rh-registry-repo",
+        validation_alias=pdc.AliasChoices("rh-registry-repo", "rh_registry_repo"),
+    )
     url: str
     tags: list[str]
 

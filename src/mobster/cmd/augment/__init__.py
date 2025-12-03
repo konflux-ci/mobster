@@ -189,7 +189,7 @@ async def load_sbom(image: Image, cosign: Cosign, verify: bool) -> tuple[SBOM, b
     if verify:
         try:
             await verify_sbom(sbom, image, cosign)
-        except SBOMVerificationError:
+        except SBOMError:
             LOGGER.exception(
                 "Attestation verification failed for image '%s'."
                 "The released images created from this image will"

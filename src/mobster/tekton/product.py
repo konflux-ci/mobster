@@ -80,6 +80,7 @@ def parse_args() -> ProcessProductArgs:
         atlas_retries=args.atlas_retries,
         skip_upload=args.skip_upload,
         sbom_path=args.sbom_path,
+        skip_s3_upload=False,
     )  # pylint:disable=duplicate-code
 
 
@@ -129,7 +130,7 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
     """
     s3 = connect_with_s3(args.retry_s3_bucket)
 
-    if not args.skip_upload and s3:
+    if (not args.skip_s3_upload) and (not args.skip_upload) and s3:
         LOGGER.info(
             "Uploading snapshot and release data to S3 with release_id=%s",
             args.release_id,

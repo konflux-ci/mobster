@@ -42,6 +42,9 @@ class CommonArgs:
         upload_concurrency: concurrency rate for uploads
         skip_upload: whether to generate without uploading to Atlas and S3
             (used in SBOM regeneration for performing non-destructive 'dry runs')
+        skip_s3_upload: should be used when regenerating SBOMs from local machine.
+            Makes sure the snapshots and release data are not updated when running
+            this script
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -55,6 +58,7 @@ class CommonArgs:
     atlas_retries: int
     upload_concurrency: int
     skip_upload: bool
+    skip_s3_upload: bool
 
 
 def add_common_args(parser: ArgumentParser) -> None:
