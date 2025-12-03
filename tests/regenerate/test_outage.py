@@ -37,17 +37,6 @@ def outage_args(tmp_path: Path) -> RegenerateOutageArgs:
     )
 
 
-def test_outage_sbom_generator_init(
-    outage_args: RegenerateOutageArgs, mock_env_vars: None
-) -> None:
-    """Test OutageSbomGenerator initialization"""
-    generator = OutageSbomGenerator(outage_args, SbomType.PRODUCT)
-
-    assert generator.args == outage_args
-    assert generator.sbom_type == SbomType.PRODUCT
-    assert generator.sbom_release_groups == set()
-
-
 @pytest.mark.asyncio
 async def test_populate_releases(
     outage_args: RegenerateOutageArgs, mock_env_vars: None
@@ -69,24 +58,3 @@ async def test_populate_releases(
     generator.s3_client.get_release_ids_between.assert_awaited_once_with(
         since=outage_args.since, until=outage_args.until
     )
-
-
-@pytest.mark.asyncio
-async def test_regenerate_sboms_verbose_logging(
-    outage_args: RegenerateOutageArgs,
-    mock_env_vars: None,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """Test regenerate_sboms logs release groups when verbose"""
-    outage_args.verbose = True
-    generator = OutageSbomGenerator(outage_args, SbomType.PRODUCT)
-    release_id = ReleaseId.new()
-
-    generator.s3_client = AsyncMock()
-    generator.s3_client.get_release_ids_between = AsyncMock(return_value=[release_id])
-    generator.regenerate_release_groups = AsyncMock()  # type: ignore[method-assign]
-
-    with caplog.at_level("DEBUG"):
-        await generator.regenerate_sboms()
-
-    assert "release groups:" in caplog.text

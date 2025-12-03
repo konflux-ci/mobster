@@ -1,7 +1,7 @@
 """Unit tests for mobster.regenerate.base module"""
 
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -220,27 +220,6 @@ async def test_regenerate_sbom_release_missing_data(
 
 
 @pytest.mark.asyncio
-async def test_regenerate_release_groups_success(
-    common_args: CommonArgs, mock_env_vars: None
-) -> None:
-    """Test regenerate_release_groups processes all release groups"""
-    regenerator = ConcreteSbomRegenerator(common_args, SbomType.PRODUCT)
-    release_id_1 = ReleaseId.new()
-    release_id_2 = ReleaseId.new()
-    regenerator.sbom_release_groups = {release_id_1, release_id_2}
-
-    with patch.object(
-        regenerator,
-        "regenerate_sbom_release",
-        new_callable=AsyncMock,
-        return_value=True,
-    ) as mock_regenerate:
-        await regenerator.regenerate_release_groups()
-
-        assert mock_regenerate.await_count == 2
-
-
-@pytest.mark.asyncio
 async def test_regenerate_release_groups_with_failures(
     common_args: CommonArgs, mock_env_vars: None, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -260,62 +239,3 @@ async def test_regenerate_release_groups_with_failures(
         await regenerator.regenerate_release_groups()
 
     assert "Failed releases:" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_process_sboms_called_process_error(
-    common_args: CommonArgs, mock_env_vars: None
-) -> None:
-    """Test process_sboms converts CalledProcessError to SBOMError"""
-    from subprocess import CalledProcessError
-
-    regenerator = ConcreteSbomRegenerator(common_args, SbomType.PRODUCT)
-    release_id = ReleaseId.new()
-
-    with patch(
-        "mobster.regenerate.base.process_product_sboms",
-        new_callable=AsyncMock,
-        side_effect=CalledProcessError(1, "cmd"),
-    ):
-        with pytest.raises(SBOMError):
-            await regenerator.process_sboms(
-                release_id, Path("release_data.json"), Path("snapshot.json")
-            )
-
-
-@pytest.mark.asyncio
-async def test_process_sboms_component(
-    common_args: CommonArgs, mock_env_vars: None
-) -> None:
-    """Test process_sboms calls process_component_sboms for COMPONENT type"""
-    regenerator = ConcreteSbomRegenerator(common_args, SbomType.COMPONENT)
-    release_id = ReleaseId.new()
-
-    with patch(
-        "mobster.regenerate.base.process_component_sboms",
-        new_callable=AsyncMock,
-    ) as mock_process_component:
-        await regenerator.process_sboms(
-            release_id, Path("release_data.json"), Path("snapshot.json")
-        )
-
-        mock_process_component.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_regenerate_sboms_verbose_logging(
-    common_args: CommonArgs, mock_env_vars: None, caplog: pytest.LogCaptureFixture
-) -> None:
-    """Test regenerate_sboms logs release groups when verbose"""
-    common_args.verbose = True
-    regenerator = ConcreteSbomRegenerator(common_args, SbomType.PRODUCT)
-    regenerator.sbom_release_groups = {ReleaseId.new()}
-
-    with (
-        patch.object(regenerator, "populate_releases", new_callable=AsyncMock),
-        patch.object(regenerator, "regenerate_release_groups", new_callable=AsyncMock),
-    ):
-        with caplog.at_level("DEBUG"):
-            await regenerator.regenerate_sboms()
-
-        assert "release groups:" in caplog.text

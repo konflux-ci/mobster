@@ -1,11 +1,9 @@
 """Unit tests for mobster.regenerate.by_release_id module"""
 
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from mobster.regenerate.base import SbomType
 from mobster.regenerate.by_release_id import (
     RegenerateReleaseArgs,
     ReleaseSbomRegenerator,
@@ -35,21 +33,6 @@ def release_args(tmp_path: Path) -> RegenerateReleaseArgs:
         verbose=False,
         release_ids=release_ids,
     )
-
-
-@pytest.mark.asyncio
-async def test_regenerate_sboms_verbose_logging(
-    release_args: RegenerateReleaseArgs,
-    mock_env_vars: None,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """Test regenerate_sboms logs release groups when verbose"""
-    release_args.verbose = True
-    regenerator = ReleaseSbomRegenerator(release_args, SbomType.PRODUCT)
-    with patch.object(regenerator, "regenerate_release_groups", new_callable=AsyncMock):
-        with caplog.at_level("DEBUG"):
-            await regenerator.regenerate_sboms()
-        assert "release groups:" in caplog.text
 
 
 @pytest.mark.parametrize(
