@@ -916,34 +916,8 @@
 <h1 id="sbom-regeneration">SBOM Regeneration</h1>
 <p>Mobster's SBOM regeneration script allows SBOM regeneration for cases where 
 product or component SBOMs were generated incorrectly or with errors.</p>
-<pre><code>$ regenerate_component_sboms \
-    --tpa-base-url https://atlas.url \
-    --mobster-versions 0.1.1,0.1.2 \
-    --concurrency 10 \
-    --s3-bucket-url https://bucket.url \
-    --dry-run
-</code></pre>
-<pre><code>$ regenerate_product_sboms \
-    --tpa-base-url https://atlas.url \
-    --mobster-versions 0.2,0.3 \
-    --concurrency 10 \
-    --s3-bucket-url https://bucket.url \
-    --dry-run
-</code></pre>
-<p>Note: inclusion of the <code>--dry-run</code> argument means the regenerated data 
-will not be pushed to TPA or to the S3 bucket.
-This argument should always be used for testing/validation.</p>
-<p>The required <code>--tpa-base-url &lt;url&gt;</code> argument indicates the base url for 
-the relevant TPA instance with SBOMs in need of regeneration.</p>
-<p>The required <code>--mobster-versions &lt;comma,separated,list&gt;</code> argument indicates which 
-mobster version(s) originally generated the problem SBOMs.</p>
-<p>The optional <code>--concurrency &lt;int&gt;</code> argument sets the number of concurrent threads 
-which will be used during regeneration processing (default: 8).</p>
-<p>The required <code>--s3-bucket-url</code> argument indicates the url for the relevant S3 
-bucket which stores SBOM snapshot and release data.</p>
-<p>The optional <code>--output-dir &lt;path&gt;</code> argument may be included in cases where a 
-predetermined static path is preferred.  Otherwise, the script creates and 
-uses a temporary directory. </p>
+<p>There are three modes of operation for this script (invalid, outage and release).</p>
+<h2 id="common-configuration">Common configuration</h2>
 <p>The following environment variables are required to run the regeneration script:</p>
 <pre><code>export MOBSTER_TPA_SSO_TOKEN_URL=https://token.url
 export MOBSTER_TPA_SSO_ACCOUNT=account
@@ -962,6 +936,67 @@ can be found in bombino's ansible vault:
 <code>https://auth.stage.redhat.com/auth/realms/EmployeeIDP/protocol/openid-connect/token</code></p>
 <p>(prod)<br/>
 <code>https://auth.redhat.com/auth/realms/EmployeeIDP/protocol/openid-connect/token</code></p>
+<p>Inclusion of the <code>--dry-run</code> argument means the regenerated data 
+will not be pushed to TPA or to the S3 bucket.
+This argument should always be used for testing/validation.</p>
+<p>The required <code>--tpa-base-url &lt;url&gt;</code> argument indicates the base url for 
+the relevant TPA instance with SBOMs in need of regeneration.</p>
+<p>The optional <code>--concurrency &lt;int&gt;</code> argument sets the number of concurrent threads 
+which will be used during regeneration processing (default: 8).</p>
+<p>The required <code>--s3-bucket-url</code> argument indicates the url for the relevant S3 
+bucket which stores SBOM snapshot and release data.</p>
+<p>The optional <code>--output-dir &lt;path&gt;</code> argument may be included in cases where a 
+predetermined static path is preferred.  Otherwise, the script creates and 
+uses a temporary directory. </p>
+<h2 id="regenerating-invalid-sboms">Regenerating invalid SBOMs</h2>
+<p>This method replaces SBOMs already uploaded to TPA by a specific version
+of Mobster. The subcommand to use this method is <code>invalid</code>.</p>
+<pre><code>$ regenerate_component_sboms \
+    --tpa-base-url https://atlas.url \
+    --concurrency 10 \
+    --s3-bucket-url https://bucket.url \
+    --dry-run \
+    invalid \
+    --mobster-versions 0.1.1,0.1.2
+</code></pre>
+<pre><code>$ regenerate_product_sboms \
+    --tpa-base-url https://atlas.url \
+    --concurrency 10 \
+    --s3-bucket-url https://bucket.url \
+    --dry-run \
+    invalid \
+    --mobster-versions 0.2,0.3
+</code></pre>
+<p>The required <code>--mobster-versions &lt;comma,separated,list&gt;</code> argument indicates which 
+mobster version(s) originally generated the problem SBOMs.</p>
+<h2 id="regenerating-sboms-missed-during-an-outage">Regenerating SBOMs missed during an outage</h2>
+<p>This method regenerates SBOMs that were missed during an outage in the release
+pipeline. The subcommand to use this method is <code>outage</code>.</p>
+<pre><code>$ regenerate_product_sboms \
+    --tpa-base-url https://atlas.url \
+    --s3-bucket-url https://bucket.url \
+    outage \
+    --since 1970-01-01T00:00:00 \
+    --until 1970-01-01T08:00:00
+</code></pre>
+<p>Of course, the command <code>regenerate_component_sboms</code> is also available with the
+same interface.</p>
+<p>The argument <code>--since</code> specifies the start of the outage. S3 data modified after
+this timestamp will be used for regeneration.</p>
+<p>The argument <code>--until</code> specifies the end of the outage. S3 data modified before
+this timestamp will be used for regeneration.</p>
+<p>Both of these arguments expect timestamps in ISO format.</p>
+<h2 id="regenerating-sboms-for-specified-release-ids">Regenerating SBOMs for specified release IDs</h2>
+<p>This method generates SBOMs for specific release IDs. The subcommand to use
+this method is <code>release</code>.</p>
+<pre><code>$ regenerate_component_sboms \
+    --tpa-base-url https://atlas.url \
+     --s3-bucket-url https://bucket.url \
+     release \
+     --release-id-file file.txt
+</code></pre>
+<p>The argument <code>--release-id-file</code> is a path to an utf-8-encoded file
+which contains one release ID per line without any additional text.</p>
 
 
 
