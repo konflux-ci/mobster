@@ -8,14 +8,14 @@ import pytest
 from mobster.error import SBOMError
 from mobster.regenerate.base import (
     CommonArgs,
-    SbomRegenerator,
-    SbomType,
+    SBOMRegenerator,
+    SBOMType,
 )
 from mobster.release import ReleaseId
 from mobster.tekton.s3 import S3Client
 
 
-class ConcreteSbomRegenerator(SbomRegenerator):
+class ConcreteSBOMRegenerator(SBOMRegenerator):
     """Concrete implementation for testing abstract base class"""
 
     async def populate_releases(self) -> None:
@@ -74,7 +74,7 @@ def test_parse_s3_bucket_url(
     s3_bucket_url: str, expected_bucket: str, expected_endpoint: str
 ) -> None:
     """Test parse_s3_bucket_url with various URL formats"""
-    bucket, endpoint = SbomRegenerator.parse_s3_bucket_url(s3_bucket_url)
+    bucket, endpoint = SBOMRegenerator.parse_s3_bucket_url(s3_bucket_url)
     assert bucket == expected_bucket
     assert endpoint == expected_endpoint
 
@@ -84,7 +84,7 @@ async def test_gather_s3_input_data_success(
     common_args: CommonArgs, mock_env_vars: None
 ) -> None:
     """Test gather_s3_input_data successfully downloads data"""
-    regenerator = ConcreteSbomRegenerator(common_args, SbomType.PRODUCT)
+    regenerator = ConcreteSBOMRegenerator(common_args, SBOMType.PRODUCT)
     regenerator.s3_client = AsyncMock(spec=S3Client)
     regenerator.s3_client.get_snapshot = AsyncMock(return_value=True)
     regenerator.s3_client.get_release_data = AsyncMock(return_value=True)
@@ -123,7 +123,7 @@ async def test_gather_s3_input_data_false_return(
     Test gather_s3_input_data logs warning when
     get_snapshot/get_release_data returns False
     """
-    regenerator = ConcreteSbomRegenerator(common_args, SbomType.PRODUCT)
+    regenerator = ConcreteSBOMRegenerator(common_args, SBOMType.PRODUCT)
     regenerator.s3_client = AsyncMock(spec=S3Client)
 
     # Return False to trigger warning log - the loop will continue but eventually exit
@@ -152,7 +152,7 @@ async def test_regenerate_sbom_release_success(
     common_args: CommonArgs, mock_env_vars: None
 ) -> None:
     """Test regenerate_sbom_release succeeds"""
-    regenerator = ConcreteSbomRegenerator(common_args, SbomType.PRODUCT)
+    regenerator = ConcreteSBOMRegenerator(common_args, SBOMType.PRODUCT)
     regenerator.gather_s3_input_data = AsyncMock(  # type: ignore[method-assign]
         return_value=(Path("snapshot.json"), Path("release_data.json"))
     )
@@ -174,7 +174,7 @@ async def test_regenerate_sbom_release_fail_fast(
 ) -> None:
     """Test regenerate_sbom_release raises error when fail_fast is True"""
     common_args.fail_fast = True
-    regenerator = ConcreteSbomRegenerator(common_args, SbomType.PRODUCT)
+    regenerator = ConcreteSBOMRegenerator(common_args, SBOMType.PRODUCT)
     regenerator.gather_s3_input_data = AsyncMock(  # type: ignore[method-assign]
         side_effect=SBOMError("Test error")
     )
@@ -191,7 +191,7 @@ async def test_regenerate_sbom_release_no_fail_fast(
 ) -> None:
     """Test regenerate_sbom_release returns False when fail_fast is False"""
     common_args.fail_fast = False
-    regenerator = ConcreteSbomRegenerator(common_args, SbomType.PRODUCT)
+    regenerator = ConcreteSBOMRegenerator(common_args, SBOMType.PRODUCT)
     regenerator.gather_s3_input_data = AsyncMock(  # type: ignore[method-assign]
         side_effect=SBOMError("Test error")
     )
@@ -208,7 +208,7 @@ async def test_regenerate_sbom_release_missing_data(
 ) -> None:
     """Test regenerate_sbom_release raises error when data is missing"""
     common_args.fail_fast = True
-    regenerator = ConcreteSbomRegenerator(common_args, SbomType.PRODUCT)
+    regenerator = ConcreteSBOMRegenerator(common_args, SBOMType.PRODUCT)
     regenerator.gather_s3_input_data = AsyncMock(  # type: ignore[method-assign]
         return_value=(None, Path("release_data.json"))
     )
@@ -225,7 +225,7 @@ async def test_regenerate_release_groups_with_failures(
 ) -> None:
     """Test regenerate_release_groups logs failures"""
     common_args.fail_fast = False
-    regenerator = ConcreteSbomRegenerator(common_args, SbomType.PRODUCT)
+    regenerator = ConcreteSBOMRegenerator(common_args, SBOMType.PRODUCT)
     release_id_1 = ReleaseId.new()
     release_id_2 = ReleaseId.new()
     regenerator.sbom_release_groups = {release_id_1, release_id_2}

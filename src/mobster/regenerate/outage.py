@@ -4,7 +4,7 @@ import datetime
 import logging
 from dataclasses import dataclass
 
-from mobster.regenerate.base import CommonArgs, SbomRegenerator
+from mobster.regenerate.base import CommonArgs, SBOMRegenerator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class RegenerateOutageArgs(CommonArgs):
     until: datetime.datetime
 
 
-class OutageSbomGenerator(SbomRegenerator):
+class OutageSBOMGenerator(SBOMRegenerator):
     """
     This regenerator is intended to be used when infrastructure outages
     appear.

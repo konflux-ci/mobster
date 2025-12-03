@@ -10,8 +10,8 @@ from uuid import UUID
 import pytest
 
 from mobster.cmd.upload.model import SbomSummary
-from mobster.regenerate.base import MissingReleaseIdError, SbomType
-from mobster.regenerate.invalid import FaultySbomRegenerator, RegenerateArgs
+from mobster.regenerate.base import MissingReleaseIdError, SBOMType
+from mobster.regenerate.invalid import FaultySBOMRegenerator, RegenerateArgs
 from mobster.release import ReleaseId
 
 
@@ -42,7 +42,7 @@ def regenerate_args(tmp_path: Path) -> RegenerateArgs:
 
 def test_construct_query(regenerate_args: RegenerateArgs, mock_env_vars: None) -> None:
     """Test construct_query creates correct TPA query"""
-    regenerator = FaultySbomRegenerator(regenerate_args, SbomType.PRODUCT)
+    regenerator = FaultySBOMRegenerator(regenerate_args, SBOMType.PRODUCT)
 
     query = regenerator.construct_query()
 
@@ -73,7 +73,7 @@ def test_construct_query(regenerate_args: RegenerateArgs, mock_env_vars: None) -
 def test_extract_release_id(sbom_dict: dict[str, Any]) -> None:
     """Test extract_release_id extracts from SPDX annotations or CycloneDX properties"""
     expected_id = UUID("12345678-1234-1234-1234-123456789abc")
-    result = FaultySbomRegenerator.extract_release_id(sbom_dict)
+    result = FaultySBOMRegenerator.extract_release_id(sbom_dict)
 
     assert result.id == expected_id
 
@@ -86,7 +86,7 @@ def test_extract_release_id_missing() -> None:
     }
 
     with pytest.raises(MissingReleaseIdError):
-        FaultySbomRegenerator.extract_release_id(sbom_dict)
+        FaultySBOMRegenerator.extract_release_id(sbom_dict)
 
 
 @pytest.mark.asyncio
@@ -97,7 +97,7 @@ async def test_download_and_extract_release_id_success(
     Test download_and_extract_release_id successfully downloads
     and extracts release_id
     """
-    regenerator = FaultySbomRegenerator(regenerate_args, SbomType.PRODUCT)
+    regenerator = FaultySBOMRegenerator(regenerate_args, SBOMType.PRODUCT)
     release_id = ReleaseId.new()
     sbom = SbomSummary(
         id="test-sbom-id",
@@ -145,7 +145,7 @@ async def test_download_and_extract_release_id_retry_on_error(
     regenerate_args: RegenerateArgs, mock_env_vars: None, tmp_path: Path
 ) -> None:
     """Test download_and_extract_release_id retries on RequestError"""
-    regenerator = FaultySbomRegenerator(regenerate_args, SbomType.PRODUCT)
+    regenerator = FaultySBOMRegenerator(regenerate_args, SBOMType.PRODUCT)
     release_id = ReleaseId.new()
     sbom = SbomSummary(
         id="test-sbom-id",

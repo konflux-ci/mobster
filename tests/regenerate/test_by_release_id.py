@@ -6,7 +6,7 @@ import pytest
 
 from mobster.regenerate.by_release_id import (
     RegenerateReleaseArgs,
-    ReleaseSbomRegenerator,
+    ReleaseSBOMRegenerator,
 )
 from mobster.release import ReleaseId
 
@@ -68,7 +68,7 @@ def test_get_releases_from_file(
     with open(release_file, "w", encoding="utf-8") as f:
         f.write(formatted_content)
 
-    result = ReleaseSbomRegenerator.get_releases_from_file(release_file)
+    result = ReleaseSBOMRegenerator.get_releases_from_file(release_file)
 
     assert len(result) == expected_count
 

@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from mobster.regenerate.base import CommonArgs, SbomRegenerator, SbomType
+from mobster.regenerate.base import CommonArgs, SBOMRegenerator, SBOMType
 from mobster.release import ReleaseId
 
 LOGGER = logging.getLogger(__name__)
@@ -22,12 +22,12 @@ class RegenerateReleaseArgs(CommonArgs):
     release_ids: list[ReleaseId]
 
 
-class ReleaseSbomRegenerator(SbomRegenerator):
+class ReleaseSBOMRegenerator(SBOMRegenerator):
     """
     Regenerate SBOMs by given release IDs.
     """
 
-    def __init__(self, args: RegenerateReleaseArgs, sbom_type: SbomType):
+    def __init__(self, args: RegenerateReleaseArgs, sbom_type: SBOMType):
         super().__init__(args, sbom_type)
         self.args = args
         self.sbom_release_groups = set(args.release_ids)

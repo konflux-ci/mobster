@@ -12,7 +12,7 @@ from mobster.cli import parse_concurrency
 from mobster.regenerate.base import GENERATED_SBOMS_PREFIX
 from mobster.regenerate.by_release_id import (
     RegenerateReleaseArgs,
-    ReleaseSbomRegenerator,
+    ReleaseSBOMRegenerator,
 )
 from mobster.regenerate.invalid import RegenerateArgs
 from mobster.regenerate.outage import RegenerateOutageArgs
@@ -71,7 +71,7 @@ def parse_args() -> RegenerateArgs | RegenerateOutageArgs | RegenerateReleaseArg
             )
         case "release":
             result_args = RegenerateReleaseArgs(
-                release_ids=ReleaseSbomRegenerator.get_releases_from_file(
+                release_ids=ReleaseSBOMRegenerator.get_releases_from_file(
                     args.release_id_file
                 ),
                 **common_args,

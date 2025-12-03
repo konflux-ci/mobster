@@ -23,7 +23,7 @@ LOGGER = logging.getLogger(__name__)
 GENERATED_SBOMS_PREFIX = "sbom"
 
 
-class SbomType(Enum):
+class SBOMType(Enum):
     """
     enum to represent SBOM entrypoint type (Product/Component)
     """
@@ -65,13 +65,13 @@ class CommonArgs:
     verbose: bool
 
 
-class SbomRegenerator(ABC):
+class SBOMRegenerator(ABC):
     """base regenerator class for SBM regeneration"""
 
     def __init__(
         self,
         args: CommonArgs,
-        sbom_type: SbomType,
+        sbom_type: SBOMType,
     ) -> None:
         self.args = args
         self.sbom_type = sbom_type
@@ -229,7 +229,7 @@ class SbomRegenerator(ABC):
         # Used by default client later in the script for retrying
         os.environ["AWS_ENDPOINT_URL"] = endpoint_url
         try:
-            if self.sbom_type == SbomType.PRODUCT:
+            if self.sbom_type == SBOMType.PRODUCT:
                 await process_product_sboms(
                     ProcessProductArgs(
                         release_data=path_release_data,
@@ -251,7 +251,7 @@ class SbomRegenerator(ABC):
                     )
                 )
                 #  release_notes, snapshot, release_id
-            elif self.sbom_type == SbomType.COMPONENT:
+            elif self.sbom_type == SBOMType.COMPONENT:
                 await process_component_sboms(
                     ProcessComponentArgs(
                         data_dir=self.args.output_path,

@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from mobster.regenerate.base import SbomType
-from mobster.regenerate.outage import OutageSbomGenerator, RegenerateOutageArgs
+from mobster.regenerate.base import SBOMType
+from mobster.regenerate.outage import OutageSBOMGenerator, RegenerateOutageArgs
 from mobster.release import ReleaseId
 
 
@@ -42,7 +42,7 @@ async def test_populate_releases(
     outage_args: RegenerateOutageArgs, mock_env_vars: None
 ) -> None:
     """Test populate_releases fetches release IDs from S3"""
-    generator = OutageSbomGenerator(outage_args, SbomType.PRODUCT)
+    generator = OutageSBOMGenerator(outage_args, SBOMType.PRODUCT)
     release_id_1 = ReleaseId.new()
     release_id_2 = ReleaseId.new()
 

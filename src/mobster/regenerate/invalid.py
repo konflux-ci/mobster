@@ -17,7 +17,7 @@ from mobster.error import SBOMError
 from mobster.regenerate.base import (
     CommonArgs,
     MissingReleaseIdError,
-    SbomRegenerator,
+    SBOMRegenerator,
 )
 from mobster.release import ReleaseId
 
@@ -42,7 +42,7 @@ class RegenerateArgs(CommonArgs):  # pylint: disable=R0902
     ignore_missing_releaseid: bool
 
 
-class FaultySbomRegenerator(SbomRegenerator):
+class FaultySBOMRegenerator(SBOMRegenerator):
     """
     This class regenerates SBOMs for Mobster's specific version in case
     of a bug in the specified version.
