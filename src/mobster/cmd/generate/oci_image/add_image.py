@@ -8,8 +8,8 @@ from spdx_tools.spdx.model.document import (
     Document,
 )
 
+from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.constants import BUILDER_IMAGE_PROPERTY
-from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.spdx_utils import (
     update_package_in_spdx_sbom,
     update_sbom_name_and_namespace,

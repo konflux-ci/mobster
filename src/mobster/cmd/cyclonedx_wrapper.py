@@ -13,6 +13,7 @@ from cyclonedx.model.bom import Bom
 from cyclonedx.model.component import Component, ComponentType
 from cyclonedx.output import make_outputter
 from cyclonedx.schema import OutputFormat, SchemaVersion
+from packageurl import PackageURL
 
 from mobster import get_mobster_version
 from mobster.sbom.cyclonedx import get_manufacturer
@@ -28,6 +29,7 @@ class CycloneDX1BomWrapper:
 
     sbom: Bom
     formulation: list[dict[str, Any]] = field(default_factory=list)
+    model_cards: dict[PackageURL, dict[str, Any]] = field(default_factory=dict)
 
     @staticmethod
     def get_component_dicts(components: list[Component]) -> list[dict[str, Any]]:
@@ -59,29 +61,52 @@ class CycloneDX1BomWrapper:
         sbom_dict = json.loads(sbom_json)
         if self.formulation:
             sbom_dict["formulation"] = self.formulation
+        if self.model_cards:
+            for index, component in enumerate(self.sbom.components):
+                if component.purl and component.purl in self.model_cards:
+                    model_card = self.model_cards[component.purl]
+                    sbom_dict["components"][index]["modelCard"] = model_card
         return sbom_dict  # type: ignore[no-any-return]
 
     @staticmethod
-    def from_dict(sbom_dict: dict[str, Any]) -> "CycloneDX1BomWrapper":
+    def from_dict(
+        sbom_dict: dict[str, Any], generate: bool = True
+    ) -> "CycloneDX1BomWrapper":
         """
         Loads the object from a dictionary.
         Args:
             sbom_dict (dict[str, Any]): A JSON-like dictionary.
         Returns:
-            CycloneDX1VomWrapper: the initialized object of this class.
+            CycloneDX1BomWrapper: the initialized object of this class.
         """
         formulation = sbom_dict.pop("formulation", [])
+        model_cards = {}
+        for comp in sbom_dict.get("components", []):
+            if comp.get("modelCard", []):
+                purl = comp.get("purl")
+                if purl:
+                    as_string = PackageURL.from_string(purl)
+                    model_cards[as_string] = comp.get("modelCard", [])
+                else:
+                    raise ValueError(
+                        "Error, expected a component with a model card",
+                        "to have a PURL",
+                    )
         # pylint: disable=no-member
         bom_object = CycloneDX1BomWrapper(
             Bom.from_json(sbom_dict),  # type: ignore[attr-defined]
             formulation,
+            model_cards,
         )
-        bom_object.sbom.metadata.tools.components.add(
-            Component(
-                version=get_mobster_version(),
-                name="Mobster",
-                type=ComponentType.APPLICATION,
+
+        if generate:
+            bom_object.sbom.metadata.tools.components.add(
+                Component(
+                    version=get_mobster_version(),
+                    name="Mobster",
+                    type=ComponentType.APPLICATION,
+                )
             )
-        )
-        bom_object.sbom.metadata.manufacturer = get_manufacturer()
+            bom_object.sbom.metadata.manufacturer = get_manufacturer()
+
         return bom_object

@@ -376,6 +376,34 @@ def test_case_cyclonedx_with_additional() -> GenerateOciImageTestCase:
     )
 
 
+@dataclass
+class EnrichCommandArgs:
+    sbom: Path
+    enrichment_file: Path
+    output: Path | None
+
+
+@dataclass
+class EnrichTestCase:
+    args: EnrichCommandArgs
+    expected_sbom_path: Path
+
+
+@pytest.fixture()
+def test_case_enrich_cdx_with_owasp() -> EnrichTestCase:
+    """Test case with SPDX format to enrich"""
+    return EnrichTestCase(
+        args=EnrichCommandArgs(
+            sbom=Path("tests/sbom/test_enrich_data/llm_compress_cdx.json"),
+            enrichment_file=Path(
+                "tests/sbom/test_enrich_data/tinyllama_owasp_cdx.json"
+            ),
+            output=Path("tests/sbom/test_enrich_data/enriched_sbom_test.json"),
+        ),
+        expected_sbom_path=Path("tests/sbom/test_enrich_data/enriched_sbom_cdx.json"),
+    )
+
+
 @pytest.fixture(scope="session")
 def spdx_parent_sbom_bytes() -> bytes:
     with open(

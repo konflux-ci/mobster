@@ -5,7 +5,7 @@ from cyclonedx.model.bom_ref import BomRef
 from cyclonedx.model.component import Component, ComponentType
 from packageurl import PackageURL
 
-from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
 
 
 @pytest.mark.parametrize(
@@ -115,3 +115,84 @@ def test_cdx_wrapper_to_and_from_dict(sbom: dict[str, Any]) -> None:
     for key in sbom:
         assert key in sbom_regenerated_dict
         assert sbom[key] == sbom_regenerated_dict[key]
+
+
+@pytest.mark.parametrize(
+    ["sbom_model_card"],
+    [
+        (
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "components": [
+                    {
+                        "bom-ref": "foo",
+                        "type": "library",
+                        "purl": "pkg:generic/foo/bar",
+                        "hashes": [
+                            {
+                                "alg": "SHA-256",
+                                "content": "1",
+                            }
+                        ],
+                        "name": "foo",
+                        "modelCard": {
+                            "modelParameters": {
+                                "task": "text-generation",
+                                "modelArchitecture": "foo",
+                                "datasets": [
+                                    {
+                                        "type": "dataset",
+                                        "name": "foo1",
+                                        "contents": {"url": "foo1.com"},
+                                    },
+                                    {
+                                        "type": "dataset",
+                                        "name": "foo2",
+                                        "contents": {"url": "foo2.com"},
+                                    },
+                                    {
+                                        "type": "dataset",
+                                        "name": "foo3",
+                                        "contents": {"url": "foo3.com"},
+                                    },
+                                ],
+                                "inputs": [{"format": "string"}],
+                                "outputs": [{"format": "string"}],
+                            },
+                            "properties": [
+                                {"name": "foo1", "value": "bar1"},
+                                {"name": "foo2", "value": "bar2"},
+                                {"name": "foo3", "value": "bar3"},
+                            ],
+                        },
+                    }
+                ],
+                "formulation": [
+                    {
+                        "components": [
+                            {
+                                "bom-ref": "bar",
+                                "type": "library",
+                                "hashes": [
+                                    {
+                                        "alg": "SHA-256",
+                                        "content": "2",
+                                    }
+                                ],
+                                "name": "bar",
+                            }
+                        ]
+                    }
+                ],
+            },
+        ),
+    ],
+)
+def test_with_one_model_card(sbom_model_card: dict[str, Any]) -> None:
+    sbom_obj = CycloneDX1BomWrapper.from_dict(sbom_model_card)
+    sbom_regenerated_dict = sbom_obj.to_dict()
+
+    for key in sbom_model_card:
+        assert key in sbom_regenerated_dict
+        assert sbom_model_card[key] == sbom_regenerated_dict[key]

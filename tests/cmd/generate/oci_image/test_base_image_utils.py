@@ -22,7 +22,7 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
 from mobster import get_mobster_version
-from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.sbom_utils import (
     _extend_cdx_with_base_images,
     _extend_spdx_with_base_images,
