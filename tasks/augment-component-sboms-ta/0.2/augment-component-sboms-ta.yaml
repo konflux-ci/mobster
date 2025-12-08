@@ -205,9 +205,9 @@ spec:
               key: AWS_SECRET_ACCESS_KEY
       computeResources:
         limits:
-          memory: 1Gi
+          memory: 2Gi
         requests:
-          memory: 1Gi
+          memory: 2Gi
           cpu: 350m
       script: |
         #!/usr/bin/env bash

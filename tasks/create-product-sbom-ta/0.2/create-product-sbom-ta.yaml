@@ -144,9 +144,9 @@ spec:
       image: quay.io/konflux-ci/mobster@sha256:028dfcf2ac8b0404141550de17364bf049b0ddb35f45a24a075bc1f485a56c80
       computeResources:
         limits:
-          memory: 1Gi
+          memory: 2Gi
         requests:
-          memory: 1Gi
+          memory: 2Gi
           cpu: 350m
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
