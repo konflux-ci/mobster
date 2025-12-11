@@ -1,6 +1,5 @@
 FROM quay.io/konflux-ci/oras:3d83c68 AS oras
 FROM registry.redhat.io/rhtas/cosign-rhel9:1.2.0-1744791100 AS cosign
-FROM registry.redhat.io/rh-syft-tech-preview/syft-rhel9@sha256:15ed82f0b5311a570ccb8ea02135d9776c6d61e545c51b256b3fc5b5db20ba67 AS syft
 FROM registry.access.redhat.com/ubi9/python-312@sha256:e151f5a3319d75dec2a7d57241ba7bb75f1b09bc3f7092d7615ea9c5aedb114c AS builder
 
 # Set the working directory in the container
@@ -34,6 +33,9 @@ RUN poetry install --without dev
 # Use Red Hat UBI 9 Python base image for the runtime
 FROM registry.access.redhat.com/ubi9/python-312@sha256:e151f5a3319d75dec2a7d57241ba7bb75f1b09bc3f7092d7615ea9c5aedb114c
 
+ARG TARGETARCH
+ENV SYFT_VERSION=1.38.2
+
 LABEL name="mobster" \
     description="A tool for generating and managing Software Bill of Materials (SBOM)" \
     maintainers="The Collective team"
@@ -42,16 +44,21 @@ LABEL name="mobster" \
 LABEL version="1.1.0"
 # x-release-please-end
 
+
 # Set the working directory in the container
 WORKDIR /app
 
 # Copy installed dependencies from the builder stage
 COPY --from=builder /app /app
 
+USER 0
+# hadolint ignore=DL4006
+RUN curl -L "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_${TARGETARCH}.tar.gz" | \
+    tar -xz -C /usr/local/bin syft
+
 # Copy needed binaries for SBOM augmentation
 COPY --from=oras /usr/bin/oras /usr/bin/oras
 COPY --from=cosign /usr/local/bin/cosign /usr/bin/cosign
-COPY --from=syft /usr/local/bin/syft /usr/bin/syft
 # Copy license to the container
 COPY LICENSE /licenses/
 
