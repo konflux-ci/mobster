@@ -171,7 +171,13 @@ class TPAClient(OIDCClientCredentialsClient):
             httpx.Response: response from API.
         """
         url = f"api/v2/sbom/{sbom_id}"
-        response = await self.delete(url)
+        try:
+            response = await self.delete(url)
+        except httpx.HTTPStatusError as err:
+            if err.response.status_code == 404:
+                LOGGER.warning("SBOM %s not found for deletion.", sbom_id)
+                return err.response
+            raise
         return response
 
     async def download_sbom(self, sbom_id: str, path: Path) -> None:

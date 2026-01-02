@@ -29,7 +29,7 @@ async def test_execute_delete(
     sbom2.name = "another-sbom"
 
     # Properly mock the async generator for list_sboms
-    async def mock_list_sboms(query: str, sort: str) -> Any:
+    async def mock_list_sboms(query: str, sort: str, page_size: int) -> Any:
         yield sbom1
         yield sbom2
 
@@ -46,7 +46,9 @@ async def test_execute_delete(
     await command.execute()
 
     # Verify list_sboms was called with correct parameters
-    list_sboms_mock.assert_called_once_with(query="test_query", sort="ingested")
+    list_sboms_mock.assert_called_once_with(
+        query="test_query", sort="ingested", page_size=200
+    )
 
     # Verify delete_sbom was called for each SBOM with normalized names
     expected_calls = [(sbom1.id), (sbom2.id)]
@@ -82,7 +84,7 @@ async def test_execute_delete_dry_run(
     sbom2.name = "another-sbom"
 
     # Properly mock the async generator for list_sboms
-    async def mock_list_sboms(query: str, sort: str) -> Any:
+    async def mock_list_sboms(query: str, sort: str, page_size: int) -> Any:
         yield sbom1
         yield sbom2
 
@@ -99,7 +101,9 @@ async def test_execute_delete_dry_run(
     await command.execute()
 
     # Verify list_sboms was called with correct parameters
-    list_sboms_mock.assert_called_once_with(query="test_query", sort="ingested")
+    list_sboms_mock.assert_called_once_with(
+        query="test_query", sort="ingested", page_size=200
+    )
 
     mock_tpa_client_with_http_response.delete_sbom.assert_not_called()
 
