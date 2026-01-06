@@ -191,6 +191,28 @@ async def test_delete_sbom(mock_delete: AsyncMock, tpa_client: TPAClient) -> Non
 
 
 @pytest.mark.asyncio
+@patch("mobster.cmd.upload.tpa.TPAClient.delete")
+async def test_delete_sbom_40x(mock_delete: AsyncMock, tpa_client: TPAClient) -> None:
+    mock_delete.side_effect = httpx.HTTPStatusError(
+        "Not Found",
+        request=httpx.Request("DELETE", "https://api.example.com/v1/api/v2/sbom/123"),
+        response=httpx.Response(404),
+    )
+    response = await tpa_client.delete_sbom("123")
+
+    mock_delete.assert_awaited_once_with("api/v2/sbom/123")
+    assert response == mock_delete.side_effect.response
+
+    mock_delete.side_effect = httpx.HTTPStatusError(
+        "Unauthorized",
+        request=httpx.Request("DELETE", "https://api.example.com/v1/api/v2/sbom/456"),
+        response=httpx.Response(401),
+    )
+    with pytest.raises(httpx.HTTPStatusError):
+        await tpa_client.delete_sbom("456")
+
+
+@pytest.mark.asyncio
 @patch("aiofiles.open")
 @patch("mobster.cmd.upload.tpa.TPAClient.stream")
 async def test_download_sbom(
