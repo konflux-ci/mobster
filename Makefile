@@ -39,7 +39,12 @@ install:
 .PHONY: build-image
 build-image:
 	@echo "Building Docker image"
-	podman build -t mobster:latest .
+	podman build --target release -t mobster:latest .
+
+.PHONY: build-dev-image
+build-dev-image:
+	@echo "Building development Docker image"
+	podman build --target dev -t mobster:dev .
 
 @PHONY: serve-docs
 serve-docs:

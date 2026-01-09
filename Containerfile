@@ -30,7 +30,7 @@ COPY src/mobster /app/src/mobster
 RUN poetry install --without dev
 
 # Use Red Hat UBI 9 Python base image for the runtime
-FROM registry.access.redhat.com/ubi9/python-312@sha256:e151f5a3319d75dec2a7d57241ba7bb75f1b09bc3f7092d7615ea9c5aedb114c
+FROM registry.access.redhat.com/ubi9/python-312@sha256:e151f5a3319d75dec2a7d57241ba7bb75f1b09bc3f7092d7615ea9c5aedb114c as release
 
 ARG TARGETARCH
 
@@ -65,3 +65,8 @@ USER 1001
 
 # Set the command to run your application
 CMD [".venv/bin/mobster"]
+
+# This final stage add the conforma binary for integration testing
+# Target the `release` stage for production images
+FROM release as dev
+COPY --from=quay.io/conforma/cli:snapshot /usr/local/bin/ec /usr/bin/ec
