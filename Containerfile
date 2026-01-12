@@ -1,6 +1,6 @@
 FROM quay.io/konflux-ci/oras:3d83c68 AS oras
 FROM registry.redhat.io/rhtas/cosign-rhel9:1.2.0-1744791100 AS cosign
-FROM registry.access.redhat.com/ubi9/python-312@sha256:e151f5a3319d75dec2a7d57241ba7bb75f1b09bc3f7092d7615ea9c5aedb114c AS builder
+FROM registry.access.redhat.com/ubi9/python-312@sha256:e26b5da8ec538a1467a80c0bb3dff809e04b9733739ba2fd381f2669b206f38c AS builder
 
 # Set the working directory in the container
 WORKDIR /app
@@ -31,7 +31,7 @@ COPY src/mobster /app/src/mobster
 RUN poetry install --without dev
 
 # Use Red Hat UBI 9 Python base image for the runtime
-FROM registry.access.redhat.com/ubi9/python-312@sha256:e151f5a3319d75dec2a7d57241ba7bb75f1b09bc3f7092d7615ea9c5aedb114c
+FROM registry.access.redhat.com/ubi9/python-312@sha256:e26b5da8ec538a1467a80c0bb3dff809e04b9733739ba2fd381f2669b206f38c
 
 ARG TARGETARCH
 ENV SYFT_VERSION=1.38.2
