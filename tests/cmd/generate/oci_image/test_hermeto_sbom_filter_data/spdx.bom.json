@@ -1,0 +1,99 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "dataLicense": "CC0-1.0",
+  "name": "test-sbom",
+  "documentNamespace": "https://test.example.com/sbom",
+  "creationInfo": {
+    "creators": ["Tool: hermeto", "Organization: red hat"],
+    "created": "2026-01-12T10:00:00Z"
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-DocumentRoot",
+      "name": "root",
+      "versionInfo": "",
+      "externalRefs": [],
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-gzip-x86_64",
+      "name": "gzip",
+      "versionInfo": "1.12",
+      "externalRefs": [
+        {
+          "referenceLocator": "pkg:rpm/redhat/gzip@1.12-1.el9?arch=x86_64&checksum=sha256:abc123",
+          "referenceType": "purl",
+          "referenceCategory": "PACKAGE-MANAGER"
+        }
+      ],
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-gzip-aarch64",
+      "name": "gzip",
+      "versionInfo": "1.12",
+      "externalRefs": [
+        {
+          "referenceLocator": "pkg:rpm/redhat/gzip@1.12-1.el9?arch=aarch64&checksum=sha256:def456",
+          "referenceType": "purl",
+          "referenceCategory": "PACKAGE-MANAGER"
+        }
+      ],
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jq-noarch",
+      "name": "jq",
+      "versionInfo": "1.6",
+      "externalRefs": [
+        {
+          "referenceLocator": "pkg:rpm/redhat/jq@1.6-19.el9?arch=noarch&checksum=sha256:ghi789",
+          "referenceType": "purl",
+          "referenceCategory": "PACKAGE-MANAGER"
+        }
+      ],
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-package",
+      "name": "lodash",
+      "versionInfo": "4.17.21",
+      "externalRefs": [
+        {
+          "referenceLocator": "pkg:npm/lodash@4.17.21",
+          "referenceType": "purl",
+          "referenceCategory": "PACKAGE-MANAGER"
+        }
+      ],
+      "downloadLocation": "NOASSERTION"
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relatedSpdxElement": "SPDXRef-DocumentRoot",
+      "relationshipType": "DESCRIBES"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot",
+      "relatedSpdxElement": "SPDXRef-Package-gzip-x86_64",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot",
+      "relatedSpdxElement": "SPDXRef-Package-gzip-aarch64",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot",
+      "relatedSpdxElement": "SPDXRef-Package-jq-noarch",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot",
+      "relatedSpdxElement": "SPDXRef-Package-npm-package",
+      "relationshipType": "CONTAINS"
+    }
+  ]
+}
