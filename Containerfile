@@ -1,5 +1,4 @@
-FROM quay.io/konflux-ci/oras:3d83c68 AS oras
-FROM registry.redhat.io/rhtas/cosign-rhel9:1.2.0-1744791100 AS cosign
+FROM quay.io/konflux-ci/task-runner@sha256:19851d9fcc05a45adbaf830fba404743e5254f71b30842be57e526fdc9c1d3c5 AS golang
 FROM registry.access.redhat.com/ubi9/python-312@sha256:e151f5a3319d75dec2a7d57241ba7bb75f1b09bc3f7092d7615ea9c5aedb114c AS builder
 
 # Set the working directory in the container
@@ -34,7 +33,6 @@ RUN poetry install --without dev
 FROM registry.access.redhat.com/ubi9/python-312@sha256:e151f5a3319d75dec2a7d57241ba7bb75f1b09bc3f7092d7615ea9c5aedb114c
 
 ARG TARGETARCH
-ENV SYFT_VERSION=1.38.2
 
 LABEL name="mobster" \
     description="A tool for generating and managing Software Bill of Materials (SBOM)" \
@@ -52,13 +50,11 @@ WORKDIR /app
 COPY --from=builder /app /app
 
 USER 0
-# hadolint ignore=DL4006
-RUN curl -L "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_${TARGETARCH}.tar.gz" | \
-    tar -xz -C /usr/local/bin syft
 
 # Copy needed binaries for SBOM augmentation
-COPY --from=oras /usr/bin/oras /usr/bin/oras
-COPY --from=cosign /usr/local/bin/cosign /usr/bin/cosign
+COPY --from=golang /usr/local/bin/oras /usr/bin/oras
+COPY --from=golang /usr/local/bin/cosign /usr/bin/cosign
+COPY --from=golang /usr/local/bin/syft /usr/bin/syft
 # Copy license to the container
 COPY LICENSE /licenses/
 
