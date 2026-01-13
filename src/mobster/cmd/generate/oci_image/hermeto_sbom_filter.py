@@ -20,11 +20,14 @@ def _extract_purl_from_external_refs(external_refs: list[dict[str, str]]) -> str
     return purl_ref.get("referenceLocator", "")
 
 
-def _extract_arch_from_purl(purl: str) -> str | None:
+def _extract_arch_and_checksum_from_purl(purl: str) -> tuple[str | None, str | None]:
     parsed = urlparse(purl)
     query_params = parse_qs(parsed.query)
 
-    return query_params.get("arch", [None])[0]
+    arch = query_params.get("arch", [None])[0]
+    checksum = query_params.get("checksum", [None])[0]
+
+    return arch, checksum
 
 
 def _filter_spdx_packages(
@@ -48,6 +51,7 @@ def _filter_spdx_packages(
     """
     filtered_packages = []
     removed_ids = set()
+    noarch_checksums = set()
 
     for package in packages:
         external_refs = package.get("externalRefs", [])
@@ -58,10 +62,22 @@ def _filter_spdx_packages(
             filtered_packages.append(package)
             continue
 
-        arch = _extract_arch_from_purl(purl)
+        arch, checksum = _extract_arch_and_checksum_from_purl(purl)
 
         if arch in {"noarch", target_arch}:
-            filtered_packages.append(package)
+            if not checksum:
+                filtered_packages.append(package)
+            elif checksum not in noarch_checksums:
+                filtered_packages.append(package)
+                noarch_checksums.add(checksum)
+            else:
+                LOGGER.debug(
+                    "Removing duplicate noarch package %s@%s (checksum: %s)",
+                    package.get("name"),
+                    package.get("version"),
+                    checksum,
+                )
+                removed_ids.add(package.get("SPDXID"))
         else:
             LOGGER.debug(
                 "Removing package %s with arch=%s (target: %s)",
