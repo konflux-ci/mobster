@@ -43,12 +43,25 @@
       "downloadLocation": "NOASSERTION"
     },
     {
-      "SPDXID": "SPDXRef-Package-jq-noarch",
+      "SPDXID": "SPDXRef-Package-jq-noarch-1",
       "name": "jq",
       "versionInfo": "1.6",
       "externalRefs": [
         {
-          "referenceLocator": "pkg:rpm/redhat/jq@1.6-19.el9?arch=noarch&checksum=sha256:ghi789",
+          "referenceLocator": "pkg:rpm/redhat/jq@1.6-19.el9?arch=noarch&checksum=sha256:ghi789&repository_id=repo-for-x86",
+          "referenceType": "purl",
+          "referenceCategory": "PACKAGE-MANAGER"
+        }
+      ],
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jq-noarch-2",
+      "name": "jq",
+      "versionInfo": "1.6",
+      "externalRefs": [
+        {
+          "referenceLocator": "pkg:rpm/redhat/jq@1.6-19.el9?arch=noarch&checksum=sha256:ghi789&repository_id=repo-for-aarch64",
           "referenceType": "purl",
           "referenceCategory": "PACKAGE-MANAGER"
         }
@@ -87,7 +100,12 @@
     },
     {
       "spdxElementId": "SPDXRef-DocumentRoot",
-      "relatedSpdxElement": "SPDXRef-Package-jq-noarch",
+      "relatedSpdxElement": "SPDXRef-Package-jq-noarch-1",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot",
+      "relatedSpdxElement": "SPDXRef-Package-jq-noarch-2",
       "relationshipType": "CONTAINS"
     },
     {

@@ -19,7 +19,7 @@ def spdx_sbom() -> Any:
     This SBOM contains:
     - 1 root package without purl (should always be kept)
     - 1 non-RPM package (should always be kept)
-    - 1 package with noarch architecture (should always be kept)
+    - 2 noarch packages with identical checksums (only one should be kept)
     - 1 package with x86_64 architecture
     - 1 package with aarch64 architecture
     """
@@ -31,7 +31,7 @@ def spdx_sbom() -> Any:
 
 ALWAYS_KEPT_SPDX_PACKAGES = {
     "SPDXRef-DocumentRoot",
-    "SPDXRef-Package-jq-noarch",
+    "SPDXRef-Package-jq-noarch-1",
     "SPDXRef-Package-npm-package",
 }
 
