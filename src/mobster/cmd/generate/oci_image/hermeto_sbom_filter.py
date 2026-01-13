@@ -152,6 +152,67 @@ def _filter_spdx_sbom_by_arch(
     }
 
 
+def _filter_cyclonedx_sbom_by_arch(
+    sbom_dict: dict[str, Any], target_arch: str
+) -> dict[str, Any]:
+    """
+    Filter the RPM packages based on a target architecture.
+
+    Args:
+        sbom_dict: The SBOM dictionary
+        target_arch: The architecture to filter by (e.g., "x86_64", "aarch64")
+
+    Returns:
+        dict[str, Any]: The filtered SBOM dictionary
+
+    Raises:
+        ValueError: If target_arch evaluates to false or
+        if the SBOM format is not recognized
+    """
+    LOGGER.info("Filtering CycloneDX SBOM by architecture: %s", target_arch)
+
+    components = sbom_dict.get("components", [])
+
+    if not components:
+        LOGGER.warning("No components found in SBOM")
+        return sbom_dict
+
+    filtered_components = []
+    noarch_checksums = set()
+
+    for component in components:
+        purl = component.get("purl", "")
+
+        if not purl.startswith("pkg:rpm"):
+            filtered_components.append(component)
+            continue
+
+        arch, checksum = _extract_arch_and_checksum_from_purl(purl)
+
+        if arch == "noarch":
+            if not checksum or checksum not in noarch_checksums:
+                filtered_components.append(component)
+                noarch_checksums.add(checksum)
+            else:
+                LOGGER.debug(
+                    "Removing duplicate noarch package %s@%s (checksum: %s)",
+                    component.get("name"),
+                    component.get("version"),
+                    checksum,
+                )
+        elif arch == target_arch:
+            filtered_components.append(component)
+        else:
+            LOGGER.debug(
+                "Removing component %s@%s with arch=%s",
+                component.get("name"),
+                component.get("version"),
+                arch,
+            )
+
+    return {**sbom_dict, "components": filtered_components}
+
+
 def filter_hermeto_sbom_by_arch(
     sbom_dict: dict[str, Any], target_arch: str
 ) -> dict[str, Any]:
@@ -169,7 +230,7 @@ def filter_hermeto_sbom_by_arch(
         ValueError: If the SBOM format is not recognized
     """
     if sbom_dict.get("bomFormat") == "CycloneDX":
-        raise NotImplementedError()
+        return _filter_cyclonedx_sbom_by_arch(sbom_dict, target_arch)
 
     # if this property exists, it's an SPDX type SBOM
     if "spdxVersion" in sbom_dict:

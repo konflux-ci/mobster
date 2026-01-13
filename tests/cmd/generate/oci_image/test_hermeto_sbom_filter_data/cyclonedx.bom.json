@@ -1,0 +1,75 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "tools": [
+      {
+        "vendor": "red hat",
+        "name": "hermeto"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "gzip",
+      "purl": "pkg:rpm/redhat/gzip@1.12-1.el9?arch=x86_64&checksum=sha256:abc123",
+      "version": "1.12",
+      "properties": [
+        {
+          "name": "hermeto:found_by",
+          "value": "hermeto"
+        }
+      ],
+      "type": "library"
+    },
+    {
+      "name": "gzip",
+      "purl": "pkg:rpm/redhat/gzip@1.12-1.el9?arch=aarch64&checksum=sha256:def456",
+      "version": "1.12",
+      "properties": [
+        {
+          "name": "hermeto:found_by",
+          "value": "hermeto"
+        }
+      ],
+      "type": "library"
+    },
+    {
+      "name": "jq",
+      "purl": "pkg:rpm/redhat/jq@1.6-19.el9?arch=noarch&checksum=sha256:ghi789&repository_id=repo-for-x86",
+      "version": "1.6",
+      "properties": [
+        {
+          "name": "hermeto:found_by",
+          "value": "hermeto"
+        }
+      ],
+      "type": "library"
+    },
+    {
+      "name": "jq",
+      "purl": "pkg:rpm/redhat/jq@1.6-19.el9?arch=noarch&checksum=sha256:ghi789&repository_id=repo-for-aarch64",
+      "version": "1.6",
+      "properties": [
+        {
+          "name": "hermeto:found_by",
+          "value": "hermeto"
+        }
+      ],
+      "type": "library"
+    },
+    {
+      "name": "lodash",
+      "purl": "pkg:npm/lodash@4.17.21",
+      "version": "4.17.21",
+      "properties": [
+        {
+          "name": "hermeto:found_by",
+          "value": "hermeto"
+        }
+      ],
+      "type": "library"
+    }
+  ]
+}
