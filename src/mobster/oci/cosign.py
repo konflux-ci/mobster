@@ -278,7 +278,6 @@ class CosignClient(Cosign):
         cosign_command = [
             "cosign",
             "attest",
-            "--verbose",
             "--yes",
             "--key",
             str(self.signing_key),
