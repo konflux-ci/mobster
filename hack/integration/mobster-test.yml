@@ -119,10 +119,10 @@ spec:
             resources:
               limits:
                 cpu: 1
-                memory: 1Gi
+                memory: 2Gi
               requests:
                 cpu: 1
-                memory: 1Gi
+                memory: 2Gi
             script: |
               #!/bin/bash
               set -xe
@@ -165,6 +165,19 @@ spec:
               failures=$(grep -c '"outcome": "failed"' <<< $test_calls)
               successes=$(grep -c '"outcome": "passed"' <<< $test_calls)
               warnings=$(grep -ic 'warning' test-results.log)
+
+              used_mem=$(cat /sys/fs/cgroup/memory.peak)
+              limit_mem=$(cat /sys/fs/cgroup/memory.max)
+              echo "Pod used memory: $used_mem B"
+              echo "Pod memory limit: $limit_mem B"
+              # Fail the test if its memory consumption spiked
+              # at more than 1 MB than the allocated limit
+              # (roughly simulates OOM kills when memory
+              # is under pressure in cluster)
+              if [ $(($used_mem - $limit_mem)) -ge 1000000 ]; then
+                echo "Test failed because of high memory consumption"
+                RESULT="FAILURE"
+              fi
 
               TEST_OUTPUT="{ \
               \"result\": \"$RESULT\", \"timestamp\": \"$(date -u --iso-8601=seconds)\", \
