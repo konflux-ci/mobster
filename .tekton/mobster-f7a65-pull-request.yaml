@@ -26,6 +26,8 @@ spec:
     value: quay.io/redhat-user-workloads/the-collective-tenant/mobster-f7a65:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
+  - name: target-stage
+    value: dev
   - name: build-platforms
     value:
     - linux/x86_64
@@ -65,6 +67,10 @@ spec:
     - default: .
       description: Path to the source code of an application's component from where to build image.
       name: path-context
+      type: string
+    - default: ''
+      description: Containerfile build stage to target.
+      name: target-stage
       type: string
     - default: Dockerfile
       description: Path to the Dockerfile inside the context specified by parameter path-context
@@ -223,6 +229,8 @@ spec:
         value: $(params.dockerfile)
       - name: CONTEXT
         value: $(params.path-context)
+      - name: TARGET_STAGE
+        value: $(params.target-stage)
       - name: HERMETIC
         value: $(params.hermetic)
       - name: PREFETCH_INPUT
@@ -466,6 +474,8 @@ spec:
         value: $(params.dockerfile)
       - name: CONTEXT
         value: $(params.path-context)
+      - name: TARGET_STAGE
+        value: $(params.target-stage)
       - name: HERMETIC
         value: $(params.hermetic)
       - name: PREFETCH_INPUT

@@ -88,9 +88,6 @@ class ReferrersTagOCIClient:
             "oras",
             "push",
             image_pullspec,
-            # Add custom creation date annotation to keep digest stable
-            "--annotation",
-            "org.opencontainers.image.created=2025-11-06T12:59:01Z",
             "--config",
             # These are just dummy values that registry requires, but they
             # don't contain any real data.

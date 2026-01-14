@@ -142,6 +142,7 @@ spec:
               echo "Using mobster application at $(which mobster)"
               echo "Using pytest at $(which pytest)"
               echo "Using python at $(which python3)"
+              echo "Using conforma at $(which ec)"
               echo "Mobster package at: $(python3 -c 'import mobster; print(mobster.__file__)')"
 
               set +e

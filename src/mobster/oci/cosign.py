@@ -370,3 +370,45 @@ class CosignClient(Cosign):
 
     def can_sign(self) -> bool:
         return self.signing_key is not None
+
+    async def sign_image(self, image_ref: str) -> None:
+        """
+        Sign an image in the registry using cosign.
+
+        Args:
+            image_ref: The image to sign.
+        """
+        cosign_command = [
+            "cosign",
+            "sign",
+            "--key",
+            str(self.signing_key),
+            image_ref,
+        ]
+        with make_oci_auth_file(image_ref) as authfile:
+            cosign_env = {"DOCKER_CONFIG": str(authfile.parent)}
+
+            if not self.rekor_config:
+                logger.debug("[Cosign] TLog won't be used for sbom attestation.")
+                cosign_command.insert(-1, "--tlog-upload=false")
+            else:
+                cosign_command.insert(-1, f"--rekor-url={self.rekor_config.rekor_url}")
+                cosign_env["SIGSTORE_REKOR_PUBLIC_KEY"] = str(
+                    self.rekor_config.rekor_key
+                )
+
+            with tempfile.NamedTemporaryFile() as sign_key_passwd_file:
+                sign_key_passwd_file.write(self.password)
+                code, _, stderr = await run_async_subprocess(
+                    cosign_command,
+                    env=cosign_env,
+                    retry_times=3,
+                    stdin=sign_key_passwd_file,
+                )
+            if code != 0:
+                raise RuntimeError(
+                    f"Failed to sign image {image_ref} in registry.\n"
+                    f"CMD: {' '.join(cosign_command)}\n"
+                    f"Error: {stderr.decode()}"
+                )
+        return None
