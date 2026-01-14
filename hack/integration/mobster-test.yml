@@ -119,10 +119,10 @@ spec:
             resources:
               limits:
                 cpu: 1
-                memory: 1Gi
+                memory: 2Gi
               requests:
                 cpu: 1
-                memory: 1Gi
+                memory: 2Gi
             script: |
               #!/bin/bash
               set -xe
@@ -152,6 +152,16 @@ spec:
               if [ $? -eq 0 ]; then
                 RESULT="SUCCESS"
               else
+                RESULT="FAILURE"
+              fi
+
+              # Fail if too much memory was consumed (check with CGroups v2)
+              used_mem=$(cat /sys/fs/cgroup/memory.peak)
+              limit_mem=$(cat /sys/fs/cgroup/memory.max)
+              if [ "$used_mem" -ge "$limit_mem" ]; then
+                echo 'Failed because the code is at risk of failing due to memory issues!'
+                echo "Used memory: $used_mem B"
+                echo "Memory limit: $limit_mem B"
                 RESULT="FAILURE"
               fi
 
