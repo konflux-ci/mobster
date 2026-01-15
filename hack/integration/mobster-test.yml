@@ -139,6 +139,12 @@ spec:
               rm -f $(which process_product_sbom)
               rm -f $(which process_component_sboms)
 
+              # grab latest conforma binary
+              curl -sLO https://github.com/conforma/cli/releases/download/snapshot/ec_linux_amd64
+              chmod 755 ec_linux_amd64
+              mkdir -p /app/bin
+              mv ec_linux_amd64 /app/bin/ec
+
               echo "Using mobster application at $(which mobster)"
               echo "Using pytest at $(which pytest)"
               echo "Using python at $(which python3)"
