@@ -16,9 +16,10 @@ from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import Package
 
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
+from mobster.cmd.enrich import EnrichImageCommand
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.image import Image
-from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom, assert_spdx_sbom
+from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom, assert_spdx_sbom, EnrichOciImageTestCase
 
 
 @pytest.fixture()
@@ -77,6 +78,27 @@ async def test_GenerateOciImageCommand_execute(
     sbom_dict = await GenerateOciImageCommand.dump_sbom_to_dict(sbom)
 
     compare_sbom_dicts(sbom_dict, expected_sbom)
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        lf("test_case_enrich_spdx_with_owasp"), 
+    ],
+)
+@patch(
+    "mobster.cmd.enrich"
+)
+async def test_EnrichOciImageCommand_execute(
+    mock_enrich,
+    test_case: EnrichOciImageTestCase, # pylint: disable=unused-argument
+) -> None:
+
+    command = EnrichImageCommand(test_case.args)
+
+    sbom = await command.execute()
+
+    #TODO: finish test case
 
 
 @pytest.mark.asyncio
