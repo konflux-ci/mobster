@@ -122,7 +122,7 @@ async def upload_sboms(
     paths: list[Path],
 ) -> TPAUploadReport:
     """
-    Upload SBOMs to Atlas with S3 fallback on transient errors.
+    Upload SBOMs to Atlas with S3 fallback.
 
     Args:
         config: Atlas upload configuration object.
@@ -140,33 +140,32 @@ async def upload_sboms(
 
     LOGGER.info("Starting SBOM upload to Atlas")
     report = await TPAUploadCommand.upload(config, paths)
-    if report.has_non_transient_failures():
-        # WARNING: this change is only temporary. Please see
-        # https://issues.redhat.com/browse/ISV-6481
-        LOGGER.error(  # pylint: disable=logging-not-lazy
-            "SBOMs failed to be uploaded to Atlas: \n"
-            + "\n".join(
-                [
-                    f"{path}: {message}"
-                    for path, message in report.get_non_transient_errors()
-                ]
-            )
-        )
-        return report
 
-    if report.has_transient_failures() and s3_client is not None:
-        LOGGER.warning("Encountered transient Atlas error, falling back to S3.")
-        await handle_atlas_transient_errors(report.transient_error_paths, s3_client)
+    if report.has_failures() and s3_client is not None:
+        LOGGER.warning("Encountered Atlas upload error, falling back to S3.")
+        await handle_atlas_upload_errors(report.all_error_paths(), s3_client)
+
+        if report.has_non_transient_failures():
+            LOGGER.error(  # pylint: disable=logging-not-lazy
+                "SBOMs failed to be uploaded to Atlas with non-transient errors: \n"
+                + "\n".join(
+                    [
+                        f"{path}: {message}"
+                        for path, message in report.get_non_transient_errors()
+                    ]
+                )
+            )
 
     return report
 
 
-async def handle_atlas_transient_errors(paths: list[Path], s3_client: S3Client) -> None:
+async def handle_atlas_upload_errors(paths: list[Path], s3_client: S3Client) -> None:
     """
-    Handle Atlas transient errors via the S3 retry mechanism.
+    Handle Atlas upload errors (both transient and non-transient) via the S3 retry
+    mechanism.
 
     Args:
-        paths: List of file paths that failed with transient errors.
+        paths: List of file paths that failed to be uploaded to Atlas.
         s3_client: S3 client to use for uploading failed files.
 
     Raises:

@@ -28,18 +28,18 @@ def upload_config(monkeypatch: MonkeyPatch) -> UploadConfig:
     )
 
 
-@patch("mobster.tekton.common.handle_atlas_transient_errors")
+@patch("mobster.tekton.common.handle_atlas_upload_errors")
 @patch("mobster.tekton.common.connect_with_s3")
 @pytest.mark.asyncio
-async def test_upload_sboms_transient_failure_tries_s3(
+async def test_upload_sboms_failure_tries_s3(
     mock_connect_to_s3: MagicMock,
-    mock_handle_atlas_transient_errors: AsyncMock,
+    mock_handle_atlas_upload_errors: AsyncMock,
     upload_config: UploadConfig,
     monkeypatch: MonkeyPatch,
 ) -> None:
     """
     Verify that an S3 retry is attempted when upload_to_atlas returns a report
-    with transient failures.
+    with upload failures
     """
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "dummy")
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "dummy")
@@ -60,33 +60,4 @@ async def test_upload_sboms_transient_failure_tries_s3(
             client,
             paths=[Path("dir")],
         )
-        mock_handle_atlas_transient_errors.assert_awaited()
-
-
-@pytest.mark.asyncio
-async def test_upload_sboms_failure(
-    upload_config: UploadConfig,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """
-    Verify that the upload_to_atlas function fails with a runtime error when
-    upload_to_atlas returns a report with non-transient failures.
-    """
-
-    with patch(
-        "mobster.cmd.upload.upload.TPAUploadCommand.upload",
-    ) as mock_upload:
-        mock_upload.return_value = TPAUploadReport(
-            success=[],
-            failure=[
-                TPAUploadFailure(path=Path("dummy"), message="error", transient=False)
-            ],
-        )
-        await upload_sboms(
-            upload_config,
-            s3_client=None,
-            paths=[Path("dir")],
-        )
-        # WARNING: this change is only temporary. Please see
-        # https://issues.redhat.com/browse/ISV-6481
-        assert "SBOMs failed to be uploaded to Atlas: " in caplog.messages[-1]
+        mock_handle_atlas_upload_errors.assert_awaited()
