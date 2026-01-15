@@ -69,6 +69,13 @@ class TPAUploadReport(pydantic.BaseModel):
         """
         return [failure.path for failure in self.failure if failure.transient]
 
+    def all_error_paths(self) -> list[Path]:
+        """
+        Get list of paths of all files that failed to be uploaded, both transient and
+        non-transient.
+        """
+        return [failure.path for failure in self.failure]
+
     def get_non_transient_errors(self) -> list[tuple[Path, str]]:
         """
         Get list of tuples containing paths of files that failed to be uploaded
