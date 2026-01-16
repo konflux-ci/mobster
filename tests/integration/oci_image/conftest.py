@@ -181,7 +181,7 @@ def grandparent_input_sbom(
     doc = (
         SPDXSBOMBuilder()
         .name("grandparent")
-        .contains_packages(grandparent_packages)
+        .root_contains(grandparent_packages)
         .root_purl(
             "pkg:oci/registry.redhat.io%2Fubi10"
             "@sha256%3A4ab0d32a67e22a27ea3ba4ad00a3a5aee008386ae4f0086c9a720401ab1aca43?arch=amd64"
@@ -225,8 +225,8 @@ def grandparent_input_sbom_deep(
     doc = (
         SPDXSBOMBuilder()
         .name("grandparent")
-        .contains_packages(grandparent_packages)
-        .build_tool_of_packages([ancestor_package])
+        .root_contains(grandparent_packages)
+        .root_build_tool_of([ancestor_package])
         .root_purl(
             "pkg:oci/registry.redhat.io%2Fubi10"
             "@sha256%3A4ab0d32a67e22a27ea3ba4ad00a3a5aee008386ae4f0086c9a720401ab1aca43?arch=amd64"
@@ -253,9 +253,9 @@ def parent_input_sbom(
     doc = (
         SPDXSBOMBuilder()
         .name("parent")
-        .contains_packages(grandparent_packages)
-        .contains_packages(parent_packages)
-        .contains_packages(parent_only_packages)
+        .root_contains(grandparent_packages)
+        .root_contains(parent_packages)
+        .root_contains(parent_only_packages)
         .root_purl(
             "pkg:oci/registry.redhat.io%2Fubi10"
             "@sha256%3A4ab0d32a67e22a27ea3ba4ad00a3a5aee008386ae4f0086c9a720401ab1aca43?arch=amd64"
@@ -282,9 +282,9 @@ def component_input_sbom(
     doc = (
         SPDXSBOMBuilder()
         .name("component")
-        .contains_packages(grandparent_packages)
-        .contains_packages(parent_packages)
-        .contains_packages(component_packages)
+        .root_contains(grandparent_packages)
+        .root_contains(parent_packages)
+        .root_contains(component_packages)
         .root_purl(
             "pkg:oci/registry.redhat.io%2Fubi10"
             "@sha256%3A4ab0d32a67e22a27ea3ba4ad00a3a5aee008386ae4f0086c9a720401ab1aca43?arch=amd64"
@@ -345,10 +345,10 @@ def legacy_parent_sbom(
     doc = (
         SPDXSBOMBuilder()
         .name("parent")
-        .contains_packages(grandparent_packages)
-        .contains_packages(parent_packages)
-        .contains_packages(parent_only_packages)
-        .build_tool_of_packages([base_img_package] + [builder_package])
+        .root_contains(grandparent_packages)
+        .root_contains(parent_packages)
+        .root_contains(parent_only_packages)
+        .root_build_tool_of([base_img_package] + [builder_package])
         .root_purl(
             "pkg:oci/registry.redhat.io%2Fubi10"
             "@sha256%3A4ab0d32a67e22a27ea3ba4ad00a3a5aee008386ae4f0086c9a720401ab1aca43?arch=amd64"
