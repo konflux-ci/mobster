@@ -27,6 +27,7 @@ from mobster.sbom.merge import (
     wrap_as_cdx,
     wrap_as_spdx,
 )
+from mobster.utils import load_sbom_from_json
 
 TOOLS_METADATA = {
     "syft-cyclonedx-1.4": {
@@ -640,7 +641,16 @@ async def test_merge_syft_and_hermeto_sboms(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.chdir(data_dir / sbom_type)
-    result = await merge_sboms(syft_sboms, hermeto_sbom)
+
+    # Load all Syft SBOMs
+    loaded_syft_sboms = []
+    for syft_path in syft_sboms:
+        loaded_syft_sboms.append(await load_sbom_from_json(syft_path))
+
+    # Load Hermeto SBOM
+    loaded_hermeto_sbom = await load_sbom_from_json(hermeto_sbom)
+
+    result = merge_sboms(loaded_syft_sboms, loaded_hermeto_sbom)
 
     with open("merged.bom.json", encoding="utf-8") as file:
         expected_sbom = json.load(file)
@@ -715,9 +725,12 @@ async def test_merge_multiple_syft_sboms(
 ) -> None:
     monkeypatch.chdir(data_dir / sbom_type)
 
-    result = await merge_sboms(
-        INDIVIDUAL_SYFT_SBOMS,
-    )
+    # Load all Syft SBOMs
+    loaded_syft_sboms = []
+    for syft_path in INDIVIDUAL_SYFT_SBOMS:
+        loaded_syft_sboms.append(await load_sbom_from_json(syft_path))
+
+    result = merge_sboms(loaded_syft_sboms)
 
     with open("syft.merged-by-us.bom.json", encoding="utf-8") as f:
         merged_by_us = json.load(f)
@@ -748,18 +761,17 @@ async def test_merge_multiple_syft_sboms(
         }
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "syft_sboms, hermeto_sbom",
     [
-        ([], Path("hermeto-bom.json")),
-        ([Path("only-one-syft.bom.json")], None),
+        ([], {"some": "hermeto_sbom"}),
+        ([{"some": "syft_sbom"}], None),
     ],
 )
-async def test_merge_sboms_invalid(
-    syft_sboms: list[Path],
-    hermeto_sbom: Path | None,
+def test_merge_sboms_invalid(
+    syft_sboms: list[dict[str, Any]],
+    hermeto_sbom: dict[str, Any] | None,
 ) -> None:
     """Test the merge_sboms function."""
     with pytest.raises(ValueError):
-        await merge_sboms(syft_sboms, hermeto_sbom)
+        merge_sboms(syft_sboms, hermeto_sbom)

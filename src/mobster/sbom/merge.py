@@ -11,8 +11,6 @@ from urllib.parse import quote_plus
 
 from packageurl import PackageURL
 
-from mobster.utils import load_sbom_from_json
-
 T = TypeVar("T")
 
 
@@ -668,37 +666,31 @@ def _merge_sboms(
     return merger.merge(sbom_a, sbom_b)
 
 
-async def merge_syft_and_hermeto_sboms(
-    syft_sbom_paths: list[Path], hermeto_sbom_path: Path
+def merge_syft_and_hermeto_sboms(
+    syft_sboms: list[dict[str, Any]], hermeto_sbom: dict[str, Any]
 ) -> dict[str, Any]:
     """
     Merge multiple Syft and 1 hermeto SBOMs.
     """
-    syft_sbom = await merge_multiple_syft_sboms(syft_sbom_paths)
-
-    hermeto_sbom = await load_sbom_from_json(hermeto_sbom_path)
+    syft_sbom = merge_multiple_syft_sboms(syft_sboms)
 
     return _merge_sboms(syft_sbom, hermeto_sbom, merge_by_prefering_hermeto)
 
 
-async def merge_multiple_syft_sboms(syft_sbom_paths: list[Path]) -> dict[str, Any]:
+def merge_multiple_syft_sboms(syft_sboms: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Merge multiple Syft SBOMs.
     """
-    sboms = []
-    for path in syft_sbom_paths:
-        sboms.append(await load_sbom_from_json(path))
-
     merge = functools.partial(
         _merge_sboms,
         merge_components_func=merge_by_apparent_sameness,
     )
-    merged_sbom: dict[str, Any] = functools.reduce(merge, sboms)
+    merged_sbom: dict[str, Any] = functools.reduce(merge, syft_sboms)
     return merged_sbom
 
 
-async def merge_sboms(
-    syft_sbom_paths: list[Path], hermeto_sbom_path: Path | None = None
+def merge_sboms(
+    syft_sboms: list[dict[str, Any]], hermeto_sbom: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     """
     Merge multiple SBOMs.
@@ -708,8 +700,8 @@ async def merge_sboms(
     1 Hermeto SBOM.
 
     Args:
-        syft_sbom_paths: List of paths to Syft SBOMs
-        hermeto_sbom_path: Optional path to Hermeto SBOM
+        syft_sboms: List of Syft SBOM dictionaries
+        hermeto_sbom: Optional Hermeto SBOM dictionary
 
     Returns:
         The merged SBOM
@@ -719,13 +711,12 @@ async def merge_sboms(
         one Syft SBOM with Hermeto SBOM, or multiple Syft SBOMs)
     """
 
-    if not syft_sbom_paths:
-        raise ValueError("At least one Syft SBOM path is required to merge SBOMs.")
-    if not hermeto_sbom_path:
-        if len(syft_sbom_paths) < 2:
+    if not syft_sboms:
+        raise ValueError("At least one Syft SBOM is required to merge SBOMs.")
+    if not hermeto_sbom:
+        if len(syft_sboms) < 2:
             raise ValueError(
-                "At least two Syft SBOM paths are required when no ",
-                "Hermeto SBOM is provided",
+                "At least two Syft SBOMs are required when no Hermeto SBOM is provided"
             )
-        return await merge_multiple_syft_sboms(syft_sbom_paths)
-    return await merge_syft_and_hermeto_sboms(syft_sbom_paths, hermeto_sbom_path)
+        return merge_multiple_syft_sboms(syft_sboms)
+    return merge_syft_and_hermeto_sboms(syft_sboms, hermeto_sbom)
