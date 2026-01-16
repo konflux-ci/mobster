@@ -107,9 +107,16 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         if self.cli_args.from_syft is not None:
             # Merging Syft & Hermeto SBOMs
             if len(self.cli_args.from_syft) > 1 or self.cli_args.from_hermeto:
-                return await merge_sboms(
-                    self.cli_args.from_syft, self.cli_args.from_hermeto
-                )
+                syft_sboms = []
+
+                for path in self.cli_args.from_syft:
+                    syft_sboms.append(await load_sbom_from_json(path))
+
+                hermeto_sbom = None
+                if self.cli_args.from_hermeto:
+                    hermeto_sbom = await load_sbom_from_json(self.cli_args.from_hermeto)
+
+                return merge_sboms(syft_sboms, hermeto_sbom)
             return await load_sbom_from_json(self.cli_args.from_syft[0])
         if self.cli_args.from_hermeto is not None:
             return await load_sbom_from_json(self.cli_args.from_hermeto)

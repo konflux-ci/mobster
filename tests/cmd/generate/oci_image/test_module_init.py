@@ -317,8 +317,8 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_hermeto_data = {"name": "hermeto_data"}
     mock_merged_data = {"name": "merged_data"}
 
-    mock_load_sbom.side_effect = lambda _: (
-        mock_syft_data if hermeto_bom is None else mock_hermeto_data
+    mock_load_sbom.side_effect = lambda path: (
+        mock_hermeto_data if path.name == "hermeto.json" else mock_syft_data
     )
     mock_merge.return_value = mock_merged_data
 
@@ -343,9 +343,12 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
             mock_merge.assert_not_called()
 
         elif expected_action == "merge":
-            mock_merge.assert_called_once_with(syft_boms, hermeto_bom)
+            syft_boms_dict = [mock_syft_data for _ in syft_boms]
+            hermeto_bom_dict = mock_hermeto_data if hermeto_bom else None
+
+            mock_merge.assert_called_once_with(syft_boms_dict, hermeto_bom_dict)
             assert result == mock_merged_data
-            mock_load_sbom.assert_not_awaited()
+            mock_load_sbom.assert_awaited()
 
         elif expected_action == "scan_syft":
             mock_syft_scan.assert_awaited_once_with(image_pullspec)
