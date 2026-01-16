@@ -1,12 +1,18 @@
 """A module for SPDX SBOM format"""
 
+from collections import defaultdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import json
+from typing import Generator
 from uuid import uuid4
+from abc import ABC, abstractmethod
 
+from packageurl import PackageURL
 from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
 from spdx_tools.spdx.model.checksum import Checksum, ChecksumAlgorithm
-from spdx_tools.spdx.model.document import CreationInfo
+from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import (
     ExternalPackageRef,
     ExternalPackageRefCategory,
@@ -207,3 +213,22 @@ def get_mobster_tool_string() -> str:
     Get the string representation of the current mobster tool.
     """
     return str(get_mobster_tool_actor())
+
+
+def get_package_purl(package: Package) -> str | None:
+    """
+    The purl of a package (external reference of category PACKAGE-MANAGER and purl type)
+
+    Args:
+        package: The package to find the purl of.
+
+    Returns:
+        The purl of the given package or None.
+    """
+    for ref in package.external_references:
+        if (
+            ref.category == ExternalPackageRefCategory.PACKAGE_MANAGER
+            and ref.reference_type == "purl"
+        ):
+            return ref.locator
+    return None
