@@ -46,6 +46,7 @@ def image_digest_file_content() -> list[str]:
     "test_case",
     [
         lf("test_case_spdx_with_hermeto_and_additional"),
+        lf("test_case_spdx_with_hermeto_and_content_filtering"),
         lf("test_case_spdx_without_hermeto_without_additional"),
         lf("test_case_spdx_multiple_syft"),
         lf("test_case_cyclonedx_with_additional"),
@@ -312,6 +313,7 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
     command.cli_args.from_hermeto = hermeto_bom
     command.cli_args.from_syft = syft_boms
     command.cli_args.image_pullspec = image_pullspec
+    command.cli_args.arch = None  # avoid triggering the Hermeto SBOM filtering
 
     mock_syft_data = {"name": "syft_data"}
     mock_hermeto_data = {"name": "hermeto_data"}
