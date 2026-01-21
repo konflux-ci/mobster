@@ -257,7 +257,7 @@ def spdx_sbom_skeleton() -> Generator[dict[str, Any], Any, Any]:
 
 @dataclass
 class GenerateOciImageCommandArgs:
-    from_syft: list[Path]
+    from_syft: list[Path] | None
     from_hermeto: Path | None
     image_pullspec: str
     image_digest: str
@@ -299,6 +299,32 @@ def test_case_spdx_with_hermeto_and_additional() -> GenerateOciImageTestCase:
         ),
         expected_sbom_path=Path(
             "tests/sbom/test_oci_generate_data/generated.spdx.json"
+        ),
+    )
+
+
+@pytest.fixture()
+def test_case_spdx_with_hermeto_and_content_filtering() -> GenerateOciImageTestCase:
+    """Test case with SPDX format, hermeto BOM, and filtering by architecture."""
+    return GenerateOciImageTestCase(
+        args=GenerateOciImageCommandArgs(
+            arch="x86_64",
+            from_syft=None,
+            # from_syft=[Path("tests/cmd/generate/oci_image/spdx.bom.json")],
+            from_hermeto=Path(
+                "tests/cmd/generate/oci_image/test_hermeto_sbom_filter_data/spdx.bom.json"
+            ),
+            image_pullspec="quay.io/foobar/examplecontainer:v10",
+            image_digest="sha256:11111111111111111111111111111111",
+            parsed_dockerfile_path=Path(
+                "tests/data/dockerfiles/somewhat_believable_sample/parsed.json"
+            ),
+            dockerfile_target="runtime",
+            additional_base_image=[],
+            base_image_digest_file=Path("dummy_path"),  # Will be mocked
+        ),
+        expected_sbom_path=Path(
+            "tests/cmd/generate/oci_image/test_hermeto_sbom_filter_data/x86_64-spdx.bom.json"
         ),
     )
 

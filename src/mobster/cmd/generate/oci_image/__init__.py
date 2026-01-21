@@ -32,6 +32,9 @@ from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     map_parent_to_component_and_modify_component,
 )
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.cmd.generate.oci_image.hermeto_sbom_filter import (
+    filter_hermeto_sbom_by_arch,
+)
 from mobster.cmd.generate.oci_image.spdx_utils import (
     normalize_and_load_sbom,
 )
@@ -83,6 +86,12 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             except CycloneDxException as e:
                 LOGGER.warning("\n".join(e.args))
 
+    async def _load_and_filter_hermeto_sbom(self) -> dict[str, Any]:
+        hermeto_sbom = await load_sbom_from_json(self.cli_args.from_hermeto)
+
+        arch = self.cli_args.arch or mobster.utils.identify_arch()
+        return filter_hermeto_sbom_by_arch(hermeto_sbom, arch)
+
     async def _handle_bom_inputs(
         self,
     ) -> dict[str, Any]:
@@ -107,12 +116,19 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         if self.cli_args.from_syft is not None:
             # Merging Syft & Hermeto SBOMs
             if len(self.cli_args.from_syft) > 1 or self.cli_args.from_hermeto:
-                return await merge_sboms(
-                    self.cli_args.from_syft, self.cli_args.from_hermeto
-                )
+                syft_sboms = []
+
+                for path in self.cli_args.from_syft:
+                    syft_sboms.append(await load_sbom_from_json(path))
+
+                hermeto_sbom = None
+                if self.cli_args.from_hermeto:
+                    hermeto_sbom = await self._load_and_filter_hermeto_sbom()
+
+                return merge_sboms(syft_sboms, hermeto_sbom)
             return await load_sbom_from_json(self.cli_args.from_syft[0])
         if self.cli_args.from_hermeto is not None:
-            return await load_sbom_from_json(self.cli_args.from_hermeto)
+            return await self._load_and_filter_hermeto_sbom()
 
         return await syft.scan_image(self.cli_args.image_pullspec)
 

@@ -46,6 +46,7 @@ def image_digest_file_content() -> list[str]:
     "test_case",
     [
         lf("test_case_spdx_with_hermeto_and_additional"),
+        lf("test_case_spdx_with_hermeto_and_content_filtering"),
         lf("test_case_spdx_without_hermeto_without_additional"),
         lf("test_case_spdx_multiple_syft"),
         lf("test_case_cyclonedx_with_additional"),
@@ -297,11 +298,15 @@ async def test_GenerateOciImageCommand__soft_validate_content_cdx(
     ],
 )
 @patch("mobster.cmd.generate.oci_image.syft.scan_image")
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand._load_and_filter_hermeto_sbom"
+)
 @patch("mobster.cmd.generate.oci_image.load_sbom_from_json")
 @patch("mobster.cmd.generate.oci_image.merge_sboms")
 async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_merge: MagicMock,
     mock_load_sbom: AsyncMock,
+    mock_load_hermeto_sbom: AsyncMock,
     mock_syft_scan: AsyncMock,
     syft_boms: list[Path],
     hermeto_bom: Path | None,
@@ -317,9 +322,8 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_hermeto_data = {"name": "hermeto_data"}
     mock_merged_data = {"name": "merged_data"}
 
-    mock_load_sbom.side_effect = lambda _: (
-        mock_syft_data if hermeto_bom is None else mock_hermeto_data
-    )
+    mock_load_sbom.return_value = mock_syft_data
+    mock_load_hermeto_sbom.return_value = mock_hermeto_data
     mock_merge.return_value = mock_merged_data
 
     if expected_action == "raise_error":
@@ -338,14 +342,19 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
         elif expected_action == "load_hermeto":
             assert hermeto_bom is not None
             assert syft_boms is None
-            mock_load_sbom.assert_awaited_once()
+            mock_load_hermeto_sbom.assert_awaited_once()
             assert result == mock_hermeto_data
             mock_merge.assert_not_called()
 
         elif expected_action == "merge":
-            mock_merge.assert_called_once_with(syft_boms, hermeto_bom)
+            syft_boms_dict = [mock_syft_data for _ in syft_boms]
+            hermeto_bom_dict = mock_hermeto_data if hermeto_bom else None
+
+            mock_merge.assert_called_once_with(syft_boms_dict, hermeto_bom_dict)
             assert result == mock_merged_data
-            mock_load_sbom.assert_not_awaited()
+            mock_load_sbom.assert_awaited()
+            if hermeto_bom:
+                mock_load_hermeto_sbom.assert_awaited_once()
 
         elif expected_action == "scan_syft":
             mock_syft_scan.assert_awaited_once_with(image_pullspec)

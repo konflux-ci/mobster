@@ -1,0 +1,181 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "dataLicense": "CC0-1.0",
+  "name": "quay.io/foobar/examplecontainer@sha256:11111111111111111111111111111111",
+  "documentNamespace": "https://test.example.com/sbom",
+  "creationInfo": {
+    "creators": ["Tool: hermeto", "Organization: red hat"],
+    "created": "2026-01-12T10:00:00Z"
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-image-examplecontainer-3bd047431bd00cf8d05bf18a70e3d56af251dd27b79ca8f52cdb970cf88419fc",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "11111111111111111111111111111111"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/examplecontainer@sha256:11111111111111111111111111111111?arch=x86_64&repository_url=quay.io/foobar/examplecontainer",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "examplecontainer_x86_64",
+      "supplier": "Organization: Red Hat",
+      "versionInfo": "v10"
+    },
+    {
+      "SPDXID": "SPDXRef-DocumentRoot",
+      "name": "root",
+      "versionInfo": "",
+      "filesAnalyzed": true,
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-gzip-x86_64",
+      "name": "gzip",
+      "versionInfo": "1.12",
+      "externalRefs": [
+        {
+          "referenceLocator": "pkg:rpm/redhat/gzip@1.12-1.el9?arch=x86_64&checksum=sha256:abc123",
+          "referenceType": "purl",
+          "referenceCategory": "PACKAGE_MANAGER"
+        }
+      ],
+      "filesAnalyzed": true,
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jq-noarch-1",
+      "name": "jq",
+      "versionInfo": "1.6",
+      "externalRefs": [
+        {
+          "referenceLocator": "pkg:rpm/redhat/jq@1.6-19.el9?arch=noarch&checksum=sha256:ghi789&repository_id=repo-for-x86",
+          "referenceType": "purl",
+          "referenceCategory": "PACKAGE_MANAGER"
+        }
+      ],
+      "filesAnalyzed": true,
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-package",
+      "name": "lodash",
+      "versionInfo": "4.17.21",
+      "externalRefs": [
+        {
+          "referenceLocator": "pkg:npm/lodash@4.17.21",
+          "referenceType": "purl",
+          "referenceCategory": "PACKAGE_MANAGER"
+        }
+      ],
+      "filesAnalyzed": true,
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-image-konflux-test-0b947c0ad395438e31ccc30ce44e25bfcbab7446d81698c7723213c42310cca5",
+      "annotations": [
+        {
+          "annotationDate": "2025-07-21T08:37:50Z",
+          "annotationType": "OTHER",
+          "annotator": "Tool: konflux:jsonencoded",
+          "comment": "{\"name\":\"konflux:container:is_builder_image:for_stage\",\"value\":\"0\"}"
+        }
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/konflux-test@sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c?repository_url=quay.io/redhat-user-workloads/rhtap-integration-tenant/konflux-test",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "konflux-test",
+      "supplier": "Organization: Red Hat",
+      "versionInfo": "baf5e59d5d35615d0db13b46bd91194458011af8"
+    },
+    {
+      "SPDXID": "SPDXRef-image-tssc-test-024c9f1471061148505d8fcd0db5cb1c7f671b443c5187e5f1393dd7e74d90f8",
+      "annotations": [
+        {
+          "annotationDate": "2025-07-21T08:37:50Z",
+          "annotationType": "OTHER",
+          "annotator": "Tool: konflux:jsonencoded",
+          "comment": "{\"name\":\"konflux:container:is_base_image\",\"value\":\"true\"}"
+        }
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "04f8c3262172fa024beaed2b120414d6011d0c0d4ea578619e32a3c353ec5ee5"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/tssc-test@sha256:04f8c3262172fa024beaed2b120414d6011d0c0d4ea578619e32a3c353ec5ee5?repository_url=quay.io/redhat-user-workloads/rhtap-shared-team-tenant/tssc-test",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "tssc-test",
+      "supplier": "Organization: Red Hat",
+      "versionInfo": "tssc-test-on-push-2m6dq-build-container"
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot",
+      "relatedSpdxElement": "SPDXRef-Package-gzip-x86_64",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot",
+      "relatedSpdxElement": "SPDXRef-Package-jq-noarch-1",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DocumentRoot",
+      "relatedSpdxElement": "SPDXRef-Package-npm-package",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-DocumentRoot",
+      "relationshipType": "CONTAINS",
+      "spdxElementId": "SPDXRef-image-examplecontainer-3bd047431bd00cf8d05bf18a70e3d56af251dd27b79ca8f52cdb970cf88419fc"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-image-examplecontainer-3bd047431bd00cf8d05bf18a70e3d56af251dd27b79ca8f52cdb970cf88419fc",
+      "relationshipType": "DESCRIBES",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-image-examplecontainer-3bd047431bd00cf8d05bf18a70e3d56af251dd27b79ca8f52cdb970cf88419fc",
+      "relationshipType": "BUILD_TOOL_OF",
+      "spdxElementId": "SPDXRef-image-konflux-test-0b947c0ad395438e31ccc30ce44e25bfcbab7446d81698c7723213c42310cca5"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-image-tssc-test-024c9f1471061148505d8fcd0db5cb1c7f671b443c5187e5f1393dd7e74d90f8",
+      "relationshipType": "DESCENDANT_OF",
+      "spdxElementId": "SPDXRef-image-examplecontainer-3bd047431bd00cf8d05bf18a70e3d56af251dd27b79ca8f52cdb970cf88419fc"
+    }
+  ]
+}
