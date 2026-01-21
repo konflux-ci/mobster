@@ -249,6 +249,19 @@ class SPDXSBOMBuilder:
         )
         return self
 
+    def dependency_of(
+        self, pkg1: AnnotatedPackage, pkg2: AnnotatedPackage
+    ) -> "SPDXSBOMBuilder":
+        """
+        Add the passed packages to the SBOM and create a DEPENDENCY_OF relationship
+        between them (pkg1 DEPENDENCY_OF pkg2).
+        """
+        self.__extend_packages([pkg1, pkg2])
+        self._relationships.append(
+            (pkg1.spdx_id, RelationshipType.DEPENDENCY_OF, pkg2.spdx_id)
+        )
+        return self
+
     def root_purl(self, purl: str) -> "SPDXSBOMBuilder":
         """
         Set the root package URL.
