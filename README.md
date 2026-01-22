@@ -14,7 +14,7 @@ The major stages are:
   release phase where we know more information about the software.
 - **Validation**: Validate a quality of the SBOM document in different stages
   of the lifecycle. The validation is done by the [Product Security team
-  guidelies](https://github.com/RedHatProductSecurity/security-data-guidelines/tree/main).
+  guidelines](https://github.com/RedHatProductSecurity/security-data-guidelines/tree/main).
 - **Distribution**: Distribute the SBOM document to various set of locations (e.g. Trusted
   Profile Analyzer, container registry, etc.)
 
