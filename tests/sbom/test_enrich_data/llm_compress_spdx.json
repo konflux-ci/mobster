@@ -1,0 +1,102 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "creationInfo": {
+    "created": "2025-10-29T14:26:43Z",
+    "creators": [
+      "Tool: cachi2",
+      "Organization: red hat",
+      "Tool: Mobster-1.0.0"
+    ]
+  },
+  "dataLicense": "CC0-1.0",
+  "name": "quay.io/redhat-user-workloads/konflux-ai-sig-tenant/llm-compressor-demo@sha256:4ed8cbadf08100ff79f079017c4189fa129c63965fbb7636ee7b656b42caf5b6",
+  "spdxVersion": "SPDX-2.3",
+  "documentNamespace": "https://konflux-ci.dev/spdxdocs/quay.io/redhat-user-workloads/konflux-ai-sig-tenant/llm-compressor-demo@sha256:4ed8cbadf08100ff79f079017c4189fa129c63965fbb7636ee7b656b42caf5b6-40c78607-931b-4a64-9f90-2f9f7244b81c",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-image-llm-compressor-demo-567624f7e2ddc3a2feebc1cd886d1d5cf125ae0db0c908a1548719930f8e657c",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4ed8cbadf08100ff79f079017c4189fa129c63965fbb7636ee7b656b42caf5b6"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:oci/llm-compressor-demo@sha256:4ed8cbadf08100ff79f079017c4189fa129c63965fbb7636ee7b656b42caf5b6?arch=amd64&repository_url=quay.io/redhat-user-workloads/konflux-ai-sig-tenant/llm-compressor-demo",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseDeclared": "NOASSERTION",
+      "name": "llm-compressor-demo_amd64",
+      "supplier": "Organization: Red Hat",
+      "versionInfo": "7560c6e8a2e69d6db15fae5d0bbe56a4c7f09491"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-TinyLlama-TinyLlama-1.1B-Chat-v1.0-fe8a4ea1ffedaf415f4da2f062534de366a451e6-73b429a44483c2784ea71c729a66a7af241da4feec573255c760b7f94dc49c6f",
+      "annotations": [
+        {
+          "annotationDate": "2025-10-29T14:26:43Z",
+          "annotationType": "OTHER",
+          "annotator": "Tool: cachi2:jsonencoded",
+          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:huggingface/TinyLlama/TinyLlama-1.1B-Chat-v1.0@fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "name": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+      "versionInfo": "fe8a4ea1ffedaf415f4da2f062534de366a451e6"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-garage-bAInd-Open-Platypus-37141edbdb7826378cce118c46a109b813e1f038-557d7b1a58f10d702f49cd06d7ccd977db09429ee39f63eadc99972b7e65c7ee",
+      "annotations": [
+        {
+          "annotationDate": "comment",
+          "annotationType": "OTHER",
+          "annotator": "Tool: cachi2:jsonencoded",
+          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:huggingface/garage-bAInd/Open-Platypus@37141edbdb7826378cce118c46a109b813e1f038",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "name": "garage-bAInd/Open-Platypus",
+      "versionInfo": "37141edbdb7826378cce118c46a109b813e1f038"
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-image-llm-compressor-demo-567624f7e2ddc3a2feebc1cd886d1d5cf125ae0db0c908a1548719930f8e657c",
+      "comment": "",
+      "relatedSpdxElement": "SPDXRef-Package-TinyLlama-TinyLlama-1.1B-Chat-v1.0-fe8a4ea1ffedaf415f4da2f062534de366a451e6-73b429a44483c2784ea71c729a66a7af241da4feec573255c760b7f94dc49c6f",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-image-llm-compressor-demo-567624f7e2ddc3a2feebc1cd886d1d5cf125ae0db0c908a1548719930f8e657c",
+      "comment": "",
+      "relatedSpdxElement": "SPDXRef-Package-garage-bAInd-Open-Platypus-37141edbdb7826378cce118c46a109b813e1f038-557d7b1a58f10d702f49cd06d7ccd977db09429ee39f63eadc99972b7e65c7ee",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relatedSpdxElement": "SPDXRef-image-llm-compressor-demo-567624f7e2ddc3a2feebc1cd886d1d5cf125ae0db0c908a1548719930f8e657c",
+      "relationshipType": "DESCRIBES"
+    }
+  ]
+}
