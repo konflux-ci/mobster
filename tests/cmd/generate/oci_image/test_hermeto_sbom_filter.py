@@ -84,6 +84,11 @@ class TestFilterHermetoSPDXSbomByArch:
                 id="x86_64",
             ),
             pytest.param(
+                "amd64",
+                ALWAYS_KEPT_SPDX_PACKAGES | {"SPDXRef-Package-gzip-x86_64"},
+                id="x86_64-arch-identified-by-mobster",
+            ),
+            pytest.param(
                 "aarch64",
                 ALWAYS_KEPT_SPDX_PACKAGES | {"SPDXRef-Package-gzip-aarch64"},
                 id="aarch64",
