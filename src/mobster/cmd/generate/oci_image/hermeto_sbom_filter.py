@@ -4,6 +4,8 @@ import logging
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from mobster.utils import ARCH_TRANSLATION_MAP
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -64,7 +66,14 @@ def _filter_spdx_packages(
 
         arch, checksum = _extract_arch_and_checksum_from_purl(purl)
 
-        if arch in {"noarch", target_arch}:
+        # If the target tarchitecture was identified by Mobster, consider all
+        # the potential values returned by Python's platform.machine method
+        if target_arch in ARCH_TRANSLATION_MAP:
+            filter_set = {"noarch", *ARCH_TRANSLATION_MAP[target_arch]}
+        else:
+            filter_set = {"noarch", target_arch}
+
+        if arch in filter_set:
             if not checksum:
                 filtered_packages.append(package)
             elif checksum not in noarch_checksums:

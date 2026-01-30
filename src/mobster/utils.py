@@ -11,6 +11,12 @@ from pathlib import Path
 from typing import Any
 
 LOGGER = logging.getLogger(__name__)
+ARCH_TRANSLATION_MAP = {
+    "amd64": {"x86_64", "x64"},
+    "arm64": {"arm", "arm64", "aarch64_be", "aarch64", "armv8b", "armv8l"},
+    "ppc64le": {"powerpc", "ppc", "ppc64", "ppcle"},
+    "s390x": {"s390"},
+}
 
 
 def normalize_file_name(current_name: str) -> str:
@@ -84,14 +90,7 @@ def identify_arch() -> str:
 
     platform_arch = platform.machine()
 
-    arch_translation_map = {
-        "amd64": {"x86_64", "x64"},
-        "arm64": {"arm", "arm64", "aarch64_be", "aarch64", "armv8b", "armv8l"},
-        "ppc64le": {"powerpc", "ppc", "ppc64", "ppcle"},
-        "s390x": {"s390"},
-    }
-
-    for oci_arch, uname_arches in arch_translation_map.items():
+    for oci_arch, uname_arches in ARCH_TRANSLATION_MAP.items():
         if platform_arch in uname_arches:
             return oci_arch
     LOGGER.warning(
