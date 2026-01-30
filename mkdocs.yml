@@ -10,6 +10,7 @@ nav:
       - "Augmentation": sboms/oci_image_augmentation.md
       - "Upload": sboms/upload.md
       - "Download": sboms/download.md
+      - "Delete": sboms/delete.md
   - "SBOM content types":
       - "OCI image": "sboms/oci_image.md"
       - "OCI index image": "sboms/oci_index_sbom.md"
