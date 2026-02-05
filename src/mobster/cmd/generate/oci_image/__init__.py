@@ -25,6 +25,12 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     get_digest_for_image_ref,
     get_image_objects_from_file,
 )
+from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
+    BuilderContextualizationError,
+    BuilderPkgMetadata,
+    generate_origins,
+    resolve_origins,
+)
 from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     download_parent_image_sbom,
     get_descendant_of_items_from_used_parent,
@@ -36,6 +42,7 @@ from mobster.cmd.generate.oci_image.hermeto_sbom_filter import (
     filter_hermeto_sbom_by_arch,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
+    DocumentIndexOCI,
     normalize_and_load_sbom,
 )
 from mobster.image import Image
@@ -137,6 +144,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         component_sbom_doc: Document,
         parent_image_ref: Image,
         arch: str,
+        build_metadata_path: Path | None,
     ) -> Document | None:
         """
         Run all steps from the contextual workflow. Finds and
@@ -158,6 +166,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 The contextual SBOM if the workflow was successful.
                 None otherwise.
         """
+        # Parent content contextualization
         parent_image_sbom = await download_parent_image_sbom(parent_image_ref, arch)
         if not parent_image_sbom:
             return None
@@ -176,6 +185,25 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             parent_spdx_id_from_component,
             descendant_of_items_from_used_parent,
         )
+
+        if build_metadata_path is None:
+            return contextual_sbom
+
+        # Builder content contextualization
+        try:
+            with open(build_metadata_path, encoding="utf-8") as fp:
+                metadata = BuilderPkgMetadata.model_validate_json(fp.read())
+
+            builder_ctx_sbom = deepcopy(contextual_sbom)
+            index = DocumentIndexOCI(builder_ctx_sbom)
+
+            origins = generate_origins(index, metadata)
+            index = resolve_origins(index, origins)
+
+            contextual_sbom = index.doc
+        except BuilderContextualizationError:
+            LOGGER.exception("Failed to contextualize builder content")
+
         return contextual_sbom
 
     async def _assess_and_dispatch_contextual_workflow(
@@ -213,7 +241,10 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 parent_image_obj = base_images[parent_image_ref]
                 copied_component_sbom_doc = deepcopy(component_sbom_doc)
                 contextual_sbom = await self._execute_contextual_workflow(
-                    copied_component_sbom_doc, parent_image_obj, image_arch
+                    copied_component_sbom_doc,
+                    parent_image_obj,
+                    image_arch,
+                    self.cli_args.build_metadata_path,
                 )
                 LOGGER.info("Contextual SBOM workflow finished successfully.")
                 return contextual_sbom
