@@ -1,18 +1,12 @@
 """A module for SPDX SBOM format"""
 
-from collections import defaultdict
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
-import json
-from typing import Generator
 from uuid import uuid4
-from abc import ABC, abstractmethod
 
-from packageurl import PackageURL
 from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
 from spdx_tools.spdx.model.checksum import Checksum, ChecksumAlgorithm
-from spdx_tools.spdx.model.document import CreationInfo, Document
+from spdx_tools.spdx.model.document import CreationInfo
 from spdx_tools.spdx.model.package import (
     ExternalPackageRef,
     ExternalPackageRefCategory,
