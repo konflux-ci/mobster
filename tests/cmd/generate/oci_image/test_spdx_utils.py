@@ -17,7 +17,7 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
 from mobster.cmd.generate.oci_image.spdx_utils import (
-    DocumentIndex,
+    DocumentIndexOCI,
     PackageContext,
     find_spdx_root_packages,
     find_spdx_root_packages_spdxid,
@@ -1111,7 +1111,7 @@ def builder_image_document() -> Document:
 
 def test_document_index_package_lookup(simple_spdx_document: Document) -> None:
     """Test basic package lookup operations."""
-    index = DocumentIndex(simple_spdx_document)
+    index = DocumentIndexOCI(simple_spdx_document)
 
     ctx = index.package_by_spdx_id("SPDXRef-PackageA")
     assert ctx.pkg.name == "package-a"
@@ -1140,7 +1140,7 @@ def test_document_index_image_packages(
     image_spdx_document: Document, pullspec: str, expected_found: bool
 ) -> None:
     """Test image package filtering and lookup."""
-    index = DocumentIndex(image_spdx_document)
+    index = DocumentIndexOCI(image_spdx_document)
 
     image_packages = index.image_packages()
     assert len(image_packages) == 2  # Only packages with SPDXRef-image prefix
@@ -1161,7 +1161,7 @@ def test_document_index_relationships_annotations(
     relationship_spdx_document: Document,
 ) -> None:
     """Test relationship and annotation indexing."""
-    index = DocumentIndex(relationship_spdx_document)
+    index = DocumentIndexOCI(relationship_spdx_document)
 
     parent_ctx = index.package_by_spdx_id("SPDXRef-Parent")
     assert len(parent_ctx.parent_relationships) == 1
@@ -1181,7 +1181,7 @@ def test_document_index_ensure_intermediate_image(
     builder_image_document: Document,
 ) -> None:
     """Test intermediate image package creation."""
-    index = DocumentIndex(builder_image_document)
+    index = DocumentIndexOCI(builder_image_document)
 
     builder_ctx = index.package_by_spdx_id("SPDXRef-image-builder")
 
@@ -1209,7 +1209,7 @@ def test_document_index_reparent_relationship(
     relationship_spdx_document: Document,
 ) -> None:
     """Test relationship reparenting functionality."""
-    index = DocumentIndex(relationship_spdx_document)
+    index = DocumentIndexOCI(relationship_spdx_document)
 
     parent_ctx = index.package_by_spdx_id("SPDXRef-Parent")
     relationship = parent_ctx.parent_relationships[0]

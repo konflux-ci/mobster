@@ -13,7 +13,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     validate_and_compare_purls,
 )
 from mobster.sbom.spdx import get_package_purl
-from mobster.cmd.generate.oci_image.spdx_utils import DocumentIndex, PackageContext
+from mobster.cmd.generate.oci_image.spdx_utils import DocumentIndexOCI, PackageContext
 
 LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ class Origin:
 
 
 def generate_origins(
-    index: DocumentIndex, builder_metadata: BuilderPkgMetadata
+    index: DocumentIndexOCI, builder_metadata: BuilderPkgMetadata
 ) -> list[tuple[str, Origin]]:
     """
     Generate origins of packages in a document based on metadata.
@@ -138,7 +138,7 @@ def generate_origins(
 
 def _resolve_dependency_of(
     packages_by_purl: list[PackageContext],
-    index: DocumentIndex,
+    index: DocumentIndexOCI,
     pkg_meta: BuilderPkgMetadataItem,
 ) -> PackageContext | None:
     for pkg_context in packages_by_purl:
@@ -165,8 +165,8 @@ def _resolve_dependency_of(
 
 
 def resolve_origins(
-    index: DocumentIndex, origins: list[tuple[str, Origin]]
-) -> DocumentIndex:
+    index: DocumentIndexOCI, origins: list[tuple[str, Origin]]
+) -> DocumentIndexOCI:
     for pkg_spdx_id, origin in origins:
         current_relationship = _find_current_image_contains_relationship(
             index,
@@ -197,7 +197,7 @@ def resolve_origins(
 
 
 def _find_current_image_contains_relationship(
-    index: DocumentIndex, pkg_spdx_id: str
+    index: DocumentIndexOCI, pkg_spdx_id: str
 ) -> Relationship | None:
     # find the current relationship where an image package CONTAINS
     # the pkg spdx_id that needs to be updated
@@ -224,7 +224,7 @@ def main():
     with open("mobster.builder.json", "r") as fp:
         metadata = BuilderPkgMetadata.model_validate_json(fp.read())
 
-    index = DocumentIndex(document)
+    index = DocumentIndexOCI(document)
 
     origins = generate_origins(index, metadata)
     index = resolve_origins(index, origins)

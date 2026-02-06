@@ -6,12 +6,12 @@ from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     OriginType,
     generate_origins,
 )
-from mobster.cmd.generate.oci_image.spdx_utils import DocumentIndex
+from mobster.cmd.generate.oci_image.spdx_utils import DocumentIndexOCI
 from tests.spdx_builder import SPDXPackageBuilder, SPDXSBOMBuilder
 
 
 @pytest.fixture
-def sbom_index_two_images() -> DocumentIndex:
+def sbom_index_two_images() -> DocumentIndexOCI:
     """
     Fixture returning an index of an SBOM document for an OCI image with the
     following package layout:
@@ -116,11 +116,11 @@ def sbom_index_two_images() -> DocumentIndex:
         .dependency_of(same_purl_pkg_2, pkg_builder_2)
     ).build()
 
-    index = DocumentIndex(document)
+    index = DocumentIndexOCI(document)
     return index
 
 
-def test_generate_origins(sbom_index_two_images: DocumentIndex) -> None:
+def test_generate_origins(sbom_index_two_images: DocumentIndexOCI) -> None:
     metadata = BuilderPkgMetadata(
         packages=[
             BuilderPkgMetadataItem(
@@ -191,7 +191,7 @@ def test_generate_origins(sbom_index_two_images: DocumentIndex) -> None:
 
 
 def test_generate_origins_without_metadata(
-    sbom_index_two_images: DocumentIndex,
+    sbom_index_two_images: DocumentIndexOCI,
 ) -> None:
     """
     Test case where there are no packages in the SBOM document without their
@@ -202,7 +202,7 @@ def test_generate_origins_without_metadata(
 
 
 def test_generate_origins_metadata_missing_package(
-    sbom_index_two_images: DocumentIndex,
+    sbom_index_two_images: DocumentIndexOCI,
 ) -> None:
     """
     Test case where there is a metadata item with no matching package in the

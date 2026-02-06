@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 import json
 from datetime import datetime, timezone
-from typing import Any, Generator
+from typing import Any, Generator, TypeVar
 
 from packageurl import PackageURL
 from spdx_tools.spdx.model.actor import Actor, ActorType
@@ -19,7 +19,7 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
 from mobster.cmd.generate.oci_image.constants import BUILDER_IMAGE_PROPERTY
-from mobster.image import Image
+from mobster.image import IMAGE_PKG_SPDX_PREFIX, Image
 from mobster.sbom.spdx import (
     DOC_ELEMENT_ID,
     get_image_package,
@@ -412,13 +412,19 @@ class BuilderImageAnnotation:
 
 
 class KonfluxAnnotationManager:
+    """
+    Group of convenience methods for creating and parsing Konflux annotations
+    in SPDX SBOMs.
+    """
+
     @staticmethod
     def intermediate_image(spdx_id: str, stage_index: int) -> Annotation:
+        """
+        Create an SPDX Annotation object for an intermediate image package.
+        """
         comment = {
             "name": "konflux:container:is_intermediate_image:for_stage",
-            "value": str(
-                stage_index
-            ),  # TODO: should this be a string or just json number?
+            "value": str(stage_index),
         }
 
         return Annotation(
@@ -431,11 +437,12 @@ class KonfluxAnnotationManager:
 
     @staticmethod
     def builder_image(spdx_id: str, stage_index: int) -> Annotation:
+        """
+        Create an SPDX Annotation object for a builder image package.
+        """
         comment = {
             "name": "konflux:container:is_builder_image:for_stage",
-            "value": str(
-                stage_index
-            ),  # TODO: should this be a string or just json number?
+            "value": str(stage_index),
         }
 
         return Annotation(
@@ -447,9 +454,18 @@ class KonfluxAnnotationManager:
         )
 
     @staticmethod
-    def parse(ann: Annotation) -> IntermediateImageAnnotation | BuilderImageAnnotation:
+    def parse(
+        ann: Annotation,
+    ) -> IntermediateImageAnnotation | BuilderImageAnnotation | None:
+        """
+        Parse an SPDX annotation document and return the internal
+        representation or return None if it's not a Konflux annotation.
+
+        Raises:
+            AnnotationParseError: when the annotation could not be decoded
+        """
         if ann.annotator != KONFLUX_JSON_ACTOR:
-            raise AnnotationParseError("Annotation is not Konflux-specific.")
+            return None
 
         decoded = json.loads(ann.annotation_comment)
         try:
@@ -468,48 +484,70 @@ class KonfluxAnnotationManager:
 
 @dataclass
 class PackageContext:
+    """
+    Dataclass containing data relevant to an SPDX package.
+
+    Attributes:
+        pkg: the underlying SPDX package object
+        parent_relationships: list of SPDX relationships where the underlying
+            package is the "parent": pkg.spdx_id == relationship.spdx_element_id
+        annotations: list of SPDX annotations for this package
+    """
+
     pkg: Package
     parent_relationships: list[Relationship] = field(default_factory=list)
     annotations: list[Annotation] = field(default_factory=list)
 
-    @property
-    def builder_image_annotation(self) -> BuilderImageAnnotation | None:
+    T = TypeVar("T")
+
+    def _annotation(self, ann_type: type[T]) -> T | None:
         for ann in self.annotations:
             try:
                 parsed = KonfluxAnnotationManager.parse(ann)
-                if isinstance(parsed, BuilderImageAnnotation):
+                if isinstance(parsed, ann_type):
                     return parsed
             except AnnotationParseError:
                 continue
 
         return None
+
+    @property
+    def builder_image_annotation(self) -> BuilderImageAnnotation | None:
+        """
+        Get the builder image annotation for this package if present.
+        """
+        return self._annotation(BuilderImageAnnotation)
 
     @property
     def intermediate_image_annotation(self) -> IntermediateImageAnnotation | None:
-        for ann in self.annotations:
-            try:
-                parsed = KonfluxAnnotationManager.parse(ann)
-                if isinstance(parsed, IntermediateImageAnnotation):
-                    return parsed
-            except AnnotationParseError:
-                continue
-
-        return None
+        """
+        Get the intermediate image annotation for this package if present.
+        """
+        return self._annotation(IntermediateImageAnnotation)
 
     def filter_parent_relationships(
         self, rel_type: RelationshipType
     ) -> list[Relationship]:
-        return PackageContext._filter_relationships(self.parent_relationships, rel_type)
+        """
+        Return a list of parent relationships associated with this package
+        filtered by the passed relationship type.
+        """
+        return [
+            rel
+            for rel in self.parent_relationships
+            if rel.relationship_type == rel_type
+        ]
 
-    @staticmethod
-    def _filter_relationships(
-        relationships: list[Relationship], rel_type: RelationshipType
-    ) -> list[Relationship]:
-        return [rel for rel in relationships if rel.relationship_type == rel_type]
 
+class DocumentIndexOCI:
+    """
+    Index object wrapping an SPDX document for implementing methods for faster
+    lookups.
 
-# TODO: Could subclass to DocumentIndexOCI to make this more general
-class DocumentIndex:
+    Attributes:
+        doc (Document): the underlying SPDX Document object
+    """
+
     def __init__(self, doc: Document) -> None:
         self.doc: Document = doc
         self._spdx_id_to_ctx: dict[str, PackageContext] = dict()
@@ -527,8 +565,7 @@ class DocumentIndex:
             if purl is not None:
                 self._purl_to_ctxs[purl].append(pkg_ctx)
 
-            # FIXME: this string needs to be a constant somewhere
-            if pkg.spdx_id.startswith("SPDXRef-image"):
+            if pkg.spdx_id.startswith(IMAGE_PKG_SPDX_PREFIX):
                 self._image_ctxs.append(pkg_ctx)
 
         for rel in self.doc.relationships:
@@ -543,32 +580,58 @@ class DocumentIndex:
             pkg_ctx.annotations.append(ann)
 
     def package_by_spdx_id(self, spdx_id: str) -> PackageContext | None:
+        """
+        Return a package from the document by SPDX ID if it exists, otherwise
+        returns None.
+        """
         return self._spdx_id_to_ctx.get(spdx_id)
 
     def packages_by_purl(self, purl: str) -> list[PackageContext]:
+        """
+        Return a package from the document by a Package URL string if it
+        exists, otherwise returns None.
+
+        To qualify, a package must have at least one PURL external reference
+        that matches the passed purl. a PURL.
+        """
         return self._purl_to_ctxs.get(purl, [])
 
     def package_contexts(
         self,
     ) -> Generator[PackageContext, None, None]:
+        """
+        Generator yielding PackageContexts present in the underlying document.
+        """
         for pkg_rels in self._spdx_id_to_ctx.values():
             yield pkg_rels
 
     def image_packages(self) -> list[PackageContext]:
+        """
+        Returns a list of SPDX packages representing OCI images in the
+        underlying document.
+        """
         return self._image_ctxs
 
     def image_package_by_pullspec(self, pullspec: str) -> PackageContext | None:
+        """
+        Returns a PackageContext for an OCI image in the underlying document
+        based on matching the passed pullspec.
+        """
         for img_pkg_ctx in self._image_ctxs:
-            if DocumentIndex._match_image_package(img_pkg_ctx.pkg, pullspec):
+            if DocumentIndexOCI._match_image_package(img_pkg_ctx.pkg, pullspec):
                 return img_pkg_ctx
         return None
 
     def ensure_intermediate_image_package(
         self, builder_package_context: PackageContext
     ) -> PackageContext:
-        # TODO:
-        # check if the intermediate image package for the passed image package
-        # already exists and return it
+        """
+        Returns an intermediate package context equivalent for the passed
+        builder package context if it already exists in the SBOM.
+
+        If it doesn't exist, a new package is created and added to the SBOM.
+        """
+
         for img_pkg_ctx in self._image_ctxs:
             if img_pkg_ctx.intermediate_image_annotation is None:
                 continue
@@ -625,13 +688,17 @@ class DocumentIndex:
         return int_img_ctx
 
     @staticmethod
-    def _match_image_package(img_pkg: Package, origin_pullspec: str) -> bool:
+    def _match_image_package(img_pkg: Package, pullspec: str) -> bool:
+        """
+        Returns true if the passed Package represents an image with the passed
+        pullspec.
+        """
         img_purl_str = get_package_purl(img_pkg)
         assert img_purl_str is not None
 
         img_purl = PackageURL.from_string(img_purl_str)
         img_pullspec = f"{img_purl.qualifiers['repository_url']}@{img_purl.version}"
-        if img_pullspec == origin_pullspec:
+        if img_pullspec == pullspec:
             return True
 
         return False
@@ -642,8 +709,6 @@ class DocumentIndex:
         """
         Change the spdx_element_id of the passed relationship to the
         new_parent_spdx_id and update the index for internal consistency.
-
-        # TODO: add an example
         """
 
         # To ensure consistency of the index, we need to find the package
