@@ -165,32 +165,107 @@ class SPDXSBOMBuilder:
 
     def __init__(self) -> None:
         self._name: str | None = None
-        self._contains: list[AnnotatedPackage] = []
-        self._build_tool_of: list[AnnotatedPackage] = []
-        self._dependency_of: list[AnnotatedPackage] = []
         self._root_purl: str | None = None
 
+        # tuple associating parent and child package spdx_ids and the
+        # relationship between them to add to the SPDX document
+        self._relationships: list[tuple[str | None, RelationshipType, str | None]] = []
+
+        # packages and their associated annotations to be added to the SPDX document
+        self._packages: list[AnnotatedPackage] = []
+
+    def __extend_packages(self, packages: list[AnnotatedPackage]) -> None:
+        """
+        Extend the document's packages if their spdx ids are not already
+        included.
+        """
+        for new_pkg in packages:
+            if new_pkg.spdx_id not in {pkg.spdx_id for pkg in self._packages}:
+                self._packages.append(new_pkg)
+
     def name(self, name: str) -> "SPDXSBOMBuilder":
+        """
+        Set the name of the SPDX document.
+        """
         self._name = name
         return self
 
-    def contains_packages(self, packages: list[AnnotatedPackage]) -> "SPDXSBOMBuilder":
-        self._contains.extend(packages)
+    def root_contains(self, packages: list[AnnotatedPackage]) -> "SPDXSBOMBuilder":
+        """
+        Add the passed packages to the SBOM and associate them to the root
+        package with a CONTAINS relationship.
+        """
+        self.__extend_packages(packages)
+        for pkg in packages:
+            self._relationships.append((None, RelationshipType.CONTAINS, pkg.spdx_id))
+
         return self
 
-    def build_tool_of_packages(
-        self, packages: list[AnnotatedPackage]
-    ) -> "SPDXSBOMBuilder":
-        self._build_tool_of.extend(packages)
+    def root_describes(self, packages: list[AnnotatedPackage]) -> "SPDXSBOMBuilder":
+        """
+        Add the passed packages to the SBOM and associate them to the root
+        package with a DESCRIBES relationship.
+        """
+        self.__extend_packages(packages)
+        for pkg in packages:
+            self._relationships.append((None, RelationshipType.DESCRIBES, pkg.spdx_id))
         return self
 
-    def dependency_of_packages(
-        self, packages: list[AnnotatedPackage]
+    def root_build_tool_of(self, packages: list[AnnotatedPackage]) -> "SPDXSBOMBuilder":
+        """
+        Add the passed packages to the SBOM and associate them to the root
+        package with a BUILD_TOOL_OF relationship (package BUILD_TOOL_OF root).
+        """
+        self.__extend_packages(packages)
+        for pkg in packages:
+            self._relationships.append(
+                (pkg.spdx_id, RelationshipType.BUILD_TOOL_OF, None)
+            )
+        return self
+
+    def root_dependency_of(self, packages: list[AnnotatedPackage]) -> "SPDXSBOMBuilder":
+        """
+        Add the passed packages to the SBOM and associate them to the root
+        package with a DEPENDENCY_OF relationship.
+        """
+        self.__extend_packages(packages)
+        for pkg in packages:
+            self._relationships.append(
+                (None, RelationshipType.DEPENDENCY_OF, pkg.spdx_id)
+            )
+
+        return self
+
+    def contains(
+        self, pkg1: AnnotatedPackage, pkg2: AnnotatedPackage
     ) -> "SPDXSBOMBuilder":
-        self._dependency_of.extend(packages)
+        """
+        Add the passed packages to the SBOM and create a CONTAINS relationship
+        between them (pkg1 CONTAINS pkg2).
+        """
+        self.__extend_packages([pkg1, pkg2])
+        self._relationships.append(
+            (pkg1.spdx_id, RelationshipType.CONTAINS, pkg2.spdx_id)
+        )
+        return self
+
+    def dependency_of(
+        self, pkg1: AnnotatedPackage, pkg2: AnnotatedPackage
+    ) -> "SPDXSBOMBuilder":
+        """
+        Add the passed packages to the SBOM and create a DEPENDENCY_OF relationship
+        between them (pkg1 DEPENDENCY_OF pkg2).
+        """
+        self.__extend_packages([pkg1, pkg2])
+        self._relationships.append(
+            (pkg1.spdx_id, RelationshipType.DEPENDENCY_OF, pkg2.spdx_id)
+        )
         return self
 
     def root_purl(self, purl: str) -> "SPDXSBOMBuilder":
+        """
+        Set the root package URL.
+        """
         self._root_purl = purl
         return self
 
@@ -198,12 +273,17 @@ class SPDXSBOMBuilder:
     def __add_package(
         doc: Document,
         apackage: AnnotatedPackage,
-        reltype: RelationshipType,
-        spdx_id: str,
-        rel_spdx_id: str,
     ) -> None:
         doc.annotations.extend(apackage.annotations)
         doc.packages.append(apackage.package)
+
+    @staticmethod
+    def __add_relationship(
+        doc: Document,
+        spdx_id: str,
+        reltype: RelationshipType,
+        rel_spdx_id: str,
+    ) -> None:
         doc.relationships.append(
             Relationship(
                 spdx_element_id=spdx_id,
@@ -242,27 +322,35 @@ class SPDXSBOMBuilder:
             .build()
         )
 
+        # add the root package and its relationship to the document
         self.__add_package(
             doc,
             root_package,
-            RelationshipType.DESCRIBES,
+        )
+
+        self.__add_relationship(
+            doc,
             "SPDXRef-DOCUMENT",
+            RelationshipType.DESCRIBES,
             root_spdx_id,
         )
 
-        for apkg in self._contains:
-            self.__add_package(
-                doc, apkg, RelationshipType.CONTAINS, root_spdx_id, apkg.spdx_id
-            )
+        # add the specified packages and relationships
+        for pkg in self._packages:
+            self.__add_package(doc, pkg)
 
-        for apkg in self._dependency_of:
-            self.__add_package(
-                doc, apkg, RelationshipType.DEPENDENCY_OF, root_spdx_id, apkg.spdx_id
-            )
+        for spdx_id1, reltype, spdx_id2 in self._relationships:
+            if spdx_id1 is None:
+                spdx_id1 = root_spdx_id
 
-        for apkg in self._build_tool_of:
-            self.__add_package(
-                doc, apkg, RelationshipType.BUILD_TOOL_OF, apkg.spdx_id, root_spdx_id
+            if spdx_id2 is None:
+                spdx_id2 = root_spdx_id
+
+            self.__add_relationship(
+                doc,
+                spdx_id1,
+                reltype,
+                spdx_id2,
             )
 
         return doc
