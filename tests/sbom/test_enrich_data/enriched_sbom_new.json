@@ -1,0 +1,167 @@
+{
+  "components": [
+    {
+      "bom-ref": "BomRef.0032051301836143464.7188988345148393",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3594bba73bcbde635e6e4ece56cdeec93319ba7df0e083539e513e6061872ff8"
+        }
+      ],
+      "name": "llm-compressor-demo_amd64",
+      "purl": "pkg:oci/llm-compressor-demo@sha256:3594bba73bcbde635e6e4ece56cdeec93319ba7df0e083539e513e6061872ff8?arch=amd64&repository_url=quay.io/redhat-user-workloads/konflux-ai-sig-tenant/llm-compressor-demo",
+      "type": "container",
+      "version": "pr-54ca36160109eb5d77befa1cd800963d927875e9"
+    },
+    {
+      "bom-ref": "BomRef.7027505871778599.23982975891265434",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+        }
+      ],
+      "name": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:huggingface/TinyLlama/TinyLlama-1.1B-Chat-v1.0@fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+      "type": "library",
+      "version": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+      "modelCard": {
+        "modelParameters": {
+          "architectureFamily": "llama",
+          "inputs": [
+            {
+              "format": "text"
+            }
+          ],
+          "modelArchitecture": "TinyLlama-1.1B-Chat-v1.0ForCausalLM",
+          "outputs": [
+            {
+              "format": "generated-text"
+            }
+          ],
+          "task": "text-generation"
+        },
+        "properties": [
+          {
+            "name": "bomFormat",
+            "value": "CycloneDX"
+          },
+          {
+            "name": "specVersion",
+            "value": "1.6"
+          },
+          {
+            "name": "serialNumber",
+            "value": "urn:uuid:TinyLlama-TinyLlama-1.1B-Chat-v1.0"
+          },
+          {
+            "name": "version",
+            "value": "1.0.0"
+          },
+          {
+            "name": "primaryPurpose",
+            "value": "text-generation"
+          },
+          {
+            "name": "suppliedBy",
+            "value": "TinyLlama"
+          },
+          {
+            "name": "licenses",
+            "value": "apache-2.0"
+          },
+          {
+            "name": "typeOfModel",
+            "value": "llama"
+          },
+          {
+            "name": "downloadLocation",
+            "value": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0/tree/main"
+          },
+          {
+            "name": "external_references",
+            "value": "[{\"type\": \"website\", \"url\": \"https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0\", \"comment\": \"Model repository\"}, {\"type\": \"distribution\", \"url\": \"https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0/tree/main\", \"comment\": \"Model files\"}]"
+          }
+        ],
+        "quantitativeAnalysis": {
+          "graphics": {}
+        }
+      }
+    },
+    {
+      "bom-ref": "BomRef.9183520309418121.33917737668481285",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://huggingface.co/garage-bAInd/Open-Platypus"
+        }
+      ],
+      "name": "garage-bAInd/Open-Platypus",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:huggingface/garage-bAInd/Open-Platypus@37141edbdb7826378cce118c46a109b813e1f038",
+      "type": "library",
+      "version": "37141edbdb7826378cce118c46a109b813e1f038"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "BomRef.7027505871778599.23982975891265434"
+    },
+    {
+      "ref": "BomRef.9183520309418121.33917737668481285"
+    },
+    {
+      "dependsOn": [
+        "BomRef.7027505871778599.23982975891265434",
+        "BomRef.9183520309418121.33917737668481285"
+      ],
+      "ref": "BomRef.0032051301836143464.7188988345148393"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "BomRef.0032051301836143464.7188988345148393",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3594bba73bcbde635e6e4ece56cdeec93319ba7df0e083539e513e6061872ff8"
+        }
+      ],
+      "name": "llm-compressor-demo_amd64",
+      "purl": "pkg:oci/llm-compressor-demo@sha256:3594bba73bcbde635e6e4ece56cdeec93319ba7df0e083539e513e6061872ff8?arch=amd64&repository_url=quay.io/redhat-user-workloads/konflux-ai-sig-tenant/llm-compressor-demo",
+      "type": "container",
+      "version": "pr-54ca36160109eb5d77befa1cd800963d927875e9"
+    },
+    "timestamp": "2025-12-18T22:05:30.805905+00:00",
+    "tools": [
+      {
+        "name": "cachi2",
+        "vendor": "red hat"
+      },
+      {
+        "name": "Mobster",
+        "version": "1.0.0"
+      },
+      {
+        "name": "OWASP AIBOM Generator",
+        "version": "1.0.0"
+      }
+    ]
+  },
+  "serialNumber": "urn:uuid:7169865b-e21b-4d53-b976-0e9798960826",
+  "version": 1,
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6"
+}
