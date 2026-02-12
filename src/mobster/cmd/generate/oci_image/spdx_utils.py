@@ -521,7 +521,7 @@ class KonfluxAnnotationManager:
             Annotation object marking the package as a base image
         """
         comment = {
-            "name": AnnotationBaseImage,
+            "name": AnnotationBaseImage.name,
             "value": "true",
         }
 
