@@ -110,6 +110,30 @@ async def test_get_base_images_refs_from_dockerfile(
 
 
 @pytest.mark.asyncio
+async def test_get_base_images_refs_from_dockerfile_oci_archive() -> None:
+    """FROM oci-archive: should be treated like FROM scratch (appends None)."""
+    parsed_dockerfile = {
+        "Stages": [
+            {
+                "BaseName": "quay.io/example/builder:latest",
+                "As": "builder",
+                "From": {"Image": "quay.io/example/builder:latest"},
+                "Commands": [],
+            },
+            {
+                "BaseName": "oci-archive:out.ociarchive",
+                "From": {"Image": "oci-archive:out.ociarchive"},
+                "Commands": [],
+            },
+        ]
+    }
+    assert await get_base_images_refs_from_dockerfile(parsed_dockerfile) == [
+        "quay.io/example/builder:latest",
+        None,
+    ]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ["file_content", "expected_dict"],
     [
