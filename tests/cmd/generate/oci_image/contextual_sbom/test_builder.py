@@ -1,4 +1,5 @@
 import pytest
+from spdx_tools.spdx.model.relationship import RelationshipType
 
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderPkgMetadata,
@@ -6,6 +7,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     Origin,
     OriginType,
     generate_origins,
+    resolve_origins,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import DocumentIndexOCI
 from tests.spdx_builder import SPDXPackageBuilder, SPDXSBOMBuilder
@@ -46,6 +48,7 @@ def sbom_index_two_images() -> DocumentIndexOCI:
         .version(oras_version)
         .purl(f"pkg:oci/{oras_name}@{oras_version}?repository_url={oras_repo}")
         .spdx_id("SPDXRef-image-oras-1234")
+        .is_builder_image_for_stage_annotation(0)
         .build()
     )
 
@@ -55,6 +58,7 @@ def sbom_index_two_images() -> DocumentIndexOCI:
         .version(syft_version)
         .purl(f"pkg:oci/{syft_name}@{syft_version}?repository_url={syft_repo}")
         .spdx_id("SPDXRef-image-syft-1234")
+        .is_builder_image_for_stage_annotation(1)
         .build()
     )
 
@@ -121,8 +125,9 @@ def sbom_index_two_images() -> DocumentIndexOCI:
     return index
 
 
-def test_generate_origins(sbom_index_two_images: DocumentIndexOCI) -> None:
-    metadata = BuilderPkgMetadata(
+@pytest.fixture
+def metadata_two_images() -> BuilderPkgMetadata:
+    return BuilderPkgMetadata(
         packages=[
             BuilderPkgMetadataItem(
                 purl="pkg:golang/dario.cat/mergo@v1.0.1",
@@ -154,6 +159,10 @@ def test_generate_origins(sbom_index_two_images: DocumentIndexOCI) -> None:
         ]
     )
 
+
+def test_generate_origins(
+    sbom_index_two_images: DocumentIndexOCI, metadata_two_images: BuilderPkgMetadata
+) -> None:
     expected_origins = [
         (
             "SPDXRef-Package-mergo-from-oras",
@@ -188,7 +197,9 @@ def test_generate_origins(sbom_index_two_images: DocumentIndexOCI) -> None:
         ),
     ]
 
-    assert generate_origins(sbom_index_two_images, metadata) == expected_origins
+    assert (
+        generate_origins(sbom_index_two_images, metadata_two_images) == expected_origins
+    )
 
 
 def test_generate_origins_without_metadata(
@@ -221,6 +232,68 @@ def test_generate_origins_metadata_missing_package(
     assert generate_origins(sbom_index_two_images, metadata) == []
 
 
-# TODO: test dependency_of_purl resolution when the chain is deeper and there
-# is some black magic fuckery
-# Think of problems
+def test_resolve_origins(sbom_index_two_images: DocumentIndexOCI) -> None:
+    origins = [
+        (
+            "SPDXRef-Package-mergo-from-oras",
+            Origin(
+                pullspec="quay.io/konflux-ci/oras@sha256:aaaa", type=OriginType.BUILDER
+            ),
+        ),
+        (
+            "SPDXRef-Package-stdlib-from-oras",
+            Origin(
+                pullspec="quay.io/konflux-ci/oras@sha256:aaaa",
+                type=OriginType.INTERMEDIATE,
+            ),
+        ),
+        (
+            "SPDXRef-Package-syft-from-syft",
+            Origin(
+                pullspec="quay.io/konflux-ci/syft@sha256:bbbb", type=OriginType.BUILDER
+            ),
+        ),
+        (
+            "SPDXRef-Package-math-from-syft",
+            Origin(
+                pullspec="quay.io/konflux-ci/syft@sha256:bbbb", type=OriginType.BUILDER
+            ),
+        ),
+        (
+            "SPDXRef-Package-math-from-oras",
+            Origin(
+                pullspec="quay.io/konflux-ci/oras@sha256:aaaa", type=OriginType.BUILDER
+            ),
+        ),
+    ]
+
+    # mapping of image package spdx ids to the package spdx ids that it has a
+    # CONTAINS relationship with
+    expected_package_attribution = {
+        "SPDXRef-image-oras-1234-intermediate": {
+            "SPDXRef-Package-stdlib-from-oras",
+        },
+        "SPDXRef-image-oras-1234": {
+            "SPDXRef-Package-mergo-from-oras",
+            "SPDXRef-Package-math-from-oras",
+        },
+        "SPDXRef-image-syft-1234": {
+            "SPDXRef-Package-math-from-syft",
+            "SPDXRef-Package-syft-from-syft",
+        },
+    }
+
+    resolved = resolve_origins(sbom_index_two_images, origins)
+
+    for (
+        image_spdx_id,
+        expected_contains_spdx_ids,
+    ) in expected_package_attribution.items():
+        image_pkg = resolved.package_by_spdx_id(image_spdx_id)
+
+        contains_spdx_ids: set[str] = {
+            rel.related_spdx_element_id  # type: ignore
+            for rel in image_pkg.filter_parent_relationships(RelationshipType.CONTAINS)
+        }
+
+        assert expected_contains_spdx_ids.issubset(contains_spdx_ids)

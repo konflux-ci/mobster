@@ -399,28 +399,41 @@ class AnnotationParseError(Exception):
     """An error occurred during parsing of a Konflux annotation."""
 
 
-@dataclass
-class IntermediateImageAnnotation:
+class AnnotationIntermediateImage:
     """
-    Parser Konflux intermediate image annotation.
+    Parsed Konflux intermediate image annotation.
 
     Attributes:
         stage_index: index of the stage the intermediate image is created in
     """
 
-    stage_index: int
+    name = "konflux:container:is_intermediate_image:for_stage"
+
+    def __init__(self, stage_index: int) -> None:
+        self.stage_index = stage_index
 
 
-@dataclass
-class BuilderImageAnnotation:
+class AnnotationBuilderImage:
     """
-    Parser Konflux builder image annotation.
+    Parsed Konflux builder image annotation.
 
     Attributes:
         stage_index: index of the stage the builder image is a base for
     """
 
-    stage_index: int
+    name = "konflux:container:is_builder_image:for_stage"
+
+    def __init__(self, stage_index: int) -> None:
+        self.stage_index = stage_index
+
+
+class AnnotationBaseImage:
+    """
+    Parsed Konflux base image annotation. Empty, because its presence already
+    signals a base image.
+    """
+
+    name = "konflux:container:is_base_image"
 
 
 class KonfluxAnnotationManager:
@@ -428,6 +441,16 @@ class KonfluxAnnotationManager:
     Group of convenience methods for creating and parsing Konflux annotations
     in SPDX SBOMs.
     """
+
+    @staticmethod
+    def _make_annotation(spdx_id: str, comment: dict[Any, Any]) -> Annotation:
+        return Annotation(
+            spdx_id=spdx_id,
+            annotator=KONFLUX_JSON_ACTOR,
+            annotation_type=AnnotationType.OTHER,
+            annotation_date=datetime.now(),
+            annotation_comment=json.dumps(comment),
+        )
 
     @staticmethod
     def intermediate_image(spdx_id: str, stage_index: int) -> Annotation:
@@ -442,17 +465,10 @@ class KonfluxAnnotationManager:
             Annotation object marking the package as an intermediate image
         """
         comment = {
-            "name": "konflux:container:is_intermediate_image:for_stage",
+            "name": AnnotationIntermediateImage.name,
             "value": str(stage_index),
         }
-
-        return Annotation(
-            spdx_id=spdx_id,
-            annotator=KONFLUX_JSON_ACTOR,
-            annotation_type=AnnotationType.OTHER,
-            annotation_date=datetime.now(),
-            annotation_comment=json.dumps(comment),
-        )
+        return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
 
     @staticmethod
     def builder_image(spdx_id: str, stage_index: int) -> Annotation:
@@ -467,22 +483,39 @@ class KonfluxAnnotationManager:
             Annotation object marking the package as a builder image
         """
         comment = {
-            "name": "konflux:container:is_builder_image:for_stage",
+            "name": AnnotationBuilderImage.name,
             "value": str(stage_index),
         }
 
-        return Annotation(
-            spdx_id=spdx_id,
-            annotator=KONFLUX_JSON_ACTOR,
-            annotation_type=AnnotationType.OTHER,
-            annotation_date=datetime.now(),
-            annotation_comment=json.dumps(comment),
-        )
+        return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
+
+    @staticmethod
+    def base_image(spdx_id: str) -> Annotation:
+        """
+        Create an SPDX Annotation object for a base image package.
+
+        Args:
+            spdx_id: SPDX ID of the package to annotate
+
+        Returns:
+            Annotation object marking the package as a base image
+        """
+        comment = {
+            "name": AnnotationBaseImage,
+            "value": "true",
+        }
+
+        return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
 
     @staticmethod
     def parse(
         ann: Annotation,
-    ) -> IntermediateImageAnnotation | BuilderImageAnnotation | None:
+    ) -> (
+        None
+        | AnnotationIntermediateImage
+        | AnnotationBuilderImage
+        | AnnotationBaseImage
+    ):
         """
         Parse an SPDX annotation document and return the internal
         representation or return None if it's not a Konflux annotation.
@@ -498,13 +531,16 @@ class KonfluxAnnotationManager:
 
         decoded = json.loads(ann.annotation_comment)
         try:
-            if decoded["name"] == "konflux:container:is_intermediate_image:for_stage":
+            if decoded["name"] == AnnotationIntermediateImage.name:
                 stage_index = int(decoded["value"])
-                return IntermediateImageAnnotation(stage_index)
+                return AnnotationIntermediateImage(stage_index)
 
-            if decoded["name"] == "konflux:container:is_builder_image:for_stage":
+            if decoded["name"] == AnnotationBuilderImage.name:
                 stage_index = int(decoded["value"])
-                return BuilderImageAnnotation(stage_index)
+                return AnnotationBuilderImage(stage_index)
+
+            if decoded["name"] == AnnotationBaseImage.name:
+                return AnnotationBaseImage()
 
         except (KeyError, ValueError) as exc:
             raise AnnotationParseError(
@@ -544,18 +580,18 @@ class PackageContext:
         return None
 
     @property
-    def builder_image_annotation(self) -> BuilderImageAnnotation | None:
+    def builder_image_annotation(self) -> AnnotationBuilderImage | None:
         """
         Get the builder image annotation for this package if present.
         """
-        return self._annotation(BuilderImageAnnotation)
+        return self._annotation(AnnotationBuilderImage)
 
     @property
-    def intermediate_image_annotation(self) -> IntermediateImageAnnotation | None:
+    def intermediate_image_annotation(self) -> AnnotationIntermediateImage | None:
         """
         Get the intermediate image annotation for this package if present.
         """
-        return self._annotation(IntermediateImageAnnotation)
+        return self._annotation(AnnotationIntermediateImage)
 
     def filter_parent_relationships(
         self, rel_type: RelationshipType

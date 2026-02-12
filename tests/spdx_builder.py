@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from spdx_tools.spdx.model.actor import Actor, ActorType
-from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
+from spdx_tools.spdx.model.annotation import Annotation
 from spdx_tools.spdx.model.checksum import Checksum, ChecksumAlgorithm
 from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import (
@@ -15,6 +15,8 @@ from spdx_tools.spdx.model.package import (
 )
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
+
+from mobster.cmd.generate.oci_image.spdx_utils import KonfluxAnnotationManager
 
 
 @dataclass
@@ -70,32 +72,13 @@ class SPDXPackageBuilder:
         )
         return self
 
-    def _konflux_annotation(self, comment: str) -> "SPDXPackageBuilder":
-        # spdx_id will be populated during the build() step when the package
-        # spdx_id is finalized
-        self._annotations.append(
-            Annotation(
-                spdx_id="",
-                annotation_type=AnnotationType.OTHER,
-                annotation_date=datetime(2025, 1, 1),
-                annotation_comment=comment,
-                annotator=Actor(
-                    actor_type=ActorType.TOOL,
-                    name="konflux:jsonencoded",
-                ),
-            )
-        )
+    def is_base_image_annotation(self) -> "SPDXPackageBuilder":
+        self._annotations.append(KonfluxAnnotationManager.base_image(""))
         return self
 
-    def is_base_image_annotation(self) -> "SPDXPackageBuilder":
-        return self._konflux_annotation(
-            '{"name":"konflux:container:is_base_image","value":"true"}'
-        )
-
     def is_builder_image_for_stage_annotation(self, stage: int) -> "SPDXPackageBuilder":
-        return self._konflux_annotation(
-            f'{{"name":"konflux:container:is_builder_image:for_stage","value":"{stage}"}}'
-        )
+        self._annotations.append(KonfluxAnnotationManager.builder_image("", stage))
+        return self
 
     def purl(self, purl: str) -> "SPDXPackageBuilder":
         self._external_references.append(
