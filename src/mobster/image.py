@@ -32,6 +32,8 @@ PULLSPEC_PATTERN = re.compile(
     f"^{_REPOSITORY_REGEX_STR}{_TAG_REGEX_STR}$", re.VERBOSE | re.MULTILINE
 )
 
+IMAGE_PKG_SPDX_PREFIX = "SPDXRef-image"
+
 
 def parse_image_reference(reference: str) -> tuple[str, str]:
     """
@@ -276,7 +278,7 @@ class Image:  # pylint: disable=too-many-instance-attributes
             str: A proposed SPDX ID for the image.
         """
         purl_hex_digest = hashlib.sha256(self.purl_str().encode()).hexdigest()
-        return f"SPDXRef-image-{self.normalized_name}-{purl_hex_digest}"
+        return f"{IMAGE_PKG_SPDX_PREFIX}-{self.normalized_name}-{purl_hex_digest}"
 
     def propose_cyclonedx_bom_ref(self) -> str:
         """
