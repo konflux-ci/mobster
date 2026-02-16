@@ -23,7 +23,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 )
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
-from mobster.oci.cosign import CosignClient, CosignConfig
+from mobster.oci.get_cosign import get_unauthenticated_cosign
 
 LOGGER = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ async def download_parent_image_sbom(
             arch,
         )
 
-    cosign_client = CosignClient(CosignConfig())
+    cosign_client = get_unauthenticated_cosign()
     try:
         sbom = await cosign_client.fetch_sbom(actual_parent_image)
     except SBOMError:

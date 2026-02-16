@@ -3,14 +3,15 @@ import datetime
 import hashlib
 import json
 import tempfile
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from pathlib import Path
 from typing import Any, Literal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from _pytest.logging import LogCaptureFixture
 from dateutil.parser import isoparse
+from pytest import MonkeyPatch
 
 from mobster.error import SBOMError
 from mobster.image import Image
@@ -21,6 +22,8 @@ from mobster.oci import (
 )
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
 from mobster.oci.cosign import CosignClient, CosignConfig, RekorConfig
+from mobster.oci.get_cosign import get_cosign, get_unauthenticated_cosign, use_keyless
+from mobster.oci.keyless_cosign import KeylessConfig, KeylessCosign
 from tests.cmd.test_augment import load_provenance
 
 
@@ -780,3 +783,114 @@ class TestCosignClient:
     )
     def test_can_sign(self, cosign_client: CosignClient, can_sign: bool) -> None:
         assert cosign_client.can_sign() is can_sign
+
+
+class TestKeylessCosign:
+    @pytest.fixture
+    def keyless_config(self) -> Generator[KeylessConfig, None, None]:
+        yield KeylessConfig(
+            rekor_url="foo",
+            fulcio_url="bar",
+            token_file=Path("/spam"),
+            issuer_pattern=".*",
+            identity_pattern=".*",
+        )
+
+    @pytest.fixture
+    def fake_keyless_cosign(
+        self, keyless_config: KeylessConfig
+    ) -> Generator[KeylessCosign, None, None]:
+        with patch.object(KeylessCosign, "_check_tuf", return_value=True):
+            cosign = KeylessCosign(keyless_config)
+            yield cosign
+
+    @pytest.mark.asyncio
+    async def test_attest_sbom(self, fake_keyless_cosign: KeylessCosign) -> None:
+        with patch(
+            "mobster.oci.keyless_cosign.run_async_subprocess",
+            return_value=(0, b"", b""),
+        ) as mocked_run:
+            await fake_keyless_cosign.attest_sbom(
+                Path("/sbom.json"), "quay.io/foo/bar@sha256:a", SBOMFormat.SPDX_2_3
+            )
+            mocked_run.assert_awaited_once_with(
+                [
+                    "cosign",
+                    "attest",
+                    "--yes",
+                    "--type",
+                    "spdxjson",
+                    "--rekor-url",
+                    "foo",
+                    "--fulcio-url",
+                    "bar",
+                    "--identity-token",
+                    "/spam",
+                    "--predicate",
+                    "/sbom.json",
+                    "quay.io/foo/bar@sha256:a",
+                ],
+                env={"DOCKER_CONFIG": ANY},
+                retry_times=3,
+            )
+
+    @pytest.mark.asyncio
+    async def test_attest_sbom_fail(self, fake_keyless_cosign: KeylessCosign) -> None:
+        with patch(
+            "mobster.oci.keyless_cosign.run_async_subprocess",
+            return_value=(1, b"", b"Or nor!"),
+        ):
+            with pytest.raises(SBOMError):
+                await fake_keyless_cosign.attest_sbom(
+                    Path("a"), "b", SBOMFormat.CDX_V1_6
+                )
+
+    @patch("mobster.oci.keyless_cosign.Path")
+    def test_can_sign_checks_for_tuf(self, mock_path: MagicMock) -> None:
+        keyless_cosign = KeylessCosign(KeylessConfig())
+        mock_path.return_value.exists.return_value = True
+        keyless_cosign.can_sign()
+        called_with = mock_path.call_args.args[0]
+        assert called_with.startswith("/home/")
+        assert called_with.endswith("/.sigstore/root/")
+        mock_path.return_value.exists.assert_called_once()
+
+    def test__check_tuf(self, keyless_config: KeylessConfig) -> None:
+        with patch("mobster.oci.keyless_cosign.Path") as mock_path:
+            keyless_cosign = KeylessCosign(keyless_config)
+            for state in (True, False):
+                mock_path.return_value.exists.return_value = state
+                assert keyless_cosign._check_tuf() is state
+
+
+class TestGetCosign:
+    @pytest.mark.parametrize(
+        ["config", "expected_type"],
+        [(CosignConfig(), CosignClient), (KeylessConfig(), KeylessCosign)],
+    )
+    def test_cosign(
+        self, config: KeylessConfig | CosignConfig, expected_type: type
+    ) -> None:
+        assert isinstance(get_cosign(config), expected_type)
+
+    @pytest.mark.parametrize(
+        ["env_value", "expected"], [("foo", False), ("KEYLESS", True)]
+    )
+    def test_use_keyless(
+        self, env_value: str, expected: bool, monkeypatch: MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("COSIGN_METHOD", env_value)
+        assert use_keyless() is expected
+
+    @pytest.mark.parametrize(
+        ["env_value", "expected_type"],
+        [("STATIC", CosignClient), ("KEYLESS", KeylessCosign)],
+    )
+    def test_get_unauthenticated(
+        self,
+        env_value: str,
+        expected_type: type[CosignClient | KeylessCosign],
+        monkeypatch: MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("COSIGN_METHOD", env_value)
+        assert isinstance(get_unauthenticated_cosign(), expected_type)

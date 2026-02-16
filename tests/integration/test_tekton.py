@@ -25,7 +25,7 @@ from mobster.cmd.upload.upload import (
 )
 from mobster.image import Image
 from mobster.oci.artifact import Provenance02, SBOMFormat
-from mobster.oci.cosign import Cosign, CosignClient, CosignConfig
+from mobster.oci.cosign import CosignClient, CosignConfig
 from mobster.release import ReleaseId
 from mobster.tekton.artifact import (
     COMPONENT_ARTIFACT_NAME,
@@ -84,7 +84,7 @@ async def verify_sboms_in_tpa(
 
 
 async def add_provenance_to_sbom(
-    cosign_client: Cosign, sbom_ref: str, image: Image
+    cosign_client: CosignClient, sbom_ref: str, image: Image
 ) -> None:
     """
     Push a signed Provenance to an image registry to be able to verify SBOM integrity.

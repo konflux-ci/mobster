@@ -5,14 +5,18 @@ Script used for processing component SBOMs in Tekton task.
 import argparse as ap
 import asyncio
 import logging
+import os
 import tempfile
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 from mobster.cmd.augment import AugmentConfig, SBOMRefDetail, augment_sboms
 from mobster.error import SBOMError
 from mobster.log import setup_logging
-from mobster.oci.cosign import Cosign, CosignClient, CosignConfig, RekorConfig
+from mobster.oci.cosign import Cosign, CosignConfig, RekorConfig
+from mobster.oci.get_cosign import get_cosign
+from mobster.oci.keyless_cosign import KeylessConfig
 from mobster.release import ReleaseId, make_snapshot
 from mobster.tekton.artifact import (
     get_component_artifact,
@@ -41,31 +45,25 @@ class ProcessComponentArgs(CommonArgs):
 
     augment_concurrency: int
     attestation_concurrency: int
-    cosign_config: CosignConfig
-    rekor_config: RekorConfig | None = None
+    cosign_config: CosignConfig | KeylessConfig
 
 
-def parse_args() -> ProcessComponentArgs:
-    """
-    Parse command line arguments for component SBOM processing.
-
-    Returns:
-        ProcessComponentArgs: Parsed arguments.
-    """
-    parser = ap.ArgumentParser()
-    add_common_args(parser)
+def _add_common_component_args(parser: ap.ArgumentParser) -> None:
     parser.add_argument("--augment-concurrency", type=int, default=8)
     parser.add_argument("--upload-concurrency", type=int, default=8)
     parser.add_argument("--attest-concurrency", type=int, default=4)
+    parser.add_argument(
+        "--rekor-url", type=str, help="The URL of the Rekor server", default=None
+    )
+
+
+def _add_static_key_cosign_args(parser: ap.ArgumentParser) -> None:
     parser.add_argument(
         "--rekor-key",
         type=Path,
         help="The public key file of the rekor server used for SBOM "
         "attestation within a registry",
         default=None,
-    )
-    parser.add_argument(
-        "--rekor-url", type=str, help="The URL of the Rekor server", default=None
     )
     parser.add_argument(
         "--sign-key",
@@ -87,15 +85,63 @@ def parse_args() -> ProcessComponentArgs:
         default="",
         help="The password protecting the signing key.",
     )
-    args = parser.parse_args()
-    cosign_config = CosignConfig(
-        sign_key=args.sign_key,
-        verify_key=args.verify_key,
-        sign_password=args.sign_password.encode("utf-8"),
+
+
+def _add_keyless_cosign_args(parser: ap.ArgumentParser) -> None:
+    parser.add_argument("--fulcio-url", type=str, help="URL of the Fulcio server")
+    parser.add_argument(
+        "--oidc-token",
+        type=Path,
+        help="OIDC token for signing written in a file",
     )
-    rekor_config = None
-    if (rekor_key := args.rekor_key) and (rekor_url := args.rekor_url):
-        rekor_config = RekorConfig(rekor_key=rekor_key, rekor_url=rekor_url)
+    parser.add_argument(
+        "--oidc-issuer-pattern",
+        type=str,
+        help="OIDC issuer pattern for attestation verification",
+    )
+    parser.add_argument(
+        "--oidc-identity-pattern",
+        type=str,
+        help="OIDC identity pattern for attestation verification",
+    )
+
+
+def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
+    """
+    Parse command line arguments for component SBOM processing.
+
+    Returns:
+        ProcessComponentArgs: Parsed arguments.
+    """
+    parser = ap.ArgumentParser()
+    add_common_args(parser)
+    _add_common_component_args(parser)
+    use_keyless = os.getenv("COSIGN_METHOD", "STATIC") == "KEYLESS"
+    if use_keyless:
+        _add_keyless_cosign_args(parser)
+    else:
+        _add_static_key_cosign_args(parser)
+
+    args = parser.parse_args(args=cli_args)
+    cosign_config: CosignConfig | KeylessConfig
+    if use_keyless:
+        cosign_config = KeylessConfig(
+            fulcio_url=args.fulcio_url,
+            token_file=args.oidc_token,
+            issuer_pattern=args.oidc_identity_pattern,
+            identity_pattern=args.oidc_identity_pattern,
+            rekor_url=args.rekor_url,
+        )
+    else:
+        rekor_config = None
+        if (rekor_key := args.rekor_key) and (rekor_url := args.rekor_url):
+            rekor_config = RekorConfig(rekor_key=rekor_key, rekor_url=rekor_url)
+        cosign_config = CosignConfig(
+            sign_key=args.sign_key,
+            verify_key=args.verify_key,
+            sign_password=args.sign_password.encode("utf-8"),
+            rekor_config=rekor_config,
+        )
 
     # the snapshot_spec is joined with the data_dir as previous tasks provide
     # the path as relative to the dataDir
@@ -112,7 +158,6 @@ def parse_args() -> ProcessComponentArgs:
         labels=args.labels,
         atlas_retries=args.atlas_retries,
         cosign_config=cosign_config,
-        rekor_config=rekor_config,
         skip_upload=args.skip_upload,
         skip_s3_upload=False,
     )
@@ -153,6 +198,9 @@ async def augment_component_sboms(
     LOGGER.debug("Successfully augmented SBoms for ReleaseId: %s", str(release_id))
 
     if not cosign_client.can_sign():
+        LOGGER.warning(
+            "Missing attesting configuration, SBOMs will not be attested to registry!"
+        )
         return
 
     semaphore = asyncio.Semaphore(attest_concurrency)
@@ -190,10 +238,7 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
             args.release_id,
         )
 
-    cosign_client = CosignClient(
-        cosign_config=args.cosign_config,
-        rekor_config=args.rekor_config,
-    )
+    cosign_client = get_cosign(args.cosign_config)
     LOGGER.info("Starting SBOM augmentation")
 
     with tempfile.TemporaryDirectory() as sbom_dir:

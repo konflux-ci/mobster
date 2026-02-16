@@ -41,6 +41,26 @@ class CosignConfig:
     sign_key: os.PathLike[str] | None = None
     verify_key: os.PathLike[str] | None = None
     sign_password: bytes = b""
+    rekor_config: RekorConfig | None = None
+
+
+def get_cosign_attestation_type(
+    sbom_format: SBOMFormat,
+) -> Literal["spdxjson", "cyclonedx"]:
+    """
+    Get the cosign-compatible string determining the SBOM type.
+    Translates SBOMFormat to a literal string.
+    Args:
+        sbom_format: The SBOM format to be converted into a string
+
+    Returns:
+        The string literal which is compatible with cosign cli.
+    """
+    # Translate SPDX format to a cosign-supported version. See
+    # https://github.com/sigstore/cosign/blob/main/doc/cosign_attest.md#options
+    if sbom_format.is_spdx2():
+        return "spdxjson"
+    return "cyclonedx"
 
 
 class Cosign(typing.Protocol):  # pragma: nocover
@@ -57,18 +77,6 @@ class Cosign(typing.Protocol):  # pragma: nocover
     async def fetch_sbom(self, image: Image) -> SBOM:
         """
         Fetch the attached SBOM for an image.
-        """
-        raise NotImplementedError()
-
-    async def attest_provenance(self, provenance: Provenance02, image_ref: str) -> None:
-        """
-        Attest Provenance (version 2) to an image.
-        Args:
-            provenance: The provenance to add
-            image_ref: The image to which the provenance will be attested
-
-        Returns:
-            None
         """
         raise NotImplementedError()
 
@@ -114,7 +122,6 @@ class CosignClient(Cosign):
     def __init__(
         self,
         cosign_config: CosignConfig,
-        rekor_config: RekorConfig | None = None,
     ) -> None:
         """
         Args:
@@ -123,7 +130,7 @@ class CosignClient(Cosign):
         self.verification_key = cosign_config.verify_key
         self.signing_key = cosign_config.sign_key
         self.password = cosign_config.sign_password
-        self.rekor_config = rekor_config
+        self.rekor_config = cosign_config.rekor_config
         # Some cosign operations are extremely heavy, requiring a mutex mechanism
         # to not get OOM killed within the pipeline
 
@@ -191,7 +198,7 @@ class CosignClient(Cosign):
         Returns:
             The initialized SBOM object
         """
-        attestation_type = self.__get_cosign_attestation_type(sbom_format)
+        attestation_type = get_cosign_attestation_type(sbom_format)
         attestations = await self._verify_attestation(image, attestation_type)
         if attestations:
             last_attestation = attestations[-1]
@@ -222,25 +229,6 @@ class CosignClient(Cosign):
             raise SBOMError(f"Failed to fetch SBOM {image}: {stderr.decode()}")
 
         return SBOM.from_cosign_output(stdout, image.reference)
-
-    @staticmethod
-    def __get_cosign_attestation_type(
-        sbom_format: SBOMFormat,
-    ) -> Literal["spdxjson", "cyclonedx"]:
-        """
-        Get the cosign-compatible string determining the SBOM type.
-        Translates SBOMFormat to a literal string.
-        Args:
-            sbom_format: The SBOM format to be converted into a string
-
-        Returns:
-            The string literal which is compatible with cosign cli.
-        """
-        # Translate SPDX format to a cosign-supported version. See
-        # https://github.com/sigstore/cosign/blob/main/doc/cosign_attest.md#options
-        if sbom_format.is_spdx2():
-            return "spdxjson"
-        return "cyclonedx"
 
     async def _attest_anything(
         self,
@@ -321,6 +309,12 @@ class CosignClient(Cosign):
     async def attest_provenance(
         self, provenance: Provenance02, image_ref: str
     ) -> None:  # pragma: nocover
+        """
+        Attach a SLSA Provenance v2 to an image. For test purposes only.
+        Args:
+            provenance: Provenance object to attach
+            image_ref: reference of image to attach to
+        """
         # Used in integration tests only, unit-testing won't add any benefit
         # as this is just a wrapper for another function which is covered by
         # testing self.attest_sbom
@@ -340,7 +334,7 @@ class CosignClient(Cosign):
         await self._attest_anything(
             sbom_path,
             image_ref,
-            self.__get_cosign_attestation_type(sbom_format),
+            get_cosign_attestation_type(sbom_format),
         )
 
     async def clean(

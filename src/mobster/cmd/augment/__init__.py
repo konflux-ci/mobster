@@ -184,6 +184,8 @@ async def load_sbom(image: Image, cosign: Cosign, verify: bool) -> tuple[SBOM, b
         SBOM and True if its attestation was validated successfully,
         SBOM and False otherwise
     """
+    # TODO ISV-6681: pylint: disable=fixme
+    #  update this function to also work with Keyless cosign
     sbom = await cosign.fetch_sbom(image)
     attestation_valid = True
     if verify:
