@@ -401,6 +401,27 @@ def generate_augment_oci_image_parser(subparsers: Any) -> None:
         help="UUID4 release_id to associate with the SBOM file",
     )
 
+    def validate_cpes(value: str) -> list[str]:
+        pattern = r"^\s*[^,\s]+(\s*,\s*[^,\s]+)*\s*$"
+        cpes = value.split(",")
+
+        if len(cpes) == 0 or not re.match(pattern, value):
+            raise argparse.ArgumentError(
+                None,
+                "--cpes parameter should be a comma separated string of CPEs, "
+                "like A,B,C or just A",
+            )
+
+        return cpes
+
+    augment_oci_image_parser.add_argument(
+        "--cpes",
+        type=validate_cpes,
+        help="comma separated string of CPEs to add to the main image package "
+        "in the SBOM",
+        default=[],
+    )
+
     augment_oci_image_parser.set_defaults(func=augment.AugmentImageCommand)
 
 

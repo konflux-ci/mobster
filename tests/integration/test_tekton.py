@@ -409,6 +409,7 @@ async def test_process_component_sboms_happypath(
     result_dir.mkdir()
     snapshot_path = Path("snapshot.json")
     release_id = ReleaseId.new()
+    release_data_path = Path("data.json")
 
     repo_name = str(uuid.uuid4()).replace("-", "")[:10]
 
@@ -452,6 +453,20 @@ async def test_process_component_sboms_happypath(
     with open(data_dir / snapshot_path, "w") as fp:
         json.dump(snapshot, fp)
 
+    release_data = {
+        "releaseNotes": {
+            "product_name": "Product",
+            "product_version": "1.0",
+            "cpe": [
+                "cpe:/a:acme:product:1.0:update1",
+                "cpe:/a:acme:product:1.0:update2",
+            ],
+        }
+    }
+
+    with open(data_dir / release_data_path, "w") as fp:
+        json.dump(release_data, fp)
+
     assert not await s3_client.snapshot_exists(release_id)
 
     subprocess.run(
@@ -469,6 +484,8 @@ async def test_process_component_sboms_happypath(
             s3_sbom_bucket,
             "--release-id",
             str(release_id),
+            "--release-data",
+            data_dir / release_data_path,
             "--augment-concurrency",
             str(augment_concurrency),
             "--upload-concurrency",
@@ -544,6 +561,7 @@ async def test_process_component_sboms_big_release(
     data_dir = tmp_path
     snapshot_path = Path("snapshot.json")
     release_id = ReleaseId.new()
+    release_data_path = Path("data.json")
     result_dir = tmp_path / "results"
     result_dir.mkdir()
 
@@ -596,6 +614,20 @@ async def test_process_component_sboms_big_release(
     with open(data_dir / snapshot_path, "w") as fp:
         json.dump(snapshot, fp)
 
+    release_data = {
+        "releaseNotes": {
+            "product_name": "Product",
+            "product_version": "1.0",
+            "cpe": [
+                "cpe:/a:acme:product:1.0:update1",
+                "cpe:/a:acme:product:1.0:update2",
+            ],
+        }
+    }
+
+    with open(data_dir / release_data_path, "w") as fp:
+        json.dump(release_data, fp)
+
     assert not await s3_client.snapshot_exists(release_id)
 
     subprocess.run(
@@ -613,6 +645,8 @@ async def test_process_component_sboms_big_release(
             s3_sbom_bucket,
             "--release-id",
             str(release_id),
+            "--release-data",
+            data_dir / release_data_path,
             "--augment-concurrency",
             str(augment_concurrency),
             "--upload-concurrency",

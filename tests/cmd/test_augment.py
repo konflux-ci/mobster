@@ -3,7 +3,7 @@ import json
 import os
 from base64 import b64encode
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -40,6 +40,7 @@ class AugmentArgs:
     reference: str | None
     concurrency: int = 1
     release_id: str | None = None
+    cpes: list[str] = field(default_factory=list)
 
 
 MakeAugmentCommand = Callable[[AugmentArgs, Snapshot | None], AugmentImageCommand]
@@ -154,6 +155,7 @@ class TestAugmentCommand:
         make_augment_command: MakeAugmentCommand,
         prepare_sbom: Callable[[str], SBOM],
         mock_write_sbom: AsyncMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         reference = "quay.io/org/tenant/test@sha256:aaaaaaaa"
         repo, digest = reference.split("@", 1)
@@ -164,6 +166,7 @@ class TestAugmentCommand:
             verification_key=Path("key"),
             reference=reference,
             release_id="release-id-1",
+            cpes=["cpe:/a:redhat:discovery:1.0::el9"],
         )
 
         snapshot = Snapshot(

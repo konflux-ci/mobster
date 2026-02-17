@@ -86,10 +86,12 @@ class SPDXPackage:
         return None
 
     def update_external_refs(
+        # pylint: disable=too-many-instance-attributes,too-many-positional-arguments,too-many-arguments,dangerous-default-value
         self,
         image: Image,
         repository: str,
         tags: list[str],
+        cpes: list[str],
         arch: str | None = None,
     ) -> None:
         """
@@ -103,6 +105,15 @@ class SPDXPackage:
             tags,
             arch=arch,
         )
+        cpe_refs = [
+            {
+                "referenceLocator": cpe,
+                "referenceType": "cpe22Type",
+                "referenceCategory": "SECURITY",
+            }
+            for cpe in cpes
+        ]
+        new_oci_refs.extend(cpe_refs)
 
         self._strip_oci_purls_external_refs()
         self.external_refs[:0] = new_oci_refs
@@ -219,7 +230,11 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
 
     @classmethod
     def _update_index_image_sbom(
-        cls, repository: ReleaseRepository, index: IndexImage, sbom: Any
+        cls,
+        repository: ReleaseRepository,
+        index: IndexImage,
+        sbom: Any,
+        cpes: list[str],
     ) -> None:
         """
         Update the SBOM of an index image in a repository.
@@ -234,6 +249,7 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
             index,
             repository.public_repo_url,
             repository.tags,
+            cpes=cpes,
         )
 
         for image in index.children:
@@ -258,11 +274,16 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
                 repository.public_repo_url,
                 repository.tags,
                 arch=arch,
+                cpes=[],
             )
 
     @classmethod
     def _update_image_sbom(
-        cls, repository: ReleaseRepository, image: Image, sbom: Any
+        cls,
+        repository: ReleaseRepository,
+        image: Image,
+        sbom: Any,
+        cpes: list[str],
     ) -> None:
         """
         Update the SBOM of single-arch image in a repository.
@@ -280,25 +301,29 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
             repository.public_repo_url,
             repository.tags,
             arch=image_package.arch,  # propagate the arch from the package
+            cpes=cpes,
         )
 
     def update_sbom(
+        # pylint: disable=too-many-instance-attributes,too-many-positional-arguments,too-many-arguments
         self,
         repository: ReleaseRepository,
         image: Image,
         sbom: Any,
+        cpes: list[str],
         release_id: ReleaseId | None = None,
     ) -> None:
         """
         Update a build-time SBOM with release-time data.
         """
         self._augment_creation_info(sbom["creationInfo"])
+
         if release_id:
             self._augment_annotations_release_id(sbom, release_id)
         if isinstance(image, IndexImage):
-            SPDXVersion2._update_index_image_sbom(repository, image, sbom)
+            SPDXVersion2._update_index_image_sbom(repository, image, sbom, cpes)
         elif isinstance(image, Image):
-            SPDXVersion2._update_image_sbom(repository, image, sbom)
+            SPDXVersion2._update_image_sbom(repository, image, sbom, cpes)
 
 
 class CycloneDXVersion1:  # pylint: disable=too-few-public-methods

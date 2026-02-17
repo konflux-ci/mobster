@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from mobster.cmd.augment import AugmentConfig, SBOMRefDetail, augment_sboms
+from mobster.cmd.generate.product import parse_release_notes
 from mobster.error import SBOMError
 from mobster.log import setup_logging
 from mobster.oci.cosign import Cosign, CosignClient, CosignConfig, RekorConfig
@@ -42,6 +43,7 @@ class ProcessComponentArgs(CommonArgs):
     augment_concurrency: int
     attestation_concurrency: int
     cosign_config: CosignConfig
+    release_data: Path
     rekor_config: RekorConfig | None = None
 
 
@@ -57,6 +59,12 @@ def parse_args() -> ProcessComponentArgs:
     parser.add_argument("--augment-concurrency", type=int, default=8)
     parser.add_argument("--upload-concurrency", type=int, default=8)
     parser.add_argument("--attest-concurrency", type=int, default=4)
+    parser.add_argument(
+        "--release-data",
+        type=Path,
+        help="path to the merged data file in JSON format",
+        required=True,
+    )
     parser.add_argument(
         "--rekor-key",
         type=Path,
@@ -106,6 +114,7 @@ def parse_args() -> ProcessComponentArgs:
         atlas_api_url=args.atlas_api_url,
         retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
+        release_data=args.release_data,
         augment_concurrency=args.augment_concurrency,
         upload_concurrency=args.upload_concurrency,
         attestation_concurrency=args.attest_concurrency,
@@ -118,6 +127,20 @@ def parse_args() -> ProcessComponentArgs:
     )
 
 
+def _get_cpes_from_release_data(release_data: Path) -> list[str]:
+    """
+    Get CPE information from release_data
+
+    Args:
+        release_data: Path to release data file
+    Returns:
+        list[str]: List of string CPEs contained in the release_data
+    """
+    release_notes = parse_release_notes(release_data)
+
+    return list(release_notes.cpe)
+
+
 async def augment_component_sboms(
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     sbom_path: Path,
@@ -126,6 +149,7 @@ async def augment_component_sboms(
     cosign_client: Cosign,
     augment_concurrency: int,
     attest_concurrency: int,
+    release_data: Path,
 ) -> None:
     """
     Augment component SBOMs using the mobster augment command.
@@ -137,6 +161,7 @@ async def augment_component_sboms(
         cosign_client: Cosign client
         augment_concurrency: Maximum number of concurrent augmentation operations.
         attest_concurrency: Maximum number of concurrent OCI attestation operations.
+        release_data: Path to release data file
     """
     semaphore = asyncio.Semaphore(augment_concurrency)
     snapshot = await make_snapshot(snapshot_spec, None, semaphore)
@@ -146,6 +171,7 @@ async def augment_component_sboms(
         semaphore=semaphore,
         output_dir=sbom_path,
         release_id=release_id,
+        cpes=_get_cpes_from_release_data(release_data),
     )
     result_details = await augment_sboms(config, snapshot)
     if not all(result_details):
@@ -204,6 +230,7 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
             cosign_client,
             args.augment_concurrency,
             args.attestation_concurrency,
+            args.release_data,
         )
 
         if args.skip_upload:
