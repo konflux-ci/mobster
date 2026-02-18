@@ -37,7 +37,7 @@ class KeylessCosign(Cosign):
         self.config = config
 
     @staticmethod
-    def _check_tuf() -> bool:
+    def check_tuf() -> bool:
         """
         Check if Cosign has been initialized with TUF context.
         Returns:
@@ -84,7 +84,7 @@ class KeylessCosign(Cosign):
 
     def can_sign(self) -> bool:
         return (
-            self._check_tuf()
+            self.check_tuf()
             and self.config.fulcio_url is not None
             and self.config.rekor_url is not None
             and self.config.token_file is not None

@@ -11,7 +11,6 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 import pytest
 from _pytest.logging import LogCaptureFixture
 from dateutil.parser import isoparse
-from pytest import MonkeyPatch
 
 from mobster.error import SBOMError
 from mobster.image import Image
@@ -22,7 +21,7 @@ from mobster.oci import (
 )
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
 from mobster.oci.cosign import CosignClient, CosignConfig, RekorConfig
-from mobster.oci.get_cosign import get_cosign, get_unauthenticated_cosign, use_keyless
+from mobster.oci.get_cosign import get_cosign
 from mobster.oci.keyless_cosign import KeylessConfig, KeylessCosign
 from tests.cmd.test_augment import load_provenance
 
@@ -800,7 +799,7 @@ class TestKeylessCosign:
     def fake_keyless_cosign(
         self, keyless_config: KeylessConfig
     ) -> Generator[KeylessCosign, None, None]:
-        with patch.object(KeylessCosign, "_check_tuf", return_value=True):
+        with patch.object(KeylessCosign, "check_tuf", return_value=True):
             cosign = KeylessCosign(keyless_config)
             yield cosign
 
@@ -855,12 +854,12 @@ class TestKeylessCosign:
         assert called_with.endswith("/.sigstore/root/")
         mock_path.return_value.exists.assert_called_once()
 
-    def test__check_tuf(self, keyless_config: KeylessConfig) -> None:
+    def test_check_tuf(self, keyless_config: KeylessConfig) -> None:
         with patch("mobster.oci.keyless_cosign.Path") as mock_path:
             keyless_cosign = KeylessCosign(keyless_config)
             for state in (True, False):
                 mock_path.return_value.exists.return_value = state
-                assert keyless_cosign._check_tuf() is state
+                assert keyless_cosign.check_tuf() is state
 
 
 class TestGetCosign:
@@ -868,29 +867,7 @@ class TestGetCosign:
         ["config", "expected_type"],
         [(CosignConfig(), CosignClient), (KeylessConfig(), KeylessCosign)],
     )
-    def test_cosign(
+    def test_get_cosign(
         self, config: KeylessConfig | CosignConfig, expected_type: type
     ) -> None:
         assert isinstance(get_cosign(config), expected_type)
-
-    @pytest.mark.parametrize(
-        ["env_value", "expected"], [("foo", False), ("KEYLESS", True)]
-    )
-    def test_use_keyless(
-        self, env_value: str, expected: bool, monkeypatch: MonkeyPatch
-    ) -> None:
-        monkeypatch.setenv("COSIGN_METHOD", env_value)
-        assert use_keyless() is expected
-
-    @pytest.mark.parametrize(
-        ["env_value", "expected_type"],
-        [("STATIC", CosignClient), ("KEYLESS", KeylessCosign)],
-    )
-    def test_get_unauthenticated(
-        self,
-        env_value: str,
-        expected_type: type[CosignClient | KeylessCosign],
-        monkeypatch: MonkeyPatch,
-    ) -> None:
-        monkeypatch.setenv("COSIGN_METHOD", env_value)
-        assert isinstance(get_unauthenticated_cosign(), expected_type)

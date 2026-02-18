@@ -5,8 +5,8 @@ Script used for processing component SBOMs in Tekton task.
 import argparse as ap
 import asyncio
 import logging
-import os
 import tempfile
+from argparse import ArgumentError
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,7 +16,7 @@ from mobster.error import SBOMError
 from mobster.log import setup_logging
 from mobster.oci.cosign import Cosign, CosignConfig, RekorConfig
 from mobster.oci.get_cosign import get_cosign
-from mobster.oci.keyless_cosign import KeylessConfig
+from mobster.oci.keyless_cosign import KeylessConfig, KeylessCosign
 from mobster.release import ReleaseId, make_snapshot
 from mobster.tekton.artifact import (
     get_component_artifact,
@@ -48,16 +48,13 @@ class ProcessComponentArgs(CommonArgs):
     cosign_config: CosignConfig | KeylessConfig
 
 
-def _add_common_component_args(parser: ap.ArgumentParser) -> None:
+def _add_component_args(parser: ap.ArgumentParser) -> None:
     parser.add_argument("--augment-concurrency", type=int, default=8)
     parser.add_argument("--upload-concurrency", type=int, default=8)
     parser.add_argument("--attest-concurrency", type=int, default=4)
     parser.add_argument(
         "--rekor-url", type=str, help="The URL of the Rekor server", default=None
     )
-
-
-def _add_static_key_cosign_args(parser: ap.ArgumentParser) -> None:
     parser.add_argument(
         "--rekor-key",
         type=Path,
@@ -71,13 +68,13 @@ def _add_static_key_cosign_args(parser: ap.ArgumentParser) -> None:
         help="The signing (private) key file or k8s secret to use when signing "
         "OCI attestation with SBOMs. The command just attaches "
         "an SBOM if this argument is unfilled.",
-        required=True,
+        default=None,
     )
     parser.add_argument(
         "--verify-key",
         type=str,
         help="The cosign verification key for attest downloading and verification.",
-        required=True,
+        default=None,
     )
     parser.add_argument(
         "--sign-password",
@@ -85,24 +82,43 @@ def _add_static_key_cosign_args(parser: ap.ArgumentParser) -> None:
         default="",
         help="The password protecting the signing key.",
     )
-
-
-def _add_keyless_cosign_args(parser: ap.ArgumentParser) -> None:
     parser.add_argument("--fulcio-url", type=str, help="URL of the Fulcio server")
     parser.add_argument(
         "--oidc-token",
         type=Path,
         help="OIDC token for signing written in a file",
+        default=None,
     )
     parser.add_argument(
         "--oidc-issuer-pattern",
         type=str,
         help="OIDC issuer pattern for attestation verification",
+        default=None,
     )
     parser.add_argument(
         "--oidc-identity-pattern",
         type=str,
         help="OIDC identity pattern for attestation verification",
+        default=None,
+    )
+
+
+def _use_keyless(args: ap.Namespace) -> bool:
+    if (
+        args.oidc_token is not None
+        and args.fulcio_url is not None
+        and args.rekor_url is not None
+        and KeylessCosign.check_tuf()
+    ):
+        return True
+    if args.sign_key is not None and args.verify_key is not None:
+        return False
+    raise ArgumentError(
+        None,
+        "Cannot run augmentation without either static key "
+        "arguments (--sign-key and --verify-key) or keyless cosign "
+        "arguments (--oidc-token, --fulcio-url and --rekor-url, only "
+        "usable after running `cosign initialize`).",
     )
 
 
@@ -115,16 +131,11 @@ def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
     """
     parser = ap.ArgumentParser()
     add_common_args(parser)
-    _add_common_component_args(parser)
-    use_keyless = os.getenv("COSIGN_METHOD", "STATIC") == "KEYLESS"
-    if use_keyless:
-        _add_keyless_cosign_args(parser)
-    else:
-        _add_static_key_cosign_args(parser)
+    _add_component_args(parser)
 
     args = parser.parse_args(args=cli_args)
     cosign_config: CosignConfig | KeylessConfig
-    if use_keyless:
+    if _use_keyless(args):
         cosign_config = KeylessConfig(
             fulcio_url=args.fulcio_url,
             token_file=args.oidc_token,

@@ -1,3 +1,4 @@
+from argparse import ArgumentError
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -10,6 +11,7 @@ from mobster.cmd.upload.upload import (
     TPAUploadReport,
     UploadConfig,
 )
+from mobster.oci.cosign import CosignClient, CosignConfig, RekorConfig
 from mobster.oci.keyless_cosign import KeylessConfig, KeylessCosign
 from mobster.release import ReleaseId
 from mobster.tekton.common import upload_sboms
@@ -70,60 +72,42 @@ async def test_upload_sboms_failure_tries_s3(
         mock_handle_atlas_upload_errors.assert_awaited()
 
 
-def test_parse_component_args_static_fail(caplog: pytest.LogCaptureFixture) -> None:
-    with pytest.raises(SystemExit):
-        parse_args()
-        assert "--fulcio-url" not in caplog.text
-        assert "--sign-key" in caplog.text
-
-
-def test_parse_component_args_keyless_fail(
-    monkeypatch: MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    monkeypatch.setenv("COSIGN_METHOD", "KEYLESS")
-    with pytest.raises(SystemExit):
-        parse_args()
-        assert "--sign-key" not in caplog.text
-        assert "--fulcio-url" in caplog.text
-
-
 @pytest.mark.asyncio
 @patch("mobster.tekton.component.connect_with_s3", MagicMock(return_value=True))
 @patch("mobster.tekton.component.upload_snapshot", AsyncMock())
 @patch("mobster.tekton.component.tempfile", MagicMock())
 @patch("mobster.tekton.component.augment_component_sboms")
-async def test_parse_component_args_keyless(
-    mock_augment_sboms: AsyncMock, monkeypatch: MonkeyPatch
-) -> None:
-    monkeypatch.setenv("COSIGN_METHOD", "KEYLESS")
+async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> None:
     relase_id = ReleaseId.new()
-    parsed_args = parse_args(
-        [
-            "--data-dir",
-            "foo",
-            "--snapshot-spec",
-            "bar",
-            "--release-id",
-            relase_id.id.hex,
-            "--result-dir",
-            "baz",
-            "--rekor-url",
-            "https://spam.example",
-            "--fulcio-url",
-            "a",
-            "--oidc-token",
-            "/tmp/token",
-            "--oidc-issuer-pattern",
-            ".*",
-            "--oidc-identity-pattern",
-            ".*",
-            "--atlas-api-url",
-            "https://atlas.example",
-            "--retry-s3-bucket",
-            "bucket_of_lava",
-            "--skip-upload",  # do not remove
-        ]
-    )
+    with patch.object(KeylessCosign, "check_tuf") as mocked_check_tuf:
+        mocked_check_tuf.return_value = True
+        parsed_args = parse_args(
+            [
+                "--data-dir",
+                "foo",
+                "--snapshot-spec",
+                "bar",
+                "--release-id",
+                relase_id.id.hex,
+                "--result-dir",
+                "baz",
+                "--rekor-url",
+                "https://spam.example",
+                "--fulcio-url",
+                "a",
+                "--oidc-token",
+                "/tmp/token",
+                "--oidc-issuer-pattern",
+                ".*",
+                "--oidc-identity-pattern",
+                ".*",
+                "--atlas-api-url",
+                "https://atlas.example",
+                "--retry-s3-bucket",
+                "bucket_of_lava",
+                "--skip-upload",  # do not remove
+            ]
+        )
     assert parsed_args == ProcessComponentArgs(
         data_dir=Path("foo"),
         snapshot_spec=Path("foo/bar"),
@@ -148,3 +132,89 @@ async def test_parse_component_args_keyless(
     )
     await process_component_sboms(parsed_args)
     assert isinstance(mock_augment_sboms.call_args.args[3], KeylessCosign)
+
+
+@pytest.mark.asyncio
+@patch("mobster.tekton.component.connect_with_s3", MagicMock(return_value=True))
+@patch("mobster.tekton.component.upload_snapshot", AsyncMock())
+@patch("mobster.tekton.component.tempfile", MagicMock())
+@patch("mobster.tekton.component.augment_component_sboms")
+async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> None:
+    relase_id = ReleaseId.new()
+    parsed_args = parse_args(
+        [
+            "--data-dir",
+            "foo",
+            "--snapshot-spec",
+            "bar",
+            "--release-id",
+            relase_id.id.hex,
+            "--result-dir",
+            "baz",
+            "--rekor-url",
+            "https://spam.example",
+            "--sign-key",
+            "a",
+            "--rekor-key",
+            "/tmp/public_key",
+            "--verify-key",
+            "/tmp/public_key_cosign",
+            "--atlas-api-url",
+            "https://atlas.example",
+            "--retry-s3-bucket",
+            "bucket_of_powder_snow",
+            "--skip-upload",  # do not remove
+        ]
+    )
+    assert parsed_args == ProcessComponentArgs(
+        data_dir=Path("foo"),
+        snapshot_spec=Path("foo/bar"),
+        atlas_api_url="https://atlas.example",
+        retry_s3_bucket="bucket_of_powder_snow",
+        release_id=relase_id,
+        labels={},
+        result_dir=Path("foo/baz"),
+        atlas_retries=1,
+        upload_concurrency=8,
+        skip_upload=True,
+        skip_s3_upload=False,
+        augment_concurrency=8,
+        attestation_concurrency=4,
+        cosign_config=CosignConfig(
+            rekor_config=RekorConfig(
+                rekor_url="https://spam.example", rekor_key=Path("/tmp/public_key")
+            ),
+            sign_key="a",  # type: ignore
+            verify_key="/tmp/public_key_cosign",  # type: ignore
+        ),
+    )
+    await process_component_sboms(parsed_args)
+    assert isinstance(mock_augment_sboms.call_args.args[3], CosignClient)
+
+
+def test_parse_component_args_neither() -> None:
+    """Check that is some of the arguments for signing is missing, error is raised"""
+    relase_id = ReleaseId.new()
+    with pytest.raises(ArgumentError):
+        parse_args(
+            [
+                "--data-dir",
+                "foo",
+                "--snapshot-spec",
+                "bar",
+                "--release-id",
+                relase_id.id.hex,
+                "--result-dir",
+                "baz",
+                "--rekor-url",
+                "https://spam.example",
+                "--fulcio-url",
+                "this.website.doesnt.exist",
+                "--verify-key",
+                "/tmp/public_key_cosign",
+                "--atlas-api-url",
+                "https://atlas.example",
+                "--retry-s3-bucket",
+                "bucket_of_powder_water",
+            ]
+        )
