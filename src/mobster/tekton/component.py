@@ -6,17 +6,22 @@ import argparse as ap
 import asyncio
 import logging
 import tempfile
-from argparse import ArgumentError
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
+from typing import TypeVar
 
 from mobster.cmd.augment import AugmentConfig, SBOMRefDetail, augment_sboms
 from mobster.error import SBOMError
 from mobster.log import setup_logging
-from mobster.oci.cosign import Cosign, CosignConfig, RekorConfig
-from mobster.oci.get_cosign import get_cosign
-from mobster.oci.keyless_cosign import KeylessConfig, KeylessCosign
+from mobster.oci.cosign import (
+    Cosign,
+    CosignConfig,
+    KeylessSignConfig,
+    RekorConfig,
+    StaticSignConfig,
+)
+from mobster.oci.cosign.get_cosign import get_cosign
 from mobster.release import ReleaseId, make_snapshot
 from mobster.tekton.artifact import (
     get_component_artifact,
@@ -32,6 +37,8 @@ from mobster.tekton.common import (
 
 LOGGER = logging.getLogger(__name__)
 
+_Conf = TypeVar("_Conf", KeylessSignConfig, StaticSignConfig, RekorConfig)
+
 
 @dataclass
 class ProcessComponentArgs(CommonArgs):
@@ -45,7 +52,7 @@ class ProcessComponentArgs(CommonArgs):
 
     augment_concurrency: int
     attestation_concurrency: int
-    cosign_config: CosignConfig | KeylessConfig
+    cosign_config: CosignConfig
 
 
 def _add_component_args(parser: ap.ArgumentParser) -> None:
@@ -103,23 +110,19 @@ def _add_component_args(parser: ap.ArgumentParser) -> None:
     )
 
 
-def _use_keyless(args: ap.Namespace) -> bool:
-    if (
-        args.oidc_token is not None
-        and args.fulcio_url is not None
-        and args.rekor_url is not None
-        and KeylessCosign.check_tuf()
-    ):
-        return True
-    if args.sign_key is not None and args.verify_key is not None:
-        return False
-    raise ArgumentError(
-        None,
-        "Cannot run augmentation without either static key "
-        "arguments (--sign-key and --verify-key) or keyless cosign "
-        "arguments (--oidc-token, --fulcio-url and --rekor-url, only "
-        "usable after running `cosign initialize`).",
-    )
+def _check_empty_config(
+    config: _Conf,
+) -> _Conf | None:
+    """Utility function that nulls a configuration if it is unused."""
+    has_value = False
+    for field in fields(config):
+        field_val = getattr(config, field.name)
+        if field_val is not None and field_val != field.default:
+            has_value = True
+            break
+    if not has_value:
+        return None
+    return config
 
 
 def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
@@ -134,25 +137,27 @@ def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
     _add_component_args(parser)
 
     args = parser.parse_args(args=cli_args)
-    cosign_config: CosignConfig | KeylessConfig
-    if _use_keyless(args):
-        cosign_config = KeylessConfig(
-            fulcio_url=args.fulcio_url,
-            token_file=args.oidc_token,
-            issuer_pattern=args.oidc_identity_pattern,
-            identity_pattern=args.oidc_identity_pattern,
-            rekor_url=args.rekor_url,
-        )
-    else:
-        rekor_config = None
-        if (rekor_key := args.rekor_key) and (rekor_url := args.rekor_url):
-            rekor_config = RekorConfig(rekor_key=rekor_key, rekor_url=rekor_url)
-        cosign_config = CosignConfig(
-            sign_key=args.sign_key,
-            verify_key=args.verify_key,
-            sign_password=args.sign_password.encode("utf-8"),
-            rekor_config=rekor_config,
-        )
+
+    cosign_config = CosignConfig(
+        keyless_config=_check_empty_config(
+            KeylessSignConfig(
+                fulcio_url=args.fulcio_url,
+                token_file=args.oidc_token,
+                issuer_pattern=args.oidc_identity_pattern,
+                identity_pattern=args.oidc_identity_pattern,
+            )
+        ),
+        rekor_config=_check_empty_config(
+            RekorConfig(rekor_url=args.rekor_url, rekor_key=args.rekor_key)
+        ),
+        static_sign_config=_check_empty_config(
+            StaticSignConfig(
+                sign_key=args.sign_key,
+                verify_key=args.verify_key,
+                sign_password=args.sign_password.encode("utf-8"),
+            )
+        ),
+    )
 
     # the snapshot_spec is joined with the data_dir as previous tasks provide
     # the path as relative to the dataDir

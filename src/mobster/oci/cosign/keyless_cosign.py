@@ -1,28 +1,14 @@
 """Module for using Keyless Cosign for SBOM attestation and fetching"""
 
 import os.path
-from dataclasses import dataclass
 from pathlib import Path
 
 from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
-from mobster.oci.cosign import Cosign, get_cosign_attestation_type
+from mobster.oci.cosign import Cosign, CosignConfig, get_cosign_attestation_type
 from mobster.utils import run_async_subprocess
-
-
-@dataclass
-class KeylessConfig:
-    """
-    Configuration for Keyless Cosign
-    """
-
-    fulcio_url: str | None = None
-    rekor_url: str | None = None
-    token_file: Path | None = None
-    issuer_pattern: str = ".*"
-    identity_pattern: str = ".*"
 
 
 class KeylessCosign(Cosign):
@@ -33,8 +19,9 @@ class KeylessCosign(Cosign):
     parameters previously.
     """
 
-    def __init__(self, config: KeylessConfig):
-        self.config = config
+    def __init__(self, config: CosignConfig):
+        self.keyless_config = config.keyless_config
+        self.rekor_config = config.rekor_config
 
     @staticmethod
     def check_tuf() -> bool:
@@ -51,6 +38,10 @@ class KeylessCosign(Cosign):
         image_ref: str,
         sbom_format: SBOMFormat,
     ) -> None:
+        if not self.keyless_config or not self.rekor_config or not self.can_sign():
+            raise SBOMError(
+                "Cannot attest SBOM, no signing configuration was provided."
+            )
         # Translate SPDX format to a cosign-supported version. See
         # https://github.com/sigstore/cosign/blob/main/doc/cosign_attest.md#options
         cosign_command = [
@@ -60,11 +51,12 @@ class KeylessCosign(Cosign):
             "--type",
             get_cosign_attestation_type(sbom_format),
             "--rekor-url",
-            str(self.config.rekor_url),
+            str(self.rekor_config.rekor_url),
+            # cannot be None, this instance must allow signing to get to this point
             "--fulcio-url",
-            str(self.config.fulcio_url),
+            str(self.keyless_config.fulcio_url),
             "--identity-token",
-            str(self.config.token_file),
+            str(self.keyless_config.token_file),
             "--predicate",
             str(sbom_path),
             image_ref,
@@ -85,10 +77,12 @@ class KeylessCosign(Cosign):
     def can_sign(self) -> bool:
         return (
             self.check_tuf()
-            and self.config.fulcio_url is not None
-            and self.config.rekor_url is not None
-            and self.config.token_file is not None
-            and self.config.token_file.exists()
+            and self.keyless_config is not None
+            and self.keyless_config.fulcio_url is not None
+            and self.rekor_config is not None
+            and self.rekor_config.rekor_url is not None
+            and self.keyless_config.token_file is not None
+            and self.keyless_config.token_file.exists()
         )
 
     async def fetch_latest_provenance(

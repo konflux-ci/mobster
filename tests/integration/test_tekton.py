@@ -25,7 +25,8 @@ from mobster.cmd.upload.upload import (
 )
 from mobster.image import Image
 from mobster.oci.artifact import Provenance02, SBOMFormat
-from mobster.oci.cosign import CosignClient, CosignConfig
+from mobster.oci.cosign import CosignConfig, StaticSignConfig
+from mobster.oci.cosign.static_cosign import CosignClient
 from mobster.release import ReleaseId
 from mobster.tekton.artifact import (
     COMPONENT_ARTIFACT_NAME,
@@ -48,7 +49,7 @@ def cosign_client_with_keys(
 ) -> CosignClient:
     return CosignClient(
         cosign_config=CosignConfig(
-            verify_key=cosign_verify_key, sign_key=cosign_sign_key
+            StaticSignConfig(verify_key=cosign_verify_key, sign_key=cosign_sign_key)
         )
     )
 

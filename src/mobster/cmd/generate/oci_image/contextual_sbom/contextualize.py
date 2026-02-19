@@ -23,7 +23,8 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 )
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
-from mobster.oci.cosign import CosignClient, CosignConfig
+from mobster.oci.cosign import CosignConfig
+from mobster.oci.cosign.static_cosign import CosignClient
 
 LOGGER = logging.getLogger(__name__)
 

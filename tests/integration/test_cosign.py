@@ -3,7 +3,8 @@ import pytest_asyncio
 
 from mobster.error import SBOMError
 from mobster.image import Image
-from mobster.oci.cosign import CosignClient, CosignConfig
+from mobster.oci.cosign import CosignConfig
+from mobster.oci.cosign.static_cosign import CosignClient
 from tests.integration.oci_client import ReferrersTagOCIClient
 
 
