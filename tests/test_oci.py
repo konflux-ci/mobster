@@ -746,6 +746,12 @@ class TestCosignClient:
         cosign_command = mock_run_subprocess.call_args_list[0].args[0]
         assert cosign_command[0] == "cosign"
         assert cosign_command[1] == "attest"
+        if not rekor_url:
+            assert "--rekor" not in " ".join(cosign_command)
+            assert "--tlog-upload=false" in cosign_command
+        else:
+            assert f"--rekor-url={rekor_url}" in cosign_command
+            assert "--tlog-upload=false" not in cosign_command
         for expected_command_expression in expected_keywords:
             assert expected_command_expression in cosign_command
 
