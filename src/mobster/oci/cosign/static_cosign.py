@@ -18,13 +18,18 @@ from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
-from mobster.oci.cosign import Cosign, CosignConfig, get_cosign_attestation_type
+from mobster.oci.cosign import (
+    CosignConfig,
+    SupportsFetch,
+    SupportsSign,
+    get_cosign_attestation_type,
+)
 from mobster.utils import run_async_subprocess
 
 logger = logging.getLogger(__name__)
 
 
-class CosignClient(Cosign):
+class CosignClient(SupportsFetch):
     """
     Client used to get OCI artifacts using Cosign.
 
@@ -144,6 +149,18 @@ class CosignClient(Cosign):
 
         return SBOM.from_cosign_output(stdout, image.reference)
 
+
+class CosignSigner(SupportsSign):
+    """
+    Cosign signing client using static keys
+    """
+
+    def __init__(self, config: CosignConfig):
+        if config.static_sign_config is None or not config.static_sign_config.sign_key:
+            raise SBOMError("Cannot attest SBOM, no signing key was provided.")
+        self.rekor_config = config.rekor_config
+        self.sign_config = config.static_sign_config
+
     async def _attest_anything(
         self,
         file_path: Path,
@@ -173,8 +190,7 @@ class CosignClient(Cosign):
         Returns:
             None
         """
-        if self.sign_config is None or not self.sign_config.sign_key:
-            raise SBOMError("Cannot attest SBOM, no signing key was provided.")
+
         # Translate SPDX format to a cosign-supported version. See
         # https://github.com/sigstore/cosign/blob/main/doc/cosign_attest.md#options
         cosign_command = [
@@ -274,9 +290,6 @@ class CosignClient(Cosign):
                     f"Could not clean '{blob_type}' from image {image_ref}. "
                     f"STDERR: {stderr.decode()}"
                 )
-
-    def can_sign(self) -> bool:
-        return self.sign_config is not None and self.sign_config.sign_key is not None
 
     async def sign_image(self, image_ref: str) -> None:
         """

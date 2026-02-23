@@ -15,13 +15,14 @@ from mobster.cmd.augment import AugmentConfig, SBOMRefDetail, augment_sboms
 from mobster.error import SBOMError
 from mobster.log import setup_logging
 from mobster.oci.cosign import (
-    Cosign,
     CosignConfig,
     KeylessSignConfig,
     RekorConfig,
     StaticSignConfig,
+    SupportsFetch,
+    SupportsSign,
 )
-from mobster.oci.cosign.get_cosign import get_cosign
+from mobster.oci.cosign.get_cosign import get_cosign_fetcher, get_cosign_signer
 from mobster.release import ReleaseId, make_snapshot
 from mobster.tekton.artifact import (
     get_component_artifact,
@@ -184,7 +185,8 @@ async def augment_component_sboms(
     sbom_path: Path,
     snapshot_spec: Path,
     release_id: ReleaseId,
-    cosign_client: Cosign,
+    cosign_client: SupportsFetch,
+    cosign_signer: SupportsSign | None,
     augment_concurrency: int,
     attest_concurrency: int,
 ) -> None:
@@ -195,7 +197,8 @@ async def augment_component_sboms(
         sbom_path: Path where the SBOM will be saved.
         snapshot_spec: Path to snapshot specification file.
         release_id: Release ID to store in SBOM file.
-        cosign_client: Cosign client
+        cosign_client: Cosign fetch client.
+        cosign_signer: Cosign signing client.
         augment_concurrency: Maximum number of concurrent augmentation operations.
         attest_concurrency: Maximum number of concurrent OCI attestation operations.
     """
@@ -213,7 +216,7 @@ async def augment_component_sboms(
         raise SBOMError("Could not augment all SBOMs!")
     LOGGER.debug("Successfully augmented SBoms for ReleaseId: %s", str(release_id))
 
-    if not cosign_client.can_sign():
+    if not cosign_signer:
         LOGGER.warning(
             "Missing attesting configuration, SBOMs will not be attested to registry!"
         )
@@ -223,7 +226,7 @@ async def augment_component_sboms(
     push_tasks = [
         attest_sbom_to_registry(
             result_detail,
-            cosign_client,
+            cosign_signer,
             semaphore,
         )
         for result_detail in result_details
@@ -254,7 +257,6 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
             args.release_id,
         )
 
-    cosign_client = get_cosign(args.cosign_config)
     LOGGER.info("Starting SBOM augmentation")
 
     with tempfile.TemporaryDirectory() as sbom_dir:
@@ -262,7 +264,8 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
             Path(sbom_dir),
             args.snapshot_spec,
             args.release_id,
-            cosign_client,
+            get_cosign_fetcher(args.cosign_config),
+            get_cosign_signer(args.cosign_config),
             args.augment_concurrency,
             args.attestation_concurrency,
         )
@@ -291,7 +294,7 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
 
 async def attest_sbom_to_registry(
     sbom_ref_detail: SBOMRefDetail,
-    cosign_client: Cosign,
+    cosign_signer: SupportsSign,
     semaphore: asyncio.Semaphore,
 ) -> bool:
     """
@@ -299,19 +302,14 @@ async def attest_sbom_to_registry(
     as an attestation of the image.
     Args:
         sbom_ref_detail: Info about SBOM file, its release destination and its type
-        cosign_client: The cosign client used for the communication with the registry
+        cosign_signer: The cosign client used for the communication with the registry
         semaphore: Semaphore for throttling concurrency
     Returns:
         True if the push was successful, False otherwise
     """
-    if not cosign_client.can_sign():
-        raise ValueError(
-            f"Could not attest image {sbom_ref_detail.reference} "
-            f"because no signing key was provided!"
-        )
     async with semaphore:
         try:
-            await cosign_client.attest_sbom(
+            await cosign_signer.attest_sbom(
                 sbom_path=sbom_ref_detail.path,
                 image_ref=sbom_ref_detail.reference,
                 sbom_format=sbom_ref_detail.sbom_format,

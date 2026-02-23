@@ -7,11 +7,35 @@ from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
-from mobster.oci.cosign import Cosign, CosignConfig, get_cosign_attestation_type
+from mobster.oci.cosign import (
+    CosignConfig,
+    SupportsFetch,
+    SupportsSign,
+    get_cosign_attestation_type,
+)
 from mobster.utils import run_async_subprocess
 
 
-class KeylessCosign(Cosign):
+def check_tuf() -> bool:
+    """
+    Check if Cosign has been initialized with TUF context.
+    Returns:
+        True if Cosign has been initialized with TUF context, False otherwise.
+    """
+    return Path(os.path.expanduser("~/.sigstore/root/")).exists()
+
+
+def _check_config_can_sign(config: CosignConfig) -> bool:
+    return (
+        config.keyless_config is not None
+        and config.keyless_config.fulcio_url is not None
+        and config.rekor_config is not None
+        and config.rekor_config.rekor_url is not None
+        and config.keyless_config.token_file is not None
+    )
+
+
+class KeylessCosign(SupportsFetch):
     """
     Keyless Cosign client, used OIDC tokens for signing
     and Rekor for verification. Requires that the host
@@ -23,14 +47,33 @@ class KeylessCosign(Cosign):
         self.keyless_config = config.keyless_config
         self.rekor_config = config.rekor_config
 
-    @staticmethod
-    def check_tuf() -> bool:
-        """
-        Check if Cosign has been initialized with TUF context.
-        Returns:
-            True if Cosign has been initialized with TUF context, False otherwise.
-        """
-        return Path(os.path.expanduser("~/.sigstore/root/")).exists()
+    async def fetch_latest_provenance(
+        self, image: Image
+    ) -> Provenance02:  # pragma: no cover
+        # This does not have to be present in the final implementation,
+        # we may want to consolidate it into SBOM fetching + verification
+        raise NotImplementedError("To be implemented or deleted in ISV-6681")
+
+    async def fetch_sbom(self, image: Image) -> SBOM:  # pragma: no cover
+        # This should work even with unauthenticated cosign (no Rekor and no TUF)
+        # while also being able to fall back to fetching attached SBOMs instead
+        # of attested ones.
+        raise NotImplementedError("To be implemented in ISV-6681")
+
+
+class KeylessSigner(SupportsSign):
+    """
+    Cosign signing client using Keyless signatures
+    """
+
+    # pylint: disable=too-few-public-methods
+    def __init__(self, config: CosignConfig):
+        if not check_tuf() or not _check_config_can_sign(config):
+            raise SBOMError(
+                "Cannot attest SBOM, no signing configuration was provided."
+            )
+        self.keyless_config = config.keyless_config
+        self.rekor_config = config.rekor_config
 
     async def attest_sbom(
         self,
@@ -38,7 +81,7 @@ class KeylessCosign(Cosign):
         image_ref: str,
         sbom_format: SBOMFormat,
     ) -> None:
-        if not self.keyless_config or not self.rekor_config or not self.can_sign():
+        if not self.keyless_config or not self.rekor_config:
             raise SBOMError(
                 "Cannot attest SBOM, no signing configuration was provided."
             )
@@ -73,27 +116,3 @@ class KeylessCosign(Cosign):
                 f"Could not attest SBOM ({' '.join(cosign_command)}) "
                 f"failed with code {code}, STDERR: {stderr.decode()}",
             )
-
-    def can_sign(self) -> bool:
-        return (
-            self.check_tuf()
-            and self.keyless_config is not None
-            and self.keyless_config.fulcio_url is not None
-            and self.rekor_config is not None
-            and self.rekor_config.rekor_url is not None
-            and self.keyless_config.token_file is not None
-            and self.keyless_config.token_file.exists()
-        )
-
-    async def fetch_latest_provenance(
-        self, image: Image
-    ) -> Provenance02:  # pragma: no cover
-        # This does not have to be present in the final implementation,
-        # we may want to consolidate it into SBOM fetching + verification
-        raise NotImplementedError("To be implemented or deleted in ISV-6681")
-
-    async def fetch_sbom(self, image: Image) -> SBOM:  # pragma: no cover
-        # This should work even with unauthenticated cosign (no Rekor and no TUF)
-        # while also being able to fall back to fetching attached SBOMs instead
-        # of attested ones.
-        raise NotImplementedError("To be implemented in ISV-6681")

@@ -16,7 +16,11 @@ from mobster.cmd.base import Command
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM, SBOMFormat
-from mobster.oci.cosign import Cosign, CosignConfig, StaticSignConfig
+from mobster.oci.cosign import (
+    CosignConfig,
+    StaticSignConfig,
+    SupportsFetch,
+)
 from mobster.oci.cosign.static_cosign import CosignClient
 from mobster.release import (
     Component,
@@ -61,7 +65,7 @@ class AugmentConfig:
         release_id: ReleaseId to optionally inject into SBOMs
     """
 
-    cosign: Cosign
+    cosign: SupportsFetch
     verify: bool
     semaphore: asyncio.Semaphore
     output_dir: Path
@@ -150,7 +154,7 @@ def get_randomized_sbom_filename(sbom: SBOM) -> str:
     return f"{sbom.reference.replace('/', '-')}-{suffix}"
 
 
-async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:
+async def verify_sbom(sbom: SBOM, image: Image, cosign: SupportsFetch) -> None:
     """
     Verify that the sha256 digest of the specified SBOM matches the value of
     SBOM_BLOB_URL in the provenance for the supplied image. Cosign is used to
@@ -173,7 +177,9 @@ async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:
         )
 
 
-async def load_sbom(image: Image, cosign: Cosign, verify: bool) -> tuple[SBOM, bool]:
+async def load_sbom(
+    image: Image, cosign: SupportsFetch, verify: bool
+) -> tuple[SBOM, bool]:
     """
     Download and parse the sbom for the image reference and verify that its digest
     matches that in the image provenance.

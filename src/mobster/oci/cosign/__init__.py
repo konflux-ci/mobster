@@ -98,10 +98,16 @@ def get_cosign_attestation_type(
     return "cyclonedx"
 
 
-class Cosign(typing.Protocol):  # pragma: nocover
+class SupportsFetch(typing.Protocol):  # pragma: nocover
     """
-    Definition of a Cosign protocol.
+    Definition of a Cosign fetch protocol.
     """
+
+    async def fetch_sbom(self, image: Image) -> SBOM:
+        """
+        Fetch the attached SBOM for an image.
+        """
+        raise NotImplementedError()
 
     async def fetch_latest_provenance(self, image: Image) -> Provenance02:
         """
@@ -109,11 +115,13 @@ class Cosign(typing.Protocol):  # pragma: nocover
         """
         raise NotImplementedError()
 
-    async def fetch_sbom(self, image: Image) -> SBOM:
-        """
-        Fetch the attached SBOM for an image.
-        """
-        raise NotImplementedError()
+
+class SupportsSign(typing.Protocol):
+    """
+    Definition of a Cosign sign protocol.
+    """
+
+    # pylint: disable=too-few-public-methods
 
     async def attest_sbom(
         self,
@@ -131,13 +139,5 @@ class Cosign(typing.Protocol):  # pragma: nocover
 
         Returns:
             None
-        """
-        raise NotImplementedError()
-
-    def can_sign(self) -> bool:
-        """
-        Assess if this client can sign attestations.
-        Returns:
-            True if yes, False otherwise.
         """
         raise NotImplementedError()

@@ -9,7 +9,7 @@ import yaml
 from mobster.image import Image
 from mobster.oci.artifact import Provenance02
 from mobster.oci.cosign import CosignConfig, StaticSignConfig
-from mobster.oci.cosign.static_cosign import CosignClient
+from mobster.oci.cosign.static_cosign import CosignSigner
 from mobster.utils import run_async_subprocess
 from tests.integration import img_utils
 from tests.integration.oci_client import ReferrersTagOCIClient
@@ -96,7 +96,7 @@ async def create_image_attestation(
     child_img: Image,
     index_sbom_ref: str,
     child_sbom_ref: str,
-    cosign_client: CosignClient,
+    cosign_client: CosignSigner,
 ) -> None:
     """
     Create attestation with data matching the pushed images and upload it to the
@@ -210,8 +210,8 @@ async def test_oci_image_sboms_using_conforma(
     repository = "test-repo"
 
     private_key_path, public_key_path = cosign_keys
-    cosign_client = CosignClient(
-        cosign_config=CosignConfig(StaticSignConfig(sign_key=private_key_path))
+    cosign_client = CosignSigner(
+        config=CosignConfig(StaticSignConfig(sign_key=private_key_path))
     )
 
     child_image = await img_utils.create_child_image(oci_client, repository, tag_prefix)

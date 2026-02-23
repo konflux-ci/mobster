@@ -26,9 +26,9 @@ from mobster.oci.cosign import (
     RekorConfig,
     StaticSignConfig,
 )
-from mobster.oci.cosign.get_cosign import get_cosign
-from mobster.oci.cosign.keyless_cosign import KeylessCosign
-from mobster.oci.cosign.static_cosign import CosignClient
+from mobster.oci.cosign.get_cosign import get_cosign_fetcher
+from mobster.oci.cosign.keyless_cosign import KeylessCosign, KeylessSigner
+from mobster.oci.cosign.static_cosign import CosignClient, CosignSigner
 from tests.cmd.test_augment import load_provenance
 
 
@@ -440,7 +440,6 @@ def test_sbom_bad_format(doc: dict[str, Any]) -> None:
 
 class TestCosignClient:
     verification_key = Path("/verification-key")
-    signing_key = Path("/signing_key")
 
     @pytest.fixture()
     def provenance_path(self, provenances_path: Path) -> Path:
@@ -495,11 +494,7 @@ class TestCosignClient:
     @pytest.fixture
     def client(self) -> CosignClient:
         return CosignClient(
-            CosignConfig(
-                StaticSignConfig(
-                    verify_key=self.verification_key, sign_key=self.signing_key
-                )
-            )
+            CosignConfig(StaticSignConfig(verify_key=self.verification_key))
         )
 
     @pytest.mark.asyncio
@@ -666,15 +661,19 @@ class TestCosignClient:
         with pytest.raises(SBOMError):
             await client.fetch_sbom(image)
 
+
+class TestCosignSigner:
+    verification_key = Path("/verification-key")
+    signing_key = Path("/signing_key")
+
+    @pytest.fixture
+    def client(self) -> CosignSigner:
+        return CosignSigner(CosignConfig(StaticSignConfig(sign_key=self.signing_key)))
+
     @pytest.mark.asyncio
     async def test_attest_sbom_no_signing_key(self) -> None:
-        client = CosignClient(CosignConfig())
-
-        with pytest.raises(SBOMError) as exc:
-            await client.attest_sbom(Path("/sbom"), "foo", SBOMFormat.SPDX_2_0)
-            assert exc.match(
-                "[Cosign] Cannot attest SBOM, no signing key was provided."
-            )
+        with pytest.raises(SBOMError):
+            CosignSigner(CosignConfig())
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -721,7 +720,7 @@ class TestCosignClient:
         subprocess_code: int,
         subprocess_stderr: bytes,
         raises_exc: type[Exception] | None,
-        client: CosignClient,
+        client: CosignSigner,
         caplog: LogCaptureFixture,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -767,7 +766,7 @@ class TestCosignClient:
     async def test_clean(
         self,
         mock_subprocess: AsyncMock,
-        client: CosignClient,
+        client: CosignSigner,
         blob_type: Literal["all", "signature", "attestation", "sbom"],
         subprocess_code: int,
         subprocess_stderr: bytes,
@@ -788,27 +787,8 @@ class TestCosignClient:
         assert cosign_command[1] == "clean"
         assert f"--type={blob_type}" in cosign_command
 
-    @pytest.mark.parametrize(
-        ["cosign_client", "can_sign"],
-        [
-            (CosignClient(CosignConfig()), False),
-            (CosignClient(CosignConfig(StaticSignConfig(verify_key=Path("a")))), False),
-            (CosignClient(CosignConfig(StaticSignConfig(sign_key=Path("a")))), True),
-            (
-                CosignClient(
-                    CosignConfig(
-                        StaticSignConfig(verify_key=Path("a"), sign_key=Path("b"))
-                    )
-                ),
-                True,
-            ),
-        ],
-    )
-    def test_can_sign(self, cosign_client: CosignClient, can_sign: bool) -> None:
-        assert cosign_client.can_sign() is can_sign
 
-
-class TestKeylessCosign:
+class TestKeylessSigner:
     @pytest.fixture
     def keyless_config(self) -> Generator[CosignConfig, None, None]:
         yield CosignConfig(
@@ -824,14 +804,14 @@ class TestKeylessCosign:
     @pytest.fixture
     def fake_keyless_cosign(
         self, keyless_config: CosignConfig
-    ) -> Generator[KeylessCosign, None, None]:
-        with patch.object(KeylessCosign, "check_tuf") as fake_check_tuf:
+    ) -> Generator[KeylessSigner, None, None]:
+        with patch("mobster.oci.cosign.keyless_cosign.check_tuf") as fake_check_tuf:
             fake_check_tuf.return_value = True
-            cosign = KeylessCosign(keyless_config)
+            cosign = KeylessSigner(keyless_config)
             yield cosign
 
     @pytest.mark.asyncio
-    async def test_attest_sbom(self, fake_keyless_cosign: KeylessCosign) -> None:
+    async def test_attest_sbom(self, fake_keyless_cosign: KeylessSigner) -> None:
         # fake_keyless_cosign.check_tuf.return_value = True
         with patch(
             "mobster.oci.cosign.keyless_cosign.run_async_subprocess",
@@ -865,10 +845,10 @@ class TestKeylessCosign:
     async def test_attest_sbom_no_config(self) -> None:
         """Without all signing information, we cannot sign"""
         with pytest.raises(SBOMError):
-            await KeylessCosign(CosignConfig()).attest_sbom(Path("a"), "b", MagicMock())
+            await KeylessSigner(CosignConfig()).attest_sbom(Path("a"), "b", MagicMock())
 
     @pytest.mark.asyncio
-    async def test_attest_sbom_fail(self, fake_keyless_cosign: KeylessCosign) -> None:
+    async def test_attest_sbom_fail(self, fake_keyless_cosign: KeylessSigner) -> None:
         with patch(
             "mobster.oci.cosign.keyless_cosign.run_async_subprocess",
             return_value=(1, b"", b"Or nor, Cleor!"),
@@ -877,23 +857,6 @@ class TestKeylessCosign:
                 await fake_keyless_cosign.attest_sbom(
                     Path("a"), "b", SBOMFormat.CDX_V1_6
                 )
-
-    @patch("mobster.oci.cosign.keyless_cosign.Path")
-    def test_can_sign_checks_for_tuf(self, mock_path: MagicMock) -> None:
-        keyless_cosign = KeylessCosign(CosignConfig())
-        mock_path.return_value.exists.return_value = True
-        keyless_cosign.can_sign()
-        called_with = mock_path.call_args.args[0]
-        assert called_with.startswith("/home/")
-        assert called_with.endswith("/.sigstore/root/")
-        mock_path.return_value.exists.assert_called_once()
-
-    def test_check_tuf(self, keyless_config: CosignConfig) -> None:
-        with patch("mobster.oci.cosign.keyless_cosign.Path") as mock_path:
-            keyless_cosign = KeylessCosign(keyless_config)
-            for state in (True, False):
-                mock_path.return_value.exists.return_value = state
-                assert keyless_cosign.check_tuf() is state
 
 
 class TestGetCosign:
@@ -920,7 +883,7 @@ class TestGetCosign:
             ),
         ],
     )
-    def test_get_cosign(self, config: CosignConfig, expected_type: type) -> None:
-        with patch.object(KeylessCosign, "check_tuf") as mocked_check_tuf:
-            mocked_check_tuf.return_value = True
-            assert isinstance(get_cosign(config), expected_type)
+    def test_get_cosign_fetcher(
+        self, config: CosignConfig, expected_type: type
+    ) -> None:
+        assert isinstance(get_cosign_fetcher(config), expected_type)
