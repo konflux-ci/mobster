@@ -15,8 +15,10 @@ from mobster.cmd.augment import AugmentConfig, SBOMRefDetail, augment_sboms
 from mobster.error import SBOMError
 from mobster.log import setup_logging
 from mobster.oci.cosign import (
-    CosignConfig,
+    CosignSignConfig,
+    CosignVerifyConfig,
     KeylessSignConfig,
+    KeylessVerifyConfig,
     RekorConfig,
     StaticSignConfig,
     SupportsFetch,
@@ -38,7 +40,9 @@ from mobster.tekton.common import (
 
 LOGGER = logging.getLogger(__name__)
 
-_Conf = TypeVar("_Conf", KeylessSignConfig, StaticSignConfig, RekorConfig)
+_Conf = TypeVar(
+    "_Conf", KeylessSignConfig, StaticSignConfig, RekorConfig, KeylessVerifyConfig
+)
 
 
 @dataclass
@@ -48,12 +52,14 @@ class ProcessComponentArgs(CommonArgs):
 
     Attributes:
         augment_concurrency: maximum number of concurrent SBOM augmentation operations
-        cosign_config: Config for cosign
+        cosign_sign_config: Config for cosign signing
+        cosign_verify_config: Config for cosign verification
     """
 
     augment_concurrency: int
     attestation_concurrency: int
-    cosign_config: CosignConfig
+    cosign_sign_config: CosignSignConfig
+    cosign_verify_config: CosignVerifyConfig
 
 
 def _add_component_args(parser: ap.ArgumentParser) -> None:
@@ -139,24 +145,31 @@ def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
 
     args = parser.parse_args(args=cli_args)
 
-    cosign_config = CosignConfig(
+    rekor_config = _check_empty_config(
+        RekorConfig(rekor_url=args.rekor_url, rekor_key=args.rekor_key)
+    )
+    sign_config = CosignSignConfig(
+        static_sign_config=_check_empty_config(
+            StaticSignConfig(
+                sign_key=args.sign_key, sign_password=args.sign_password.encode("utf-8")
+            )
+        ),
+        rekor_config=rekor_config,
         keyless_config=_check_empty_config(
             KeylessSignConfig(
                 fulcio_url=args.fulcio_url,
                 token_file=args.oidc_token,
+            )
+        ),
+    )
+    verify_config = CosignVerifyConfig(
+        static_verify_key=args.verify_key,
+        rekor_config=rekor_config,
+        keyless_verify_config=_check_empty_config(
+            KeylessVerifyConfig(
                 issuer_pattern=args.oidc_identity_pattern,
                 identity_pattern=args.oidc_identity_pattern,
-            )
-        ),
-        rekor_config=_check_empty_config(
-            RekorConfig(rekor_url=args.rekor_url, rekor_key=args.rekor_key)
-        ),
-        static_sign_config=_check_empty_config(
-            StaticSignConfig(
-                sign_key=args.sign_key,
-                verify_key=args.verify_key,
-                sign_password=args.sign_password.encode("utf-8"),
-            )
+            ),
         ),
     )
 
@@ -174,9 +187,10 @@ def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
         attestation_concurrency=args.attest_concurrency,
         labels=args.labels,
         atlas_retries=args.atlas_retries,
-        cosign_config=cosign_config,
         skip_upload=args.skip_upload,
         skip_s3_upload=False,
+        cosign_sign_config=sign_config,
+        cosign_verify_config=verify_config,
     )
 
 
@@ -264,8 +278,8 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
             Path(sbom_dir),
             args.snapshot_spec,
             args.release_id,
-            get_cosign_fetcher(args.cosign_config),
-            get_cosign_signer(args.cosign_config),
+            get_cosign_fetcher(args.cosign_verify_config),
+            get_cosign_signer(args.cosign_sign_config),
             args.augment_concurrency,
             args.attestation_concurrency,
         )

@@ -11,8 +11,10 @@ from mobster.cmd.upload.upload import (
     UploadConfig,
 )
 from mobster.oci.cosign import (
-    CosignConfig,
+    CosignSignConfig,
+    CosignVerifyConfig,
     KeylessSignConfig,
+    KeylessVerifyConfig,
     RekorConfig,
     StaticSignConfig,
 )
@@ -126,10 +128,15 @@ async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> No
         skip_s3_upload=False,
         augment_concurrency=8,
         attestation_concurrency=4,
-        cosign_config=CosignConfig(
+        cosign_sign_config=CosignSignConfig(
             keyless_config=KeylessSignConfig(
                 fulcio_url="a",
                 token_file=Path("/tmp/token"),
+            ),
+            rekor_config=RekorConfig(rekor_url="https://spam.example", rekor_key=None),
+        ),
+        cosign_verify_config=CosignVerifyConfig(
+            keyless_verify_config=KeylessVerifyConfig(
                 issuer_pattern=".*",
                 identity_pattern=".*",
             ),
@@ -186,14 +193,19 @@ async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> Non
         skip_s3_upload=False,
         augment_concurrency=8,
         attestation_concurrency=4,
-        cosign_config=CosignConfig(
+        cosign_sign_config=CosignSignConfig(
             rekor_config=RekorConfig(
                 rekor_url="https://spam.example", rekor_key=Path("/tmp/public_key")
             ),
             static_sign_config=StaticSignConfig(
                 sign_key="a",  # type: ignore
-                verify_key="/tmp/public_key_cosign",  # type: ignore
             ),
+        ),
+        cosign_verify_config=CosignVerifyConfig(
+            rekor_config=RekorConfig(
+                rekor_url="https://spam.example", rekor_key=Path("/tmp/public_key")
+            ),
+            static_verify_key="/tmp/public_key_cosign",  # type: ignore
         ),
     )
     await process_component_sboms(parsed_args)

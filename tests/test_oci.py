@@ -21,8 +21,10 @@ from mobster.oci import (
 )
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
 from mobster.oci.cosign import (
-    CosignConfig,
+    CosignSignConfig,
+    CosignVerifyConfig,
     KeylessSignConfig,
+    KeylessVerifyConfig,
     RekorConfig,
     StaticSignConfig,
 )
@@ -493,9 +495,7 @@ class TestCosignClient:
 
     @pytest.fixture
     def client(self) -> CosignClient:
-        return CosignClient(
-            CosignConfig(StaticSignConfig(verify_key=self.verification_key))
-        )
+        return CosignClient(CosignVerifyConfig(static_verify_key=self.verification_key))
 
     @pytest.mark.asyncio
     async def test_fetch_latest_provenance(
@@ -668,12 +668,14 @@ class TestCosignSigner:
 
     @pytest.fixture
     def client(self) -> CosignSigner:
-        return CosignSigner(CosignConfig(StaticSignConfig(sign_key=self.signing_key)))
+        return CosignSigner(
+            CosignSignConfig(StaticSignConfig(sign_key=self.signing_key))
+        )
 
     @pytest.mark.asyncio
     async def test_attest_sbom_no_signing_key(self) -> None:
         with pytest.raises(SBOMError):
-            CosignSigner(CosignConfig())
+            CosignSigner(CosignSignConfig())
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -790,20 +792,18 @@ class TestCosignSigner:
 
 class TestKeylessSigner:
     @pytest.fixture
-    def keyless_config(self) -> Generator[CosignConfig, None, None]:
-        yield CosignConfig(
+    def keyless_config(self) -> Generator[CosignSignConfig, None, None]:
+        yield CosignSignConfig(
             rekor_config=RekorConfig(rekor_url="foo"),
             keyless_config=KeylessSignConfig(
                 fulcio_url="bar",
                 token_file=Path("/tmp"),
-                issuer_pattern=".*",
-                identity_pattern=".*",
             ),
         )
 
     @pytest.fixture
     def fake_keyless_cosign(
-        self, keyless_config: CosignConfig
+        self, keyless_config: CosignSignConfig
     ) -> Generator[KeylessSigner, None, None]:
         with patch("mobster.oci.cosign.keyless_cosign.check_tuf") as fake_check_tuf:
             fake_check_tuf.return_value = True
@@ -845,7 +845,9 @@ class TestKeylessSigner:
     async def test_attest_sbom_no_config(self) -> None:
         """Without all signing information, we cannot sign"""
         with pytest.raises(SBOMError):
-            await KeylessSigner(CosignConfig()).attest_sbom(Path("a"), "b", MagicMock())
+            await KeylessSigner(CosignSignConfig()).attest_sbom(
+                Path("a"), "b", MagicMock()
+            )
 
     @pytest.mark.asyncio
     async def test_attest_sbom_fail(self, fake_keyless_cosign: KeylessSigner) -> None:
@@ -860,23 +862,20 @@ class TestKeylessSigner:
 
 
 class TestGetCosign:
+    @patch("mobster.oci.cosign.keyless_cosign.check_tuf", MagicMock(return_value=True))
     @pytest.mark.parametrize(
         ["config", "expected_type"],
         [
             (
-                CosignConfig(
-                    static_sign_config=StaticSignConfig(
-                        sign_key=Path("A"), verify_key=Path("B")
-                    )
-                ),
+                CosignVerifyConfig(static_verify_key=Path("A")),
                 CosignClient,
             ),
             (
-                CosignConfig(
+                CosignVerifyConfig(
                     rekor_config=RekorConfig(rekor_url="a"),
-                    keyless_config=KeylessSignConfig(
-                        token_file=Path("b"),
-                        fulcio_url="c",
+                    keyless_verify_config=KeylessVerifyConfig(
+                        issuer_pattern="foo",
+                        identity_pattern="bar",
                     ),
                 ),
                 KeylessCosign,
@@ -884,6 +883,6 @@ class TestGetCosign:
         ],
     )
     def test_get_cosign_fetcher(
-        self, config: CosignConfig, expected_type: type
+        self, config: CosignVerifyConfig, expected_type: type
     ) -> None:
         assert isinstance(get_cosign_fetcher(config), expected_type)

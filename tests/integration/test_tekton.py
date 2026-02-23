@@ -25,7 +25,7 @@ from mobster.cmd.upload.upload import (
 )
 from mobster.image import Image
 from mobster.oci.artifact import Provenance02, SBOMFormat
-from mobster.oci.cosign import CosignConfig, StaticSignConfig
+from mobster.oci.cosign import CosignSignConfig, CosignVerifyConfig, StaticSignConfig
 from mobster.oci.cosign.static_cosign import CosignClient, CosignSigner
 from mobster.release import ReleaseId
 from mobster.tekton.artifact import (
@@ -404,7 +404,7 @@ async def test_process_component_sboms_happypath(
     registry = registry_url.removeprefix("http://")
     repo_with_registry = f"{registry}/{repo_name}"
     cosign_signer = CosignSigner(
-        CosignConfig(StaticSignConfig(sign_key=cosign_sign_key))
+        CosignSignConfig(StaticSignConfig(sign_key=cosign_sign_key))
     )
     image = await create_image_with_build_sbom(
         oci_client, generate_oci_image_case, repo_name, cosign_signer
@@ -491,7 +491,7 @@ async def test_process_component_sboms_happypath(
     assert await s3_client.snapshot_exists(release_id)
 
     cosign_fetcher = CosignClient(
-        CosignConfig(StaticSignConfig(sign_key=cosign_sign_key))
+        CosignVerifyConfig(static_verify_key=cosign_verify_key)
     )
 
     # check for attested SBOMs
@@ -556,7 +556,7 @@ async def test_process_component_sboms_big_release(
 
     sbom_ref = await oci_client.attach_sbom(image, "spdx", sbom.encode())
     cosign_signer = CosignSigner(
-        CosignConfig(StaticSignConfig(sign_key=cosign_sign_key))
+        CosignSignConfig(StaticSignConfig(sign_key=cosign_sign_key))
     )
     await add_provenance_to_sbom(cosign_signer, sbom_ref, image)
 

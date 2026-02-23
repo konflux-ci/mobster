@@ -8,7 +8,10 @@ from mobster.image import Image
 from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
 from mobster.oci.cosign import (
-    CosignConfig,
+    CosignSignConfig,
+    CosignVerifyConfig,
+    KeylessSignConfig,
+    RekorConfig,
     SupportsFetch,
     SupportsSign,
     get_cosign_attestation_type,
@@ -25,16 +28,6 @@ def check_tuf() -> bool:
     return Path(os.path.expanduser("~/.sigstore/root/")).exists()
 
 
-def _check_config_can_sign(config: CosignConfig) -> bool:
-    return (
-        config.keyless_config is not None
-        and config.keyless_config.fulcio_url is not None
-        and config.rekor_config is not None
-        and config.rekor_config.rekor_url is not None
-        and config.keyless_config.token_file is not None
-    )
-
-
 class KeylessCosign(SupportsFetch):
     """
     Keyless Cosign client, used OIDC tokens for signing
@@ -43,8 +36,12 @@ class KeylessCosign(SupportsFetch):
     parameters previously.
     """
 
-    def __init__(self, config: CosignConfig):
-        self.keyless_config = config.keyless_config
+    def __init__(self, config: CosignVerifyConfig):
+        if not check_tuf():
+            raise SBOMError(
+                "Cannot fetch SBOM verifiably, TUF has not been initialized."
+            )
+        self.verify_key = config.static_verify_key
         self.rekor_config = config.rekor_config
 
     async def fetch_latest_provenance(
@@ -67,13 +64,17 @@ class KeylessSigner(SupportsSign):
     """
 
     # pylint: disable=too-few-public-methods
-    def __init__(self, config: CosignConfig):
-        if not check_tuf() or not _check_config_can_sign(config):
+    def __init__(self, config: CosignSignConfig):
+        if (
+            not check_tuf()
+            or config.keyless_config is None
+            or config.rekor_config is None
+        ):
             raise SBOMError(
                 "Cannot attest SBOM, no signing configuration was provided."
             )
-        self.keyless_config = config.keyless_config
-        self.rekor_config = config.rekor_config
+        self.keyless_config: KeylessSignConfig = config.keyless_config
+        self.rekor_config: RekorConfig = config.rekor_config
 
     async def attest_sbom(
         self,
@@ -81,10 +82,6 @@ class KeylessSigner(SupportsSign):
         image_ref: str,
         sbom_format: SBOMFormat,
     ) -> None:
-        if not self.keyless_config or not self.rekor_config:
-            raise SBOMError(
-                "Cannot attest SBOM, no signing configuration was provided."
-            )
         # Translate SPDX format to a cosign-supported version. See
         # https://github.com/sigstore/cosign/blob/main/doc/cosign_attest.md#options
         cosign_command = [

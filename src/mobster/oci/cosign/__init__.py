@@ -31,52 +31,74 @@ class RekorConfig:
 class StaticSignConfig:
     """
     Static (using keys) cosign configuration
-
     Attributes:
         sign_key: path or URL to the signing key for SBOM attesting
-        verify_key: path or URL to the public key for attestation verification
         sign_password: password used for encrypting the signing key
     """
 
-    sign_key: os.PathLike[str] | None = None
-    verify_key: os.PathLike[str] | None = None
+    sign_key: os.PathLike[str]
     sign_password: bytes = b""
 
 
 @dataclass
 class KeylessSignConfig:
     """
-    Keyless (using OIDC) cosign configuration
-
+    Keyless (using OIDC) cosign configuration for signing
     Attributes:
         fulcio_url: URL to the used certificate authority for keyless signing
         token_file: path to OIDC token used for keyless authentication
+    """
+
+    fulcio_url: str
+    token_file: Path
+
+
+@dataclass
+class KeylessVerifyConfig:
+    """
+    Keyless (using OIDC) cosign configuration for verification
+    Attributes:
         issuer_pattern: RegEx pattern for validating token issuer, used for
             keyless attested SBOM verification
         identity_pattern: RegEx pattern for validating token identity, used for
             keyless attested SBOM verification
     """
 
-    fulcio_url: str
-    token_file: Path
-    issuer_pattern: str = ".*"
-    identity_pattern: str = ".*"
+    issuer_pattern: str
+    identity_pattern: str
 
 
 @dataclass
-class CosignConfig:
+class CosignSignConfig:
     """
-    Configuration of Cosign keys.
-
+    Configuration of Cosign keys for signing.
     Attributes:
         static_sign_config: configuration for static signing
         rekor_config: rekor URL and optionally key,
             used for static and keyless attesting
+        keyless_config: configuration for keyless signing
     """
 
     static_sign_config: StaticSignConfig | None = None
     rekor_config: RekorConfig | None = None
     keyless_config: KeylessSignConfig | None = None
+
+
+@dataclass
+class CosignVerifyConfig:
+    """
+    Configuration of Cosign keys for verification.
+
+    Attributes:
+        static_verify_key: verification static key path
+        rekor_config: rekor URL and optionally key,
+            used for static and keyless attesting
+        keyless_verify_config: keyless verification configuration
+    """
+
+    static_verify_key: os.PathLike[str] | None = None
+    rekor_config: RekorConfig | None = None
+    keyless_verify_config: KeylessVerifyConfig | None = None
 
 
 def get_cosign_attestation_type(

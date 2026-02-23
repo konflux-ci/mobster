@@ -17,8 +17,7 @@ from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM, SBOMFormat
 from mobster.oci.cosign import (
-    CosignConfig,
-    StaticSignConfig,
+    CosignVerifyConfig,
     SupportsFetch,
 )
 from mobster.oci.cosign.static_cosign import CosignClient
@@ -97,9 +96,7 @@ class AugmentImageCommand(Command):
 
         config = AugmentConfig(
             cosign=CosignClient(
-                CosignConfig(
-                    StaticSignConfig(verify_key=self.cli_args.verification_key)
-                )
+                CosignVerifyConfig(static_verify_key=self.cli_args.verification_key)
             ),
             verify=self.cli_args.verification_key is not None,
             semaphore=semaphore,

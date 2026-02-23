@@ -19,7 +19,8 @@ from mobster.image import Image
 from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
 from mobster.oci.cosign import (
-    CosignConfig,
+    CosignSignConfig,
+    CosignVerifyConfig,
     SupportsFetch,
     SupportsSign,
     get_cosign_attestation_type,
@@ -34,19 +35,19 @@ class CosignClient(SupportsFetch):
     Client used to get OCI artifacts using Cosign.
 
     Attributes:
-        sign_config: signing and verification keys
+        verify_key: verification (public) key path
         rekor_config: TLOG configuration
     """
 
     def __init__(
         self,
-        cosign_config: CosignConfig,
+        cosign_config: CosignVerifyConfig,
     ) -> None:
         """
         Args:
             cosign_config: The configuration for this client instance
         """
-        self.sign_config = cosign_config.static_sign_config
+        self.verify_key = cosign_config.static_verify_key
         self.rekor_config = cosign_config.rekor_config
         # Some cosign operations are extremely heavy, requiring a mutex mechanism
         # to not get OOM killed within the pipeline
@@ -56,15 +57,13 @@ class CosignClient(SupportsFetch):
         image: Image,
         attestation_type: typing.Literal["slsaprovenance02", "spdxjson", "cyclonedx"],
     ) -> list[bytes]:
-        if self.sign_config is None or self.sign_config.verify_key is None:
-            raise SBOMError("Cannot verify attestation without public key")
         with make_oci_auth_file(image.reference) as authfile:
             # We ignore the transparency log, because as of now, Konflux releases
             # don't publish to Rekor.
             cmd = [
                 "cosign",
                 "verify-attestation",
-                f"--key={self.sign_config.verify_key}",
+                f"--key={self.verify_key}",
                 f"--type={attestation_type}",
                 "--insecure-ignore-tlog=true",
                 image.reference,
@@ -155,7 +154,7 @@ class CosignSigner(SupportsSign):
     Cosign signing client using static keys
     """
 
-    def __init__(self, config: CosignConfig):
+    def __init__(self, config: CosignSignConfig):
         if config.static_sign_config is None or not config.static_sign_config.sign_key:
             raise SBOMError("Cannot attest SBOM, no signing key was provided.")
         self.rekor_config = config.rekor_config

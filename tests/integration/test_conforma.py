@@ -8,7 +8,7 @@ import yaml
 
 from mobster.image import Image
 from mobster.oci.artifact import Provenance02
-from mobster.oci.cosign import CosignConfig, StaticSignConfig
+from mobster.oci.cosign import CosignSignConfig, StaticSignConfig
 from mobster.oci.cosign.static_cosign import CosignSigner
 from mobster.utils import run_async_subprocess
 from tests.integration import img_utils
@@ -211,7 +211,7 @@ async def test_oci_image_sboms_using_conforma(
 
     private_key_path, public_key_path = cosign_keys
     cosign_client = CosignSigner(
-        config=CosignConfig(StaticSignConfig(sign_key=private_key_path))
+        config=CosignSignConfig(StaticSignConfig(sign_key=private_key_path))
     )
 
     child_image = await img_utils.create_child_image(oci_client, repository, tag_prefix)
