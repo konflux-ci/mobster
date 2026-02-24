@@ -1,4 +1,4 @@
-FROM quay.io/konflux-ci/task-runner@sha256:19851d9fcc05a45adbaf830fba404743e5254f71b30842be57e526fdc9c1d3c5 AS golang
+FROM quay.io/konflux-ci/task-runner@sha256:d9feec6f2ce9b10cfb76b45ea14f83b5ed9f231de7d6083291550aebe8eb09ea AS golang
 FROM registry.access.redhat.com/ubi9/python-312@sha256:34263471b5e86b0704054e817d7703d0063b0909a64bd95360f4a8b0c730d970 AS builder
 
 # Set the working directory in the container
