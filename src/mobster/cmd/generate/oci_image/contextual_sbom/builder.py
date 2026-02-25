@@ -3,6 +3,7 @@ Functions and types for builder content contextualization.
 """
 
 import logging
+import re
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Literal
@@ -45,7 +46,8 @@ class BuilderPkgMetadataItem(pdc.BaseModel):
 
     Attributes:
         purl: string representation of a PackageURL for the scanned package
-        checksums: list of checksums for the package in string representation
+        checksums: list of sha256 checksums for the package in string
+            representation with algorithm prepended (sha256:...)
         dependency_of_purl: PURL of the package that this package is a DEPENDENCY_OF
         origin_type: "builder" or "intermediate" based on the origin of the package
         pullspec: pullspec of the image this package originates from
@@ -56,6 +58,31 @@ class BuilderPkgMetadataItem(pdc.BaseModel):
     dependency_of_purl: str | None = pdc.Field(default=None)
     origin_type: Literal["builder"] | Literal["intermediate"]
     pullspec: str
+
+    @pdc.field_validator("checksums", mode="after")
+    @classmethod
+    def validate_checksums(cls, value: list[str]) -> list[str]:
+        """
+        Validate that each checksum is a valid SHA256 hexdigest with sha256: prefix.
+
+        Args:
+            value: List of checksum strings to validate
+
+        Returns:
+            List of validated and normalized checksum strings (lowercase)
+
+        Raises:
+            ValueError: If any checksum is not a valid SHA256 hexdigest format
+        """
+        validated_checksums = []
+        for checksum in value:
+            if not re.match(r"^sha256:[0-9a-f]{64}$", checksum, re.IGNORECASE):
+                raise ValueError(
+                    f"Invalid checksum format: {checksum}. "
+                    "Expected format: sha256:<64-character-hexadecimal-string>"
+                )
+            validated_checksums.append(checksum.lower())
+        return validated_checksums
 
 
 class BuilderPkgMetadata(pdc.BaseModel):
