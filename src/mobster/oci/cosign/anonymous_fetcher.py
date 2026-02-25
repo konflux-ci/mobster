@@ -2,7 +2,7 @@
 
 from mobster.image import Image
 from mobster.oci.artifact import SBOM, Provenance02
-from mobster.oci.cosign import SupportsFetch
+from mobster.oci.cosign.protocol import SupportsFetch
 
 
 class AnonymousFetcher(SupportsFetch):

@@ -18,13 +18,12 @@ from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
-from mobster.oci.cosign import (
+from mobster.oci.cosign.attestation_utils import get_cosign_attestation_type
+from mobster.oci.cosign.config import (
     SignConfig,
-    SupportsFetch,
-    SupportsSign,
     VerifyConfig,
-    get_cosign_attestation_type,
 )
+from mobster.oci.cosign.protocol import SupportsFetch, SupportsSign
 from mobster.utils import run_async_subprocess
 
 logger = logging.getLogger(__name__)

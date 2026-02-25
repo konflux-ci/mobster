@@ -23,8 +23,9 @@ from mobster.oci.cosign import (
     SupportsFetch,
     SupportsSign,
     VerifyConfig,
+    get_cosign_fetcher,
+    get_cosign_signer,
 )
-from mobster.oci.cosign.get_cosign import get_cosign_fetcher, get_cosign_signer
 from mobster.release import ReleaseId, make_snapshot
 from mobster.tekton.artifact import (
     get_component_artifact,

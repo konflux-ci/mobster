@@ -21,16 +21,18 @@ from mobster.oci import (
 )
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
 from mobster.oci.cosign import (
+    CosignSBOMFetcher,
+    CosignSigner,
+    KeylessSBOMFetcher,
     KeylessSignConfig,
+    KeylessSigner,
     KeylessVerifyConfig,
     RekorConfig,
     SignConfig,
     StaticSignConfig,
     VerifyConfig,
+    get_cosign_fetcher,
 )
-from mobster.oci.cosign.get_cosign import get_cosign_fetcher
-from mobster.oci.cosign.keyless import KeylessSBOMFetcher, KeylessSigner
-from mobster.oci.cosign.static import CosignSBOMFetcher, CosignSigner
 from tests.cmd.test_augment import load_provenance
 
 
