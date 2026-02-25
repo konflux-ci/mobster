@@ -69,7 +69,7 @@ class KeylessVerifyConfig:
 
 
 @dataclass
-class CosignSignConfig:
+class SignConfig:
     """
     Configuration of Cosign keys for signing.
     Attributes:
@@ -85,7 +85,7 @@ class CosignSignConfig:
 
 
 @dataclass
-class CosignVerifyConfig:
+class VerifyConfig:
     """
     Configuration of Cosign keys for verification.
 

@@ -621,7 +621,7 @@ def test_get_parent_spdx_id_from_component_no_descendant_of_in_component(
         (Image("quay.io/foo", "sha256:a"), ""),
     ],
 )
-@patch("mobster.oci.cosign.static_cosign.CosignClient.fetch_sbom")
+@patch("mobster.oci.cosign.static.CosignSBOMFetcher.fetch_sbom")
 @patch("mobster.image.Image.from_repository_digest_manifest")
 async def test_download_parent_image_sbom(
     mock_get_image_or_index: AsyncMock,
@@ -656,7 +656,7 @@ async def test_download_parent_image_sbom_no_image(caplog: LogCaptureFixture) ->
 
 
 @pytest.mark.asyncio
-@patch("mobster.oci.cosign.static_cosign.CosignClient.fetch_sbom")
+@patch("mobster.oci.cosign.static.CosignSBOMFetcher.fetch_sbom")
 @patch("mobster.image.Image.from_repository_digest_manifest")
 async def test_download_parent_image_sbom_no_arch_match(
     mock_from_repo_manifest: AsyncMock,
@@ -677,7 +677,7 @@ async def test_download_parent_image_sbom_no_arch_match(
 
 
 @pytest.mark.asyncio
-@patch("mobster.oci.cosign.static_cosign.CosignClient.fetch_sbom")
+@patch("mobster.oci.cosign.static.CosignSBOMFetcher.fetch_sbom")
 @patch("mobster.image.Image.from_repository_digest_manifest")
 async def test_download_parent_image_sbom_no_sbom(
     mock_from_repo_manifest: AsyncMock,
@@ -695,7 +695,7 @@ async def test_download_parent_image_sbom_no_sbom(
 
 
 @pytest.mark.asyncio
-@patch("mobster.oci.cosign.static_cosign.CosignClient.fetch_sbom")
+@patch("mobster.oci.cosign.static.CosignSBOMFetcher.fetch_sbom")
 @patch("mobster.image.Image.from_repository_digest_manifest")
 async def test_download_parent_image_sbom_cdx(
     mock_from_repo_manifest: AsyncMock,

@@ -17,10 +17,10 @@ from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM, SBOMFormat
 from mobster.oci.cosign import (
-    CosignVerifyConfig,
     SupportsFetch,
+    VerifyConfig,
 )
-from mobster.oci.cosign.static_cosign import CosignClient
+from mobster.oci.cosign.static import CosignSBOMFetcher
 from mobster.release import (
     Component,
     ReleaseId,
@@ -95,8 +95,8 @@ class AugmentImageCommand(Command):
         snapshot = await make_snapshot(self.cli_args.snapshot, digest, semaphore)
 
         config = AugmentConfig(
-            cosign=CosignClient(
-                CosignVerifyConfig(static_verify_key=self.cli_args.verification_key)
+            cosign=CosignSBOMFetcher(
+                VerifyConfig(static_verify_key=self.cli_args.verification_key)
             ),
             verify=self.cli_args.verification_key is not None,
             semaphore=semaphore,

@@ -8,12 +8,12 @@ from mobster.image import Image
 from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
 from mobster.oci.cosign import (
-    CosignSignConfig,
-    CosignVerifyConfig,
     KeylessSignConfig,
     RekorConfig,
+    SignConfig,
     SupportsFetch,
     SupportsSign,
+    VerifyConfig,
     get_cosign_attestation_type,
 )
 from mobster.utils import run_async_subprocess
@@ -28,20 +28,19 @@ def check_tuf() -> bool:
     return Path(os.path.expanduser("~/.sigstore/root/")).exists()
 
 
-class KeylessCosign(SupportsFetch):
+class KeylessSBOMFetcher(SupportsFetch):
     """
-    Keyless Cosign client, used OIDC tokens for signing
-    and Rekor for verification. Requires that the host
-    machine ran `cosign initialize` with correct TUF
-    parameters previously.
+    Keyless Cosign client, uses Rekor and patterns for OIDC claims for
+    verification. Requires that the host machine ran `cosign initialize`
+    with correct TUF parameters previously.
     """
 
-    def __init__(self, config: CosignVerifyConfig):
+    def __init__(self, config: VerifyConfig):
         if not check_tuf():
             raise SBOMError(
                 "Cannot fetch SBOM verifiably, TUF has not been initialized."
             )
-        self.verify_key = config.static_verify_key
+        self.keyless_config = config.keyless_verify_config
         self.rekor_config = config.rekor_config
 
     async def fetch_latest_provenance(
@@ -64,7 +63,7 @@ class KeylessSigner(SupportsSign):
     """
 
     # pylint: disable=too-few-public-methods
-    def __init__(self, config: CosignSignConfig):
+    def __init__(self, config: SignConfig):
         if (
             not check_tuf()
             or config.keyless_config is None

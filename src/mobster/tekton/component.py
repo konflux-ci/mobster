@@ -15,14 +15,14 @@ from mobster.cmd.augment import AugmentConfig, SBOMRefDetail, augment_sboms
 from mobster.error import SBOMError
 from mobster.log import setup_logging
 from mobster.oci.cosign import (
-    CosignSignConfig,
-    CosignVerifyConfig,
     KeylessSignConfig,
     KeylessVerifyConfig,
     RekorConfig,
+    SignConfig,
     StaticSignConfig,
     SupportsFetch,
     SupportsSign,
+    VerifyConfig,
 )
 from mobster.oci.cosign.get_cosign import get_cosign_fetcher, get_cosign_signer
 from mobster.release import ReleaseId, make_snapshot
@@ -58,8 +58,8 @@ class ProcessComponentArgs(CommonArgs):
 
     augment_concurrency: int
     attestation_concurrency: int
-    cosign_sign_config: CosignSignConfig
-    cosign_verify_config: CosignVerifyConfig
+    cosign_sign_config: SignConfig
+    cosign_verify_config: VerifyConfig
 
 
 def _add_component_args(parser: ap.ArgumentParser) -> None:
@@ -148,7 +148,7 @@ def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
     rekor_config = _check_empty_config(
         RekorConfig(rekor_url=args.rekor_url, rekor_key=args.rekor_key)
     )
-    sign_config = CosignSignConfig(
+    sign_config = SignConfig(
         static_sign_config=_check_empty_config(
             StaticSignConfig(
                 sign_key=args.sign_key, sign_password=args.sign_password.encode("utf-8")
@@ -162,7 +162,7 @@ def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
             )
         ),
     )
-    verify_config = CosignVerifyConfig(
+    verify_config = VerifyConfig(
         static_verify_key=args.verify_key,
         rekor_config=rekor_config,
         keyless_verify_config=_check_empty_config(

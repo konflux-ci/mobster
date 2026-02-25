@@ -75,7 +75,7 @@ class TestAugmentCommand:
         self, monkeypatch: pytest.MonkeyPatch, fake_cosign: "FakeCosign"
     ) -> None:
         monkeypatch.setattr(
-            "mobster.cmd.augment.CosignClient",
+            "mobster.cmd.augment.CosignSBOMFetcher",
             lambda *_: fake_cosign,
         )
 

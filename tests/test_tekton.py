@@ -11,15 +11,15 @@ from mobster.cmd.upload.upload import (
     UploadConfig,
 )
 from mobster.oci.cosign import (
-    CosignSignConfig,
-    CosignVerifyConfig,
     KeylessSignConfig,
     KeylessVerifyConfig,
     RekorConfig,
+    SignConfig,
     StaticSignConfig,
+    VerifyConfig,
 )
-from mobster.oci.cosign.keyless_cosign import KeylessCosign
-from mobster.oci.cosign.static_cosign import CosignClient
+from mobster.oci.cosign.keyless import KeylessSBOMFetcher
+from mobster.oci.cosign.static import CosignSBOMFetcher
 from mobster.release import ReleaseId
 from mobster.tekton.common import upload_sboms
 from mobster.tekton.component import (
@@ -84,7 +84,7 @@ async def test_upload_sboms_failure_tries_s3(
 @patch("mobster.tekton.component.upload_snapshot", AsyncMock())
 @patch("mobster.tekton.component.tempfile", MagicMock())
 @patch("mobster.tekton.component.augment_component_sboms")
-@patch("mobster.oci.cosign.keyless_cosign.check_tuf", MagicMock(return_value=True))
+@patch("mobster.oci.cosign.keyless.check_tuf", MagicMock(return_value=True))
 async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> None:
     relase_id = ReleaseId.new()
     parsed_args = parse_args(
@@ -128,14 +128,14 @@ async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> No
         skip_s3_upload=False,
         augment_concurrency=8,
         attestation_concurrency=4,
-        cosign_sign_config=CosignSignConfig(
+        cosign_sign_config=SignConfig(
             keyless_config=KeylessSignConfig(
                 fulcio_url="a",
                 token_file=Path("/tmp/token"),
             ),
             rekor_config=RekorConfig(rekor_url="https://spam.example", rekor_key=None),
         ),
-        cosign_verify_config=CosignVerifyConfig(
+        cosign_verify_config=VerifyConfig(
             keyless_verify_config=KeylessVerifyConfig(
                 issuer_pattern=".*",
                 identity_pattern=".*",
@@ -144,7 +144,7 @@ async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> No
         ),
     )
     await process_component_sboms(parsed_args)
-    assert isinstance(mock_augment_sboms.call_args.args[3], KeylessCosign)
+    assert isinstance(mock_augment_sboms.call_args.args[3], KeylessSBOMFetcher)
 
 
 @pytest.mark.asyncio
@@ -193,7 +193,7 @@ async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> Non
         skip_s3_upload=False,
         augment_concurrency=8,
         attestation_concurrency=4,
-        cosign_sign_config=CosignSignConfig(
+        cosign_sign_config=SignConfig(
             rekor_config=RekorConfig(
                 rekor_url="https://spam.example", rekor_key=Path("/tmp/public_key")
             ),
@@ -201,7 +201,7 @@ async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> Non
                 sign_key="a",  # type: ignore
             ),
         ),
-        cosign_verify_config=CosignVerifyConfig(
+        cosign_verify_config=VerifyConfig(
             rekor_config=RekorConfig(
                 rekor_url="https://spam.example", rekor_key=Path("/tmp/public_key")
             ),
@@ -209,4 +209,4 @@ async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> Non
         ),
     )
     await process_component_sboms(parsed_args)
-    assert isinstance(mock_augment_sboms.call_args.args[3], CosignClient)
+    assert isinstance(mock_augment_sboms.call_args.args[3], CosignSBOMFetcher)

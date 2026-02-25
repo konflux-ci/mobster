@@ -19,10 +19,10 @@ from mobster.image import Image
 from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
 from mobster.oci.cosign import (
-    CosignSignConfig,
-    CosignVerifyConfig,
+    SignConfig,
     SupportsFetch,
     SupportsSign,
+    VerifyConfig,
     get_cosign_attestation_type,
 )
 from mobster.utils import run_async_subprocess
@@ -30,7 +30,7 @@ from mobster.utils import run_async_subprocess
 logger = logging.getLogger(__name__)
 
 
-class CosignClient(SupportsFetch):
+class CosignSBOMFetcher(SupportsFetch):
     """
     Client used to get OCI artifacts using Cosign.
 
@@ -41,7 +41,7 @@ class CosignClient(SupportsFetch):
 
     def __init__(
         self,
-        cosign_config: CosignVerifyConfig,
+        cosign_config: VerifyConfig,
     ) -> None:
         """
         Args:
@@ -154,7 +154,7 @@ class CosignSigner(SupportsSign):
     Cosign signing client using static keys
     """
 
-    def __init__(self, config: CosignSignConfig):
+    def __init__(self, config: SignConfig):
         if config.static_sign_config is None or not config.static_sign_config.sign_key:
             raise SBOMError("Cannot attest SBOM, no signing key was provided.")
         self.rekor_config = config.rekor_config

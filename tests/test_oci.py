@@ -21,16 +21,16 @@ from mobster.oci import (
 )
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
 from mobster.oci.cosign import (
-    CosignSignConfig,
-    CosignVerifyConfig,
     KeylessSignConfig,
     KeylessVerifyConfig,
     RekorConfig,
+    SignConfig,
     StaticSignConfig,
+    VerifyConfig,
 )
 from mobster.oci.cosign.get_cosign import get_cosign_fetcher
-from mobster.oci.cosign.keyless_cosign import KeylessCosign, KeylessSigner
-from mobster.oci.cosign.static_cosign import CosignClient, CosignSigner
+from mobster.oci.cosign.keyless import KeylessSBOMFetcher, KeylessSigner
+from mobster.oci.cosign.static import CosignSBOMFetcher, CosignSigner
 from tests.cmd.test_augment import load_provenance
 
 
@@ -440,7 +440,7 @@ def test_sbom_bad_format(doc: dict[str, Any]) -> None:
         _ = sbom.format
 
 
-class TestCosignClient:
+class TestCosignSBOMFetcher:
     verification_key = Path("/verification-key")
 
     @pytest.fixture()
@@ -494,14 +494,14 @@ class TestCosignClient:
         return Image("quay.io/test/repo", "sha256:deadbeef")
 
     @pytest.fixture
-    def client(self) -> CosignClient:
-        return CosignClient(CosignVerifyConfig(static_verify_key=self.verification_key))
+    def client(self) -> CosignSBOMFetcher:
+        return CosignSBOMFetcher(VerifyConfig(static_verify_key=self.verification_key))
 
     @pytest.mark.asyncio
     async def test_fetch_latest_provenance(
         self,
         image: Image,
-        client: CosignClient,
+        client: CosignSBOMFetcher,
         monkeypatch: pytest.MonkeyPatch,
         make_provenance_raw: Callable[[datetime.datetime | None], bytes],
         make_provenance_predicate: Callable[[datetime.datetime | None], dict[str, Any]],
@@ -518,7 +518,7 @@ class TestCosignClient:
             return 0, (old + b"\n" + new + b"\n" + no_date), b""
 
         monkeypatch.setattr(
-            "mobster.oci.cosign.static_cosign.run_async_subprocess",
+            "mobster.oci.cosign.static.run_async_subprocess",
             mock_run_async_subprocess,
         )
 
@@ -529,7 +529,7 @@ class TestCosignClient:
     async def test_fetch_attested_sbom(
         self,
         image: Image,
-        client: CosignClient,
+        client: CosignSBOMFetcher,
         monkeypatch: pytest.MonkeyPatch,
         sbom_doc: dict[str, Any],
     ) -> None:
@@ -560,7 +560,7 @@ class TestCosignClient:
 
     @pytest.mark.asyncio
     async def test_fetch_attested_sbom_no_attestations(
-        self, image: Image, client: CosignClient, monkeypatch: pytest.MonkeyPatch
+        self, image: Image, client: CosignSBOMFetcher, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         async def fake_verify_attestation(*_: Any) -> list[bytes]:
             return []
@@ -584,7 +584,7 @@ class TestCosignClient:
         self,
         code: int,
         image: Image,
-        client: CosignClient,
+        client: CosignSBOMFetcher,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         async def mock_run_async_subprocess(
@@ -593,7 +593,7 @@ class TestCosignClient:
             return code, b"", b""
 
         monkeypatch.setattr(
-            "mobster.oci.cosign.static_cosign.run_async_subprocess",
+            "mobster.oci.cosign.static.run_async_subprocess",
             mock_run_async_subprocess,
         )
 
@@ -613,7 +613,7 @@ class TestCosignClient:
     async def test_fetch_sbom(
         self,
         image: Image,
-        client: CosignClient,
+        client: CosignSBOMFetcher,
         monkeypatch: pytest.MonkeyPatch,
         sbom_raw: bytes,
         sbom_doc: dict[str, Any],
@@ -624,7 +624,7 @@ class TestCosignClient:
             return 0, sbom_raw, b""
 
         monkeypatch.setattr(
-            "mobster.oci.cosign.static_cosign.run_async_subprocess",
+            "mobster.oci.cosign.static.run_async_subprocess",
             mock_run_async_subprocess,
         )
 
@@ -643,7 +643,7 @@ class TestCosignClient:
     async def test_fetch_sbom_failure(
         self,
         image: Image,
-        client: CosignClient,
+        client: CosignSBOMFetcher,
         monkeypatch: pytest.MonkeyPatch,
         code: int,
     ) -> None:
@@ -654,7 +654,7 @@ class TestCosignClient:
             return code, b"", b""
 
         monkeypatch.setattr(
-            "mobster.oci.cosign.static_cosign.run_async_subprocess",
+            "mobster.oci.cosign.static.run_async_subprocess",
             mock_run_async_subprocess,
         )
 
@@ -668,14 +668,12 @@ class TestCosignSigner:
 
     @pytest.fixture
     def client(self) -> CosignSigner:
-        return CosignSigner(
-            CosignSignConfig(StaticSignConfig(sign_key=self.signing_key))
-        )
+        return CosignSigner(SignConfig(StaticSignConfig(sign_key=self.signing_key)))
 
     @pytest.mark.asyncio
     async def test_attest_sbom_no_signing_key(self) -> None:
         with pytest.raises(SBOMError):
-            CosignSigner(CosignSignConfig())
+            CosignSigner(SignConfig())
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -709,9 +707,9 @@ class TestCosignSigner:
             ),
         ],
     )
-    @patch("mobster.oci.cosign.static_cosign.run_async_subprocess")
-    @patch("mobster.oci.cosign.static_cosign.make_oci_auth_file", MagicMock())
-    @patch("mobster.oci.cosign.static_cosign.tempfile.NamedTemporaryFile", MagicMock())
+    @patch("mobster.oci.cosign.static.run_async_subprocess")
+    @patch("mobster.oci.cosign.static.make_oci_auth_file", MagicMock())
+    @patch("mobster.oci.cosign.static.tempfile.NamedTemporaryFile", MagicMock())
     async def test_attest_sbom(
         self,
         mock_run_subprocess: AsyncMock,
@@ -764,7 +762,7 @@ class TestCosignSigner:
             ("sbom", 1, b"NO WAY (to execute this)", SBOMError),
         ],
     )
-    @patch("mobster.oci.cosign.static_cosign.run_async_subprocess")
+    @patch("mobster.oci.cosign.static.run_async_subprocess")
     async def test_clean(
         self,
         mock_subprocess: AsyncMock,
@@ -792,8 +790,8 @@ class TestCosignSigner:
 
 class TestKeylessSigner:
     @pytest.fixture
-    def keyless_config(self) -> Generator[CosignSignConfig, None, None]:
-        yield CosignSignConfig(
+    def keyless_config(self) -> Generator[SignConfig, None, None]:
+        yield SignConfig(
             rekor_config=RekorConfig(rekor_url="foo"),
             keyless_config=KeylessSignConfig(
                 fulcio_url="bar",
@@ -803,18 +801,17 @@ class TestKeylessSigner:
 
     @pytest.fixture
     def fake_keyless_cosign(
-        self, keyless_config: CosignSignConfig
+        self, keyless_config: SignConfig
     ) -> Generator[KeylessSigner, None, None]:
-        with patch("mobster.oci.cosign.keyless_cosign.check_tuf") as fake_check_tuf:
+        with patch("mobster.oci.cosign.keyless.check_tuf") as fake_check_tuf:
             fake_check_tuf.return_value = True
             cosign = KeylessSigner(keyless_config)
             yield cosign
 
     @pytest.mark.asyncio
     async def test_attest_sbom(self, fake_keyless_cosign: KeylessSigner) -> None:
-        # fake_keyless_cosign.check_tuf.return_value = True
         with patch(
-            "mobster.oci.cosign.keyless_cosign.run_async_subprocess",
+            "mobster.oci.cosign.keyless.run_async_subprocess",
             return_value=(0, b"", b""),
         ) as mocked_run:
             await fake_keyless_cosign.attest_sbom(
@@ -845,14 +842,12 @@ class TestKeylessSigner:
     async def test_attest_sbom_no_config(self) -> None:
         """Without all signing information, we cannot sign"""
         with pytest.raises(SBOMError):
-            await KeylessSigner(CosignSignConfig()).attest_sbom(
-                Path("a"), "b", MagicMock()
-            )
+            await KeylessSigner(SignConfig()).attest_sbom(Path("a"), "b", MagicMock())
 
     @pytest.mark.asyncio
     async def test_attest_sbom_fail(self, fake_keyless_cosign: KeylessSigner) -> None:
         with patch(
-            "mobster.oci.cosign.keyless_cosign.run_async_subprocess",
+            "mobster.oci.cosign.keyless.run_async_subprocess",
             return_value=(1, b"", b"Or nor, Cleor!"),
         ):
             with pytest.raises(SBOMError):
@@ -862,27 +857,27 @@ class TestKeylessSigner:
 
 
 class TestGetCosign:
-    @patch("mobster.oci.cosign.keyless_cosign.check_tuf", MagicMock(return_value=True))
+    @patch("mobster.oci.cosign.keyless.check_tuf", MagicMock(return_value=True))
     @pytest.mark.parametrize(
         ["config", "expected_type"],
         [
             (
-                CosignVerifyConfig(static_verify_key=Path("A")),
-                CosignClient,
+                VerifyConfig(static_verify_key=Path("A")),
+                CosignSBOMFetcher,
             ),
             (
-                CosignVerifyConfig(
+                VerifyConfig(
                     rekor_config=RekorConfig(rekor_url="a"),
                     keyless_verify_config=KeylessVerifyConfig(
                         issuer_pattern="foo",
                         identity_pattern="bar",
                     ),
                 ),
-                KeylessCosign,
+                KeylessSBOMFetcher,
             ),
         ],
     )
     def test_get_cosign_fetcher(
-        self, config: CosignVerifyConfig, expected_type: type
+        self, config: VerifyConfig, expected_type: type
     ) -> None:
         assert isinstance(get_cosign_fetcher(config), expected_type)
