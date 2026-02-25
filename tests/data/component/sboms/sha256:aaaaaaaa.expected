@@ -36,6 +36,11 @@
                     "referenceCategory": "PACKAGE-MANAGER"
                 },
                 {
+                    "referenceLocator": "cpe:/a:redhat:discovery:1.0::el9",
+                    "referenceType": "cpe22Type",
+                    "referenceCategory": "SECURITY"
+                },
+                {
                     "referenceLocator": "https://github.com/doc.md",
                     "referenceType": "url",
                     "referenceCategory": "SECURITY"

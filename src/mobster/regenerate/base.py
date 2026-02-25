@@ -259,6 +259,7 @@ class SBOMRegenerator(ABC):
                         atlas_api_url=self.args.tpa_base_url,
                         retry_s3_bucket=bucket_name,
                         release_id=release_id,
+                        release_data=path_release_data,
                         labels={},
                         augment_concurrency=self.args.concurrency,
                         result_dir=self.args.output_path,

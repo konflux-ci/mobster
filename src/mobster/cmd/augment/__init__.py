@@ -4,7 +4,7 @@ import asyncio
 import itertools
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -58,6 +58,7 @@ class AugmentConfig:
         semaphore: asyncio semaphore to limit the number of concurrent operations
         output_dir: Path to directory to save the augmented SBOMs to
         release_id: ReleaseId to optionally inject into SBOMs
+        cpes: List of string CPEs to add to the SBOM
     """
 
     cosign: Cosign
@@ -65,6 +66,7 @@ class AugmentConfig:
     semaphore: asyncio.Semaphore
     output_dir: Path
     release_id: ReleaseId | None = None
+    cpes: list[str] = field(default_factory=list)
 
 
 class AugmentImageCommand(Command):
@@ -98,6 +100,7 @@ class AugmentImageCommand(Command):
             semaphore=semaphore,
             output_dir=self.cli_args.output,
             release_id=self.cli_args.release_id,
+            cpes=self.cli_args.cpes,
         )
         if not all(await augment_sboms(config, snapshot)):
             self.exit_code = 1
@@ -212,6 +215,7 @@ def update_sbom_in_situ(
     repository: ReleaseRepository,
     image: Image,
     sbom: SBOM,
+    cpes: list[str],
     release_id: ReleaseId | None = None,
 ) -> bool:
     """
@@ -223,10 +227,17 @@ def update_sbom_in_situ(
         image (Image): Object representing an image being released.
         sbom (dict): SBOM parsed as dictionary.
         release_id: release id to be added to the SBOM's annotations, optional
+        cpes: List of string CPEs to add to the SBOM
     """
 
     if sbom.format in SPDXVersion2.supported_versions:
-        SPDXVersion2().update_sbom(repository, image, sbom.doc, release_id)
+        SPDXVersion2().update_sbom(
+            repository,
+            image,
+            sbom.doc,
+            cpes,
+            release_id,
+        )
         return True
 
     # The CDX handler does not support updating SBOMs for index images, as those
@@ -266,7 +277,13 @@ async def update_sbom(
                 image, config.cosign, config.verify
             )
 
-            if not update_sbom_in_situ(repository, image, sbom, config.release_id):
+            if not update_sbom_in_situ(
+                repository,
+                image,
+                sbom,
+                config.cpes,
+                config.release_id,
+            ):
                 raise SBOMError(f"Unsupported SBOM format for image {image}.")
             sbom.reference = repository.public_repo_url + "@" + image.digest
             path = config.output_dir / get_randomized_sbom_filename(sbom)
