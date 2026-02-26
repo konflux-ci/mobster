@@ -15,12 +15,8 @@ from mobster.cmd.augment.handlers import CycloneDXVersion1, SPDXVersion2
 from mobster.cmd.base import Command
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
+from mobster.oci import cosign
 from mobster.oci.artifact import SBOM, SBOMFormat
-from mobster.oci.cosign import (
-    SupportsFetch,
-    VerifyConfig,
-)
-from mobster.oci.cosign.static import CosignSBOMFetcher
 from mobster.release import (
     Component,
     ReleaseId,
@@ -64,7 +60,7 @@ class AugmentConfig:
         release_id: ReleaseId to optionally inject into SBOMs
     """
 
-    cosign: SupportsFetch
+    cosign: cosign.SupportsFetch
     verify: bool
     semaphore: asyncio.Semaphore
     output_dir: Path
@@ -95,8 +91,8 @@ class AugmentImageCommand(Command):
         snapshot = await make_snapshot(self.cli_args.snapshot, digest, semaphore)
 
         config = AugmentConfig(
-            cosign=CosignSBOMFetcher(
-                VerifyConfig(static_verify_key=self.cli_args.verification_key)
+            cosign=cosign.StaticKeyFetcher(
+                cosign.VerifyConfig(static_verify_key=self.cli_args.verification_key)
             ),
             verify=self.cli_args.verification_key is not None,
             semaphore=semaphore,
@@ -151,7 +147,9 @@ def get_randomized_sbom_filename(sbom: SBOM) -> str:
     return f"{sbom.reference.replace('/', '-')}-{suffix}"
 
 
-async def verify_sbom(sbom: SBOM, image: Image, cosign: SupportsFetch) -> None:
+async def verify_sbom(
+    sbom: SBOM, image: Image, cosign_client: cosign.SupportsFetch
+) -> None:
     """
     Verify that the sha256 digest of the specified SBOM matches the value of
     SBOM_BLOB_URL in the provenance for the supplied image. Cosign is used to
@@ -161,10 +159,10 @@ async def verify_sbom(sbom: SBOM, image: Image, cosign: SupportsFetch) -> None:
     Args:
         sbom (SBOM): the sbom to verify
         image (Image): image to verify the sbom for
-        cosign (Cosign): implementation of the Cosign protocol
+        cosign_client (Cosign): implementation of the Cosign protocol
     """
 
-    prov = await cosign.fetch_latest_provenance(image)
+    prov = await cosign_client.fetch_latest_provenance(image)
     prov_sbom_digest = prov.get_sbom_digest(image)
 
     if prov_sbom_digest != sbom.digest:
@@ -175,7 +173,7 @@ async def verify_sbom(sbom: SBOM, image: Image, cosign: SupportsFetch) -> None:
 
 
 async def load_sbom(
-    image: Image, cosign: SupportsFetch, verify: bool
+    image: Image, cosign_client: cosign.SupportsFetch, verify: bool
 ) -> tuple[SBOM, bool]:
     """
     Download and parse the sbom for the image reference and verify that its digest
@@ -183,7 +181,7 @@ async def load_sbom(
 
     Args:
         image (Image): image to load the sbom for
-        cosign (Cosign): implementation of the Cosign protocol
+        cosign_client (Cosign): implementation of the Cosign protocol
         verify (bool): True if the SBOM's digest should be verified via the
             provenance of the image
     Returns:
@@ -192,11 +190,11 @@ async def load_sbom(
     """
     # TODO ISV-6681: pylint: disable=fixme
     #  update this function to also work with Keyless cosign
-    sbom = await cosign.fetch_sbom(image)
+    sbom = await cosign_client.fetch_sbom(image)
     attestation_valid = True
     if verify:
         try:
-            await verify_sbom(sbom, image, cosign)
+            await verify_sbom(sbom, image, cosign_client)
         except SBOMError:
             LOGGER.exception(
                 "Attestation verification failed for image '%s'."

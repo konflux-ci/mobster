@@ -11,7 +11,7 @@ from mobster.oci.cosign.config import (
 )
 from mobster.oci.cosign.keyless import KeylessSBOMFetcher, KeylessSigner
 from mobster.oci.cosign.protocol import SupportsFetch, SupportsSign
-from mobster.oci.cosign.static import CosignSBOMFetcher, CosignSigner
+from mobster.oci.cosign.static import StaticKeyFetcher, StaticKeySigner
 
 
 def get_cosign_fetcher(config: VerifyConfig) -> SupportsFetch:
@@ -25,7 +25,7 @@ def get_cosign_fetcher(config: VerifyConfig) -> SupportsFetch:
     if config.keyless_verify_config is not None and config.rekor_config is not None:
         return KeylessSBOMFetcher(config)
     if config.static_verify_key is not None:
-        return CosignSBOMFetcher(config)
+        return StaticKeyFetcher(config)
     raise ValueError(
         "Cannot instantiate full Cosign client from incomplete configuration. "
         "Either support sign and verify keys or run cosign initialize and "
@@ -46,7 +46,7 @@ def get_cosign_signer(config: SignConfig) -> SupportsSign:
         config.static_sign_config is not None
         and config.static_sign_config.sign_key is not None
     ):
-        return CosignSigner(config)
+        return StaticKeySigner(config)
     raise ValueError(
         "Cannot instantiate full Cosign client from incomplete configuration. "
         "Either support sign and verify keys or run cosign initialize and "
@@ -68,6 +68,6 @@ __all__ = [
     "AnonymousFetcher",
     "KeylessSBOMFetcher",
     "KeylessSigner",
-    "CosignSBOMFetcher",
-    "CosignSigner",
+    "StaticKeyFetcher",
+    "StaticKeySigner",
 ]

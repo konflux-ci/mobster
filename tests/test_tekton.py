@@ -19,7 +19,7 @@ from mobster.oci.cosign import (
     VerifyConfig,
 )
 from mobster.oci.cosign.keyless import KeylessSBOMFetcher
-from mobster.oci.cosign.static import CosignSBOMFetcher
+from mobster.oci.cosign.static import StaticKeyFetcher
 from mobster.release import ReleaseId
 from mobster.tekton.common import upload_sboms
 from mobster.tekton.component import (
@@ -209,4 +209,4 @@ async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> Non
         ),
     )
     await process_component_sboms(parsed_args)
-    assert isinstance(mock_augment_sboms.call_args.args[3], CosignSBOMFetcher)
+    assert isinstance(mock_augment_sboms.call_args.args[3], StaticKeyFetcher)

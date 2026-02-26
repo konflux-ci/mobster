@@ -21,14 +21,14 @@ from mobster.oci import (
 )
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
 from mobster.oci.cosign import (
-    CosignSBOMFetcher,
-    CosignSigner,
     KeylessSBOMFetcher,
     KeylessSignConfig,
     KeylessSigner,
     KeylessVerifyConfig,
     RekorConfig,
     SignConfig,
+    StaticKeyFetcher,
+    StaticKeySigner,
     StaticSignConfig,
     VerifyConfig,
     get_cosign_fetcher,
@@ -496,14 +496,14 @@ class TestCosignSBOMFetcher:
         return Image("quay.io/test/repo", "sha256:deadbeef")
 
     @pytest.fixture
-    def client(self) -> CosignSBOMFetcher:
-        return CosignSBOMFetcher(VerifyConfig(static_verify_key=self.verification_key))
+    def client(self) -> StaticKeyFetcher:
+        return StaticKeyFetcher(VerifyConfig(static_verify_key=self.verification_key))
 
     @pytest.mark.asyncio
     async def test_fetch_latest_provenance(
         self,
         image: Image,
-        client: CosignSBOMFetcher,
+        client: StaticKeyFetcher,
         monkeypatch: pytest.MonkeyPatch,
         make_provenance_raw: Callable[[datetime.datetime | None], bytes],
         make_provenance_predicate: Callable[[datetime.datetime | None], dict[str, Any]],
@@ -531,7 +531,7 @@ class TestCosignSBOMFetcher:
     async def test_fetch_attested_sbom(
         self,
         image: Image,
-        client: CosignSBOMFetcher,
+        client: StaticKeyFetcher,
         monkeypatch: pytest.MonkeyPatch,
         sbom_doc: dict[str, Any],
     ) -> None:
@@ -562,7 +562,7 @@ class TestCosignSBOMFetcher:
 
     @pytest.mark.asyncio
     async def test_fetch_attested_sbom_no_attestations(
-        self, image: Image, client: CosignSBOMFetcher, monkeypatch: pytest.MonkeyPatch
+        self, image: Image, client: StaticKeyFetcher, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         async def fake_verify_attestation(*_: Any) -> list[bytes]:
             return []
@@ -586,7 +586,7 @@ class TestCosignSBOMFetcher:
         self,
         code: int,
         image: Image,
-        client: CosignSBOMFetcher,
+        client: StaticKeyFetcher,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         async def mock_run_async_subprocess(
@@ -615,7 +615,7 @@ class TestCosignSBOMFetcher:
     async def test_fetch_sbom(
         self,
         image: Image,
-        client: CosignSBOMFetcher,
+        client: StaticKeyFetcher,
         monkeypatch: pytest.MonkeyPatch,
         sbom_raw: bytes,
         sbom_doc: dict[str, Any],
@@ -645,7 +645,7 @@ class TestCosignSBOMFetcher:
     async def test_fetch_sbom_failure(
         self,
         image: Image,
-        client: CosignSBOMFetcher,
+        client: StaticKeyFetcher,
         monkeypatch: pytest.MonkeyPatch,
         code: int,
     ) -> None:
@@ -669,13 +669,13 @@ class TestCosignSigner:
     signing_key = Path("/signing_key")
 
     @pytest.fixture
-    def client(self) -> CosignSigner:
-        return CosignSigner(SignConfig(StaticSignConfig(sign_key=self.signing_key)))
+    def client(self) -> StaticKeySigner:
+        return StaticKeySigner(SignConfig(StaticSignConfig(sign_key=self.signing_key)))
 
     @pytest.mark.asyncio
     async def test_attest_sbom_no_signing_key(self) -> None:
         with pytest.raises(SBOMError):
-            CosignSigner(SignConfig())
+            StaticKeySigner(SignConfig())
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -722,7 +722,7 @@ class TestCosignSigner:
         subprocess_code: int,
         subprocess_stderr: bytes,
         raises_exc: type[Exception] | None,
-        client: CosignSigner,
+        client: StaticKeySigner,
         caplog: LogCaptureFixture,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -768,7 +768,7 @@ class TestCosignSigner:
     async def test_clean(
         self,
         mock_subprocess: AsyncMock,
-        client: CosignSigner,
+        client: StaticKeySigner,
         blob_type: Literal["all", "signature", "attestation", "sbom"],
         subprocess_code: int,
         subprocess_stderr: bytes,
@@ -865,7 +865,7 @@ class TestGetCosign:
         [
             (
                 VerifyConfig(static_verify_key=Path("A")),
-                CosignSBOMFetcher,
+                StaticKeyFetcher,
             ),
             (
                 VerifyConfig(

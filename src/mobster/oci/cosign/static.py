@@ -25,9 +25,9 @@ from mobster.utils import run_async_subprocess
 logger = logging.getLogger(__name__)
 
 
-class CosignSBOMFetcher(SupportsFetch):
+class StaticKeyFetcher(SupportsFetch):
     """
-    Client used to get OCI artifacts using Cosign.
+    Client used to get OCI artifacts using Cosign with static keys.
 
     Attributes:
         verify_key: verification (public) key path
@@ -144,7 +144,7 @@ class CosignSBOMFetcher(SupportsFetch):
         return SBOM.from_cosign_output(stdout, image.reference)
 
 
-class CosignSigner(SupportsSign):
+class StaticKeySigner(SupportsSign):
     """
     Cosign signing client using static keys
     """
