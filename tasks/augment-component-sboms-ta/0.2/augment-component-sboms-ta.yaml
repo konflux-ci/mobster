@@ -114,6 +114,10 @@ spec:
       type: string
       description: K8s reference to a secret containing a key for verifying provenance attestations
 
+    - name: releaseData
+      type: string
+      description: Path to the merged data file from collect-data in the dataDir.
+
   results:
     - description: Produced trusted data artifact
       name: sourceDataArtifact
@@ -153,7 +157,7 @@ spec:
           value: $(params.sourceDataArtifact)
 
     - name: process-component-sboms
-      image: quay.io/konflux-ci/mobster@sha256:028dfcf2ac8b0404141550de17364bf049b0ddb35f45a24a075bc1f485a56c80
+      image: quay.io/konflux-ci/mobster@sha256:a2feb71e321a0164820fe7171e564242c75125d8b62d213d3ba3423cf8fa678b
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
           valueFrom:
@@ -228,6 +232,7 @@ spec:
           --result-dir "$(params.resultsDirPath)"
           --sign-key "$SIGN_KEY"
           --verify-key "$(params.attestationPubKey)"
+          --release-data "$(params.releaseData)"
         )
 
         process_component_sboms "${mobster_args[@]}"
