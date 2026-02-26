@@ -1,4 +1,4 @@
-"""Module for choosing correct cosign client"""
+"""Module for handling OCI artifacts using Cosign"""
 
 from mobster.oci.cosign.anonymous_fetcher import AnonymousFetcher
 from mobster.oci.cosign.config import (

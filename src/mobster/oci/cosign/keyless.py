@@ -80,8 +80,6 @@ class KeylessSigner(SupportsSign):
         image_ref: str,
         sbom_format: SBOMFormat,
     ) -> None:
-        # Translate SPDX format to a cosign-supported version. See
-        # https://github.com/sigstore/cosign/blob/main/doc/cosign_attest.md#options
         cosign_command = [
             "cosign",
             "attest",
@@ -90,7 +88,6 @@ class KeylessSigner(SupportsSign):
             get_cosign_attestation_type(sbom_format),
             "--rekor-url",
             str(self.rekor_config.rekor_url),
-            # cannot be None, this instance must allow signing to get to this point
             "--fulcio-url",
             str(self.keyless_config.fulcio_url),
             "--identity-token",

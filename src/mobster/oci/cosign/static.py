@@ -1,8 +1,4 @@
-"""
-This module contains the Cosign protocol and the real Cosign implementation.
-The protocol is used mainly for testing. The tests inject a testing cosign
-client implementing the Cosign protocol.
-"""
+"""This module contains the real Cosign implementation using static signing keys."""
 
 import hashlib
 import json

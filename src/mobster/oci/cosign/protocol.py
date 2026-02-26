@@ -1,6 +1,4 @@
-"""
-This module contains the Cosign protocol.
-"""
+"""This module contains the Cosign protocol definition."""
 
 import typing
 from pathlib import Path
@@ -47,8 +45,5 @@ class SupportsSign(typing.Protocol):
             sbom_path: The path to the SBOM file
             image_ref: The reference of the image
             sbom_format: The format of the SBOM to attest
-
-        Returns:
-            None
         """
         raise NotImplementedError()

@@ -9,6 +9,9 @@ from pathlib import Path
 class RekorConfig:
     """
     Rekor (TLOG) configuration object definition.
+    Attributes:
+        rekor_url: URL of the Rekor server
+        rekor_key: Public key of the Rekor server, optional
     """
 
     rekor_url: str
@@ -76,7 +79,6 @@ class SignConfig:
 class VerifyConfig:
     """
     Configuration of Cosign keys for verification.
-
     Attributes:
         static_verify_key: verification static key path
         rekor_config: rekor URL and optionally key,
