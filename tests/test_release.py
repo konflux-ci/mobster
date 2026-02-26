@@ -32,8 +32,10 @@ from tests.conftest import random_digest
 async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
     digest1 = random_digest()
     digest2 = random_digest()
+    digest3 = random_digest()
     child_digest1 = random_digest()
     child_digest2 = random_digest()
+    child_digest3 = random_digest()
 
     snapshot_raw = json.dumps(
         {
@@ -66,6 +68,17 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                             "tags": ["2.0", "latest"],
                             "irrelevant_field": "irrelevant value",
                             "url": "quay.io/repo2",
+                        },
+                    ],
+                },
+                {
+                    "name": "comp-3",
+                    "containerImage": f"quay.io/repo3@{digest3}",
+                    "repositories": [
+                        {
+                            "tags": ["3.0"],
+                            "url": "quay.io/repo3",
+                            # This Snapshot doesn't have an external repo
                         },
                     ],
                 },
@@ -111,6 +124,21 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                     )
                 ],
             ),
+            Component(
+                name="comp-3",
+                image=IndexImage(
+                    "quay.io/repo3",
+                    digest3,
+                    children=[Image("quay.io/repo3", child_digest3)],
+                ),
+                release_repositories=[
+                    ReleaseRepository(
+                        public_repo_url="quay.io/repo3",
+                        tags=["3.0"],
+                        internal_repo_url="quay.io/repo3",
+                    )
+                ],
+            ),
         ],
     )
 
@@ -120,10 +148,14 @@ async def test_make_snapshot(index_manifest: dict[str, str]) -> None:
                 **index_manifest,
                 "manifests": [{"digest": child_digest1}],
             }
-
+        if "quay.io/repo2" in reference:
+            return {
+                **index_manifest,
+                "manifests": [{"digest": child_digest2}],
+            }
         return {
             **index_manifest,
-            "manifests": [{"digest": child_digest2}],
+            "manifests": [{"digest": child_digest3}],
         }
 
     with patch("mobster.image.get_image_manifest", side_effect=fake_get_image_manifest):

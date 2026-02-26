@@ -10,7 +10,11 @@ from mobster.oci.cosign.config import (
     VerifyConfig,
 )
 from mobster.oci.cosign.keyless import KeylessSBOMFetcher, KeylessSigner
-from mobster.oci.cosign.protocol import SupportsFetch, SupportsSign
+from mobster.oci.cosign.protocol import (
+    SupportsFetch,
+    SupportsProvenanceFetch,
+    SupportsSign,
+)
 from mobster.oci.cosign.static import StaticKeyFetcher, StaticKeySigner
 
 
@@ -70,6 +74,7 @@ __all__ = [
     "RekorConfig",
     "SupportsSign",
     "SupportsFetch",
+    "SupportsProvenanceFetch",
     "AnonymousFetcher",
     "KeylessSBOMFetcher",
     "KeylessSigner",

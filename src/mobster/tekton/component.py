@@ -322,7 +322,16 @@ async def attest_sbom_to_registry(
                 image_ref=sbom_ref_detail.reference,
                 sbom_format=sbom_ref_detail.sbom_format,
             )
-            LOGGER.debug("Successfully attested image %s.", sbom_ref_detail.reference)
+            method = (
+                "static"
+                if isinstance(cosign_signer, cosign.StaticKeySigner)
+                else "keyless"
+            )
+            LOGGER.debug(
+                "Successfully attested image %s using %s signing method.",
+                sbom_ref_detail.reference,
+                method,
+            )
         except SBOMError:
             LOGGER.exception("Could not attest SBOM because of a cosign error.")
             return False

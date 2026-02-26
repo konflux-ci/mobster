@@ -138,9 +138,7 @@ async def download_parent_image_sbom(
             arch,
         )
 
-    # TODO ISV-6682:  pylint: disable=fixme
-    #  use a cosign client that can fetch both attached and attested SBOMs
-    cosign_client = cosign.StaticKeyFetcher(cosign.VerifyConfig())
+    cosign_client = cosign.AnonymousFetcher()
     try:
         sbom = await cosign_client.fetch_sbom(actual_parent_image)
     except SBOMError:

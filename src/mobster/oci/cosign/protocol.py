@@ -7,10 +7,13 @@ from mobster.image import Image
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
 
 
+@typing.runtime_checkable
 class SupportsFetch(typing.Protocol):  # pragma: nocover
     """
     Definition of a Cosign fetch protocol.
     """
+
+    # pylint: disable=too-few-public-methods
 
     async def fetch_sbom(self, image: Image) -> SBOM:
         """
@@ -18,13 +21,27 @@ class SupportsFetch(typing.Protocol):  # pragma: nocover
         """
         raise NotImplementedError()
 
+
+@typing.runtime_checkable
+class SupportsProvenanceFetch(typing.Protocol):
+    """
+    Definition of a Cosign provenance fetch protocol.
+    """
+
+    # pylint: disable=too-few-public-methods
+
     async def fetch_latest_provenance(self, image: Image) -> Provenance02:
         """
         Fetch the latest provenance for an image.
+        Args:
+            image: The image to fetch provenance for.
+        Returns:
+            The provenance object.
         """
         raise NotImplementedError()
 
 
+@typing.runtime_checkable
 class SupportsSign(typing.Protocol):
     """
     Definition of a Cosign sign protocol.
