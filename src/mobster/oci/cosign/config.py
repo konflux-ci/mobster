@@ -9,9 +9,12 @@ from pathlib import Path
 class RekorConfig:
     """
     Rekor (TLOG) configuration object definition.
+
     Attributes:
-        rekor_url: URL of the Rekor server
-        rekor_key: Public key of the Rekor server, optional
+        rekor_url:
+            URL of the Rekor server
+        rekor_key:
+            Public key of the Rekor server, optional
     """
 
     rekor_url: str
@@ -21,10 +24,13 @@ class RekorConfig:
 @dataclass
 class StaticSignConfig:
     """
-    Static (using keys) cosign configuration
+    Static (using keys) cosign configuration.
+
     Attributes:
-        sign_key: path or URL to the signing key for SBOM attesting
-        sign_password: password used for encrypting the signing key
+        sign_key:
+            Path or URL to the signing key for SBOM attesting
+        sign_password:
+            Password used for encrypting the signing key
     """
 
     sign_key: os.PathLike[str]
@@ -34,10 +40,13 @@ class StaticSignConfig:
 @dataclass
 class KeylessSignConfig:
     """
-    Keyless (using OIDC) cosign configuration for signing
+    Keyless (using OIDC) cosign configuration for signing.
+
     Attributes:
-        fulcio_url: URL to the used certificate authority for keyless signing
-        token_file: path to OIDC token used for keyless authentication
+        fulcio_url:
+            URL to the used certificate authority for keyless signing
+        token_file:
+            Path to OIDC token used for keyless authentication
     """
 
     fulcio_url: str
@@ -47,11 +56,14 @@ class KeylessSignConfig:
 @dataclass
 class KeylessVerifyConfig:
     """
-    Keyless (using OIDC) cosign configuration for verification
+    Keyless (using OIDC) cosign configuration for verification.
+
     Attributes:
-        issuer_pattern: RegEx pattern for validating token issuer, used for
+        issuer_pattern:
+            RegEx pattern for validating token issuer, used for
             keyless attested SBOM verification
-        identity_pattern: RegEx pattern for validating token identity, used for
+        identity_pattern:
+            RegEx pattern for validating token identity, used for
             keyless attested SBOM verification
     """
 
@@ -63,11 +75,14 @@ class KeylessVerifyConfig:
 class SignConfig:
     """
     Configuration of Cosign keys for signing.
+
     Attributes:
-        static_sign_config: configuration for static signing
-        rekor_config: rekor URL and optionally key,
-            used for static and keyless attesting
-        keyless_config: configuration for keyless signing
+        static_sign_config:
+            Configuration for static signing
+        rekor_config:
+            Rekor URL and optionally key, used for static and keyless attesting
+        keyless_config:
+            Configuration for keyless signing
     """
 
     static_sign_config: StaticSignConfig | None = None
@@ -79,11 +94,14 @@ class SignConfig:
 class VerifyConfig:
     """
     Configuration of Cosign keys for verification.
+
     Attributes:
-        static_verify_key: verification static key path
-        rekor_config: rekor URL and optionally key,
-            used for static and keyless attesting
-        keyless_verify_config: keyless verification configuration
+        static_verify_key:
+            Verification static key path
+        rekor_config:
+            Rekor URL and optionally key, used for static and keyless attesting
+        keyless_verify_config:
+            Keyless verification configuration
     """
 
     static_verify_key: os.PathLike[str] | None = None

@@ -30,7 +30,7 @@ class StaticKeyFetcher(SupportsFetch):
     Client used to get OCI artifacts using Cosign with static keys.
 
     Attributes:
-        verify_key: verification (public) key path
+        verify_key: Verification (public) key path
         rekor_config: TLOG configuration
     """
 
@@ -39,6 +39,8 @@ class StaticKeyFetcher(SupportsFetch):
         cosign_config: VerifyConfig,
     ) -> None:
         """
+        Initialize the StaticKeyFetcher.
+
         Args:
             cosign_config: The configuration for this client instance
         """
@@ -83,7 +85,7 @@ class StaticKeyFetcher(SupportsFetch):
         time the image build finished.
 
         Args:
-            image (Image): Image to fetch the provenances of.
+            image: Image to fetch the provenances of
         """
 
         provenances: list[Provenance02] = []
@@ -103,6 +105,7 @@ class StaticKeyFetcher(SupportsFetch):
     ) -> SBOM | None:
         """
         Fetch attested SBOM.
+
         Args:
             image: The image this attestation (and the SBOM) belongs to
             sbom_format: The expected SBOM format. This function only cares if the type
@@ -129,7 +132,7 @@ class StaticKeyFetcher(SupportsFetch):
         Fetch and parse the SBOM for the supplied image.
 
         Args:
-            image (Image): Image to fetch the SBOM of.
+            image: Image to fetch the SBOM of
         """
         with make_oci_auth_file(image.reference) as authfile:
             code, stdout, stderr = await run_async_subprocess(
@@ -146,7 +149,7 @@ class StaticKeyFetcher(SupportsFetch):
 
 class StaticKeySigner(SupportsSign):
     """
-    Cosign signing client using static keys
+    Cosign signing client using static keys.
     """
 
     def __init__(self, config: SignConfig):
@@ -175,14 +178,12 @@ class StaticKeySigner(SupportsSign):
         """
         Sign & attach an arbitrary file as OCI attestation to an image
         with the supplied reference.
+
         Args:
             file_path: Path of the data to be attested
             push_reference: Reference of the image that this attestation
                 will be attached to
             data_format: Cosign-dependent attestation format
-
-        Returns:
-            None
         """
 
         # Translate SPDX format to a cosign-supported version. See
@@ -235,9 +236,10 @@ class StaticKeySigner(SupportsSign):
     ) -> None:  # pragma: nocover
         """
         Attach a SLSA Provenance v2 to an image. For test purposes only.
+
         Args:
             provenance: Provenance object to attach
-            image_ref: reference of image to attach to
+            image_ref: Reference of image to attach to
         """
         # Used in integration tests only, unit-testing won't add any benefit
         # as this is just a wrapper for another function which is covered by
@@ -268,11 +270,10 @@ class StaticKeySigner(SupportsSign):
     ) -> None:
         """
         Clean OCI registry using cosign.
+
         Args:
             image_ref: The image which should be cleaned
             blob_type: What type of attachments should be cleaned
-        Returns:
-            None
         """
         with make_oci_auth_file(image_ref) as authfile:
             cmd = ["cosign", "clean", "--force=true", f"--type={blob_type}", image_ref]

@@ -17,8 +17,10 @@ from mobster.oci.cosign.static import StaticKeyFetcher, StaticKeySigner
 def get_cosign_fetcher(config: VerifyConfig) -> SupportsFetch:
     """
     Instantiates a Cosign fetch client from the provided config.
+
     Args:
         config: Config for static or Keyless cosign
+
     Returns:
         Cosign client
     """
@@ -36,9 +38,12 @@ def get_cosign_fetcher(config: VerifyConfig) -> SupportsFetch:
 def get_cosign_signer(config: SignConfig) -> SupportsSign:
     """
     Instantiates a Cosign signer from the provided config.
+
     Args:
-        config:  Config for static or Keyless cosign
-    Returns: Cosign signer
+        config: Config for static or Keyless cosign
+
+    Returns:
+        Cosign signer
     """
     if config.keyless_config is not None and config.rekor_config is not None:
         return KeylessSigner(config)

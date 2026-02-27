@@ -21,8 +21,9 @@ from mobster.utils import run_async_subprocess
 def check_tuf() -> bool:
     """
     Check if Cosign has been initialized with TUF context.
+
     Returns:
-        True if Cosign has been initialized with TUF context, False otherwise.
+        True if Cosign has been initialized with TUF context, False otherwise
     """
     return Path(os.path.expanduser("~/.sigstore/root/")).exists()
 
@@ -58,7 +59,7 @@ class KeylessSBOMFetcher(SupportsFetch):
 
 class KeylessSigner(SupportsSign):
     """
-    Cosign signing client using Keyless signatures
+    Cosign signing client using Keyless signatures.
     """
 
     # pylint: disable=too-few-public-methods

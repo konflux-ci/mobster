@@ -41,6 +41,7 @@ class SupportsSign(typing.Protocol):
         """
         Use cosign to attach an SBOM to the registry. This is the new
         way of attaching an SBOM to an image.
+
         Args:
             sbom_path: The path to the SBOM file
             image_ref: The reference of the image

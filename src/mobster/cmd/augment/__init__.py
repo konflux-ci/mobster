@@ -52,8 +52,8 @@ class AugmentConfig:
     """
     Configuration for SBOM augmentation.
 
-    Params:
-        cosign: Implementation of the Cosign protocol for manipulating SBOMs
+    Attributes:
+        cosign: Implementation of the fetch protocol for manipulating SBOMs
         verify: Use pubkey verification for attestations
         semaphore: asyncio semaphore to limit the number of concurrent operations
         output_dir: Path to directory to save the augmented SBOMs to
@@ -115,10 +115,10 @@ def get_sbom_to_filename_dict(sboms: list[SBOM]) -> dict[SBOM, str]:
     ensuring no two SBOMs are written to the same file.
 
     Args:
-        sboms: list of augmented SBOM objects
+        sboms: List of augmented SBOM objects
 
     Returns:
-        dict[SBOM, str]: a mapping of SBOMs to file names
+        A mapping of SBOMs to file names
     """
 
     sbom_to_filename: dict[SBOM, str] = {}
@@ -138,10 +138,10 @@ def get_randomized_sbom_filename(sbom: SBOM) -> str:
     file names.
 
     Args:
-        sbom: augmented SBOM object
+        sbom: Augmented SBOM object
 
     Returns:
-        str: File name with uuid suffix to save the SBOM to
+        File name with uuid suffix to save the SBOM to
     """
     suffix = uuid4().hex
     return f"{sbom.reference.replace('/', '-')}-{suffix}"
@@ -157,9 +157,9 @@ async def verify_sbom(
     raised.
 
     Args:
-        sbom (SBOM): the sbom to verify
-        image (Image): image to verify the sbom for
-        cosign_client (Cosign): implementation of the Cosign protocol
+        sbom: The sbom to verify
+        image: Image to verify the sbom for
+        cosign_client: Implementation of the fetch protocol
     """
 
     prov = await cosign_client.fetch_latest_provenance(image)
@@ -180,10 +180,11 @@ async def load_sbom(
     matches that in the image provenance.
 
     Args:
-        image (Image): image to load the sbom for
-        cosign_client (Cosign): implementation of the Cosign protocol
-        verify (bool): True if the SBOM's digest should be verified via the
+        image: Image to load the sbom for
+        cosign_client: Implementation of the fetch protocol
+        verify: True if the SBOM's digest should be verified via the
             provenance of the image
+
     Returns:
         SBOM and True if its attestation was validated successfully,
         SBOM and False otherwise
@@ -225,10 +226,10 @@ def update_sbom_in_situ(
     information in situ.
 
     Args:
-        repository (Component): The repository the image is released to.
-        image (Image): Object representing an image being released.
-        sbom (dict): SBOM parsed as dictionary.
-        release_id: release id to be added to the SBOM's annotations, optional
+        repository: The repository the image is released to
+        image: Object representing an image being released
+        sbom: SBOM parsed as dictionary
+        release_id: Release id to be added to the SBOM's annotations, optional
     """
 
     if sbom.format in SPDXVersion2.supported_versions:
