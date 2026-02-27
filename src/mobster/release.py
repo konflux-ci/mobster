@@ -7,6 +7,7 @@ import asyncio
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pydantic as pdc
 
@@ -33,6 +34,14 @@ class ReleaseId:
 
     def __repr__(self) -> str:
         return f"ReleaseId(id={self.id})"
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ReleaseId):
+            return False
+        return self.id == other.id
+
+    def __hash__(self) -> int:
+        return self.id.__hash__()
 
 
 @dataclass

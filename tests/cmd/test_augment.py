@@ -23,8 +23,8 @@ from mobster.cmd.augment import (
 from mobster.cmd.augment.handlers import CycloneDXVersion1, get_purl_digest
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
-from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
-from mobster.oci.cosign import Cosign, RekorConfig
+from mobster.oci.artifact import SBOM, Provenance02
+from mobster.oci.cosign import SupportsFetch
 from mobster.release import Component, ReleaseId, ReleaseRepository, Snapshot
 from mobster.sbom import cyclonedx
 from tests.conftest import assert_spdx_sbom, awaitable
@@ -75,7 +75,7 @@ class TestAugmentCommand:
         self, monkeypatch: pytest.MonkeyPatch, fake_cosign: "FakeCosign"
     ) -> None:
         monkeypatch.setattr(
-            "mobster.cmd.augment.CosignClient",
+            "mobster.cmd.augment.cosign.StaticKeyFetcher",
             lambda *_: fake_cosign,
         )
 
@@ -350,7 +350,7 @@ class TestAugmentCommand:
             assert await update_sbom(config, repo, img) is None
 
 
-class FakeCosign(Cosign):
+class FakeCosign(SupportsFetch):
     def __init__(
         self, provenances: dict[str, Provenance02], sboms: dict[str, SBOM]
     ) -> None:
@@ -362,15 +362,6 @@ class FakeCosign(Cosign):
 
     async def fetch_sbom(self, image: Image) -> SBOM:
         return self.sboms[image.digest]
-
-    async def attest_sbom(
-        self,
-        sbom_path: Path,
-        image_ref: str,
-        sbom_format: SBOMFormat,
-        rekor_config: RekorConfig | None = None,
-    ) -> None:
-        pass
 
     @staticmethod
     def load() -> "FakeCosign":
@@ -397,9 +388,6 @@ class FakeCosign(Cosign):
                 provenances[prov_file] = prov
 
         return FakeCosign(provenances, sboms)
-
-    def can_sign(self) -> bool:
-        return True
 
     async def attest_provenance(self, provenance: Provenance02, image_ref: str) -> None:
         pass

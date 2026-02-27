@@ -36,6 +36,9 @@ class Provenance02:
         """
         Create a Provenance02 object from a line of raw "cosign
         verify-attestation" output.
+
+        Args:
+            raw: Raw bytes from cosign verify-attestation command
         """
         encoded = json.loads(raw)
         att = json.loads(base64.b64decode(encoded["payload"]))
@@ -65,6 +68,9 @@ class Provenance02:
     def get_sbom_digest(self, image: Image) -> str:
         """
         Find the SBOM_BLOB_URL value in the provenance for the supplied image.
+
+        Args:
+            image: The image to find the SBOM digest for
         """
         sbom_blob_urls: dict[str, str] = {}
         tasks = self.predicate.get("buildConfig", {}).get("tasks", [])
@@ -104,8 +110,9 @@ class SBOMFormat(Enum):
     def is_spdx2(self) -> bool:
         """
         Is this format SPDX of version 2.X?
+
         Returns:
-            True if this is SPDX 2.X False otherwise.
+            True if this is SPDX 2.X, False otherwise
         """
         return self.value.startswith("SPDX-2")
 
@@ -119,10 +126,10 @@ class SBOM:
         """
         An SBOM downloaded using cosign.
 
-        Attributes:
-            doc (dict): The parsed SBOM dictionary
-            digest (str): SHA256 digest of the raw SBOM data
-            reference (str): Reference of the image the SBOM was attached to
+        Args:
+            doc: The parsed SBOM dictionary
+            digest: SHA256 digest of the raw SBOM data
+            reference: Reference of the image the SBOM was attached to
         """
         self.doc = doc
         self.digest = digest
@@ -159,7 +166,11 @@ class SBOM:
     @staticmethod
     def from_cosign_output(raw: bytes, reference: str) -> "SBOM":
         """
-        Create an SBOM object from a line of raw "cosign download sbom" output.
+        Create an SBOM object from raw cosign download sbom output.
+
+        Args:
+            raw: Raw bytes from cosign download sbom command
+            reference: Image reference string
         """
         try:
             doc = json.loads(raw)
