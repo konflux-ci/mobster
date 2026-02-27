@@ -3,7 +3,8 @@ import pytest_asyncio
 
 from mobster.error import SBOMError
 from mobster.image import Image
-from mobster.oci.cosign import CosignClient, CosignConfig
+from mobster.oci.cosign import VerifyConfig
+from mobster.oci.cosign.static import StaticKeyFetcher
 from tests.integration.oci_client import ReferrersTagOCIClient
 
 
@@ -28,7 +29,7 @@ async def test_cosign_fetch_sbom(image_with_empty_sbom: Image) -> None:
     Args:
         image_with_empty_sbom: Image fixture with an empty SBOM.
     """
-    cosign = CosignClient(CosignConfig())
+    cosign = StaticKeyFetcher(VerifyConfig())
     sbom = await cosign.fetch_sbom(image_with_empty_sbom)
     assert sbom.doc == {}
 
@@ -41,7 +42,7 @@ async def test_cosign_fetch_sbom_no_sbom(image_with_no_sbom: Image) -> None:
     Args:
         image_with_no_sbom: Image fixture with no SBOM.
     """
-    cosign = CosignClient(CosignConfig())
+    cosign = StaticKeyFetcher(VerifyConfig())
     with pytest.raises(SBOMError):
         await cosign.fetch_sbom(image_with_no_sbom)
 
@@ -51,7 +52,7 @@ async def test_cosign_fetch_sbom_no_image() -> None:
     """
     Test fetching an SBOM from a non-existent image.
     """
-    cosign = CosignClient(CosignConfig())
+    cosign = StaticKeyFetcher(VerifyConfig())
     image = Image(repository="no-repo", digest="sha256:deadbeef")
     with pytest.raises(SBOMError):
         await cosign.fetch_sbom(image)

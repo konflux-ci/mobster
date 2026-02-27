@@ -11,7 +11,7 @@ from pathlib import Path
 from subprocess import CalledProcessError
 
 from mobster.error import SBOMError
-from mobster.oci.cosign import CosignConfig
+from mobster.oci import cosign
 from mobster.release import ReleaseId
 from mobster.tekton.component import ProcessComponentArgs, process_component_sboms
 from mobster.tekton.product import ProcessProductArgs, process_product_sboms
@@ -267,8 +267,9 @@ class SBOMRegenerator(ABC):
                         upload_concurrency=self.args.concurrency,
                         attestation_concurrency=self.args.concurrency,
                         skip_upload=self.args.dry_run,
-                        cosign_config=CosignConfig(),
                         skip_s3_upload=True,
+                        cosign_sign_config=cosign.SignConfig(),
+                        cosign_verify_config=cosign.VerifyConfig(),
                     )
                 )
         except CalledProcessError as e:

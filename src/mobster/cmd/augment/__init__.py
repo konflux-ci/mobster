@@ -15,8 +15,8 @@ from mobster.cmd.augment.handlers import CycloneDXVersion1, SPDXVersion2
 from mobster.cmd.base import Command
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
+from mobster.oci import cosign
 from mobster.oci.artifact import SBOM, SBOMFormat
-from mobster.oci.cosign import Cosign, CosignClient, CosignConfig
 from mobster.release import (
     Component,
     ReleaseId,
@@ -52,8 +52,8 @@ class AugmentConfig:
     """
     Configuration for SBOM augmentation.
 
-    Params:
-        cosign: Implementation of the Cosign protocol for manipulating SBOMs
+    Attributes:
+        cosign: Implementation of the fetch protocol for manipulating SBOMs
         verify: Use pubkey verification for attestations
         semaphore: asyncio semaphore to limit the number of concurrent operations
         output_dir: Path to directory to save the augmented SBOMs to
@@ -61,7 +61,7 @@ class AugmentConfig:
         cpes: List of string CPEs to add to the SBOM
     """
 
-    cosign: Cosign
+    cosign: cosign.SupportsFetch
     verify: bool
     semaphore: asyncio.Semaphore
     output_dir: Path
@@ -93,8 +93,8 @@ class AugmentImageCommand(Command):
         snapshot = await make_snapshot(self.cli_args.snapshot, digest, semaphore)
 
         config = AugmentConfig(
-            cosign=CosignClient(
-                CosignConfig(verify_key=self.cli_args.verification_key)
+            cosign=cosign.StaticKeyFetcher(
+                cosign.VerifyConfig(static_verify_key=self.cli_args.verification_key)
             ),
             verify=self.cli_args.verification_key is not None,
             semaphore=semaphore,
@@ -118,10 +118,10 @@ def get_sbom_to_filename_dict(sboms: list[SBOM]) -> dict[SBOM, str]:
     ensuring no two SBOMs are written to the same file.
 
     Args:
-        sboms: list of augmented SBOM objects
+        sboms: List of augmented SBOM objects
 
     Returns:
-        dict[SBOM, str]: a mapping of SBOMs to file names
+        A mapping of SBOMs to file names
     """
 
     sbom_to_filename: dict[SBOM, str] = {}
@@ -141,16 +141,18 @@ def get_randomized_sbom_filename(sbom: SBOM) -> str:
     file names.
 
     Args:
-        sbom: augmented SBOM object
+        sbom: Augmented SBOM object
 
     Returns:
-        str: File name with uuid suffix to save the SBOM to
+        File name with uuid suffix to save the SBOM to
     """
     suffix = uuid4().hex
     return f"{sbom.reference.replace('/', '-')}-{suffix}"
 
 
-async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:
+async def verify_sbom(
+    sbom: SBOM, image: Image, cosign_client: cosign.SupportsFetch
+) -> None:
     """
     Verify that the sha256 digest of the specified SBOM matches the value of
     SBOM_BLOB_URL in the provenance for the supplied image. Cosign is used to
@@ -158,12 +160,12 @@ async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:
     raised.
 
     Args:
-        sbom (SBOM): the sbom to verify
-        image (Image): image to verify the sbom for
-        cosign (Cosign): implementation of the Cosign protocol
+        sbom: The sbom to verify
+        image: Image to verify the sbom for
+        cosign_client: Implementation of the fetch protocol
     """
 
-    prov = await cosign.fetch_latest_provenance(image)
+    prov = await cosign_client.fetch_latest_provenance(image)
     prov_sbom_digest = prov.get_sbom_digest(image)
 
     if prov_sbom_digest != sbom.digest:
@@ -173,25 +175,30 @@ async def verify_sbom(sbom: SBOM, image: Image, cosign: Cosign) -> None:
         )
 
 
-async def load_sbom(image: Image, cosign: Cosign, verify: bool) -> tuple[SBOM, bool]:
+async def load_sbom(
+    image: Image, cosign_client: cosign.SupportsFetch, verify: bool
+) -> tuple[SBOM, bool]:
     """
     Download and parse the sbom for the image reference and verify that its digest
     matches that in the image provenance.
 
     Args:
-        image (Image): image to load the sbom for
-        cosign (Cosign): implementation of the Cosign protocol
-        verify (bool): True if the SBOM's digest should be verified via the
+        image: Image to load the sbom for
+        cosign_client: Implementation of the fetch protocol
+        verify: True if the SBOM's digest should be verified via the
             provenance of the image
+
     Returns:
         SBOM and True if its attestation was validated successfully,
         SBOM and False otherwise
     """
-    sbom = await cosign.fetch_sbom(image)
+    # TODO ISV-6681: pylint: disable=fixme
+    #  update this function to also work with Keyless cosign
+    sbom = await cosign_client.fetch_sbom(image)
     attestation_valid = True
     if verify:
         try:
-            await verify_sbom(sbom, image, cosign)
+            await verify_sbom(sbom, image, cosign_client)
         except SBOMError:
             LOGGER.exception(
                 "Attestation verification failed for image '%s'."
@@ -223,10 +230,10 @@ def update_sbom_in_situ(
     information in situ.
 
     Args:
-        repository (Component): The repository the image is released to.
-        image (Image): Object representing an image being released.
-        sbom (dict): SBOM parsed as dictionary.
-        release_id: release id to be added to the SBOM's annotations, optional
+        repository: The repository the image is released to
+        image: Object representing an image being released
+        sbom: SBOM parsed as dictionary
+        release_id: Release id to be added to the SBOM's annotations, optional
         cpes: List of string CPEs to add to the SBOM
     """
 
