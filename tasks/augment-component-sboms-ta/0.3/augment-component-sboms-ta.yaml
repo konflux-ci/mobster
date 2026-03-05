@@ -118,6 +118,30 @@ spec:
       type: string
       description: Path to the merged data file from collect-data in the dataDir.
 
+    # Configuration parameters for keyless signing, if enabled.
+    # TODO: ISV-6683 - use these parameters in the mobster command
+    - name: defaultOIDCIssuer
+      type: string
+      description: A default OIDC issuer URL to be used for signing.
+      default: ""
+    - name: rekorExternalUrl
+      type: string
+      description: The external URL of the Rekor transparency log.
+      default: ""
+    - name: fulcioExternalUrl
+      type: string
+      description: The external URL of the Fulcio certificate authority.
+      default: ""
+    - name: tufExternalUrl
+      type: string
+      description: The external URL of the TUF repository.
+      default: ""
+    - name: buildIdentityRegexp
+      type: string
+      description: |
+        A regular expression to extract build identity from the OIDC token claims, if applicable.
+      default: ""
+
 
   results:
     - description: Produced trusted data artifact
