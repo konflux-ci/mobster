@@ -4,6 +4,8 @@ OIDC client wrapped around httpx
 
 import asyncio
 import logging
+import os
+import ssl
 import time
 from asyncio import sleep
 from collections.abc import AsyncGenerator
@@ -52,7 +54,7 @@ class OIDCClientCredentials:
     client_secret: str
 
 
-class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
+class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """
     Generic OIDC client credential client
 
@@ -99,6 +101,7 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         self._token = ""
         self._token_expiration = 0
         self._token_mutex = asyncio.Lock()
+        self._ssl_verify_ca: str | None = None
 
     async def __aenter__(self) -> "OIDCClientCredentialsClient":
         """
@@ -111,12 +114,17 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
             RuntimeError: If client initialization fails
         """
         try:
-            self.client = httpx.AsyncClient(
-                proxy=self._proxies,
-                timeout=Timeout(
+            httpx_client_args: dict[str, Timeout | Proxy | None | ssl.SSLContext] = {
+                "proxy": self._proxies,
+                "timeout": Timeout(
                     DEFAULT_TIMEOUT_SECONDS, connect=DEFAULT_CONNECT_TIMEOUT_SECONDS
                 ),
-            )
+            }
+            if "MOBSTER_TPA_CA_INFO" in os.environ:
+                self._ssl_verify_ca = os.environ["MOBSTER_TPA_CA_INFO"]
+                ctx = ssl.create_default_context(cafile=self._ssl_verify_ca)
+                httpx_client_args["verify"] = ctx
+            self.client = httpx.AsyncClient(**httpx_client_args)  # type: ignore[arg-type]
             return self
         except Exception as exc:
             raise RuntimeError(f"Failed to initialize HTTP client: {exc}") from exc

@@ -173,6 +173,8 @@ spec:
               optional: true
         - name: MOBSTER_TPA_SSO_TOKEN_URL
           value: $(params.ssoTokenUrl)
+        - name: MOBSTER_TPA_CA_INFO
+          value: $(params.caPath)
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
