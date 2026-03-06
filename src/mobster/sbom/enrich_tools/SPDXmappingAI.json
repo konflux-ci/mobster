@@ -1,0 +1,74 @@
+{
+  "primaryPurpose": {
+    "CycloneDX_Location": "$.metadata.properties[name=\"primaryPurpose\"]",
+    "SPDX_Equivalent": "ai_intendedUse"
+  },
+  "standardCompliance": {
+    "CycloneDX_Location": "$.metadata.properties[name=\"standardCompliance\"]",
+    "SPDX_Equivalent": "ai_standardCompliance"
+  },
+  "domain": {
+    "CycloneDX_Location": "$.metadata.properties[name=\"domain\"]",
+    "SPDX_Equivalent": "ai_domain"
+  },
+  "autonomyType": {
+    "CycloneDX_Location": "$.metadata.properties[name=\"autonomyType\"]",
+    "SPDX_Equivalent": "ai_autonomyType"
+  },
+  "energyConsumption": {
+    "CycloneDX_Location": "$.components[0].modelCard.properties[name=\"energyConsumption\"]",
+    "SPDX_Equivalent": "ai_energyConsumption"
+  },
+  "hyperparameter": {
+    "CycloneDX_Location": "$.components[0].modelCard.properties[name=\"hyperparameter\"]",
+    "SPDX_Equivalent": "ai_hyperparameter"
+  },
+  "limitation": {
+    "CycloneDX_Location": "$.components[0].modelCard.limitation",
+    "SPDX_Equivalent": "ai_limitation"
+  },
+  "safetyRiskAssessment": {
+    "CycloneDX_Location": "$.components[0].modelCard.properties[name=\"safetyRiskAssessment\"]",
+    "SPDX_Equivalent": "ai_safetyRiskAssessment"
+  },
+  "typeOfModel": {
+    "CycloneDX_Location": "$.metadata.properties[name=\"typeOfModel\"]",
+    "SPDX_Equivalent": "ai_typeOfModel"
+  },
+  "modelExplainability": {
+    "CycloneDX_Location": "$.components[0].modelCard.properties[name=\"modelExplainability\"]",
+    "SPDX_Equivalent": "ai_modelExplainability"
+  },
+  "energyQuantity": {
+    "CycloneDX_Location": "$.components[0].modelCard.properties[name=\"energyQuantity\"]",
+    "SPDX_Equivalent": "ai_energyQuantity"
+  },
+  "energyUnit": {
+    "CycloneDX_Location": "$.components[0].modelCard.properties[name=\"energyUnit\"]",
+    "SPDX_Equivalent": "ai_energyUnit"
+  },
+  "informationAboutTraining": {
+    "CycloneDX_Location": "$.components[0].modelCard.properties[name=\"informationAboutTraining\"]",
+    "SPDX_Equivalent": "ai_informationAboutTraining"
+  },
+  "informationAboutApplication": {
+    "CycloneDX_Location": "$.components[0].modelCard.properties[name=\"informationAboutApplication\"]",
+    "SPDX_Equivalent": "ai_informationAboutApplication"
+  },
+  "metric": {
+    "CycloneDX_Location": "$.components[0].modelCard.properties[name=\"metric\"]",
+    "SPDX_Equivalent": "ai_metric"
+  },
+  "metricDecisionThreshold": {
+    "CycloneDX_Location": "$.components[0].modelCard.properties[name=\"metricDecisionThreshold\"]",
+    "SPDX_Equivalent": "ai_metricDecisionThreshold"
+  },
+  "modelDataPreprocessing": {
+    "CycloneDX_Location": "$.components[0].modelCard.properties[name=\"modelDataPreprocessing\"]",
+    "SPDX_Equivalent": "ai_modelDataPreprocessing"
+  },
+  "useSensitivePersonalInformation": {
+    "CycloneDX_Location": "$.components[0].modelCard.properties[name=\"useSensitivePersonalInformation\"]",
+    "SPDX_Equivalent": "ai_useSensitivePersonalInformation"
+  }
+}
