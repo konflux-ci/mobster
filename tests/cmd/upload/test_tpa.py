@@ -12,6 +12,7 @@ from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedExcepti
 from mobster.cmd.upload.tpa import TPAClient, TPAError, TPATransientError
 
 BASE_URL = "https://api.example.com/v1/"
+TESTDATA_PATH = Path(__file__).parent.parent.parent / "data"
 
 
 @pytest_asyncio.fixture
@@ -23,6 +24,21 @@ async def tpa_client() -> AsyncGenerator[TPAClient, None]:
     )
     async with TPAClient(BASE_URL, auth, proxy=proxy) as client:
         yield client
+
+
+@pytest.mark.asyncio
+async def test_tpa_client_ssl(monkeypatch: pytest.MonkeyPatch) -> None:
+    token_url = "https://auth.example.com/oidc/token"
+    proxy = "http://proxy.example.com:3128"
+    monkeypatch.setenv(
+        "MOBSTER_TPA_CA_INFO",
+        str(TESTDATA_PATH / "2022-IT-Root-CA.pem"),
+    )
+    auth = OIDCClientCredentials(
+        token_url=token_url, client_id="abc", client_secret="xyz"
+    )
+    async with TPAClient(BASE_URL, auth, proxy=proxy) as client:
+        assert client._ssl_verify_ca is not None
 
 
 @pytest.mark.asyncio
