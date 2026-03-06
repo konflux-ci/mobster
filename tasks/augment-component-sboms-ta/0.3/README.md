@@ -20,6 +20,7 @@ Update component-level SBOMs with release-time information, optionally upload th
 | `retryS3bucket`           | string | `""`                      | The name of the S3 bucket used to store data for the retry mechanism.                                                              |
 | `atlasApiUrl`             | string | `""`                      | URL of the Atlas API host.                                                                                                         |
 | `ssoTokenUrl`             | string | `""`                      | URL of the SSO token issuer.                                                                                                       |
+| `caPath`                  | string | `""`                      | Path to the certificate authority bundle to set up TPA requests.  
 | `resultsDirPath`          | string |                           | Path to directory in the dataDir to store JSON task results to.                                                                    |
 | `defaultOIDCIssuer`       | string |                           | A default OIDC issuer URL to be used for signing.                                                                                  |
 | `rekorExternalUrl`        | string |                           | The external URL of the Rekor transparency log.                                                                                    |

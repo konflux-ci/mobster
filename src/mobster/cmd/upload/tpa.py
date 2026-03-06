@@ -19,6 +19,7 @@ from mobster.cmd.upload.oidc import (
     OIDCClientCredentialsClient,
     RetryExhaustedException,
 )
+from mobster.utils import get_tpa_ca
 
 LOGGER = logging.getLogger(__name__)
 
@@ -230,5 +231,6 @@ async def get_tpa_default_client(
     async with TPAClient(
         base_url=base_url,
         auth=auth,
+        ssl_verify_ca=get_tpa_ca(),
     ) as client:
         yield client

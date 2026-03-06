@@ -108,7 +108,9 @@ async def test_execute_upload_single_file(
 
     # Verify TPA client was created with correct base URL
     mock_tpa_client_class.assert_called_once_with(
-        base_url="https://test.tpa.url", auth=mock_oidc.return_value
+        base_url="https://test.tpa.url",
+        auth=mock_oidc.return_value,
+        ssl_verify_ca=None,
     )
 
     # Verify upload_sbom was called once with the correct file
