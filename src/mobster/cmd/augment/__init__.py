@@ -148,7 +148,7 @@ def get_randomized_sbom_filename(sbom: SBOM) -> str:
 
 
 async def verify_sbom(
-    sbom: SBOM, image: Image, cosign_client: cosign.SupportsFetch
+    sbom: SBOM, image: Image, cosign_client: cosign.SupportsProvenanceFetch
 ) -> None:
     """
     Verify that the sha256 digest of the specified SBOM matches the value of
@@ -189,11 +189,11 @@ async def load_sbom(
         SBOM and True if its attestation was validated successfully,
         SBOM and False otherwise
     """
-    # TODO ISV-6681: pylint: disable=fixme
-    #  update this function to also work with Keyless cosign
     sbom = await cosign_client.fetch_sbom(image)
     attestation_valid = True
-    if verify:
+    if verify and isinstance(cosign_client, cosign.SupportsProvenanceFetch):
+        # Only clients that support provenance fetch shall
+        # use it for SBOM verification
         try:
             await verify_sbom(sbom, image, cosign_client)
         except SBOMError:

@@ -4,6 +4,7 @@ augmentation.
 """
 
 import asyncio
+import logging
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,6 +13,8 @@ from typing import Any
 import pydantic as pdc
 
 from mobster.image import Image, parse_image_reference
+
+LOGGER = logging.getLogger(__name__)
 
 
 class ReleaseId:
@@ -128,7 +131,9 @@ async def make_snapshot(
             that defaults to 8 concurrent fetches.
     """
     with open(snapshot_spec, encoding="utf-8") as snapshot_file:
-        snapshot_model = SnapshotModel.model_validate_json(snapshot_file.read())
+        snapshot_data = snapshot_file.read()
+        LOGGER.warning("Parsing snapshot %s", snapshot_data)
+        snapshot_model = SnapshotModel.model_validate_json(snapshot_data)
 
     def is_relevant(comp: "ComponentModel") -> bool:
         if digest is not None:
@@ -153,9 +158,10 @@ class ComponentRepositoryModel(pdc.BaseModel):
     of a Snapshot.
     """
 
-    rh_registry_repo: str = pdc.Field(
+    rh_registry_repo: str | None = pdc.Field(
         alias="rh-registry-repo",
         validation_alias=pdc.AliasChoices("rh-registry-repo", "rh_registry_repo"),
+        default=None,
     )
     url: str
     tags: list[str]
@@ -168,8 +174,15 @@ class ComponentRepositoryModel(pdc.BaseModel):
             Mobster's inner representation of this Konflux Component's
             release repository.
         """
+        if self.rh_registry_repo is not None:
+            release_facing_repo = self.rh_registry_repo
+        else:
+            release_facing_repo = self.url
+            LOGGER.debug(
+                "No RH release repository specified for repository %s", self.url
+            )
         return ReleaseRepository(
-            public_repo_url=self.rh_registry_repo,
+            public_repo_url=release_facing_repo,
             tags=self.tags,
             internal_repo_url=self.url,
         )

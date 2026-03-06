@@ -1,13 +1,17 @@
 """Module for using Keyless Cosign for SBOM attestation and fetching"""
 
+import logging
 import os.path
 from pathlib import Path
 
 from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
-from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
-from mobster.oci.cosign.attestation_utils import get_cosign_attestation_type
+from mobster.oci.artifact import SBOM, SBOMFormat
+from mobster.oci.cosign.attestation_utils import (
+    get_cosign_attestation_type,
+    get_sbom_from_attestation_bytes,
+)
 from mobster.oci.cosign.config import (
     KeylessSignConfig,
     RekorConfig,
@@ -16,6 +20,8 @@ from mobster.oci.cosign.config import (
 )
 from mobster.oci.cosign.protocol import SupportsFetch, SupportsSign
 from mobster.utils import run_async_subprocess
+
+logger = logging.getLogger(__name__)
 
 
 def check_tuf() -> bool:
@@ -35,26 +41,60 @@ class KeylessSBOMFetcher(SupportsFetch):
     with correct TUF parameters previously.
     """
 
+    # pylint: disable=too-few-public-methods
+
     def __init__(self, config: VerifyConfig):
         if not check_tuf():
             raise SBOMError(
                 "Cannot fetch SBOM verifiably, TUF has not been initialized."
             )
+        if not config.rekor_config:
+            raise SBOMError(
+                "Cannot fetch SBOM verifiably, No Rekor information provided."
+            )
+        if not config.keyless_verify_config:
+            raise SBOMError(
+                "Cannot fetch SBOM verifiably, missing issuer and identity patterns."
+            )
         self.keyless_config = config.keyless_verify_config
         self.rekor_config = config.rekor_config
 
-    async def fetch_latest_provenance(
-        self, image: Image
-    ) -> Provenance02:  # pragma: no cover
-        # This does not have to be present in the final implementation,
-        # we may want to consolidate it into SBOM fetching + verification
-        raise NotImplementedError("To be implemented or deleted in ISV-6681")
-
-    async def fetch_sbom(self, image: Image) -> SBOM:  # pragma: no cover
-        # This should work even with unauthenticated cosign (no Rekor and no TUF)
-        # while also being able to fall back to fetching attached SBOMs instead
-        # of attested ones.
-        raise NotImplementedError("To be implemented in ISV-6681")
+    async def fetch_sbom(self, image: Image) -> SBOM:
+        raw_attestation = b""
+        with make_oci_auth_file(image.reference) as authfile:
+            for _attempt in range(4):
+                # Retry 3 times, but switch the expected attestation type
+                # within each attempt
+                for sbom_spec in "spdxjson", "cyclonedx":
+                    command = [
+                        "cosign",
+                        "verify-attestation",
+                        "--rekor-url",
+                        self.rekor_config.rekor_url,
+                        "--certificate-oidc-issuer",
+                        self.keyless_config.issuer_url,
+                        "--certificate-identity-regexp",
+                        self.keyless_config.identity_pattern,
+                        "--type",
+                        sbom_spec,
+                        image.reference,
+                    ]
+                    logger.debug(
+                        "Executing for %s command '%s'", image, " ".join(command)
+                    )
+                    code, stdout, stderr = await run_async_subprocess(
+                        command, env={"DOCKER_CONFIG": str(authfile.parent)}
+                    )
+                    if code == 0 and (
+                        raw_lines := [line for line in stdout.splitlines() if line]
+                    ):
+                        raw_attestation = raw_lines[-1]
+                        break
+            if not raw_attestation:
+                raise SBOMError(
+                    f"Failed to fetch attestation for {image}: {stderr.decode()}."
+                )
+        return get_sbom_from_attestation_bytes(raw_attestation, image.reference)
 
 
 class KeylessSigner(SupportsSign):

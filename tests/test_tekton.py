@@ -103,8 +103,8 @@ async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> No
             "a",
             "--oidc-token",
             "/tmp/token",
-            "--oidc-issuer-pattern",
-            ".*",
+            "--oidc-issuer",
+            "https://foo",
             "--oidc-identity-pattern",
             ".*",
             "--atlas-api-url",
@@ -137,7 +137,7 @@ async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> No
         ),
         cosign_verify_config=VerifyConfig(
             keyless_verify_config=KeylessVerifyConfig(
-                issuer_pattern=".*",
+                issuer_url="https://foo",
                 identity_pattern=".*",
             ),
             rekor_config=RekorConfig(rekor_url="https://spam.example", rekor_key=None),
