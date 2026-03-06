@@ -98,9 +98,9 @@ def _add_component_args(parser: ap.ArgumentParser) -> None:
         default=None,
     )
     parser.add_argument(
-        "--oidc-issuer-pattern",
+        "--oidc-issuer",
         type=str,
-        help="OIDC issuer pattern for attestation verification",
+        help="OIDC issuer URL for attestation verification",
         default=None,
     )
     parser.add_argument(
@@ -161,7 +161,7 @@ def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
         rekor_config=rekor_config,
         keyless_verify_config=_check_empty_config(
             cosign.KeylessVerifyConfig(
-                issuer_pattern=args.oidc_identity_pattern,
+                issuer_url=args.oidc_issuer,
                 identity_pattern=args.oidc_identity_pattern,
             ),
         ),

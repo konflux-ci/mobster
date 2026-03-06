@@ -59,15 +59,15 @@ class KeylessVerifyConfig:
     Keyless (using OIDC) cosign configuration for verification.
 
     Attributes:
-        issuer_pattern:
-            RegEx pattern for validating token issuer, used for
+        issuer_url:
+            OIDC Issuer URL for validating token, used for
             keyless attested SBOM verification
         identity_pattern:
             RegEx pattern for validating token identity, used for
             keyless attested SBOM verification
     """
 
-    issuer_pattern: str
+    issuer_url: str
     identity_pattern: str
 
 

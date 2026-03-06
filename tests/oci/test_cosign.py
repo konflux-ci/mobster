@@ -551,7 +551,7 @@ class TestGetCosign:
                 cosign.VerifyConfig(
                     rekor_config=cosign.RekorConfig(rekor_url="a"),
                     keyless_verify_config=cosign.KeylessVerifyConfig(
-                        issuer_pattern="foo",
+                        issuer_url="foo",
                         identity_pattern="bar",
                     ),
                 ),
