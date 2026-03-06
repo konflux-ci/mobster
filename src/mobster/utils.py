@@ -119,3 +119,18 @@ async def load_sbom_from_json(file_path: Path) -> dict[str, Any]:
             )
             LOGGER.critical(contents[:200])
             raise
+
+
+def get_tpa_ca() -> str | None:
+    """
+    Helper function to know if MOBSTER_TPA_CA_INFO env var is defined
+
+    Returns:
+        MOBSTER_TPA_CA_INFO value or None if not defined
+    """
+
+    return (
+        os.environ["MOBSTER_TPA_CA_INFO"]
+        if "MOBSTER_TPA_CA_INFO" in os.environ
+        else None
+    )
