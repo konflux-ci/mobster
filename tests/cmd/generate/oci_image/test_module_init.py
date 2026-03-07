@@ -371,7 +371,7 @@ async def test_GenerateOciImageCommand__execute_contextual_workflow_no_downloade
     command = GenerateOciImageCommand(MagicMock(from_hermeto=None))
     assert (
         await command._execute_contextual_workflow(
-            MagicMock(), Image("foo", "sha256:1"), "bar"
+            MagicMock(), Image("foo", "sha256:1"), "bar", None
         )
         is None
     )

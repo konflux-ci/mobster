@@ -17,11 +17,12 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
 from mobster.cmd.generate.oci_image.spdx_utils import (
+    DocumentIndexOCI,
+    KonfluxAnnotationManager,
     find_spdx_root_packages,
     find_spdx_root_packages_spdxid,
     find_spdx_root_relationships,
     get_annotations_by_spdx_id,
-    get_package_purl,
     is_virtual_root,
     normalize_actor,
     normalize_package,
@@ -31,7 +32,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     update_package_in_spdx_sbom,
 )
 from mobster.image import Image
-from mobster.sbom.spdx import get_mobster_tool_string
+from mobster.sbom.spdx import get_mobster_tool_string, get_package_purl
 from tests.conftest import create_annotation_with_spdx_id
 
 
@@ -935,3 +936,294 @@ def test_get_annotations_by_spdx_id(
 )
 def test_get_package_purl(package: Package, expected_result: str | None) -> None:
     assert get_package_purl(package) == expected_result
+
+
+@pytest.fixture
+def simple_spdx_document() -> Document:
+    """SPDX document with basic packages for testing."""
+    packages = [
+        Package(
+            spdx_id="SPDXRef-PackageA",
+            name="package-a",
+            download_location=SpdxNoAssertion(),
+        ),
+        Package(
+            spdx_id="SPDXRef-PackageB",
+            name="package-b",
+            download_location=SpdxNoAssertion(),
+            external_references=[
+                ExternalPackageRef(
+                    ExternalPackageRefCategory.PACKAGE_MANAGER,
+                    "purl",
+                    "pkg:npm/package-b@1.0.0",
+                )
+            ],
+        ),
+        Package(
+            spdx_id="SPDXRef-PackageC",
+            name="package-c",
+            download_location=SpdxNoAssertion(),
+        ),
+    ]
+
+    return Document(
+        creation_info=CreationInfo(
+            spdx_version="SPDX-2.3",
+            spdx_id="SPDXRef-DOCUMENT",
+            name="test-doc",
+            document_namespace="https://test.example.com/doc",
+            created=datetime.datetime.now(),
+            creators=[Actor(ActorType.TOOL, "test")],
+        ),
+        packages=packages,
+    )
+
+
+@pytest.fixture
+def image_spdx_document() -> Document:
+    """SPDX document with image packages for testing."""
+    packages = [
+        Package(
+            spdx_id="SPDXRef-RegularPackage",
+            name="regular-package",
+            download_location=SpdxNoAssertion(),
+        ),
+        Package(
+            spdx_id="SPDXRef-image-container",
+            name="container-image",
+            download_location=SpdxNoAssertion(),
+            external_references=[
+                ExternalPackageRef(
+                    ExternalPackageRefCategory.PACKAGE_MANAGER,
+                    "purl",
+                    "pkg:oci/container@sha256:abc123?repository_url=registry.example.com/container",
+                )
+            ],
+        ),
+        Package(
+            spdx_id="SPDXRef-image-base",
+            name="base-image",
+            download_location=SpdxNoAssertion(),
+            external_references=[
+                ExternalPackageRef(
+                    ExternalPackageRefCategory.PACKAGE_MANAGER,
+                    "purl",
+                    "pkg:oci/base-image@sha256:def456?repository_url=registry.example.com/base",
+                )
+            ],
+        ),
+    ]
+
+    return Document(
+        creation_info=CreationInfo(
+            spdx_version="SPDX-2.3",
+            spdx_id="SPDXRef-DOCUMENT",
+            name="image-doc",
+            document_namespace="https://test.example.com/image-doc",
+            created=datetime.datetime.now(),
+            creators=[Actor(ActorType.TOOL, "test")],
+        ),
+        packages=packages,
+        annotations=[
+            KonfluxAnnotationManager.builder_image("SPDXRef-image-container", 1),
+            KonfluxAnnotationManager.builder_image("SPDXRef-image-base", 0),
+        ],
+    )
+
+
+@pytest.fixture
+def relationship_spdx_document() -> Document:
+    """SPDX document with relationships and annotations."""
+    packages = [
+        Package(
+            spdx_id="SPDXRef-Parent", name="parent", download_location=SpdxNoAssertion()
+        ),
+        Package(
+            spdx_id="SPDXRef-Child", name="child", download_location=SpdxNoAssertion()
+        ),
+        Package(
+            spdx_id="SPDXRef-Other", name="other", download_location=SpdxNoAssertion()
+        ),
+    ]
+
+    relationships = [
+        Relationship(
+            spdx_element_id="SPDXRef-Parent",
+            relationship_type=RelationshipType.CONTAINS,
+            related_spdx_element_id="SPDXRef-Child",
+        )
+    ]
+
+    annotations = [
+        Annotation(
+            spdx_id="SPDXRef-Child",
+            annotation_type=AnnotationType.OTHER,
+            annotator=Actor(ActorType.TOOL, "test"),
+            annotation_comment="test annotation",
+            annotation_date=datetime.datetime.now(),
+        )
+    ]
+
+    return Document(
+        creation_info=CreationInfo(
+            spdx_version="SPDX-2.3",
+            spdx_id="SPDXRef-DOCUMENT",
+            name="rel-doc",
+            document_namespace="https://test.example.com/rel-doc",
+            created=datetime.datetime.now(),
+            creators=[Actor(ActorType.TOOL, "test")],
+        ),
+        packages=packages,
+        relationships=relationships,
+        annotations=annotations,
+    )
+
+
+@pytest.fixture
+def builder_image_document() -> Document:
+    """SPDX document with builder image for intermediate testing."""
+    builder_annotation = Annotation(
+        spdx_id="SPDXRef-image-builder",
+        annotation_type=AnnotationType.OTHER,
+        annotator=Actor(ActorType.TOOL, "konflux:jsonencoded"),
+        annotation_comment='{"name":"konflux:container:is_builder_image:for_stage","value":"1"}',
+        annotation_date=datetime.datetime.now(),
+    )
+
+    packages = [
+        Package(
+            spdx_id="SPDXRef-image-builder",
+            name="builder-image",
+            download_location=SpdxNoAssertion(),
+            files_analyzed=False,
+        )
+    ]
+
+    return Document(
+        creation_info=CreationInfo(
+            spdx_version="SPDX-2.3",
+            spdx_id="SPDXRef-DOCUMENT",
+            name="builder-doc",
+            document_namespace="https://test.example.com/builder-doc",
+            created=datetime.datetime.now(),
+            creators=[Actor(ActorType.TOOL, "test")],
+        ),
+        packages=packages,
+        annotations=[builder_annotation],
+    )
+
+
+def test_document_index_package_lookup(simple_spdx_document: Document) -> None:
+    """Test basic package lookup operations."""
+    index = DocumentIndexOCI(simple_spdx_document)
+
+    ctx = index.package_by_spdx_id("SPDXRef-PackageA")
+    assert ctx.pkg.name == "package-a"
+
+    with pytest.raises(KeyError):
+        index.package_by_spdx_id("SPDXRef-NonExistent")
+
+    purl_ctxs = index.packages_by_purl("pkg:npm/package-b@1.0.0")
+    assert len(purl_ctxs) == 1
+    assert purl_ctxs[0].pkg.name == "package-b"
+
+    assert index.packages_by_purl("nonexistent") == []
+
+    all_contexts = list(index.package_contexts())
+    assert len(all_contexts) == 3
+
+
+@pytest.mark.parametrize(
+    "pullspec,expected_found",
+    [
+        ("registry.example.com/container@sha256:abc123", True),
+        ("nonexistent.com/image@sha256:xyz", False),
+    ],
+)
+def test_document_index_image_packages(
+    image_spdx_document: Document, pullspec: str, expected_found: bool
+) -> None:
+    """Test image package filtering and lookup."""
+    index = DocumentIndexOCI(image_spdx_document)
+
+    image_packages = index.image_packages()
+    assert len(image_packages) == 2  # Only packages with SPDXRef-image prefix
+    image_spdx_ids = [ctx.pkg.spdx_id for ctx in image_packages]
+    assert "SPDXRef-image-container" in image_spdx_ids
+    assert "SPDXRef-image-base" in image_spdx_ids
+    assert "SPDXRef-RegularPackage" not in image_spdx_ids
+
+    result = index.image_package_by_pullspec(pullspec)
+    if expected_found:
+        assert result is not None
+        assert result.pkg.spdx_id == "SPDXRef-image-container"
+    else:
+        assert result is None
+
+
+def test_document_index_relationships_annotations(
+    relationship_spdx_document: Document,
+) -> None:
+    """Test relationship and annotation indexing."""
+    index = DocumentIndexOCI(relationship_spdx_document)
+
+    parent_ctx = index.package_by_spdx_id("SPDXRef-Parent")
+    assert len(parent_ctx.parent_relationships) == 1
+    assert parent_ctx.parent_relationships[0].related_spdx_element_id == "SPDXRef-Child"
+
+    child_ctx = index.package_by_spdx_id("SPDXRef-Child")
+
+    assert len(child_ctx.annotations) == 1
+    assert child_ctx.annotations[0].annotation_comment == "test annotation"
+
+    other_ctx = index.package_by_spdx_id("SPDXRef-Other")
+    assert len(other_ctx.parent_relationships) == 0
+    assert len(other_ctx.annotations) == 0
+
+
+def test_document_index_ensure_intermediate_image(
+    builder_image_document: Document,
+) -> None:
+    """Test intermediate image package creation."""
+    index = DocumentIndexOCI(builder_image_document)
+
+    builder_ctx = index.package_by_spdx_id("SPDXRef-image-builder")
+
+    intermediate_ctx = index.ensure_intermediate_image_package(builder_ctx)
+
+    assert intermediate_ctx.pkg.spdx_id.endswith("-intermediate")
+    assert intermediate_ctx.pkg.name.endswith("-intermediate")
+
+    descendant_rels = intermediate_ctx.filter_parent_relationships(
+        RelationshipType.DESCENDANT_OF
+    )
+    assert len(descendant_rels) == 1
+    assert descendant_rels[0].related_spdx_element_id == "SPDXRef-image-builder"
+
+    int_annotation = intermediate_ctx.intermediate_image_annotation
+    assert int_annotation is not None
+    assert int_annotation.stage_index == 1
+
+    # Test idempotency - calling ensure_intermediate_image_package again should
+    # return the same package
+    intermediate_ctx2 = index.ensure_intermediate_image_package(builder_ctx)
+    assert intermediate_ctx.pkg.spdx_id == intermediate_ctx2.pkg.spdx_id
+
+
+def test_document_index_reparent_relationship(
+    relationship_spdx_document: Document,
+) -> None:
+    """Test relationship reparenting functionality."""
+    index = DocumentIndexOCI(relationship_spdx_document)
+
+    parent_ctx = index.package_by_spdx_id("SPDXRef-Parent")
+    relationship = parent_ctx.parent_relationships[0]
+
+    index.reparent_relationship(relationship, "SPDXRef-Other")
+
+    assert relationship.spdx_element_id == "SPDXRef-Other"
+    assert len(parent_ctx.parent_relationships) == 0
+
+    new_parent_ctx = index.package_by_spdx_id("SPDXRef-Other")
+    assert len(new_parent_ctx.parent_relationships) == 1
+    assert new_parent_ctx.parent_relationships[0] == relationship
