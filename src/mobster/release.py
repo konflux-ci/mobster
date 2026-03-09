@@ -131,9 +131,7 @@ async def make_snapshot(
             that defaults to 8 concurrent fetches.
     """
     with open(snapshot_spec, encoding="utf-8") as snapshot_file:
-        snapshot_data = snapshot_file.read()
-        LOGGER.warning("Parsing snapshot %s", snapshot_data)
-        snapshot_model = SnapshotModel.model_validate_json(snapshot_data)
+        snapshot_model = SnapshotModel.model_validate_json(snapshot_file.read())
 
     def is_relevant(comp: "ComponentModel") -> bool:
         if digest is not None:
