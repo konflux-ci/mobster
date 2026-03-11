@@ -1,8 +1,30 @@
 """Module for functions related to attestations"""
 
+import hashlib
+import json
+from base64 import b64decode
 from typing import Literal
 
-from mobster.oci.artifact import SBOMFormat
+from mobster.oci.artifact import SBOM, SBOMFormat
+
+
+def get_sbom_from_attestation_bytes(
+    attestation_bytes: bytes, image_reference: str
+) -> SBOM:
+    """
+    Parse an SBOM from an Attestation bytes.
+    Args:
+        attestation_bytes: The raw attestation bytes.
+            Must be only a single attestation!
+        image_reference: The image reference.
+    Returns:
+        SBOM object from this attestation.
+    """
+    return SBOM(
+        json.loads(b64decode(json.loads(attestation_bytes)["payload"]))["predicate"],
+        hashlib.sha256(attestation_bytes).hexdigest(),
+        image_reference,
+    )
 
 
 def get_cosign_attestation_type(

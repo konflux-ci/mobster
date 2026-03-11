@@ -4,6 +4,7 @@ augmentation.
 """
 
 import asyncio
+import logging
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,6 +13,8 @@ from typing import Any
 import pydantic as pdc
 
 from mobster.image import Image, parse_image_reference
+
+LOGGER = logging.getLogger(__name__)
 
 
 class ReleaseId:
@@ -50,7 +53,12 @@ class ReleaseRepository:
     A repository that a component is being released to.
 
     Attributes:
-        public_repo_url: The URL of the repository (image name included)
+        public_repo_url: The URL of the public repository (image name included).
+            It is used for URLs within SBOMs and marks the pull URL
+            of the image.
+        internal_repo_url: The URL of the internal repository. Can be the same
+            as public_repo_url. It iss used for specifying the URL used for pushing
+            attested SBOMs.
         tags: The tags used for the release of this image.
     """
 
@@ -153,9 +161,10 @@ class ComponentRepositoryModel(pdc.BaseModel):
     of a Snapshot.
     """
 
-    rh_registry_repo: str = pdc.Field(
+    rh_registry_repo: str | None = pdc.Field(
         alias="rh-registry-repo",
         validation_alias=pdc.AliasChoices("rh-registry-repo", "rh_registry_repo"),
+        default=None,
     )
     url: str
     tags: list[str]
@@ -168,8 +177,19 @@ class ComponentRepositoryModel(pdc.BaseModel):
             Mobster's inner representation of this Konflux Component's
             release repository.
         """
+        if self.rh_registry_repo is not None:
+            # Non RH-specific pipeline used, the public repo is the same
+            # as the push repo
+            release_facing_repo = self.rh_registry_repo
+        else:
+            # RH-specific pipeline used, the customer-facing route is
+            # different from the URL used for pushing attested SBOMs
+            release_facing_repo = self.url
+            LOGGER.debug(
+                "No RH release repository specified for repository %s", self.url
+            )
         return ReleaseRepository(
-            public_repo_url=self.rh_registry_repo,
+            public_repo_url=release_facing_repo,
             tags=self.tags,
             internal_repo_url=self.url,
         )

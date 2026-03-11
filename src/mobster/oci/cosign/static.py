@@ -1,12 +1,10 @@
 """This module contains the real Cosign implementation using static signing keys."""
 
-import hashlib
 import json
 import logging
 import os
 import tempfile
 import typing
-from base64 import b64decode
 from pathlib import Path
 from typing import Literal
 
@@ -14,18 +12,25 @@ from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
-from mobster.oci.cosign.attestation_utils import get_cosign_attestation_type
+from mobster.oci.cosign.attestation_utils import (
+    get_cosign_attestation_type,
+    get_sbom_from_attestation_bytes,
+)
 from mobster.oci.cosign.config import (
     SignConfig,
     VerifyConfig,
 )
-from mobster.oci.cosign.protocol import SupportsFetch, SupportsSign
+from mobster.oci.cosign.protocol import (
+    SupportsFetch,
+    SupportsProvenanceFetch,
+    SupportsSign,
+)
 from mobster.utils import run_async_subprocess
 
 logger = logging.getLogger(__name__)
 
 
-class StaticKeyFetcher(SupportsFetch):
+class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
     """
     Client used to get OCI artifacts using Cosign with static keys.
 
@@ -118,13 +123,7 @@ class StaticKeyFetcher(SupportsFetch):
         attestations = await self._verify_attestation(image, attestation_type)
         if attestations:
             last_attestation = attestations[-1]
-            return SBOM(
-                json.loads(b64decode(json.loads(last_attestation)["payload"]))[
-                    "predicate"
-                ],
-                hashlib.sha256(last_attestation).hexdigest(),
-                image.reference,
-            )
+            return get_sbom_from_attestation_bytes(last_attestation, image.reference)
         return None
 
     async def fetch_sbom(self, image: Image) -> SBOM:

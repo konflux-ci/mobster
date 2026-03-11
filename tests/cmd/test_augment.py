@@ -24,7 +24,7 @@ from mobster.cmd.augment.handlers import CycloneDXVersion1, get_purl_digest
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM, Provenance02
-from mobster.oci.cosign import SupportsFetch
+from mobster.oci.cosign import SupportsFetch, SupportsProvenanceFetch
 from mobster.release import Component, ReleaseId, ReleaseRepository, Snapshot
 from mobster.sbom import cyclonedx
 from tests.conftest import assert_spdx_sbom, awaitable
@@ -353,7 +353,7 @@ class TestAugmentCommand:
             assert await update_sbom(config, repo, img) is None
 
 
-class FakeCosign(SupportsFetch):
+class FakeCosign(SupportsFetch, SupportsProvenanceFetch):
     def __init__(
         self, provenances: dict[str, Provenance02], sboms: dict[str, SBOM]
     ) -> None:

@@ -106,9 +106,9 @@ def _add_component_args(parser: ap.ArgumentParser) -> None:
         default=None,
     )
     parser.add_argument(
-        "--oidc-issuer-pattern",
+        "--oidc-issuer",
         type=str,
-        help="OIDC issuer pattern for attestation verification",
+        help="OIDC issuer URL for attestation verification",
         default=None,
     )
     parser.add_argument(
@@ -169,7 +169,7 @@ def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
         rekor_config=rekor_config,
         keyless_verify_config=_check_empty_config(
             cosign.KeylessVerifyConfig(
-                issuer_pattern=args.oidc_identity_pattern,
+                issuer_url=args.oidc_issuer,
                 identity_pattern=args.oidc_identity_pattern,
             ),
         ),
@@ -349,7 +349,16 @@ async def attest_sbom_to_registry(
                 image_ref=sbom_ref_detail.reference,
                 sbom_format=sbom_ref_detail.sbom_format,
             )
-            LOGGER.debug("Successfully attested image %s.", sbom_ref_detail.reference)
+            method = (
+                "static"
+                if isinstance(cosign_signer, cosign.StaticKeySigner)
+                else "keyless"
+            )
+            LOGGER.debug(
+                "Successfully attested image %s using %s signing method.",
+                sbom_ref_detail.reference,
+                method,
+            )
         except SBOMError:
             LOGGER.exception("Could not attest SBOM because of a cosign error.")
             return False
