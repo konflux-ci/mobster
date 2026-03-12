@@ -6,14 +6,16 @@ import argparse as ap
 import asyncio
 import logging
 import tempfile
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, fields
 from pathlib import Path
+from typing import TypeVar
 
 from mobster.cmd.augment import AugmentConfig, SBOMRefDetail, augment_sboms
 from mobster.cmd.generate.product import parse_release_notes
 from mobster.error import SBOMError
 from mobster.log import setup_logging
-from mobster.oci.cosign import Cosign, CosignClient, CosignConfig, RekorConfig
+from mobster.oci import cosign
 from mobster.release import ReleaseId, make_snapshot
 from mobster.tekton.artifact import (
     get_component_artifact,
@@ -29,6 +31,14 @@ from mobster.tekton.common import (
 
 LOGGER = logging.getLogger(__name__)
 
+_Conf = TypeVar(
+    "_Conf",
+    cosign.KeylessSignConfig,
+    cosign.StaticSignConfig,
+    cosign.RekorConfig,
+    cosign.KeylessVerifyConfig,
+)
+
 
 @dataclass
 class ProcessComponentArgs(CommonArgs):
@@ -37,25 +47,18 @@ class ProcessComponentArgs(CommonArgs):
 
     Attributes:
         augment_concurrency: maximum number of concurrent SBOM augmentation operations
-        cosign_config: Config for cosign
+        cosign_sign_config: Config for cosign signing
+        cosign_verify_config: Config for cosign verification
     """
 
     augment_concurrency: int
     attestation_concurrency: int
-    cosign_config: CosignConfig
+    cosign_sign_config: cosign.SignConfig
+    cosign_verify_config: cosign.VerifyConfig
     release_data: Path
-    rekor_config: RekorConfig | None = None
 
 
-def parse_args() -> ProcessComponentArgs:
-    """
-    Parse command line arguments for component SBOM processing.
-
-    Returns:
-        ProcessComponentArgs: Parsed arguments.
-    """
-    parser = ap.ArgumentParser()
-    add_common_args(parser)
+def _add_component_args(parser: ap.ArgumentParser) -> None:
     parser.add_argument("--augment-concurrency", type=int, default=8)
     parser.add_argument("--upload-concurrency", type=int, default=8)
     parser.add_argument("--attest-concurrency", type=int, default=4)
@@ -81,13 +84,13 @@ def parse_args() -> ProcessComponentArgs:
         help="The signing (private) key file or k8s secret to use when signing "
         "OCI attestation with SBOMs. The command just attaches "
         "an SBOM if this argument is unfilled.",
-        required=True,
+        default=None,
     )
     parser.add_argument(
         "--verify-key",
         type=str,
         help="The cosign verification key for attest downloading and verification.",
-        required=True,
+        default=None,
     )
     parser.add_argument(
         "--sign-password",
@@ -95,15 +98,82 @@ def parse_args() -> ProcessComponentArgs:
         default="",
         help="The password protecting the signing key.",
     )
-    args = parser.parse_args()
-    cosign_config = CosignConfig(
-        sign_key=args.sign_key,
-        verify_key=args.verify_key,
-        sign_password=args.sign_password.encode("utf-8"),
+    parser.add_argument("--fulcio-url", type=str, help="URL of the Fulcio server")
+    parser.add_argument(
+        "--oidc-token",
+        type=Path,
+        help="OIDC token for signing written in a file",
+        default=None,
     )
-    rekor_config = None
-    if (rekor_key := args.rekor_key) and (rekor_url := args.rekor_url):
-        rekor_config = RekorConfig(rekor_key=rekor_key, rekor_url=rekor_url)
+    parser.add_argument(
+        "--oidc-issuer",
+        type=str,
+        help="OIDC issuer URL for attestation verification",
+        default=None,
+    )
+    parser.add_argument(
+        "--oidc-identity-pattern",
+        type=str,
+        help="OIDC identity pattern for attestation verification",
+        default=None,
+    )
+
+
+def _check_empty_config(
+    config: _Conf,
+) -> _Conf | None:
+    """Utility function that nulls a configuration if it is unused."""
+    has_value = False
+    for field in fields(config):
+        field_val = getattr(config, field.name)
+        if field_val is not None and field_val != field.default:
+            has_value = True
+            break
+    if not has_value:
+        return None
+    return config
+
+
+def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
+    """
+    Parse command line arguments for component SBOM processing.
+
+    Returns:
+        ProcessComponentArgs: Parsed arguments.
+    """
+    parser = ap.ArgumentParser()
+    add_common_args(parser)
+    _add_component_args(parser)
+
+    args = parser.parse_args(args=cli_args)
+
+    rekor_config = _check_empty_config(
+        cosign.RekorConfig(rekor_url=args.rekor_url, rekor_key=args.rekor_key)
+    )
+    sign_config = cosign.SignConfig(
+        static_sign_config=_check_empty_config(
+            cosign.StaticSignConfig(
+                sign_key=args.sign_key, sign_password=args.sign_password.encode("utf-8")
+            )
+        ),
+        rekor_config=rekor_config,
+        keyless_config=_check_empty_config(
+            cosign.KeylessSignConfig(
+                fulcio_url=args.fulcio_url,
+                token_file=args.oidc_token,
+            )
+        ),
+    )
+    verify_config = cosign.VerifyConfig(
+        static_verify_key=args.verify_key,
+        rekor_config=rekor_config,
+        keyless_verify_config=_check_empty_config(
+            cosign.KeylessVerifyConfig(
+                issuer_url=args.oidc_issuer,
+                identity_pattern=args.oidc_identity_pattern,
+            ),
+        ),
+    )
 
     # the snapshot_spec is joined with the data_dir as previous tasks provide
     # the path as relative to the dataDir
@@ -120,10 +190,10 @@ def parse_args() -> ProcessComponentArgs:
         attestation_concurrency=args.attest_concurrency,
         labels=args.labels,
         atlas_retries=args.atlas_retries,
-        cosign_config=cosign_config,
-        rekor_config=rekor_config,
         skip_upload=args.skip_upload,
         skip_s3_upload=False,
+        cosign_sign_config=sign_config,
+        cosign_verify_config=verify_config,
     )
 
 
@@ -146,7 +216,8 @@ async def augment_component_sboms(
     sbom_path: Path,
     snapshot_spec: Path,
     release_id: ReleaseId,
-    cosign_client: Cosign,
+    cosign_client: cosign.SupportsFetch,
+    cosign_signer: cosign.SupportsSign | None,
     augment_concurrency: int,
     attest_concurrency: int,
     release_data: Path,
@@ -158,7 +229,8 @@ async def augment_component_sboms(
         sbom_path: Path where the SBOM will be saved.
         snapshot_spec: Path to snapshot specification file.
         release_id: Release ID to store in SBOM file.
-        cosign_client: Cosign client
+        cosign_client: Cosign fetch client.
+        cosign_signer: Cosign signing client.
         augment_concurrency: Maximum number of concurrent augmentation operations.
         attest_concurrency: Maximum number of concurrent OCI attestation operations.
         release_data: Path to release data file
@@ -178,14 +250,17 @@ async def augment_component_sboms(
         raise SBOMError("Could not augment all SBOMs!")
     LOGGER.debug("Successfully augmented SBoms for ReleaseId: %s", str(release_id))
 
-    if not cosign_client.can_sign():
+    if not cosign_signer:
+        LOGGER.warning(
+            "Missing attesting configuration, SBOMs will not be attested to registry!"
+        )
         return
 
     semaphore = asyncio.Semaphore(attest_concurrency)
     push_tasks = [
         attest_sbom_to_registry(
             result_detail,
-            cosign_client,
+            cosign_signer,
             semaphore,
         )
         for result_detail in result_details
@@ -216,10 +291,6 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
             args.release_id,
         )
 
-    cosign_client = CosignClient(
-        cosign_config=args.cosign_config,
-        rekor_config=args.rekor_config,
-    )
     LOGGER.info("Starting SBOM augmentation")
 
     with tempfile.TemporaryDirectory() as sbom_dir:
@@ -227,7 +298,8 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
             Path(sbom_dir),
             args.snapshot_spec,
             args.release_id,
-            cosign_client,
+            cosign.get_cosign_fetcher(args.cosign_verify_config),
+            cosign.get_cosign_signer(args.cosign_sign_config),
             args.augment_concurrency,
             args.attestation_concurrency,
             args.release_data,
@@ -257,7 +329,7 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
 
 async def attest_sbom_to_registry(
     sbom_ref_detail: SBOMRefDetail,
-    cosign_client: Cosign,
+    cosign_signer: cosign.SupportsSign,
     semaphore: asyncio.Semaphore,
 ) -> bool:
     """
@@ -265,24 +337,28 @@ async def attest_sbom_to_registry(
     as an attestation of the image.
     Args:
         sbom_ref_detail: Info about SBOM file, its release destination and its type
-        cosign_client: The cosign client used for the communication with the registry
+        cosign_signer: The cosign client used for the communication with the registry
         semaphore: Semaphore for throttling concurrency
     Returns:
         True if the push was successful, False otherwise
     """
-    if not cosign_client.can_sign():
-        raise ValueError(
-            f"Could not attest image {sbom_ref_detail.reference} "
-            f"because no signing key was provided!"
-        )
     async with semaphore:
         try:
-            await cosign_client.attest_sbom(
+            await cosign_signer.attest_sbom(
                 sbom_path=sbom_ref_detail.path,
                 image_ref=sbom_ref_detail.reference,
                 sbom_format=sbom_ref_detail.sbom_format,
             )
-            LOGGER.debug("Successfully attested image %s.", sbom_ref_detail.reference)
+            method = (
+                "static"
+                if isinstance(cosign_signer, cosign.StaticKeySigner)
+                else "keyless"
+            )
+            LOGGER.debug(
+                "Successfully attested image %s using %s signing method.",
+                sbom_ref_detail.reference,
+                method,
+            )
         except SBOMError:
             LOGGER.exception("Could not attest SBOM because of a cosign error.")
             return False

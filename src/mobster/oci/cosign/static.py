@@ -1,17 +1,10 @@
-"""
-This module contains the Cosign protocol and the real Cosign implementation.
-The protocol is used mainly for testing. The tests inject a testing cosign
-client implementing the Cosign protocol.
-"""
+"""This module contains the real Cosign implementation using static signing keys."""
 
-import hashlib
 import json
 import logging
 import os
 import tempfile
 import typing
-from base64 import b64decode
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -19,111 +12,45 @@ from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
+from mobster.oci.cosign.attestation_utils import (
+    get_cosign_attestation_type,
+    get_sbom_from_attestation_bytes,
+)
+from mobster.oci.cosign.config import (
+    SignConfig,
+    VerifyConfig,
+)
+from mobster.oci.cosign.protocol import (
+    SupportsFetch,
+    SupportsProvenanceFetch,
+    SupportsSign,
+)
 from mobster.utils import run_async_subprocess
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class RekorConfig:
+class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
     """
-    Rekor (TLOG) configuration object definition.
-    """
-
-    rekor_url: str
-    rekor_key: Path
-
-
-@dataclass
-class CosignConfig:
-    """Configuration of Cosign keys."""
-
-    sign_key: os.PathLike[str] | None = None
-    verify_key: os.PathLike[str] | None = None
-    sign_password: bytes = b""
-
-
-class Cosign(typing.Protocol):  # pragma: nocover
-    """
-    Definition of a Cosign protocol.
-    """
-
-    async def fetch_latest_provenance(self, image: Image) -> Provenance02:
-        """
-        Fetch the latest provenance for an image.
-        """
-        raise NotImplementedError()
-
-    async def fetch_sbom(self, image: Image) -> SBOM:
-        """
-        Fetch the attached SBOM for an image.
-        """
-        raise NotImplementedError()
-
-    async def attest_provenance(self, provenance: Provenance02, image_ref: str) -> None:
-        """
-        Attest Provenance (version 2) to an image.
-        Args:
-            provenance: The provenance to add
-            image_ref: The image to which the provenance will be attested
-
-        Returns:
-            None
-        """
-        raise NotImplementedError()
-
-    async def attest_sbom(
-        self,
-        sbom_path: Path,
-        image_ref: str,
-        sbom_format: SBOMFormat,
-    ) -> None:
-        """
-        Use cosign to attach an SBOM to the registry. This is the new
-        way of attaching an SBOM to an image.
-        Args:
-            sbom_path: The path to the SBOM file
-            image_ref: The reference of the image
-            sbom_format: The format of the SBOM to attest
-
-        Returns:
-            None
-        """
-        raise NotImplementedError()
-
-    def can_sign(self) -> bool:
-        """
-        Assess if this client can sign attestations.
-        Returns:
-            True if yes, False otherwise.
-        """
-        raise NotImplementedError()
-
-
-class CosignClient(Cosign):
-    """
-    Client used to get OCI artifacts using Cosign.
+    Client used to get OCI artifacts using Cosign with static keys.
 
     Attributes:
-        verification_key: Path to public key used to verify attestations.
-        signing_key: Path to a secret key used for signing or its URL
-        password: password to unlock the secret key PEM file
+        verify_key: Verification (public) key path
         rekor_config: TLOG configuration
     """
 
     def __init__(
         self,
-        cosign_config: CosignConfig,
-        rekor_config: RekorConfig | None = None,
+        cosign_config: VerifyConfig,
     ) -> None:
         """
+        Initialize the StaticKeyFetcher.
+
         Args:
             cosign_config: The configuration for this client instance
         """
-        self.verification_key = cosign_config.verify_key
-        self.signing_key = cosign_config.sign_key
-        self.password = cosign_config.sign_password
-        self.rekor_config = rekor_config
+        self.verify_key = cosign_config.static_verify_key
+        self.rekor_config = cosign_config.rekor_config
         # Some cosign operations are extremely heavy, requiring a mutex mechanism
         # to not get OOM killed within the pipeline
 
@@ -138,7 +65,7 @@ class CosignClient(Cosign):
             cmd = [
                 "cosign",
                 "verify-attestation",
-                f"--key={self.verification_key}",
+                f"--key={self.verify_key}",
                 f"--type={attestation_type}",
                 "--insecure-ignore-tlog=true",
                 image.reference,
@@ -163,7 +90,7 @@ class CosignClient(Cosign):
         time the image build finished.
 
         Args:
-            image (Image): Image to fetch the provenances of.
+            image: Image to fetch the provenances of
         """
 
         provenances: list[Provenance02] = []
@@ -183,6 +110,7 @@ class CosignClient(Cosign):
     ) -> SBOM | None:
         """
         Fetch attested SBOM.
+
         Args:
             image: The image this attestation (and the SBOM) belongs to
             sbom_format: The expected SBOM format. This function only cares if the type
@@ -191,17 +119,11 @@ class CosignClient(Cosign):
         Returns:
             The initialized SBOM object
         """
-        attestation_type = self.__get_cosign_attestation_type(sbom_format)
+        attestation_type = get_cosign_attestation_type(sbom_format)
         attestations = await self._verify_attestation(image, attestation_type)
         if attestations:
             last_attestation = attestations[-1]
-            return SBOM(
-                json.loads(b64decode(json.loads(last_attestation)["payload"]))[
-                    "predicate"
-                ],
-                hashlib.sha256(last_attestation).hexdigest(),
-                image.reference,
-            )
+            return get_sbom_from_attestation_bytes(last_attestation, image.reference)
         return None
 
     async def fetch_sbom(self, image: Image) -> SBOM:
@@ -209,7 +131,7 @@ class CosignClient(Cosign):
         Fetch and parse the SBOM for the supplied image.
 
         Args:
-            image (Image): Image to fetch the SBOM of.
+            image: Image to fetch the SBOM of
         """
         with make_oci_auth_file(image.reference) as authfile:
             code, stdout, stderr = await run_async_subprocess(
@@ -223,24 +145,17 @@ class CosignClient(Cosign):
 
         return SBOM.from_cosign_output(stdout, image.reference)
 
-    @staticmethod
-    def __get_cosign_attestation_type(
-        sbom_format: SBOMFormat,
-    ) -> Literal["spdxjson", "cyclonedx"]:
-        """
-        Get the cosign-compatible string determining the SBOM type.
-        Translates SBOMFormat to a literal string.
-        Args:
-            sbom_format: The SBOM format to be converted into a string
 
-        Returns:
-            The string literal which is compatible with cosign cli.
-        """
-        # Translate SPDX format to a cosign-supported version. See
-        # https://github.com/sigstore/cosign/blob/main/doc/cosign_attest.md#options
-        if sbom_format.is_spdx2():
-            return "spdxjson"
-        return "cyclonedx"
+class StaticKeySigner(SupportsSign):
+    """
+    Cosign signing client using static keys.
+    """
+
+    def __init__(self, config: SignConfig):
+        if config.static_sign_config is None or not config.static_sign_config.sign_key:
+            raise SBOMError("Cannot attest SBOM, no signing key was provided.")
+        self.rekor_config = config.rekor_config
+        self.sign_config = config.static_sign_config
 
     async def _attest_anything(
         self,
@@ -262,17 +177,14 @@ class CosignClient(Cosign):
         """
         Sign & attach an arbitrary file as OCI attestation to an image
         with the supplied reference.
+
         Args:
             file_path: Path of the data to be attested
             push_reference: Reference of the image that this attestation
                 will be attached to
             data_format: Cosign-dependent attestation format
-
-        Returns:
-            None
         """
-        if not self.signing_key:
-            raise SBOMError("Cannot attest SBOM, no signing key was provided.")
+
         # Translate SPDX format to a cosign-supported version. See
         # https://github.com/sigstore/cosign/blob/main/doc/cosign_attest.md#options
         cosign_command = [
@@ -280,7 +192,7 @@ class CosignClient(Cosign):
             "attest",
             "--yes",
             "--key",
-            str(self.signing_key),
+            str(self.sign_config.sign_key),
             "--type",
             data_format,
             "--predicate",
@@ -305,7 +217,7 @@ class CosignClient(Cosign):
                     self.rekor_config.rekor_key
                 )
             with tempfile.NamedTemporaryFile() as sign_key_passwd_file:
-                sign_key_passwd_file.write(self.password)
+                sign_key_passwd_file.write(self.sign_config.sign_password)
                 code, _, stderr = await run_async_subprocess(
                     cosign_command,
                     env=cosign_env,
@@ -321,6 +233,13 @@ class CosignClient(Cosign):
     async def attest_provenance(
         self, provenance: Provenance02, image_ref: str
     ) -> None:  # pragma: nocover
+        """
+        Attach a SLSA Provenance v2 to an image. For test purposes only.
+
+        Args:
+            provenance: Provenance object to attach
+            image_ref: Reference of image to attach to
+        """
         # Used in integration tests only, unit-testing won't add any benefit
         # as this is just a wrapper for another function which is covered by
         # testing self.attest_sbom
@@ -340,7 +259,7 @@ class CosignClient(Cosign):
         await self._attest_anything(
             sbom_path,
             image_ref,
-            self.__get_cosign_attestation_type(sbom_format),
+            get_cosign_attestation_type(sbom_format),
         )
 
     async def clean(
@@ -350,11 +269,10 @@ class CosignClient(Cosign):
     ) -> None:
         """
         Clean OCI registry using cosign.
+
         Args:
             image_ref: The image which should be cleaned
             blob_type: What type of attachments should be cleaned
-        Returns:
-            None
         """
         with make_oci_auth_file(image_ref) as authfile:
             cmd = ["cosign", "clean", "--force=true", f"--type={blob_type}", image_ref]
@@ -367,9 +285,6 @@ class CosignClient(Cosign):
                     f"STDERR: {stderr.decode()}"
                 )
 
-    def can_sign(self) -> bool:
-        return self.signing_key is not None
-
     async def sign_image(self, image_ref: str) -> None:
         """
         Sign an image in the registry using cosign.
@@ -377,11 +292,13 @@ class CosignClient(Cosign):
         Args:
             image_ref: The image to sign.
         """
+        if self.sign_config is None:
+            raise SBOMError("Cannot sign image without a signing config")
         cosign_command = [
             "cosign",
             "sign",
             "--key",
-            str(self.signing_key),
+            str(self.sign_config.sign_key),
             image_ref,
         ]
         with make_oci_auth_file(image_ref) as authfile:
@@ -397,7 +314,7 @@ class CosignClient(Cosign):
                 )
 
             with tempfile.NamedTemporaryFile() as sign_key_passwd_file:
-                sign_key_passwd_file.write(self.password)
+                sign_key_passwd_file.write(self.sign_config.sign_password)
                 code, _, stderr = await run_async_subprocess(
                     cosign_command,
                     env=cosign_env,
