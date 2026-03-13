@@ -126,6 +126,14 @@ spec:
   volumes:
     - name: workdir
       emptyDir: {}
+    - name: retryAWSSecret
+      secret:
+        secretName: $(params.retryAWSSecretName)
+        optional: true
+    - name: cosignSecret
+      secret:
+        secretName: $(params.cosignSecretName)
+        optional: true
 
   stepTemplate:
     volumeMounts:
@@ -173,40 +181,15 @@ spec:
               optional: true
         - name: MOBSTER_TPA_SSO_TOKEN_URL
           value: $(params.ssoTokenUrl)
-        - name: AWS_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: $(params.retryAWSSecretName)
-              key: atlas-aws-access-key-id
-              optional: true
-        - name: AWS_SECRET_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: $(params.retryAWSSecretName)
-              key: atlas-aws-secret-access-key
-              optional: true
         - name: AWS_DEFAULT_REGION
           value: "us-east-1"
-        - name: SIGN_KEY
-          valueFrom:
-            secretKeyRef:
-              name: $(params.cosignSecretName)
-              key: SIGN_KEY
-        - name: COSIGN_AWS_DEFAULT_REGION
-          valueFrom:
-            secretKeyRef:
-              name: $(params.cosignSecretName)
-              key: AWS_DEFAULT_REGION
-        - name: COSIGN_AWS_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: $(params.cosignSecretName)
-              key: AWS_ACCESS_KEY_ID
-        - name: COSIGN_AWS_SECRET_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: $(params.cosignSecretName)
-              key: AWS_SECRET_ACCESS_KEY
+      volumeMounts:
+        - name: retryAWSSecret
+          mountPath: /etc/retryAWSSecret
+          readOnly: true
+        - name: cosignSecret
+          mountPath: /etc/cosignSecret
+          readOnly: true
       computeResources:
         limits:
           memory: 2Gi
@@ -215,7 +198,34 @@ spec:
           cpu: 350m
       script: |
         #!/usr/bin/env bash
-        set -eux
+        set -euv
+        # populate env vars from optional secrets of present
+        declare -A aws_entries=(
+          ["AWS_ACCESS_KEY_ID"]="atlas-aws-access-key-id"
+          ["AWS_SECRET_ACCESS_KEY"]=atlas-aws-secret-access-key
+        )
+        for i in "${!aws_entries[@]}"; do
+          filePath="/etc/retryAWSSecret/${array[$i]}"
+          if [ -f "$filePath" ]; then
+            export "$i"=$(cat "/etc/retryAWSSecret/${array[$i]}")
+          fi
+        done
+        declare -A cosign_entries=(
+          ["SIGN_KEY"]="SIGN_KEY"
+          ["COSIGN_AWS_DEFAULT_REGION"]="AWS_DEFAULT_REGION"
+          ["COSIGN_AWS_ACCESS_KEY_ID"]="AWS_ACCESS_KEY_ID"
+          ["COSIGN_AWS_SECRET_ACCESS_KEY"]="AWS_SECRET_ACCESS_KEY"
+        )
+        for i in "${!aws_entries[@]}"; do
+          filePath="/etc/cosignSecret/${array[$i]}"
+          if [ -f "$filePath" ]; then
+            export "$i"=$(cat "$filePath")
+          fi
+        done
+
+        set +v
+        set -x
+
         # This is a little fragile, ideally it would be just a param. It's here
         # for consistency with other tasks in release-service-catalog. The
         # script below will verify that the release_id has the correct format.
