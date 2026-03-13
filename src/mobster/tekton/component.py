@@ -183,7 +183,7 @@ def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
         snapshot_spec=args.data_dir / args.snapshot_spec,
         release_data=args.data_dir / args.release_data,
         atlas_api_url=args.atlas_api_url,
-        retry_s3_bucket=args.retry_s3_bucket,
+        retry_s3_bucket=args.retry_s3_bucket or "",
         release_id=args.release_id,
         augment_concurrency=args.augment_concurrency,
         upload_concurrency=args.upload_concurrency,
@@ -285,10 +285,9 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
     else:
         LOGGER.debug(
-            "skip_upload=%s, so no snapshot / "
-            "release data upload to S3, for release_id=%s",
-            args.skip_upload,
+            "Skipping snapshot upload for release_id=%s (skip_upload=%s)",
             args.release_id,
+            args.skip_upload,
         )
 
     LOGGER.info("Starting SBOM augmentation")
