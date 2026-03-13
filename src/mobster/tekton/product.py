@@ -139,9 +139,10 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
         await upload_release_data(s3, args.release_data, args.release_id)
     else:
         LOGGER.debug(
-            "Skipping snapshot/release data upload for release_id=%s (skip_upload=%s)",
-            args.release_id,
+            "skip_upload=%s, so no snapshot / "
+            "release data upload to S3, for release_id=%s",
             args.skip_upload,
+            args.release_id,
         )
 
     if args.sbom_path is None:

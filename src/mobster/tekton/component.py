@@ -285,9 +285,10 @@ async def process_component_sboms(args: ProcessComponentArgs) -> None:
         await upload_snapshot(s3, args.snapshot_spec, args.release_id)
     else:
         LOGGER.debug(
-            "Skipping snapshot upload for release_id=%s (skip_upload=%s)",
-            args.release_id,
+            "skip_upload=%s, so no snapshot / "
+            "release data upload to S3, for release_id=%s",
             args.skip_upload,
+            args.release_id,
         )
 
     LOGGER.info("Starting SBOM augmentation")
