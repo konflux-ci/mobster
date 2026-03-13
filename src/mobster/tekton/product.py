@@ -72,7 +72,7 @@ def parse_args() -> ProcessProductArgs:
         release_data=args.data_dir / args.release_data,
         result_dir=args.data_dir / args.result_dir,
         atlas_api_url=args.atlas_api_url,
-        retry_s3_bucket=args.retry_s3_bucket,
+        retry_s3_bucket=args.retry_s3_bucket or "",
         release_id=args.release_id,
         upload_concurrency=args.concurrency,
         concurrency=args.concurrency,
@@ -139,10 +139,9 @@ async def process_product_sboms(args: ProcessProductArgs) -> None:
         await upload_release_data(s3, args.release_data, args.release_id)
     else:
         LOGGER.debug(
-            "skip_upload=%s, so no snapshot / "
-            "release data upload to S3, for release_id=%s",
-            args.skip_upload,
+            "Skipping snapshot/release data upload for release_id=%s (skip_upload=%s)",
             args.release_id,
+            args.skip_upload,
         )
 
     if args.sbom_path is None:
