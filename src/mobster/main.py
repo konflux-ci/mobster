@@ -32,7 +32,7 @@ def main() -> None:
     """
     The main function of the Mobster application.
     """
-
+    sys.exit(1)
     arg_parser = cli.setup_arg_parser()
     args = arg_parser.parse_args()
     setup_logging(args.verbose)
