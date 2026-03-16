@@ -86,6 +86,11 @@ spec:
       default: ""
       type: string
 
+    - name: caPath
+      description: Path to the certificate authority bundle to set up TPA requests.
+      default: ""
+      type: string
+
     - name: augmentConcurrency
       description: |
         Maximum number of SBOMs that will be augmented concurrently. Higher
@@ -198,6 +203,8 @@ spec:
               optional: true
         - name: MOBSTER_TPA_SSO_TOKEN_URL
           value: $(params.ssoTokenUrl)
+        - name: MOBSTER_TPA_CA_INFO
+          value: $(params.caPath)
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:

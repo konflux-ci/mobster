@@ -1,4 +1,5 @@
 from json import JSONDecodeError
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -6,7 +7,8 @@ import pytest
 from _pytest.logging import LogCaptureFixture
 
 from mobster import utils
-from mobster.utils import load_sbom_from_json
+
+TESTDATA_PATH = Path(__file__).parent.parent.parent / "data"
 
 
 def test_normalize_file_name() -> None:
@@ -42,15 +44,21 @@ async def test_load_sbom_from_json(
     if fail:
         mock_json.loads.side_effect = JSONDecodeError("a", "b", 1)
         with pytest.raises(JSONDecodeError):
-            await load_sbom_from_json(MagicMock())
+            await utils.load_sbom_from_json(MagicMock())
             assert (
                 "Expected a JSON SBOM. Found different file contents!"
                 in caplog.messages
             )
             assert "foo" in caplog.messages
     else:
-        await load_sbom_from_json(MagicMock())
+        await utils.load_sbom_from_json(MagicMock())
         mock_json.loads.assert_called_once_with("foo")
+
+
+def test_get_tpa_ca(monkeypatch: pytest.MonkeyPatch) -> None:
+    ca_path = str(TESTDATA_PATH / "2022-IT-Root-CA.pem")
+    monkeypatch.setenv("MOBSTER_TPA_CA_INFO", ca_path)
+    assert utils.get_tpa_ca() == ca_path
 
 
 @pytest.mark.asyncio

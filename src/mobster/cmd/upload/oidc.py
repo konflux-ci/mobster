@@ -4,6 +4,7 @@ OIDC client wrapped around httpx
 
 import asyncio
 import logging
+import ssl
 import time
 from asyncio import sleep
 from collections.abc import AsyncGenerator
@@ -52,7 +53,7 @@ class OIDCClientCredentials:
     client_secret: str
 
 
-class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
+class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """
     Generic OIDC client credential client
 
@@ -80,6 +81,7 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         base_url: str,
         auth: OIDCClientCredentials | None,
         proxy: str | None = None,
+        ssl_verify_ca: str | None = None,
     ):
         """
         Create a new client.
@@ -99,6 +101,7 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
         self._token = ""
         self._token_expiration = 0
         self._token_mutex = asyncio.Lock()
+        self._ssl_verify_ca = ssl_verify_ca
 
     async def __aenter__(self) -> "OIDCClientCredentialsClient":
         """
@@ -116,6 +119,9 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods
                 timeout=Timeout(
                     DEFAULT_TIMEOUT_SECONDS, connect=DEFAULT_CONNECT_TIMEOUT_SECONDS
                 ),
+                verify=True
+                if self._ssl_verify_ca is None
+                else ssl.create_default_context(cafile=self._ssl_verify_ca),
             )
             return self
         except Exception as exc:

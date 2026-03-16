@@ -15,6 +15,7 @@ import pydantic
 from mobster.cmd.base import Command
 from mobster.cmd.upload.oidc import OIDCClientCredentials
 from mobster.cmd.upload.tpa import TPAClient, TPATransientError
+from mobster.utils import get_tpa_ca
 
 LOGGER = logging.getLogger(__name__)
 
@@ -296,7 +297,9 @@ class TPAUploadCommand(Command):
 
         semaphore = asyncio.Semaphore(config.workers)
 
-        async with TPAClient(base_url=config.base_url, auth=config.auth) as client:
+        async with TPAClient(
+            base_url=config.base_url, auth=config.auth, ssl_verify_ca=get_tpa_ca()
+        ) as client:
             tasks = [
                 TPAUploadCommand.upload_sbom_file(
                     tpa_client=client,
