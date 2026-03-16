@@ -76,7 +76,7 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument(
         "--retry-s3-bucket",
         type=str,
-        default="",
+        default=None,
     )
     parser.add_argument(
         "--skip-upload",

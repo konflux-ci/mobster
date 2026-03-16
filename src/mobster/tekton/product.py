@@ -72,7 +72,7 @@ def parse_args() -> ProcessProductArgs:
         release_data=args.data_dir / args.release_data,
         result_dir=args.data_dir / args.result_dir,
         atlas_api_url=args.atlas_api_url,
-        retry_s3_bucket=args.retry_s3_bucket or "",
+        retry_s3_bucket=args.retry_s3_bucket,
         release_id=args.release_id,
         upload_concurrency=args.concurrency,
         concurrency=args.concurrency,
