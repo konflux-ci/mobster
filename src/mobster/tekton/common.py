@@ -73,7 +73,11 @@ def add_common_args(parser: ArgumentParser) -> None:
     parser.add_argument("--release-id", type=ReleaseId, required=True)
     parser.add_argument("--result-dir", type=Path, required=True)
     parser.add_argument("--atlas-api-url", type=str)
-    parser.add_argument("--retry-s3-bucket", type=str)
+    parser.add_argument(
+        "--retry-s3-bucket",
+        type=str,
+        default=None,
+    )
     parser.add_argument(
         "--skip-upload",
         action="store_true",
@@ -141,20 +145,27 @@ async def upload_sboms(
     LOGGER.info("Starting SBOM upload to Atlas")
     report = await TPAUploadCommand.upload(config, paths)
 
-    if report.has_failures() and s3_client is not None:
-        LOGGER.warning("Encountered Atlas upload error, falling back to S3.")
-        await handle_atlas_upload_errors(report.all_error_paths(), s3_client)
+    if report.has_failures():
+        if s3_client is not None:
+            LOGGER.warning("Encountered Atlas upload error, falling back to S3.")
+            await handle_atlas_upload_errors(report.all_error_paths(), s3_client)
 
-        if report.has_non_transient_failures():
-            LOGGER.error(  # pylint: disable=logging-not-lazy
-                "SBOMs failed to be uploaded to Atlas with non-transient errors: \n"
-                + "\n".join(
-                    [
-                        f"{path}: {message}"
-                        for path, message in report.get_non_transient_errors()
-                    ]
+            if report.has_non_transient_failures():
+                LOGGER.error(  # pylint: disable=logging-not-lazy
+                    "SBOMs failed to be uploaded to Atlas with non-transient errors: \n"
+                    + "\n".join(
+                        [
+                            f"{path}: {message}"
+                            for path, message in report.get_non_transient_errors()
+                        ]
+                    )
                 )
+        else:
+            # No S3 fallback - raise error
+            error_details = "\n".join(
+                f"{failure.path}: {failure.message}" for failure in report.failure
             )
+            raise RuntimeError(f"SBOMs could not be pushed to TPA: {error_details}")
 
     return report
 

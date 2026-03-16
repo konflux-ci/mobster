@@ -216,3 +216,28 @@ async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> Non
     )
     await process_component_sboms(parsed_args)
     assert isinstance(mock_augment_sboms.call_args.args[3], StaticKeyFetcher)
+
+
+@pytest.mark.asyncio
+async def test_upload_sboms_failure_no_retry_storage_raises(
+    upload_config: UploadConfig,
+) -> None:
+    with patch(
+        "mobster.cmd.upload.upload.TPAUploadCommand.upload",
+    ) as mock_upload:
+        mock_upload.return_value = TPAUploadReport(
+            success=[],
+            failure=[
+                TPAUploadFailure(
+                    path=Path("sbom1.json"),
+                    message="upload failed",
+                    transient=False,
+                )
+            ],
+        )
+        with pytest.raises(RuntimeError):
+            await upload_sboms(
+                upload_config,
+                None,  # no retry storage
+                paths=[Path("sbom1.json")],
+            )
