@@ -1127,7 +1127,7 @@ def test_document_index_package_lookup(simple_spdx_document: Document) -> None:
     assert len(purl_ctxs) == 1
     assert purl_ctxs[0].pkg.name == "package-b"
 
-    assert index.packages_by_purl("nonexistent") == []
+    assert index.packages_by_purl("pkg:/golang/nonexistent@1.0.0") == []
 
     all_contexts = list(index.package_contexts())
     assert len(all_contexts) == 3
