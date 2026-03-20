@@ -843,6 +843,10 @@ class DocumentIndexOCI:
         """
         Returns true if the passed Package represents an image with the passed
         pullspec.
+
+        Args:
+            img_pkg: package to extract the PURL/pullspec from
+            pullspec: an OCI image pullspec with sha256 digest
         """
         img_purl_str = get_package_purl(img_pkg)
         if img_purl_str is None:
