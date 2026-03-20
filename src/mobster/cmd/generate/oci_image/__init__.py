@@ -10,20 +10,19 @@ from pathlib import Path
 from typing import Any
 
 from cyclonedx.exception import CycloneDxException
+from mobster.cmd.generate.oci_image.sbomgen import SBOMMetadata
 from spdx_tools.spdx.jsonschema.document_converter import DocumentConverter
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
 from spdx_tools.spdx.writer.write_utils import convert
+import yaml
 
 import mobster.utils
 from mobster import syft
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
 from mobster.cmd.generate.oci_image.base_images_dockerfile import (
-    extend_sbom_with_base_images_from_dockerfile,
-    get_base_images_refs_from_dockerfile,
     get_digest_for_image_ref,
-    get_image_objects_from_file,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     download_parent_image_sbom,
@@ -92,6 +91,15 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         arch = self.cli_args.arch or mobster.utils.identify_arch()
         return filter_hermeto_sbom_by_arch(hermeto_sbom, arch)
 
+    def _load_metadata(self) -> None:
+        """
+        Load a metadata file from the --metadata-path argument into
+        self._metadata.
+        """
+        with open(self.cli_args.metadata_path) as metadata_file:
+            raw_metadata = yaml.load(metadata_file, yaml.Loader)
+            self._metadata = SBOMMetadata.from_dict(raw_metadata)
+
     async def _handle_bom_inputs(
         self,
     ) -> dict[str, Any]:
@@ -106,13 +114,17 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             self.cli_args.from_hermeto is None
             and self.cli_args.from_syft is None
             and self.cli_args.image_pullspec is None
+            and self.cli_args.metadata_path is None
         ):
             raise ArgumentError(
                 None,
-                "At least one of --from-syft, --from-hermeto or --image-pullspec"
-                " must be provided",
+                "At least one of --from-syft, --from-hermeto, --image-pullspec, "
+                "or --metadata-path must be provided",
             )
 
+        if self.cli_args.metadata_path is not None:
+            self._load_metadata()
+            return await syft.scan_image(self._metadata.image.pullspec)
         if self.cli_args.from_syft is not None:
             # Merging Syft & Hermeto SBOMs
             if len(self.cli_args.from_syft) > 1 or self.cli_args.from_hermeto:
@@ -195,7 +207,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         (non-modified) SBOM is furtherly processed by mobster.
         Args:
             component_sbom_doc: The component SBOM created for this image.
-            base_images_refs: List of references from the parsed Dockerfile.
+            base_images_refs: List of references from the build.
             image_arch: CPU architecture of this image.
 
         Returns:
@@ -228,11 +240,12 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         """
         LOGGER.debug("Generating SBOM document for OCI image")
 
+        # Get/merge the raw SBOM
         merged_sbom_dict = await self._handle_bom_inputs()
         sbom: Document | CycloneDX1BomWrapper
-        image_arch = identify_arch()
+        image_arch = self.cli_args.arch or mobster.utils.identify_arch()
 
-        # Parsing into objects
+        # Parse into objects
         if merged_sbom_dict.get("bomFormat") == "CycloneDX":
             if self.cli_args.contextualize:
                 raise ArgumentError(
@@ -244,9 +257,18 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         else:
             raise ValueError("Unknown SBOM Format!")
 
-        # Extending with image reference
-        if self.cli_args.image_pullspec:
-            image_arch = self.cli_args.arch or mobster.utils.identify_arch()
+        # Extend with image reference
+        if self.cli_args.metadata_path:
+            image = Image.from_image_index_url_and_digest(
+                self._metadata.image.pullspec,
+                self._metadata.image.digest,
+                arch=image_arch,
+            )
+            await extend_sbom_with_image_reference(sbom, image, False)
+            for extra_image_data in self._metadata.extra_images:
+                extra_image = Image.from_oci_artifact_reference(extra_image_data.pullspec + "@" + extra_image_data.digest)
+                await extend_sbom_with_image_reference(sbom, extra_image, False)
+        elif self.cli_args.image_pullspec:
             if not self.cli_args.image_digest:
                 LOGGER.info(
                     "Provided pullspec but not digest."
@@ -274,35 +296,17 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         base_images_refs = []
         base_images_map: dict[str, Image] = {}
+        if self.cli_args.metadata_path:
+            for base_image_data in self._metadata.base_images:
+                base_image = Image.from_image_index_url_and_digest(
+                        base_image_data.pullspec,
+                        base_image_data.digest,
+                        arch=image_arch,
+                    )
+                base_images_refs.append(base_image)
+                base_images_map[base_image_data.pullspec] = base_image
+                await extend_sbom_with_image_reference(sbom, base_image, True)
 
-        # Extending with base images references from a dockerfile
-        if self.cli_args.parsed_dockerfile_path:
-            with open(
-                self.cli_args.parsed_dockerfile_path, encoding="utf-8"
-            ) as parsed_dockerfile_io:
-                parsed_dockerfile = json.load(parsed_dockerfile_io)
-
-            base_images_refs = await get_base_images_refs_from_dockerfile(
-                parsed_dockerfile, self.cli_args.dockerfile_target
-            )
-
-            if self.cli_args.base_image_digest_file:
-                LOGGER.debug(
-                    "Supplied pre-parsed image digest file, will operate offline."
-                )
-                base_images_map = await get_image_objects_from_file(
-                    self.cli_args.base_image_digest_file
-                )
-            await extend_sbom_with_base_images_from_dockerfile(
-                sbom, base_images_refs, base_images_map
-            )
-
-        # Extending with additional base images
-        for image_ref in self.cli_args.additional_base_image:
-            image_object = Image.from_oci_artifact_reference(image_ref)
-            await extend_sbom_with_image_reference(
-                sbom, image_object, is_builder_image=True
-            )
         with log_elapsed("Contextual workflow", logging.INFO):
             contextual_sbom = await self._assess_and_dispatch_contextual_workflow(
                 sbom, base_images_refs, base_images_map, image_arch

@@ -1,4 +1,4 @@
-"""Module for augmenting the oci-image SBOM with information from a parsed Dockerfile"""
+"""Module for augmenting the oci-image SBOM with information from various sources"""
 
 import json
 import logging
@@ -25,81 +25,6 @@ from mobster.sbom.spdx import get_image_package
 from mobster.utils import run_async_subprocess
 
 LOGGER = logging.getLogger(__name__)
-
-
-async def get_base_images_refs_from_dockerfile(
-    parsed_dockerfile: dict[str, Any], target_stage: str | None = None
-) -> list[str | None]:
-    """
-    Reads the base images from provided parsed dockerfile, does not include
-    stages after the target of the build. So the last image returned is
-    the parent image used.
-
-    Args:
-        parsed_dockerfile (dict[str, Any]): Contents of the parsed dockerfile
-        target_stage (str): The target stage for the build
-    Returns:
-        list[str | None]: List of base images used during build as extracted
-                          from the dockerfile in the order they were used.
-                          `FROM scratch` and `FROM oci-archive:` are
-                          identified as `None`.
-
-    Example:
-    If the Dockerfile looks like
-    FROM registry.access.redhat.com/ubi8/ubi:latest as builder
-    ...
-    FROM builder
-    ...
-
-    Then the relevant part of parsed_dockerfile look like
-    {
-        "Stages": [
-            {
-                "BaseName": "registry.access.redhat.com/ubi8/ubi:latest",
-                "As": "builder",
-                "From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"},
-            },
-            {
-                "BaseName": "builder",
-                "From": {"Stage": {"Named": "builder", "Index": 0}},
-            },
-        ]
-    },
-    """
-    base_images_pullspecs: list[str | None] = []
-    for stage in parsed_dockerfile.get("Stages", []):
-        is_actually_image = True
-
-        from_field = stage.get("From", {})
-        # Ignore scratch image as well as
-        # references to previous stages
-        if "Stage" in from_field:
-            is_actually_image = False
-        if from_field.get("Scratch"):
-            # It is an empty image
-            base_images_pullspecs.append(None)
-            is_actually_image = False
-        base_name: str = stage.get("BaseName")
-        if is_actually_image and base_name and base_name.startswith("oci-archive:"):
-            # oci-archive references are not real base images (used by e.g.
-            # bootc, chunkah, and flatpak builds). Treat them like scratch so
-            # that preceding stages still get recorded as builder images.
-            base_images_pullspecs.append(None)
-            is_actually_image = False
-        if is_actually_image and base_name:
-            base_images_pullspecs.append(base_name.strip("'\""))
-
-        # Don't include images after the target used for build
-        alias = stage.get("As")
-        if target_stage and alias and alias == target_stage:
-            # The `AS` keyword of this stage matches the target
-            break
-        if target_stage and not alias and base_name == target_stage:
-            # This stage does not use the `AS` keyword,
-            # the pull-spec matches the target
-            break
-    return base_images_pullspecs
-
 
 async def get_digest_for_image_ref(image_ref: str, arch: Any = None) -> str | None:
     """

@@ -29,109 +29,11 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     _get_images_and_their_annotations,
     _get_spdx_packages_from_base_images,
     extend_sbom_with_base_images_from_dockerfile,
-    get_base_images_refs_from_dockerfile,
     get_image_objects_from_file,
     get_objects_for_base_images,
 )
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.image import Image
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ["dockerfile_sample", "target_stage", "expected_list"],
-    [
-        (1, "", ["alpine:3.10", None]),
-        (1, "build", ["alpine:3.10"]),
-        (
-            2,
-            "",
-            [
-                "registry.access.redhat.com/ubi8/ubi:latest",
-                "alpine:3.10",
-                None,
-                "registry.access.redhat.com/ubi9/ubi:latest",
-                "registry.access.redhat.com/ubi8/ubi:latest",
-            ],
-        ),
-        (
-            2,
-            "nothing",
-            [
-                "registry.access.redhat.com/ubi8/ubi:latest",
-                "alpine:3.10",
-                None,
-            ],
-        ),
-        (
-            2,
-            "foo",
-            [
-                "registry.access.redhat.com/ubi8/ubi:latest",
-                "alpine:3.10",
-                None,
-                "registry.access.redhat.com/ubi9/ubi:latest",
-            ],
-        ),
-        (
-            2,
-            "bar",
-            [
-                "registry.access.redhat.com/ubi8/ubi:latest",
-                "alpine:3.10",
-                None,
-                "registry.access.redhat.com/ubi9/ubi:latest",
-                "registry.access.redhat.com/ubi8/ubi:latest",
-            ],
-        ),
-        (
-            2,
-            "registry.access.redhat.com/ubi8/ubi:latest",
-            ["registry.access.redhat.com/ubi8/ubi:latest"],
-        ),
-    ],
-)
-async def test_get_base_images_refs_from_dockerfile(
-    dockerfile_sample: int,
-    target_stage: str,
-    expected_list: list[str | None],
-    sample1_parsed_dockerfile: dict[str, Any],
-    sample2_parsed_dockerfile: dict[str, Any],
-) -> None:
-    dockerfile = (
-        sample1_parsed_dockerfile
-        if dockerfile_sample == 1
-        else sample2_parsed_dockerfile
-    )
-    assert (
-        await get_base_images_refs_from_dockerfile(dockerfile, target_stage)
-        == expected_list
-    )
-
-
-@pytest.mark.asyncio
-async def test_get_base_images_refs_from_dockerfile_oci_archive() -> None:
-    """FROM oci-archive: should be treated like FROM scratch (appends None)."""
-    parsed_dockerfile = {
-        "Stages": [
-            {
-                "BaseName": "quay.io/example/builder:latest",
-                "As": "builder",
-                "From": {"Image": "quay.io/example/builder:latest"},
-                "Commands": [],
-            },
-            {
-                "BaseName": "oci-archive:out.ociarchive",
-                "From": {"Image": "oci-archive:out.ociarchive"},
-                "Commands": [],
-            },
-        ]
-    }
-    assert await get_base_images_refs_from_dockerfile(parsed_dockerfile) == [
-        "quay.io/example/builder:latest",
-        None,
-    ]
-
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
