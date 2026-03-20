@@ -1,0 +1,205 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "authors": [
+        {
+          "name": "TinyLlama"
+        }
+      ],
+      "bom-ref": "pkg:huggingface/TinyLlama/TinyLlama-1.1B-Chat-v1.0@1.0",
+      "copyright": "NOASSERTION",
+      "description": "No description available",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+        }
+      ],
+      "group": "TinyLlama",
+      "licenses": [
+        {
+          "license": {
+            "id": "unknown",
+            "url": "https://spdx.org/licenses/"
+          }
+        }
+      ],
+      "manufacturer": {
+        "name": "TinyLlama",
+        "url": [
+          "https://huggingface.co/TinyLlama"
+        ]
+      },
+      "modelCard": {
+        "modelParameters": {
+          "architectureFamily": "llama",
+          "inputs": [
+            {
+              "format": "text"
+            }
+          ],
+          "modelArchitecture": "TinyLlama-1.1B-Chat-v1.0ForCausalLM",
+          "outputs": [
+            {
+              "format": "generated-text"
+            }
+          ],
+          "task": "text-generation"
+        },
+        "properties": [
+          {
+            "name": "bomFormat",
+            "value": "CycloneDX"
+          },
+          {
+            "name": "specVersion",
+            "value": "1.6"
+          },
+          {
+            "name": "serialNumber",
+            "value": "urn:uuid:TinyLlama-TinyLlama-1.1B-Chat-v1.0"
+          },
+          {
+            "name": "version",
+            "value": "1.0.0"
+          },
+          {
+            "name": "primaryPurpose",
+            "value": "text-generation"
+          },
+          {
+            "name": "suppliedBy",
+            "value": "TinyLlama"
+          },
+          {
+            "name": "licenses",
+            "value": "apache-2.0"
+          },
+          {
+            "name": "typeOfModel",
+            "value": "llama"
+          },
+          {
+            "name": "downloadLocation",
+            "value": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0/tree/main"
+          },
+          {
+            "name": "external_references",
+            "value": "[{\"type\": \"website\", \"url\": \"https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0\", \"comment\": \"Model repository\"}, {\"type\": \"distribution\", \"url\": \"https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0/tree/main\", \"comment\": \"Model files\"}]"
+          }
+        ],
+        "quantitativeAnalysis": {
+          "graphics": {}
+        }
+      },
+      "name": "TinyLlama-1.1B-Chat-v1.0",
+      "publisher": "TinyLlama",
+      "purl": "pkg:huggingface/TinyLlama/TinyLlama-1.1B-Chat-v1.0@1.0",
+      "supplier": {
+        "name": "TinyLlama",
+        "url": [
+          "https://huggingface.co/TinyLlama"
+        ]
+      },
+      "type": "machine-learning-model",
+      "version": "1.0"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [
+        "pkg:huggingface/TinyLlama/TinyLlama-1.1B-Chat-v1.0@1.0"
+      ],
+      "ref": "pkg:generic/TinyLlama%2FTinyLlama-1.1B-Chat-v1.0@1.0"
+    }
+  ],
+  "externalReferences": [
+    {
+      "type": "distribution",
+      "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "pkg:generic/TinyLlama%2FTinyLlama-1.1B-Chat-v1.0@1.0",
+      "copyright": "NOASSERTION",
+      "description": "No description available",
+      "name": "TinyLlama-1.1B-Chat-v1.0",
+      "purl": "pkg:generic/TinyLlama%2FTinyLlama-1.1B-Chat-v1.0@1.0",
+      "type": "application",
+      "version": "1.0"
+    },
+    "properties": [
+      {
+        "name": "primaryPurpose",
+        "value": "text-generation"
+      },
+      {
+        "name": "suppliedBy",
+        "value": "TinyLlama"
+      },
+      {
+        "name": "typeOfModel",
+        "value": "llama"
+      },
+      {
+        "name": "bomFormat",
+        "value": "CycloneDX"
+      },
+      {
+        "name": "specVersion",
+        "value": "1.6"
+      },
+      {
+        "name": "serialNumber",
+        "value": "urn:uuid:TinyLlama-TinyLlama-1.1B-Chat-v1.0"
+      },
+      {
+        "name": "version",
+        "value": "1.0.0"
+      },
+      {
+        "name": "primaryPurpose",
+        "value": "text-generation"
+      },
+      {
+        "name": "suppliedBy",
+        "value": "TinyLlama"
+      },
+      {
+        "name": "licenses",
+        "value": "apache-2.0"
+      },
+      {
+        "name": "typeOfModel",
+        "value": "llama"
+      },
+      {
+        "name": "downloadLocation",
+        "value": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0/tree/main"
+      },
+      {
+        "name": "external_references",
+        "value": "[{\"type\": \"website\", \"url\": \"https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0\", \"comment\": \"Model repository\"}, {\"type\": \"distribution\", \"url\": \"https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0/tree/main\", \"comment\": \"Model files\"}]"
+      }
+    ],
+    "timestamp": "2025-11-24T19:04:23.106770Z",
+    "tools": {
+      "components": [
+        {
+          "bom-ref": "pkg:generic/owasp-genai/owasp-aibom-generator@1.0.0",
+          "manufacturer": {
+            "name": "OWASP GenAI Security Project"
+          },
+          "name": "OWASP AIBOM Generator",
+          "type": "application",
+          "version": "1.0.0"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:febaa4b5-e892-46da-87db-ba585fe404c0",
+  "specVersion": "1.6",
+  "version": 1
+}
