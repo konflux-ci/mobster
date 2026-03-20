@@ -147,6 +147,28 @@ async def normalize_and_load_sbom(
     return JsonLikeDictParser().parse(sbom)  # type: ignore[no-untyped-call]
 
 
+def get_normalized_purl(purl: str) -> str:
+    """
+    Get a normalized purl by only including fields that are valid for
+    comparison.
+
+    Args:
+        purl: purl string to normalize
+
+    Returns
+        str: the normalized purl string
+    """
+
+    purl_obj = PackageURL.from_string(purl)
+    normalized = PackageURL(
+        name=purl_obj.name,
+        type=purl_obj.type,
+        version=purl_obj.version,
+        namespace=purl_obj.namespace,
+    )
+    return normalized.to_string()
+
+
 async def update_sbom_name_and_namespace(sbom: Document, image: Image) -> None:
     """
     Update the SBOM name with the image reference in the format 'repository@digest'.
@@ -660,7 +682,8 @@ class DocumentIndexOCI:
 
             purl = get_package_purl(pkg)
             if purl is not None:
-                self._purl_to_ctxs[purl].append(pkg_ctx)
+                normalized = get_normalized_purl(purl)
+                self._purl_to_ctxs[normalized].append(pkg_ctx)
 
             if pkg.spdx_id.startswith(IMAGE_PKG_SPDX_PREFIX):
                 self._image_ctxs.append(pkg_ctx)
@@ -715,7 +738,8 @@ class DocumentIndexOCI:
             List of PackageContext objects with matching PURLs, or empty list
             if none found
         """
-        return self._purl_to_ctxs.get(purl, [])
+        normalized = get_normalized_purl(purl)
+        return self._purl_to_ctxs.get(normalized, [])
 
     def package_contexts(
         self,
@@ -883,7 +907,7 @@ class DocumentIndexOCI:
         # To ensure consistency of the index, we need to find the package
         # whose parent is going to be changing and remove the relationship
         # from the parent_relationships for that package.
-        old_parent_pkg_ctx = self.package_by_spdx_id(relationship.spdx_element_id)
+        old_parent_pkg_ctx = self.try_package_by_spdx_id(relationship.spdx_element_id)
         if old_parent_pkg_ctx is None:
             return False
 
@@ -899,7 +923,7 @@ class DocumentIndexOCI:
         old_parent_pkg_ctx.parent_relationships.pop(idx)
 
         # reparent the relationship
-        new_parent_pkg_ctx = self.package_by_spdx_id(new_parent_spdx_id)
+        new_parent_pkg_ctx = self.try_package_by_spdx_id(new_parent_spdx_id)
         if new_parent_pkg_ctx is None:
             return False
 
