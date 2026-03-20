@@ -168,6 +168,15 @@ def generate_oci_image_parser(subparsers: Any) -> None:
         help="Contextualize the SBOM",
         default=False,
     )
+    oci_image_parser.add_argument(
+        "--build-metadata-path",
+        type=Path,
+        default=None,
+        help=(
+            "Path to the build metadata from Capo. "
+            "Required for builder contextualization."
+        ),
+    )
     oci_image_parser.set_defaults(func=oci_image.GenerateOciImageCommand)
 
 
