@@ -61,7 +61,7 @@
       "SPDXID": "SPDXRef-Package-garage-bAInd-Open-Platypus-37141edbdb7826378cce118c46a109b813e1f038-557d7b1a58f10d702f49cd06d7ccd977db09429ee39f63eadc99972b7e65c7ee",
       "annotations": [
         {
-          "annotationDate": "comment",
+          "annotationDate": "2025-10-29T14:26:43Z",
           "annotationType": "OTHER",
           "annotator": "Tool: cachi2:jsonencoded",
           "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"

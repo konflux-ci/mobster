@@ -5,8 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from mobster.cmd import augment
-from mobster.cmd import enrich
+from mobster.cmd import augment, enrich
 from mobster.cmd.delete import delete_tpa
 from mobster.cmd.download import download_tpa
 from mobster.cmd.generate import (
@@ -48,7 +47,6 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     enrich_command_parser(subparsers)
 
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output.")
-
 
     return parser
 
@@ -634,14 +632,13 @@ def delete_tpa_parser(subparsers: Any) -> None:
     tpa_parser.set_defaults(func=delete_tpa.TPADeleteCommand)
 
 
-def enrich_command_parser(subparsers: Any) -> None: 
+def enrich_command_parser(subparsers: Any) -> None:
     """
     A parser for enriching SBOMs.
     """
     enrich_parser = subparsers.add_parser(
         "enrich", help="Enrich an SBOM document for given content type"
     )
-    enrich_subparsers = enrich_parser.add_subparsers(dest="type", required=True)
 
     enrich_parser.add_argument(
         "--output",
@@ -654,32 +651,31 @@ def enrich_command_parser(subparsers: Any) -> None:
 
     enrich_oci_image_parser(enrich_subparsers)
 
+
 def enrich_oci_image_parser(subparsers: Any) -> None:
     """
     A parser for augmenting SBOMs for OCI images.
     """
 
-    enrich_oci_image_parser = subparsers.add_parser(
+    oci_image_parser = subparsers.add_parser(
         "oci-image",
         help="enrich SBOM documents with additional information from a json"
         "spec and save them to a directory",
     )
-    enrich_oci_image_parser.add_argument(
+    oci_image_parser.add_argument(
         "--sbom",
         type=Path,
         help="Path to the SBOM file to be enriched",
         required=True,
     )
-    enrich_oci_image_parser.add_argument(
+    oci_image_parser.add_argument(
         "--enrichment-file",
         type=Path,
         required=True,
         help="path to the mapped json spec file in JSON format",
     )
-    enrich_oci_image_parser.add_argument(
+    oci_image_parser.add_argument(
         "--image",
-        help="OCI image in the form "
-        "<registry>/<repository>:<tag>",
+        help="OCI image in the form <registry>/<repository>:<tag>",
     )
-    enrich_oci_image_parser.set_defaults(func=enrich.EnrichImageCommand)
-    
+    oci_image_parser.set_defaults(func=enrich.EnrichImageCommand)
