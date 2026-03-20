@@ -103,7 +103,7 @@ class OriginType(Enum):
     Type is builder when the package was copied from a builder stage or an
     external image.
 
-    Type is intermediate when the package was created during a build in an
+    Type is intermediate when the package is sourced from an
     intermediate stage.
     """
 
