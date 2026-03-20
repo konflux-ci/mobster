@@ -69,6 +69,15 @@ spec:
       description: >
         The name of the K8s secret containing the 'atlas-aws-access-key-id' and
         'atlas-aws-secret-access-key' keys used for AWS S3 access.
+      # This default value handles k8s built-in validation of secretNames
+      # in mounts or env variables. With `optional: True`, the env var or
+      # volume is simply not used if the secret is not found. Secret name
+      # however can never be an empty string or the pipeline validation
+      # fails completely. For more context, check out Secret naming:
+      # https://kubernetes.io/docs/concepts/configuration/secret/#restriction-names-data
+      # and their optional parameter:
+      # https://kubernetes.io/docs/concepts/configuration/secret/#restriction-secret-must-exist
+      default: "secret-not-present"
 
     - name: retryS3Bucket
       type: string
@@ -114,17 +123,18 @@ spec:
     - name: cosignSecretName
       type: string
       description: K8s secret name with a cosign signing key used for SBOM attestation.
+      default: "secret-not-present"
 
     - name: attestationPubKey
       type: string
       description: K8s reference to a secret containing a key for verifying provenance attestations
+      default: ""
 
     - name: releaseData
       type: string
       description: Path to the merged data file from collect-data in the dataDir.
 
     # Configuration parameters for keyless signing, if enabled.
-    # TODO: ISV-6683 - use these parameters in the mobster command
     - name: defaultOIDCIssuer
       type: string
       description: A default OIDC issuer URL to be used for signing.
@@ -156,6 +166,14 @@ spec:
   volumes:
     - name: workdir
       emptyDir: {}
+    - name: oidc-token
+      projected:
+        sources:
+          - serviceAccountToken:
+              audience: sigstore
+              # 30 minutes should be enough to finish this task
+              expirationSeconds: 1800
+              path: oidc-token
 
   stepTemplate:
     volumeMounts:
@@ -224,21 +242,29 @@ spec:
             secretKeyRef:
               name: $(params.cosignSecretName)
               key: SIGN_KEY
+              optional: true
         - name: COSIGN_AWS_DEFAULT_REGION
           valueFrom:
             secretKeyRef:
               name: $(params.cosignSecretName)
               key: AWS_DEFAULT_REGION
+              optional: true
         - name: COSIGN_AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
               name: $(params.cosignSecretName)
               key: AWS_ACCESS_KEY_ID
+              optional: true
         - name: COSIGN_AWS_SECRET_ACCESS_KEY
           valueFrom:
             secretKeyRef:
               name: $(params.cosignSecretName)
               key: AWS_SECRET_ACCESS_KEY
+              optional: true
+      volumeMounts:
+        - mountPath: /var/run/sigstore/cosign
+          name: oidc-token
+
       computeResources:
         limits:
           memory: 2Gi
@@ -257,16 +283,50 @@ spec:
           --data-dir "$(params.dataDir)"
           --snapshot-spec "$(params.snapshotSpec)"
           --atlas-api-url "$(params.atlasApiUrl)"
-          --retry-s3-bucket "$(params.retryS3Bucket)"
           --release-id "$release_id"
           --augment-concurrency "$(params.augmentConcurrency)"
           --upload-concurrency "$(params.uploadConcurrency)"
           --result-dir "$(params.resultsDirPath)"
-          --sign-key "$SIGN_KEY"
-          --verify-key "$(params.attestationPubKey)"
           --release-data "$(params.releaseData)"
         )
-
+        # Params are basically Bash commands, their value
+        # has to be checked with -n. Env variables should
+        # be checked with -v to not leak expanded secrets
+        # through xtrace. Bash conditionals ([[) have to
+        # be used instead of Shell conditionals ([) to use -v
+        if [[ -n "$(params.defaultOIDCIssuer)" \
+          && -n "$(params.rekorExternalUrl)" \
+          && -n "$(params.fulcioExternalUrl)" \
+          && -n "$(params.tufExternalUrl)" \
+          && -n "$(params.buildIdentityRegexp)" \
+        ]]; then
+          # Keyless signing is used for augmentation
+          cosign initialize --root "$(params.tufExternalUrl)/root.json" \
+            --mirror "$(params.tufExternalUrl)"
+          mobster_args+=(
+            --oidc-token /var/run/sigstore/cosign/oidc-token
+            --fulcio-url "$(params.fulcioExternalUrl)"
+            --oidc-issuer "$(params.defaultOIDCIssuer)"
+            --oidc-identity-pattern "$(params.buildIdentityRegexp)"
+            --rekor-url "$(params.rekorExternalUrl)"
+          )
+        elif [[ -n "$(params.attestationPubKey)" \
+          && -v SIGN_KEY \
+          && -v COSIGN_AWS_DEFAULT_REGION \
+          && -v COSIGN_AWS_ACCESS_KEY_ID \
+          && -v COSIGN_AWS_SECRET_ACCESS_KEY
+        ]]; then
+          # Static key signing is used for augmentation
+          mobster_args+=(
+            --verify-key "$(params.attestationPubKey)"
+            --sign-key "$SIGN_KEY"
+          )
+        fi
+        if [[ -n "$(params.retryS3Bucket)" ]]; then
+          mobster_args+=(
+            --retry-s3-bucket "$(params.retryS3Bucket)"
+          )
+        fi
         process_component_sboms "${mobster_args[@]}"
 
     - name: create-trusted-artifact
