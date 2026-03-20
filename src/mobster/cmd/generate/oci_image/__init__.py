@@ -153,6 +153,10 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         component, expressing which packages came to component
         from used parent or grandparents.
 
+        Also attempts to parse build metadata from Capo and perform builder
+        contextualization if successful. If an error specific to builder
+        contextualization occurs, the parent-contextualized SBOM is returned.
+
         Args:
             component_sbom_doc:
                 The component SBOM created for this image.
@@ -160,6 +164,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 modified by this workflow.
             parent_image_ref: Reference to the parent image.
             arch: CPU architecture of this image.
+            build_metadata_path: Path to build metadata output from Capo
 
         Returns:
             spdx_tools.spdx.model.document.Document | None:

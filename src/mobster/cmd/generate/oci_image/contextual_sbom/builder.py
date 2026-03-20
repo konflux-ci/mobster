@@ -101,7 +101,7 @@ class OriginType(Enum):
     Type of an origin of an SBOM package.
 
     Type is builder when the package was copied from a builder stage or an
-    external image.
+    external image. E.g. COPY --from=builder-stage or COPY --from=quay.io/image:latest
 
     Type is intermediate when the package is sourced from an
     intermediate stage.
@@ -143,6 +143,10 @@ def generate_origins(
 
     for pkg_meta in builder_metadata.packages:
         packages_by_purl = index.packages_by_purl(pkg_meta.purl)
+        # The following condition would imply that the syft scan during the
+        # build and the syft scan in Capo don't generate all identical PURLs.
+        # This is unlikely to happen but it makes sense to try to contextualize
+        # other packages where this mismatch doesn't exist.
         if len(packages_by_purl) == 0:
             continue
 
@@ -187,9 +191,14 @@ def _resolve_dependency_of(
     dependency_of_purl: str,
 ) -> PackageContext | None:
     """
-    Try to find the package in the document index that matches the
-    BuilderPkgMetadataItem object using dependency_of_purl and relationships in
-    the document index.
+    From candidate packages, try to find the package that has a DEPENDENCY_OF
+    relationship to a package that has the passed dependency_of_purl.
+
+    When multiple packages have the same PURL, we don't know how to
+    contextualize them, since Capo only tracks package origins by PURLs. These
+    packages can differ by which packages they are a dependency of, so we can
+    use the origin of those parent packages to also resolve the dependent
+    packages.
 
     Args:
         packages: List of package contexts to search through
