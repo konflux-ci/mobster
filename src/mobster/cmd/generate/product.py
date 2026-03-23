@@ -41,9 +41,10 @@ class ReleaseNotes(pdc.BaseModel):
 class ReleaseData(pdc.BaseModel):
     """Pydantic model representing the merged data file."""
 
-    release_notes: ReleaseNotes = pdc.Field(
+    release_notes: ReleaseNotes | None = pdc.Field(
         alias="releaseNotes",
         validation_alias=pdc.AliasChoices("releaseNotes", "release_notes"),
+        default=None,
     )
 
 
@@ -62,6 +63,11 @@ class GenerateProductCommand(GenerateCommand):
         snapshot = await make_snapshot(self.cli_args.snapshot, None, semaphore)
 
         self.release_notes = parse_release_notes(self.cli_args.release_data)
+        if self.release_notes is None:
+            raise SBOMError(
+                "Cannot generate product SBOM without release notes. "
+                "Update release data with releaseNotes field."
+            )
         self.document = create_sbom(
             self.release_notes, snapshot, self.cli_args.release_id
         )
@@ -288,7 +294,7 @@ def get_component_relationships(
     ]
 
 
-def parse_release_notes(data: Path) -> ReleaseNotes:
+def parse_release_notes(data: Path) -> ReleaseNotes | None:
     """Parse the data file at the specified path into a ReleaseNotes object.
 
     Args:
