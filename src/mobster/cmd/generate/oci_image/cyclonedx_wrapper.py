@@ -15,6 +15,7 @@ from cyclonedx.output import make_outputter
 from cyclonedx.schema import OutputFormat, SchemaVersion
 
 from mobster import get_mobster_version
+from mobster.sbom.cyclonedx import get_manufacturer
 
 
 @dataclass
@@ -82,4 +83,5 @@ class CycloneDX1BomWrapper:
                 type=ComponentType.APPLICATION,
             )
         )
+        bom_object.sbom.metadata.manufacturer = get_manufacturer()
         return bom_object

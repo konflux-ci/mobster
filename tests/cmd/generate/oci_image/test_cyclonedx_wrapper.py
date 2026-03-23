@@ -109,6 +109,8 @@ def test_get_component_dicts(
 )
 def test_cdx_wrapper_to_and_from_dict(sbom: dict[str, Any]) -> None:
     sbom_obj = CycloneDX1BomWrapper.from_dict(sbom)
+    assert sbom_obj.sbom.metadata.manufacturer is not None
+    assert sbom_obj.sbom.metadata.manufacturer.name == "Red Hat"
     sbom_regenerated_dict = sbom_obj.to_dict()
     for key in sbom:
         assert key in sbom_regenerated_dict

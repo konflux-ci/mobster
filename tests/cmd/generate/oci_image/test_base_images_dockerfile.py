@@ -876,6 +876,7 @@ async def test__extend_spdx_with_base_images(
                         "type": "container",
                         "version": "1.0",
                     },
+                    "manufacturer": {"name": "Red Hat"},
                     "timestamp": "1970-01-01T00:00:00+00:00",
                     "tools": {
                         "components": [

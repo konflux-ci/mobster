@@ -69,7 +69,7 @@ def get_creation_info(sbom_name: str) -> CreationInfo:
         data_license="CC0-1.0",
         document_namespace=get_namespace(sbom_name),
         creators=[
-            Actor(ActorType.ORGANIZATION, "Red Hat"),
+            get_red_hat_org_actor(),
             Actor(ActorType.TOOL, "Konflux CI"),
             get_mobster_tool_actor(),
         ],
@@ -174,7 +174,7 @@ def get_package(
         name=name,
         version=version,
         download_location=download_location,
-        supplier=Actor(ActorType.ORGANIZATION, "Red Hat"),
+        supplier=get_red_hat_org_actor(),
         license_declared=SpdxNoAssertion(),
         files_analyzed=False,
         external_references=external_refs,
@@ -207,3 +207,17 @@ def get_mobster_tool_string() -> str:
     Get the string representation of the current mobster tool.
     """
     return str(get_mobster_tool_actor())
+
+
+def get_red_hat_org_actor() -> Actor:
+    """
+    Get the Actor object representation of Red Hat organization.
+    """
+    return Actor(ActorType.ORGANIZATION, "Red Hat")
+
+
+def get_red_hat_org_string() -> str:
+    """
+    Get the string representation of the Red Hat organization creator.
+    """
+    return str(get_red_hat_org_actor())
