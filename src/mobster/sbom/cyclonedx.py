@@ -8,6 +8,7 @@ from cyclonedx.model.component import (
     Component,
     ComponentType,
 )
+from cyclonedx.model.contact import OrganizationalEntity
 
 from mobster import get_mobster_version
 from mobster.artifact import Artifact
@@ -59,6 +60,16 @@ def get_component_from_artifact(artifact: Artifact) -> Component:
     )
 
     return package
+
+
+def get_manufacturer() -> OrganizationalEntity:
+    """
+    Get the OrganizationalEntity representing Red Hat as the SBOM manufacturer.
+
+    Returns:
+        OrganizationalEntity: Red Hat organizational entity.
+    """
+    return OrganizationalEntity(name="Red Hat")
 
 
 def get_tools_component() -> Component:

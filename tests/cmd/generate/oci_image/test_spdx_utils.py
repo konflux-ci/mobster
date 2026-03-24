@@ -25,13 +25,14 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     is_virtual_root,
     normalize_actor,
     normalize_package,
+    normalize_red_hat_creator,
     normalize_sbom,
     redirect_current_roots_to_new_root,
     redirect_spdx_virtual_root_to_new_root,
     update_package_in_spdx_sbom,
 )
 from mobster.image import Image
-from mobster.sbom.spdx import get_mobster_tool_string
+from mobster.sbom.spdx import get_mobster_tool_string, get_red_hat_org_string
 from tests.conftest import create_annotation_with_spdx_id
 
 
@@ -94,7 +95,7 @@ async def test_normalize_package(
                 "name": "MOBSTER:UNFILLED_NAME (please update this field)",
                 "creationInfo": {
                     "created": "1970-01-01T00:00:00Z",
-                    "creators": [get_mobster_tool_string()],
+                    "creators": [get_red_hat_org_string(), get_mobster_tool_string()],
                 },
                 "packages": [
                     {
@@ -935,3 +936,39 @@ def test_get_annotations_by_spdx_id(
 )
 def test_get_package_purl(package: Package, expected_result: str | None) -> None:
     assert get_package_purl(package) == expected_result
+
+
+@pytest.mark.parametrize(
+    ["input_creators", "expected_creators"],
+    [
+        pytest.param(
+            [get_red_hat_org_string()],
+            [get_red_hat_org_string()],
+            id="already-canonical-idempotent",
+        ),
+        pytest.param(
+            ["Organization: red hat"],
+            [get_red_hat_org_string()],
+            id="lowercase-variant-replaced",
+        ),
+        pytest.param(
+            ["Organization: Red Hat", "Organization: red hat", "Organization: RED HAT"],
+            [get_red_hat_org_string()],
+            id="multiple-variants-deduplicated",
+        ),
+        pytest.param(
+            [],
+            [get_red_hat_org_string()],
+            id="empty-list-gets-red-hat-appended",
+        ),
+        pytest.param(
+            ["Tool: syft", "Organization: red hat", "Tool: hermeto"],
+            ["Tool: syft", "Tool: hermeto", get_red_hat_org_string()],
+            id="mixed-creators-red-hat-normalized",
+        ),
+    ],
+)
+def test_normalize_red_hat_creator(
+    input_creators: list[str], expected_creators: list[str]
+) -> None:
+    assert normalize_red_hat_creator(input_creators) == expected_creators

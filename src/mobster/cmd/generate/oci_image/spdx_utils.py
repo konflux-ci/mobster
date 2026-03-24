@@ -16,7 +16,12 @@ from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDi
 
 from mobster.cmd.generate.oci_image.constants import BUILDER_IMAGE_PROPERTY
 from mobster.image import Image
-from mobster.sbom.spdx import get_image_package, get_mobster_tool_string, get_namespace
+from mobster.sbom.spdx import (
+    get_image_package,
+    get_mobster_tool_string,
+    get_namespace,
+    get_red_hat_org_string,
+)
 
 
 async def normalize_actor(actor: str) -> str:
@@ -35,6 +40,24 @@ async def normalize_actor(actor: str) -> str:
     ):
         return "Tool: " + actor
     return actor
+
+
+def normalize_red_hat_creator(creators: list[str]) -> list[str]:
+    """
+    Ensure exactly one canonical "Organization: Red Hat" entry is present in
+    the creators list. Any case-insensitive variant (e.g. "Organization: red hat")
+    is removed and replaced with the correct form.
+
+    Args:
+        creators: The list of SPDX creator strings to normalize.
+
+    Returns:
+        list[str]: Updated creators list with the canonical Red Hat entry.
+    """
+    red_hat_org = get_red_hat_org_string()
+    result = [c for c in creators if c.lower() != red_hat_org.lower()]
+    result.append(red_hat_org)
+    return result
 
 
 async def normalize_package(package: dict[str, Any]) -> None:
@@ -85,6 +108,7 @@ async def normalize_sbom(
         creation_info["created"] = "1970-01-01T00:00:00Z"
     creators = creation_info.get("creators", [])
     new_creators = [await normalize_actor(creator) for creator in creators]
+    new_creators = normalize_red_hat_creator(new_creators)
     if append_mobster_creator:
         new_creators.append(get_mobster_tool_string())
     creation_info["creators"] = new_creators

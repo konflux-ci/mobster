@@ -78,6 +78,7 @@ class GeneratePkoPackageCommand(GenerateCommandWithOutputTypeSelector):
         document = Bom()
         document.metadata.tools.components.add(cyclonedx.get_tools_component())
         document.metadata.component = package_component
+        document.metadata.manufacturer = cyclonedx.get_manufacturer()
         document.components.add(package_component)
 
         return document
