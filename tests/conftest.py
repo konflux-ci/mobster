@@ -259,9 +259,12 @@ def spdx_sbom_skeleton() -> Generator[dict[str, Any], Any, Any]:
 class GenerateOciImageCommandArgs:
     from_syft: list[Path] | None
     from_hermeto: Path | None
-    image_pullspec: str | None
-    image_digest: str | None
-    metadata_path: Path | None
+    image_pullspec: str
+    image_digest: str
+    parsed_dockerfile_path: Path | None
+    dockerfile_target: str | None
+    additional_base_image: list[str]
+    base_image_digest_file: Path | None = None
     output: Path | None = None
     contextualize: bool = False
     skip_validation: bool = False
@@ -288,6 +291,7 @@ def test_case_spdx_with_hermeto_and_additional() -> GenerateOciImageTestCase:
             parsed_dockerfile_path=Path(
                 "tests/data/dockerfiles/somewhat_believable_sample/parsed.json"
             ),
+            dockerfile_target="runtime",
             additional_base_image=[
                 "quay.io/ubi9:latest@sha256:123456789012345678901234567789012"
             ],
@@ -315,6 +319,7 @@ def test_case_spdx_with_hermeto_and_content_filtering() -> GenerateOciImageTestC
             parsed_dockerfile_path=Path(
                 "tests/data/dockerfiles/somewhat_believable_sample/parsed.json"
             ),
+            dockerfile_target="runtime",
             additional_base_image=[],
             base_image_digest_file=Path("dummy_path"),  # Will be mocked
         ),
@@ -338,6 +343,7 @@ def test_case_spdx_without_hermeto_without_additional() -> GenerateOciImageTestC
             parsed_dockerfile_path=Path(
                 "tests/data/dockerfiles/somewhat_believable_sample/parsed.json"
             ),
+            dockerfile_target="builder",
             additional_base_image=[],
             base_image_digest_file=Path("dummy_path"),  # Will be mocked
         ),
@@ -367,6 +373,7 @@ def test_case_spdx_multiple_syft() -> GenerateOciImageTestCase:
             parsed_dockerfile_path=Path(
                 "tests/data/dockerfiles/somewhat_believable_sample/parsed.json"
             ),
+            dockerfile_target="builder",
             additional_base_image=[],
             base_image_digest_file=None,  # No base image digest content for this test
         ),
@@ -392,6 +399,7 @@ def test_case_cyclonedx_with_additional() -> GenerateOciImageTestCase:
             parsed_dockerfile_path=Path(
                 "tests/data/dockerfiles/somewhat_believable_sample/parsed.json"
             ),
+            dockerfile_target="builder",
             additional_base_image=[
                 "quay.io/ubi9:latest@sha256:123456789012345678901234567789012"
             ],

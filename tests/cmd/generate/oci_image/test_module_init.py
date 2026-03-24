@@ -171,6 +171,7 @@ async def test_GenerateOciImageCommand_execute_handle_pullspec(
     args.image_pullspec = pullspec
     args.image_digest = digest
     args.parsed_dockerfile_path = None
+    args.dockerfile_target = None
     args.additional_base_image = []
     command = GenerateOciImageCommand(args)
     if expected_action == "error":
@@ -204,6 +205,7 @@ async def test_GenerateOciImageCommand_execute_unknown_sbom(
     args.image_pullspec = None
     args.image_digest = None
     args.parsed_dockerfile_path = None
+    args.dockerfile_target = None
     args.additional_base_image = []
     command = GenerateOciImageCommand(args)
     with pytest.raises(ValueError):
