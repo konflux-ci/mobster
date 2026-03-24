@@ -262,9 +262,6 @@ class GenerateOciImageCommandArgs:
     image_pullspec: str | None
     image_digest: str | None
     metadata_path: Path | None
-    parsed_dockerfile_path: Path | None
-    additional_base_image: list[str]
-    base_image_digest_file: Path | None = None
     output: Path | None = None
     contextualize: bool = False
     skip_validation: bool = False
