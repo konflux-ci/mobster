@@ -741,17 +741,6 @@ class DocumentIndexOCI:
         normalized = get_normalized_purl(purl)
         return self._purl_to_ctxs.get(normalized, [])
 
-    def package_contexts(
-        self,
-    ) -> Generator[PackageContext, None, None]:
-        """
-        Generator yielding PackageContexts present in the underlying document.
-
-        Returns:
-            Generator yielding all PackageContext objects in the document
-        """
-        yield from self._spdx_id_to_ctx.values()
-
     def image_packages(self) -> list[PackageContext]:
         """
         Returns a list of SPDX packages representing OCI images in the

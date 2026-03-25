@@ -1170,9 +1170,6 @@ def test_document_index_package_lookup(simple_spdx_document: Document) -> None:
 
     assert index.packages_by_purl("pkg:/golang/nonexistent@1.0.0") == []
 
-    all_contexts = list(index.package_contexts())
-    assert len(all_contexts) == 3
-
 
 @pytest.mark.parametrize(
     "pullspec,expected_found",
