@@ -35,8 +35,8 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 from mobster.image import Image
 from mobster.sbom.spdx import (
     get_mobster_tool_string,
-    get_red_hat_org_string,
     get_package_purl,
+    get_red_hat_org_string,
 )
 from tests.conftest import create_annotation_with_spdx_id
 

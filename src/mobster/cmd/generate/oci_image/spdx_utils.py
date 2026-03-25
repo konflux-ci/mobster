@@ -2,7 +2,6 @@
 
 import json
 from collections import defaultdict
-from collections.abc import Generator
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, TypeVar
