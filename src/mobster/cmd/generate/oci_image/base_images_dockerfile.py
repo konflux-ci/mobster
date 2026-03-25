@@ -73,27 +73,6 @@ def get_base_images_digests_lines(base_images_digests: Path) -> list[str]:
         return list(input_file_stream)
 
 
-async def get_image_objects_from_file(base_images_digests: Path) -> dict[str, Image]:
-    """
-    Parses the base image digest file into a dictionary of
-    image references present in a Dockerfile and Image
-    objects.
-    Args:
-        base_images_digests (Path): File containing the digests of images.
-            expects the format <image_ref> <name>:<tag>@sha256:<digest>
-
-    Returns:
-        dict[str, Image]: Mapping of the references to Image objects
-    """
-    base_images_mapping = {}
-    for line in get_base_images_digests_lines(base_images_digests):
-        line = line.strip()
-        image_ref, image_full_reference = re.split(r"\s+", line)
-        image_obj = Image.from_oci_artifact_reference(image_full_reference.strip("'\""))
-        base_images_mapping[image_ref.strip("'\"")] = image_obj
-    return base_images_mapping
-
-
 async def get_objects_for_base_images(
     base_images_refs: list[str | None],
 ) -> dict[str, Image]:
