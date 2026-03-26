@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class ImageData:
     pullspec: str
@@ -13,6 +14,7 @@ class ImageData:
             return cls(pullspec, digest)
         except KeyError:
             raise Exception("invalid pullspec/digest")
+
 
 @dataclass
 class SBOMMetadata:

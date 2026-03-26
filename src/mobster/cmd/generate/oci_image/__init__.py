@@ -303,7 +303,9 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             )
             await extend_sbom_with_image_reference(sbom, image, False)
             for extra_image_data in self._metadata.extra_images:
-                extra_image = Image.from_oci_artifact_reference(extra_image_data.pullspec + "@" + extra_image_data.digest)
+                extra_image = Image.from_oci_artifact_reference(
+                    extra_image_data.pullspec + "@" + extra_image_data.digest
+                )
                 await extend_sbom_with_image_reference(sbom, extra_image, False)
         elif self.cli_args.image_pullspec:
             if not self.cli_args.image_digest:
@@ -336,10 +338,10 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         if self.cli_args.metadata_path:
             for base_image_data in self._metadata.base_images:
                 base_image = Image.from_image_index_url_and_digest(
-                        base_image_data.pullspec,
-                        base_image_data.digest,
-                        arch=image_arch,
-                    )
+                    base_image_data.pullspec,
+                    base_image_data.digest,
+                    arch=image_arch,
+                )
                 base_images_refs.append(base_image)
                 base_images_map[base_image_data.pullspec] = base_image
                 await extend_sbom_with_image_reference(sbom, base_image, True)

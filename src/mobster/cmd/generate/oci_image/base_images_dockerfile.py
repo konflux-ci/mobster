@@ -26,6 +26,7 @@ from mobster.utils import run_async_subprocess
 
 LOGGER = logging.getLogger(__name__)
 
+
 async def get_digest_for_image_ref(image_ref: str, arch: Any = None) -> str | None:
     """
     Fetches the digest of a pullspec using oras.
