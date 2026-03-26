@@ -5,7 +5,7 @@
   "name": "quay.io/foobar/examplecontainer@sha256:11111111111111111111111111111111",
   "documentNamespace": "https://test.example.com/sbom",
   "creationInfo": {
-    "creators": ["Tool: hermeto", "Organization: red hat"],
+    "creators": ["Tool: hermeto", "Organization: Red Hat"],
     "created": "2026-01-12T10:00:00Z"
   },
   "packages": [

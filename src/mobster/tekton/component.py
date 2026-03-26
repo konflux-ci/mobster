@@ -207,8 +207,13 @@ def _get_cpes_from_release_data(release_data: Path) -> list[str]:
         list[str]: List of string CPEs contained in the release_data
     """
     release_notes = parse_release_notes(release_data)
-
-    return list(release_notes.cpe)
+    if release_notes is None:
+        return []
+    return (
+        release_notes.cpe
+        if isinstance(release_notes.cpe, list)
+        else [release_notes.cpe]
+    )
 
 
 async def augment_component_sboms(

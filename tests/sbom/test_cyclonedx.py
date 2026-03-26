@@ -2,9 +2,16 @@ from cyclonedx.model.component import (
     Component,
     ComponentType,
 )
+from cyclonedx.model.contact import OrganizationalEntity
 
 from mobster.image import Image
 from mobster.sbom import cyclonedx
+
+
+def test_get_manufacturer() -> None:
+    result = cyclonedx.get_manufacturer()
+    assert isinstance(result, OrganizationalEntity)
+    assert result.name == "Red Hat"
 
 
 def test_get_component() -> None:

@@ -4,7 +4,8 @@
     "created": "2024-12-18T11:28:00Z",
     "creators": [
       "Organization: Anchore, Inc",
-      "Tool: syft-1.4.1"
+      "Tool: syft-1.4.1",
+      "Organization: Red Hat"
     ],
     "licenseListVersion": "3.23"
   },

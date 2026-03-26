@@ -76,6 +76,7 @@ class GenerateOciArtifactCommand(GenerateCommandWithOutputTypeSelector):
         document = Bom()
         document.metadata.tools.components.add(cyclonedx.get_tools_component())
         document.metadata.component = root_component
+        document.metadata.manufacturer = cyclonedx.get_manufacturer()
 
         artifact_components = [
             cyclonedx.get_component_from_artifact(artifact) for artifact in artifacts
