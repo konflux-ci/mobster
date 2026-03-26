@@ -1,4 +1,5 @@
 import base64
+import datetime
 import json
 import tempfile
 from pathlib import Path
@@ -8,14 +9,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from mobster.error import SBOMError
-from mobster.image import Image
 from mobster.oci import (
     _find_auth_file,
     get_image_manifest,
     make_oci_auth_file,
 )
-from mobster.oci.artifact import SBOM, Provenance02
-from tests.cmd.test_augment import load_provenance
+from mobster.oci.artifact import SBOM, SLSAParsingError, SLSAProvenance
 
 
 @pytest.fixture
@@ -363,28 +362,6 @@ class TestMakeOciAuth:
         assert _find_auth_file() == expected
 
 
-def test_provenance_bad_predicate_type() -> None:
-    payload = {
-        "predicateType": "wrong",
-    }
-    raw = json.dumps(
-        {"payload": base64.b64encode(json.dumps(payload).encode()).decode()}
-    ).encode()
-
-    with pytest.raises(ValueError):
-        Provenance02.from_cosign_output(raw)
-
-
-def test_provenance_no_sbom_blob_url(provenances_path: Path) -> None:
-    prov = load_provenance(provenances_path, "sha256:aaaaaaaa")
-    assert prov is not None
-
-    prov.predicate["buildConfig"]["tasks"] = []
-    with pytest.raises(SBOMError):
-        img = Image("quay.io/repo", "sha256:deadbeef")
-        prov.get_sbom_digest(img)
-
-
 @pytest.mark.parametrize(
     ["doc"],
     [
@@ -407,3 +384,244 @@ def test_sbom_bad_format(doc: dict[str, Any]) -> None:
     sbom = SBOM(doc, "", "")
     with pytest.raises(SBOMError):
         _ = sbom.format
+
+
+def _make_slsa_raw(statement: dict[str, Any]) -> bytes:
+    """
+    Wrap a statement dict into the payload format expected by SLSAProvenance.parse().
+    """
+    return json.dumps(
+        {"payload": base64.b64encode(json.dumps(statement).encode()).decode()}
+    ).encode()
+
+
+class TestSLSAProvenance:
+    def test_parse_missing_predicate_type(self) -> None:
+        raw = _make_slsa_raw({"predicate": {}})
+        with pytest.raises(SLSAParsingError, match="predicateType"):
+            SLSAProvenance.parse(raw)
+
+    def test_parse_unsupported_predicate_type(self) -> None:
+        raw = _make_slsa_raw({"predicateType": "https://example.com/unknown/v9"})
+        with pytest.raises(SLSAParsingError, match="Cannot parse"):
+            SLSAProvenance.parse(raw)
+
+    def test_v02_happy_path(self) -> None:
+        raw = _make_slsa_raw(
+            {
+                "predicateType": "https://slsa.dev/provenance/v0.2",
+                "predicate": {
+                    "metadata": {"buildFinishedOn": "2024-06-15T10:30:00Z"},
+                    "buildConfig": {
+                        "tasks": [
+                            {
+                                "results": [
+                                    {"name": "IMAGE_DIGEST", "value": "sha256:aaa"},
+                                    {
+                                        "name": "SBOM_BLOB_URL",
+                                        "value": "registry.example.io/repo@sha256:bbb",
+                                    },
+                                ]
+                            }
+                        ]
+                    },
+                },
+            }
+        )
+
+        prov = SLSAProvenance.parse(raw)
+
+        assert prov.build_finished_on == datetime.datetime(
+            2024, 6, 15, 10, 30, tzinfo=datetime.timezone.utc
+        )
+        assert prov.sbom_digest("sha256:aaa") == "sha256:bbb"
+
+    def test_v02_missing_build_finished_on(self) -> None:
+        raw = _make_slsa_raw(
+            {
+                "predicateType": "https://slsa.dev/provenance/v0.2",
+                "predicate": {
+                    "metadata": {},
+                    "buildConfig": {"tasks": []},
+                },
+            }
+        )
+
+        prov = SLSAProvenance.parse(raw)
+
+        assert prov.build_finished_on == datetime.datetime.min.replace(
+            tzinfo=datetime.timezone.utc
+        )
+
+    def test_v02_task_missing_sbom_blob_url(self) -> None:
+        raw = _make_slsa_raw(
+            {
+                "predicateType": "https://slsa.dev/provenance/v0.2",
+                "predicate": {
+                    "metadata": {"buildFinishedOn": "2024-01-01T00:00:00Z"},
+                    "buildConfig": {
+                        "tasks": [
+                            {
+                                "results": [
+                                    {"name": "IMAGE_DIGEST", "value": "sha256:aaa"},
+                                ]
+                            }
+                        ]
+                    },
+                },
+            }
+        )
+
+        prov = SLSAProvenance.parse(raw)
+
+        assert prov.sbom_digest("sha256:aaa") is None
+
+    def test_v1_happy_path(self) -> None:
+        image_digest = "sha256:" + "a" * 64
+        sbom_digest = "sha256:" + "b" * 64
+        raw = _make_slsa_raw(
+            {
+                "predicateType": "https://slsa.dev/provenance/v1",
+                "predicate": {
+                    "runDetails": {
+                        "metadata": {"finishedOn": "2024-08-20T14:00:00Z"},
+                        "byproducts": [
+                            {"name": "taskRunResults/UNRELATED"},
+                            {
+                                "name": "taskRunResults/IMAGE_REF",
+                                "content": base64.b64encode(
+                                    json.dumps(
+                                        f"registry.example.io/repo@{image_digest}"
+                                    ).encode()
+                                ).decode(),
+                            },
+                            {
+                                "name": "taskRunResults/SBOM_BLOB_URL",
+                                "content": base64.b64encode(
+                                    json.dumps(
+                                        f"registry.example.io/repo@{sbom_digest}"
+                                    ).encode()
+                                ).decode(),
+                            },
+                        ],
+                    }
+                },
+            }
+        )
+
+        prov = SLSAProvenance.parse(raw)
+
+        assert prov.build_finished_on == datetime.datetime(
+            2024, 8, 20, 14, 0, tzinfo=datetime.timezone.utc
+        )
+        assert prov.sbom_digest(image_digest) == sbom_digest
+
+    def test_v1_missing_finished_on(self) -> None:
+        raw = _make_slsa_raw(
+            {
+                "predicateType": "https://slsa.dev/provenance/v1",
+                "predicate": {
+                    "runDetails": {
+                        "metadata": {},
+                        "byproducts": [],
+                    }
+                },
+            }
+        )
+
+        prov = SLSAProvenance.parse(raw)
+
+        assert prov.build_finished_on == datetime.datetime.min.replace(
+            tzinfo=datetime.timezone.utc
+        )
+
+    def test_v1_bad_base64_in_byproduct(self) -> None:
+        raw = _make_slsa_raw(
+            {
+                "predicateType": "https://slsa.dev/provenance/v1",
+                "predicate": {
+                    "runDetails": {
+                        "metadata": {},
+                        "byproducts": [
+                            {
+                                "name": "taskRunResults/IMAGE_REF",
+                                "content": "!!!not-valid-base64!!!",
+                            },
+                        ],
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(SLSAParsingError):
+            SLSAProvenance.parse(raw)
+
+    def test_v1_non_string_byproduct_content(self) -> None:
+        raw = _make_slsa_raw(
+            {
+                "predicateType": "https://slsa.dev/provenance/v1",
+                "predicate": {
+                    "runDetails": {
+                        "metadata": {},
+                        "byproducts": [
+                            {
+                                "name": "taskRunResults/IMAGE_REF",
+                                "content": base64.b64encode(
+                                    json.dumps({"not": "a string"}).encode()
+                                ).decode(),
+                            },
+                        ],
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(SLSAParsingError, match="Expected string content"):
+            SLSAProvenance.parse(raw)
+
+    def test_v1_missing_content_field(self) -> None:
+        raw = _make_slsa_raw(
+            {
+                "predicateType": "https://slsa.dev/provenance/v1",
+                "predicate": {
+                    "runDetails": {
+                        "metadata": {},
+                        "byproducts": [
+                            {
+                                "name": "taskRunResults/IMAGE_REF",
+                            },
+                        ],
+                    }
+                },
+            }
+        )
+
+        with pytest.raises(SLSAParsingError, match='missing "content" field'):
+            SLSAProvenance.parse(raw)
+
+    def test_sbom_digest_unknown_image(self) -> None:
+        raw = _make_slsa_raw(
+            {
+                "predicateType": "https://slsa.dev/provenance/v0.2",
+                "predicate": {
+                    "metadata": {"buildFinishedOn": "2024-01-01T00:00:00Z"},
+                    "buildConfig": {
+                        "tasks": [
+                            {
+                                "results": [
+                                    {"name": "IMAGE_DIGEST", "value": "sha256:aaa"},
+                                    {
+                                        "name": "SBOM_BLOB_URL",
+                                        "value": "registry.example.io/repo@sha256:bbb",
+                                    },
+                                ]
+                            }
+                        ]
+                    },
+                },
+            }
+        )
+
+        prov = SLSAProvenance.parse(raw)
+
+        assert prov.sbom_digest("sha256:unknown") is None
