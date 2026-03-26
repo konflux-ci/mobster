@@ -22,6 +22,7 @@ from mobster import syft
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
 from mobster.cmd.generate.oci_image.base_images_dockerfile import (
+    extend_sbom_with_base_images,
     get_digest_for_image_ref,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
@@ -296,17 +297,28 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         # Extend with image reference
         if self.cli_args.metadata_path:
+            base_images_refs = []
+            base_images_map: dict[str, Image] = {}
             image = Image.from_image_index_url_and_digest(
                 self._metadata.image.pullspec,
                 self._metadata.image.digest,
                 arch=image_arch,
             )
             await extend_sbom_with_image_reference(sbom, image, False)
-            for extra_image_data in self._metadata.extra_images:
-                extra_image = Image.from_oci_artifact_reference(
-                    extra_image_data.pullspec + "@" + extra_image_data.digest
+            for base_image_data in self._metadata.base_images:
+                base_image = Image.from_image_index_url_and_digest(
+                    base_image_data.pullspec,
+                    base_image_data.digest,
                 )
-                await extend_sbom_with_image_reference(sbom, extra_image, False)
+                base_images_refs.append(base_image_data.pullspec)
+                base_images_map[base_image_data.pullspec] = base_image
+            await extend_sbom_with_base_images(sbom, base_images_refs, base_images_map)
+            for extra_image_data in self._metadata.extra_images:
+                extra_image = Image.from_image_index_url_and_digest(
+                    extra_image_data.pullspec,
+                    extra_image_data.digest,
+                )
+                await extend_sbom_with_image_reference(sbom, extra_image, True)
         elif self.cli_args.image_pullspec:
             if not self.cli_args.image_digest:
                 LOGGER.info(
@@ -333,18 +345,6 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 "Provided image digest but no pullspec. The digest value is ignored."
             )
 
-        base_images_refs = []
-        base_images_map: dict[str, Image] = {}
-        if self.cli_args.metadata_path:
-            for base_image_data in self._metadata.base_images:
-                base_image = Image.from_image_index_url_and_digest(
-                    base_image_data.pullspec,
-                    base_image_data.digest,
-                    arch=image_arch,
-                )
-                base_images_refs.append(base_image)
-                base_images_map[base_image_data.pullspec] = base_image
-                await extend_sbom_with_image_reference(sbom, base_image, True)
 
         with log_elapsed("Contextual workflow", logging.INFO):
             contextual_sbom = await self._assess_and_dispatch_contextual_workflow(

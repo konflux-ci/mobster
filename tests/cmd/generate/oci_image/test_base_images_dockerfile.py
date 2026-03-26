@@ -28,7 +28,7 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     _get_cdx_components_from_base_images,
     _get_images_and_their_annotations,
     _get_spdx_packages_from_base_images,
-    extend_sbom_with_base_images_from_dockerfile,
+    extend_sbom_with_base_images,
     get_objects_for_base_images,
 )
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
@@ -864,7 +864,7 @@ async def test__extend_cdx_with_base_images(
         ),
     ],
 )
-async def test_extend_sbom_with_base_images_from_dockerfile(
+async def test_extend_sbom_with_base_images(
     mock__extend_spdx_with_base_images: AsyncMock,
     mock__extend_cdx_with_base_images: AsyncMock,
     mock_get_objects_for_base_images: AsyncMock,
@@ -873,7 +873,7 @@ async def test_extend_sbom_with_base_images_from_dockerfile(
     mock_base_images_objects = None
     mock_image_refs = ["foo", None]
 
-    await extend_sbom_with_base_images_from_dockerfile(
+    await extend_sbom_with_base_images(
         input_sbom_object,
         mock_image_refs,
         mock_base_images_objects,

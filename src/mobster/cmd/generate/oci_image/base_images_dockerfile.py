@@ -320,7 +320,7 @@ async def _extend_cdx_with_base_images(
     )
 
 
-async def extend_sbom_with_base_images_from_dockerfile(
+async def extend_sbom_with_base_images(
     sbom: CycloneDX1BomWrapper | Document,
     base_images_refs: list[str | None],
     base_images_objects: dict[str, Image] | None = None,
