@@ -124,7 +124,8 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         if self.cli_args.metadata_path is not None:
             self._load_metadata()
-            return await syft.scan_image(self._metadata.image.pullspec)
+            if self.cli_args.from_syft is None:
+                return await syft.scan_image(self._metadata.image.pullspec)
         if self.cli_args.from_syft is not None:
             # Merging Syft & Hermeto SBOMs
             if len(self.cli_args.from_syft) > 1 or self.cli_args.from_hermeto:

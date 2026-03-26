@@ -60,10 +60,6 @@ async def test_GenerateOciImageCommand_execute(
     test_case: GenerateOciImageTestCase,
     image_digest_file_content: str,
 ) -> None:
-    # Set up mock for base image digest content if base_image_digest_file is present
-    if test_case.args.base_image_digest_file is not None:
-        mock_get_base_images_digests_lines.return_value = image_digest_file_content
-
     command = GenerateOciImageCommand(test_case.args)
 
     with open(test_case.expected_sbom_path) as expected_file_stream:

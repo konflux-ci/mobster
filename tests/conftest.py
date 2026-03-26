@@ -259,12 +259,9 @@ def spdx_sbom_skeleton() -> Generator[dict[str, Any], Any, Any]:
 class GenerateOciImageCommandArgs:
     from_syft: list[Path] | None
     from_hermeto: Path | None
-    image_pullspec: str
-    image_digest: str
-    parsed_dockerfile_path: Path | None
-    dockerfile_target: str | None
-    additional_base_image: list[str]
-    base_image_digest_file: Path | None = None
+    image_pullspec: str | None
+    image_digest: str | None
+    metadata_path: str | None
     output: Path | None = None
     contextualize: bool = False
     skip_validation: bool = False
@@ -286,16 +283,9 @@ def test_case_spdx_with_hermeto_and_additional() -> GenerateOciImageTestCase:
                 Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")
             ],
             from_hermeto=Path("tests/sbom/test_merge_data/spdx/cachi2.bom.json"),
-            image_pullspec="quay.io/foobar/examplecontainer:v10",
-            image_digest="sha256:11111111111111111111111111111111",
-            parsed_dockerfile_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/parsed.json"
-            ),
-            dockerfile_target="runtime",
-            additional_base_image=[
-                "quay.io/ubi9:latest@sha256:123456789012345678901234567789012"
-            ],
-            base_image_digest_file=Path("dummy_path"),  # Will be mocked
+            metadata_path="tests/data/dockerfiles/somewhat_believable_sample/metadata.yaml",
+            image_pullspec=None,
+            image_digest=None,
         ),
         expected_sbom_path=Path(
             "tests/sbom/test_oci_generate_data/generated.spdx.json"
@@ -309,8 +299,6 @@ def test_case_spdx_with_hermeto_and_content_filtering() -> GenerateOciImageTestC
     return GenerateOciImageTestCase(
         args=GenerateOciImageCommandArgs(
             arch="x86_64",
-            from_syft=None,
-            # from_syft=[Path("tests/cmd/generate/oci_image/spdx.bom.json")],
             from_hermeto=Path(
                 "tests/cmd/generate/oci_image/test_hermeto_sbom_filter_data/spdx.bom.json"
             ),
