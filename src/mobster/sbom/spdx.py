@@ -221,3 +221,22 @@ def get_red_hat_org_string() -> str:
     Get the string representation of the Red Hat organization creator.
     """
     return str(get_red_hat_org_actor())
+
+
+def get_package_purl(package: Package) -> str | None:
+    """
+    The purl of a package (external reference of category PACKAGE-MANAGER and purl type)
+
+    Args:
+        package: The package to find the purl of.
+
+    Returns:
+        The purl of the given package or None.
+    """
+    for ref in package.external_references:
+        if (
+            ref.category == ExternalPackageRefCategory.PACKAGE_MANAGER
+            and ref.reference_type == "purl"
+        ):
+            return ref.locator
+    return None

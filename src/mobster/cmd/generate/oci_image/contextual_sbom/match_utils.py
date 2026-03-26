@@ -21,8 +21,9 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
 from mobster.cmd.generate.oci_image.contextual_sbom.logging import MatchingStatistics
 from mobster.cmd.generate.oci_image.spdx_utils import (
     get_annotations_by_spdx_id,
-    get_package_purl,
+    get_normalized_purl,
 )
+from mobster.sbom.spdx import get_package_purl
 
 LOGGER = logging.getLogger(__name__)
 
@@ -380,12 +381,10 @@ def validate_and_compare_purls(
     if not parent_purl_obj.version or not component_purl_obj.version:
         return False
 
-    return (
-        parent_purl_obj.type == component_purl_obj.type
-        and parent_purl_obj.name == component_purl_obj.name
-        and parent_purl_obj.version == component_purl_obj.version
-        and parent_purl_obj.namespace == component_purl_obj.namespace
-    )
+    normalized_parent = get_normalized_purl(parent_purl)
+    normalized_component = get_normalized_purl(component_purl)
+
+    return normalized_parent == normalized_component
 
 
 def format_checksums_identifier(checksums: list[Checksum]) -> list[str]:
