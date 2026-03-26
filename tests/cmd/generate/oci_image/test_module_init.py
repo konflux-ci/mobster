@@ -106,15 +106,13 @@ async def test_test_GenerateOciImageCommand_execute_missing_digest(
     caplog: LogCaptureFixture,
 ) -> None:
     args = MagicMock(
-        parsed_dockerfile_path="tests/data/dockerfiles/sample1/parsed.json",
-        base_image_digest_file="bar",
+        metadata_path="tests/data/dockerfiles/sample1/metadata.yaml",
         from_syft=[
             Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")
         ],
         from_hermeto=None,
         image_pullspec=None,
         image_digest=None,
-        additional_base_images=[],
     )
     mock_get_images.return_value = {
         "foo": Image.from_image_index_url_and_digest(
@@ -163,9 +161,7 @@ async def test_GenerateOciImageCommand_execute_handle_pullspec(
     args.from_hermeto = None
     args.image_pullspec = pullspec
     args.image_digest = digest
-    args.parsed_dockerfile_path = None
-    args.dockerfile_target = None
-    args.additional_base_image = []
+    args.metadata_path = None
     command = GenerateOciImageCommand(args)
     if expected_action == "error":
         with pytest.raises(ValueError):
@@ -197,9 +193,6 @@ async def test_GenerateOciImageCommand_execute_unknown_sbom(
     args.from_hermeto = None
     args.image_pullspec = None
     args.image_digest = None
-    args.parsed_dockerfile_path = None
-    args.dockerfile_target = None
-    args.additional_base_image = []
     command = GenerateOciImageCommand(args)
     with pytest.raises(ValueError):
         await command.execute()
