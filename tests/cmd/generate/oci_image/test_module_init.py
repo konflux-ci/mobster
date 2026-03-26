@@ -94,7 +94,6 @@ async def test_GenerateOciImageCommand_execute_cannot_contextualize_cyclonedx(
 
 
 @pytest.mark.asyncio
-@patch("mobster.cmd.generate.oci_image.get_base_images_refs_from_dockerfile")
 @patch(
     "mobster.cmd.generate.oci_image.base_images_dockerfile.get_objects_for_base_images"
 )
@@ -104,7 +103,6 @@ async def test_GenerateOciImageCommand_execute_cannot_contextualize_cyclonedx(
 async def test_test_GenerateOciImageCommand_execute_missing_digest(
     mock_get_lines: MagicMock,
     mock_get_images: AsyncMock,
-    mock_get_refs: AsyncMock,
     caplog: LogCaptureFixture,
 ) -> None:
     args = MagicMock(
@@ -118,7 +116,6 @@ async def test_test_GenerateOciImageCommand_execute_missing_digest(
         image_digest=None,
         additional_base_images=[],
     )
-    mock_get_refs.return_value = ["foo", "bar"]
     mock_get_images.return_value = {
         "foo": Image.from_image_index_url_and_digest(
             "foo.bar/foo/ham:v1", "sha256:a", "amd64"

@@ -345,7 +345,6 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 "Provided image digest but no pullspec. The digest value is ignored."
             )
 
-
         with log_elapsed("Contextual workflow", logging.INFO):
             contextual_sbom = await self._assess_and_dispatch_contextual_workflow(
                 sbom, base_images_refs, base_images_map, image_arch
