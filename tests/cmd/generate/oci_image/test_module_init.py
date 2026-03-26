@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from mobster.cmd.generate.oci_image.sbomgen import ImageData, SBOMMetadata
 import pytest
 from _pytest.logging import LogCaptureFixture
 from cyclonedx.model.bom import Bom
@@ -106,13 +107,13 @@ async def test_test_GenerateOciImageCommand_execute_missing_digest(
     caplog: LogCaptureFixture,
 ) -> None:
     args = MagicMock(
-        metadata_path="tests/data/dockerfiles/sample1/metadata.yaml",
         from_syft=[
             Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")
         ],
         from_hermeto=None,
         image_pullspec=None,
         image_digest=None,
+        metadata_path=None,
     )
     mock_get_images.return_value = {
         "foo": Image.from_image_index_url_and_digest(
@@ -266,23 +267,32 @@ async def test_GenerateOciImageCommand__soft_validate_content_cdx(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ["syft_boms", "hermeto_bom", "image_pullspec", "expected_action"],
+    ["syft_boms", "hermeto_bom", "image_pullspec", "metadata_path", "expected_action"],
     [
         # no SBOMs
-        (None, None, None, "raise_error"),
+        (None, None, None, None, "raise_error"),
         # single syft
-        ([Path("syft.json")], None, None, "load_syft"),
+        ([Path("syft.json")], None, None, None, "load_syft"),
         # multiple syft
-        ([Path("syft1.json"), Path("syft2.json")], None, None, "merge"),
+        ([Path("syft1.json"), Path("syft2.json")], None, None, None, "merge"),
         # syft + hermeto
-        ([Path("syft.json")], Path("hermeto.json"), None, "merge"),
+        ([Path("syft.json")], Path("hermeto.json"), None, None, "merge"),
         # multiple syft + hermeto
-        ([Path("syft1.json"), Path("syft2.json")], Path("hermeto.json"), None, "merge"),
+        ([Path("syft1.json"), Path("syft2.json")], Path("hermeto.json"), None, None, "merge"),
         # only hermeto
-        (None, Path("hermeto.json"), None, "load_hermeto"),
-        (None, None, "foo:latest", "scan_syft"),
+        (None, Path("hermeto.json"), None, None, "load_hermeto"),
+        (None, None, "foo:latest", None, "scan_syft"),
+        # metadata, no images
+        (None, None, None, Path("metadata.yaml"), "scan_syft_metadata"),
+        # metadata, syft image
+        ([Path("syft.json")], None, None, Path("metadata.yaml"), "load_syft"),
+        # metadata, hermeto image
+        (None, Path("hermeto.json"), None, Path("metadata.yaml"), "load_hermeto"),
+        # metadata, hermeto + spdx images
+        ([Path("syft.json")], Path("hermeto.json"), None, Path("metadata.yaml"), "merge")
     ],
 )
+@patch("mobster.cmd.generate.oci_image.GenerateOciImageCommand._load_metadata")
 @patch("mobster.cmd.generate.oci_image.syft.scan_image")
 @patch(
     "mobster.cmd.generate.oci_image.GenerateOciImageCommand._load_and_filter_hermeto_sbom"
@@ -294,15 +304,18 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_load_sbom: AsyncMock,
     mock_load_hermeto_sbom: AsyncMock,
     mock_syft_scan: AsyncMock,
+    mock_load_metadata: MagicMock,
     syft_boms: list[Path],
     hermeto_bom: Path | None,
     image_pullspec: str | None,
+    metadata_path: str | None,
     expected_action: Literal["raise_error", "load_syft", "load_hermeto", "merge"],
 ) -> None:
     command = GenerateOciImageCommand(MagicMock())
     command.cli_args.from_hermeto = hermeto_bom
     command.cli_args.from_syft = syft_boms
     command.cli_args.image_pullspec = image_pullspec
+    command.cli_args.metadata_path = metadata_path
 
     mock_syft_data = {"name": "syft_data"}
     mock_hermeto_data = {"name": "hermeto_data"}
@@ -311,6 +324,14 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_load_sbom.return_value = mock_syft_data
     mock_load_hermeto_sbom.return_value = mock_hermeto_data
     mock_merge.return_value = mock_merged_data
+
+    def mock_metadata():
+        command._metadata = SBOMMetadata(
+            image=ImageData(pullspec="foo", digest="bar"),
+            base_images=[],
+            extra_images=[],
+        )
+    mock_load_metadata.side_effect = mock_metadata
 
     if expected_action == "raise_error":
         with pytest.raises(ArgumentError):
@@ -344,6 +365,11 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
 
         elif expected_action == "scan_syft":
             mock_syft_scan.assert_awaited_once_with(image_pullspec)
+            mock_load_sbom.assert_not_awaited()
+            mock_merge.assert_not_called()
+
+        elif expected_action == "scan_syft_metadata":
+            mock_syft_scan.assert_awaited_once_with(command._metadata.image.pullspec)
             mock_load_sbom.assert_not_awaited()
             mock_merge.assert_not_called()
 

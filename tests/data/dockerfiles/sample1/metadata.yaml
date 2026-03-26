@@ -2,9 +2,7 @@ image:
   pullspec: alpine:3.10
   digest: sha256@1234567890123456789012
 
-base_images:
-  - pullspec: alpine:3.10
-    digest: sha256@1234567890123456789012
+base_images: []
 
 
 extra_images: []

@@ -296,10 +296,11 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         else:
             raise ValueError("Unknown SBOM Format!")
 
+        base_images_refs = []
+        base_images_map: dict[str, Image] = {}
+
         # Extend with image reference
         if self.cli_args.metadata_path:
-            base_images_refs = []
-            base_images_map: dict[str, Image] = {}
             image = Image.from_image_index_url_and_digest(
                 self._metadata.image.pullspec,
                 self._metadata.image.digest,
