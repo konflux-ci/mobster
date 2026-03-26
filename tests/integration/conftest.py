@@ -1,16 +1,22 @@
 import asyncio
+import base64
+import json
 import subprocess
 import tempfile
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 import pytest_asyncio
 
 from mobster.cmd.upload.tpa import TPAClient, get_tpa_default_client
+from mobster.image import Image
+from mobster.oci.cosign.static import StaticKeySigner
 from mobster.tekton.s3 import S3Client
 from tests.integration.oci_client import ReferrersTagOCIClient
+
+AddProvenanceFunc = Callable[[StaticKeySigner, str, Image], Awaitable[None]]
 
 
 @pytest.fixture(scope="session")
@@ -192,3 +198,74 @@ def cosign_sign_key(cosign_keys: tuple[Path, Path]) -> Path:
 @pytest.fixture(scope="session")
 def cosign_verify_key(cosign_keys: tuple[Path, Path]) -> Path:
     return cosign_keys[1]
+
+
+def _build_v02_predicate(sbom_ref: str, image: Image) -> dict[str, Any]:
+    predicate = {
+        "builder": {"id": "https://konflux.dev"},
+        "buildType": "https://mobyproject.org/buildkit@v1",
+        "buildConfig": {
+            "tasks": [
+                {
+                    "finishedOn": "1970-01-01T00:00:00Z",
+                    "results": [
+                        {"name": "SBOM_BLOB_URL", "value": sbom_ref},
+                        {"name": "IMAGE_DIGEST", "value": image.digest},
+                    ],
+                }
+            ]
+        },
+    }
+    return predicate
+
+
+def _build_v1_predicate(sbom_ref: str, image: Image) -> dict[str, Any]:
+    predicate = {
+        "buildDefinition": {
+            "buildType": "https://mobyproject.org/buildkit@v1",
+            "externalParameters": {},
+            "internalParameters": {},
+            "resolvedDependencies": [],
+        },
+        "runDetails": {
+            "builder": {"id": "https://konflux.dev"},
+            "metadata": {"finishedOn": "1970-01-01T00:00:00Z"},
+            "byproducts": [
+                {
+                    "name": "taskRunResults/IMAGE_REF",
+                    "content": base64.b64encode(
+                        json.dumps(image.reference).encode()
+                    ).decode(),
+                },
+                {
+                    "name": "taskRunResults/SBOM_BLOB_URL",
+                    "content": base64.b64encode(json.dumps(sbom_ref).encode()).decode(),
+                },
+            ],
+        },
+    }
+    return predicate
+
+
+@pytest.fixture(params=["v0.2", "v1"])
+def add_provenance_to_sbom(request: pytest.FixtureRequest) -> AddProvenanceFunc:
+    """
+    Fixture factory returning an async callable that attaches a signed
+    provenance to an SBOM. Parametrized so every test using this fixture
+    runs once per SLSA provenance version (v0.2 and v1).
+    """
+    build_fn = {
+        "v0.2": _build_v02_predicate,
+        "v1": _build_v1_predicate,
+    }[request.param]
+
+    async def _add_provenance(
+        cosign_client: StaticKeySigner, sbom_ref: str, image: Image
+    ) -> None:
+        predicate = build_fn(sbom_ref, image)
+        cosign_type: Literal["slsaprovenance02", "slsaprovenance1"] = (
+            "slsaprovenance02" if request.param == "v0.2" else "slsaprovenance1"
+        )
+        await cosign_client.attest_provenance(predicate, image.reference, cosign_type)
+
+    return _add_provenance

@@ -6,12 +6,12 @@ import os
 import tempfile
 import typing
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
-from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
+from mobster.oci.artifact import SBOM, SBOMFormat, SLSAProvenance
 from mobster.oci.cosign.attestation_utils import (
     get_cosign_attestation_type,
     get_sbom_from_attestation_bytes,
@@ -57,8 +57,29 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
     async def _verify_attestation(
         self,
         image: Image,
-        attestation_type: typing.Literal["slsaprovenance02", "spdxjson", "cyclonedx"],
+        attestation_type: typing.Literal[
+            "slsaprovenance02", "slsaprovenance1", "spdxjson", "cyclonedx"
+        ],
     ) -> list[bytes]:
+        """
+        Verify and fetch attestations for a container image using cosign.
+
+        Runs ``cosign verify-attestation`` with the configured public key to
+        retrieve attestation payloads of the given type.
+
+        Args:
+            image: The container image to verify attestations for.
+            attestation_type: The predicate type of the attestation to verify.
+
+        Returns:
+            A list of raw attestation payloads, one per line of cosign output.
+            Returns an empty list if no attestations match the predicate type.
+
+        Raises:
+            SBOMError: If cosign verification fails for a reason other than
+                a missing predicate type.
+        """
+
         with make_oci_auth_file(image.reference) as authfile:
             # We ignore the transparency log, because as of now, Konflux releases
             # don't publish to Rekor.
@@ -78,13 +99,17 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
             )
 
         if code != 0:
+            stderr_str = stderr.decode()
+            if "none of the attestations matched the predicate type" in stderr_str:
+                return []
+
             raise SBOMError(
                 f"Failed to fetch attestation for {image}: {stderr.decode()}."
             )
 
         return stdout.splitlines()
 
-    async def fetch_latest_provenance(self, image: Image) -> Provenance02:
+    async def fetch_latest_provenance(self, image: Image) -> SLSAProvenance:
         """
         Fetch the latest provenance based on the supplied image based on the
         time the image build finished.
@@ -93,12 +118,11 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
             image: Image to fetch the provenances of
         """
 
-        provenances: list[Provenance02] = []
-        for raw_attestation in await self._verify_attestation(
-            image, "slsaprovenance02"
-        ):
-            prov = Provenance02.from_cosign_output(raw_attestation)
-            provenances.append(prov)
+        provenances: list[SLSAProvenance] = []
+
+        for att_type in ("slsaprovenance02", "slsaprovenance1"):
+            for raw_attestation in await self._verify_attestation(image, att_type):
+                provenances.append(SLSAProvenance.parse(raw_attestation))
 
         if len(provenances) == 0:
             raise SBOMError(f"No provenances parsed for image {image}.")
@@ -231,10 +255,13 @@ class StaticKeySigner(SupportsSign):
             )
 
     async def attest_provenance(
-        self, provenance: Provenance02, image_ref: str
+        self,
+        predicate: Any,
+        image_ref: str,
+        cosign_type: Literal["slsaprovenance02", "slsaprovenance1"],
     ) -> None:  # pragma: nocover
         """
-        Attach a SLSA Provenance v2 to an image. For test purposes only.
+        Attach a provenance predicate to an image. For test purposes only.
 
         Args:
             provenance: Provenance object to attach
@@ -245,9 +272,9 @@ class StaticKeySigner(SupportsSign):
         # testing self.attest_sbom
         with tempfile.NamedTemporaryFile() as temp_provenance:
             with open(temp_provenance.name, "w", encoding="utf-8") as write_file:
-                json.dump(provenance.predicate, write_file)
+                json.dump(predicate, write_file)
             await self._attest_anything(
-                Path(temp_provenance.name), image_ref, "slsaprovenance02"
+                Path(temp_provenance.name), image_ref, cosign_type
             )
 
     async def attest_sbom(
