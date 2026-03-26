@@ -71,6 +71,7 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
         document = Bom()
         document.metadata.tools.components.add(cyclonedx.get_tools_component())
         document.metadata.component = root_component
+        document.metadata.manufacturer = cyclonedx.get_manufacturer()
 
         # Add the base and model components to the BOM
         document.components.add(base_component)

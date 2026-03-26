@@ -1,4 +1,6 @@
+import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -24,6 +26,7 @@ from mobster.release import ReleaseId
 from mobster.tekton.common import upload_sboms
 from mobster.tekton.component import (
     ProcessComponentArgs,
+    _get_cpes_from_release_data,
     parse_args,
     process_component_sboms,
 )
@@ -241,3 +244,40 @@ async def test_upload_sboms_failure_no_retry_storage_raises(
                 None,  # no retry storage
                 paths=[Path("sbom1.json")],
             )
+
+
+@pytest.mark.parametrize(
+    ["input_json", "expected_cpes"],
+    [
+        ({}, []),
+        ({"releaseNotes": {"product_name": "foo", "product_version": "v1.0.0"}}, []),
+        (
+            {
+                "releaseNotes": {
+                    "product_name": "foo",
+                    "product_version": "v1.0.0",
+                    "cpe": "spam",
+                }
+            },
+            ["spam"],
+        ),
+        (
+            {
+                "releaseNotes": {
+                    "product_name": "foo",
+                    "product_version": "v1.0.0",
+                    "cpe": ["spam", "foobar"],
+                }
+            },
+            ["spam", "foobar"],
+        ),
+    ],
+)
+def test__get_cpes_from_release_data(
+    input_json: dict[str, Any], expected_cpes: list[str]
+) -> None:
+    with patch("mobster.cmd.generate.product.open") as fake_open:
+        fake_open.return_value.__enter__.return_value.read.return_value = json.dumps(
+            input_json
+        )
+        assert _get_cpes_from_release_data(Path("/tmp/foo")) == expected_cpes

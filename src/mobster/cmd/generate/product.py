@@ -19,6 +19,7 @@ from spdx_tools.spdx.model.package import (
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
 from mobster.cmd.generate.base import GenerateCommand
+from mobster.error import SBOMError
 from mobster.release import Component, ReleaseId, Snapshot, make_snapshot
 from mobster.sbom import spdx
 
@@ -30,15 +31,20 @@ class ReleaseNotes(pdc.BaseModel):
 
     product_name: str = pdc.Field(alias="product_name")
     product_version: str = pdc.Field(alias="product_version")
-    cpe: str | list[str] = pdc.Field(alias="cpe", union_mode="left_to_right")
+    cpe: str | list[str] = pdc.Field(
+        default_factory=list,
+        alias="cpe",
+        union_mode="left_to_right",
+    )
 
 
 class ReleaseData(pdc.BaseModel):
     """Pydantic model representing the merged data file."""
 
-    release_notes: ReleaseNotes = pdc.Field(
+    release_notes: ReleaseNotes | None = pdc.Field(
         alias="releaseNotes",
         validation_alias=pdc.AliasChoices("releaseNotes", "release_notes"),
+        default=None,
     )
 
 
@@ -57,6 +63,11 @@ class GenerateProductCommand(GenerateCommand):
         snapshot = await make_snapshot(self.cli_args.snapshot, None, semaphore)
 
         self.release_notes = parse_release_notes(self.cli_args.release_data)
+        if self.release_notes is None:
+            raise SBOMError(
+                "Cannot generate product SBOM without release notes. "
+                "Update release data with releaseNotes field."
+            )
         self.document = create_sbom(
             self.release_notes, snapshot, self.cli_args.release_id
         )
@@ -161,7 +172,17 @@ def create_product_package(
 
     Returns:
         Package: The SPDX package for the product.
+
+    Raises:
+        SBOMError: If the passed release_notes does not contain cpe field.
+        This should never happens for product SBOM generation.
     """
+    if release_notes.cpe == []:
+        # cpe being [] means no cpe value was provided since [] is the default value
+        raise SBOMError(
+            "Could not continue product SBOM generation."
+            "No cpe field present in release_notes."
+        )
     if isinstance(release_notes.cpe, str):
         cpes = [release_notes.cpe]
     else:
@@ -273,7 +294,7 @@ def get_component_relationships(
     ]
 
 
-def parse_release_notes(data: Path) -> ReleaseNotes:
+def parse_release_notes(data: Path) -> ReleaseNotes | None:
     """Parse the data file at the specified path into a ReleaseNotes object.
 
     Args:
