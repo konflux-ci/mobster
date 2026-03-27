@@ -132,8 +132,8 @@ async def _get_images_and_their_annotations(
         if not image_obj:
             LOGGER.warning(
                 "Cannot get information about base image "
-                "%s mentioned in the Dockerfile! THIS MEANS "
-                "THE PRODUCED SBOM WILL BE INCOMPLETE!",
+                "%s! THIS MEANS THE PRODUCED SBOM WILL BE"
+                "INCOMPLETE!",
                 image_ref,
             )
             continue

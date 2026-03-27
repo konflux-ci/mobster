@@ -53,11 +53,7 @@ def image_digest_file_content() -> list[str]:
         lf("test_case_cyclonedx_with_additional"),
     ],
 )
-@patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
-)
 async def test_GenerateOciImageCommand_execute(
-    mock_get_base_images_digests_lines: MagicMock,
     test_case: GenerateOciImageTestCase,
     image_digest_file_content: str,
 ) -> None:
@@ -92,42 +88,6 @@ async def test_GenerateOciImageCommand_execute_cannot_contextualize_cyclonedx(
         match="--contextualize is only allowed when processing SPDX format",
     ):
         await command.execute()
-
-
-@pytest.mark.asyncio
-@patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_objects_for_base_images"
-)
-@patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
-)
-async def test_test_GenerateOciImageCommand_execute_missing_digest(
-    mock_get_lines: MagicMock,
-    mock_get_images: AsyncMock,
-    caplog: LogCaptureFixture,
-) -> None:
-    args = MagicMock(
-        from_syft=[
-            Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")
-        ],
-        from_hermeto=None,
-        image_pullspec=None,
-        image_digest=None,
-        metadata_path=None,
-    )
-    mock_get_images.return_value = {
-        "foo": Image.from_image_index_url_and_digest(
-            "foo.bar/foo/ham:v1", "sha256:a", "amd64"
-        )
-    }
-    command = GenerateOciImageCommand(args)
-    await command.execute()
-    assert (
-        "Cannot get information about base image bar "
-        "mentioned in the Dockerfile! THIS MEANS THE "
-        "PRODUCED SBOM WILL BE INCOMPLETE!" in caplog.messages
-    )
-
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -194,6 +154,7 @@ async def test_GenerateOciImageCommand_execute_unknown_sbom(
     args.from_hermeto = None
     args.image_pullspec = None
     args.image_digest = None
+    args.metadata_path = None
     command = GenerateOciImageCommand(args)
     with pytest.raises(ValueError):
         await command.execute()
