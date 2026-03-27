@@ -55,7 +55,11 @@ def image_digest_file_content() -> list[str]:
 @patch(
     "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
 )
+@patch(
+    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_digest_for_image_ref"
+)
 async def test_GenerateOciImageCommand_execute(
+    mock_get_digest_for_image_ref: AsyncMock,
     mock_get_base_images_digests_lines: MagicMock,
     test_case: GenerateOciImageTestCase,
     image_digest_file_content: str,
@@ -63,6 +67,9 @@ async def test_GenerateOciImageCommand_execute(
     # Set up mock for base image digest content if base_image_digest_file is present
     if test_case.args.base_image_digest_file is not None:
         mock_get_base_images_digests_lines.return_value = image_digest_file_content
+    else:
+        # Prevent the test from hitting the network or calling 'oras'
+        mock_get_digest_for_image_ref.return_value = "sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c"
 
     command = GenerateOciImageCommand(test_case.args)
 
