@@ -41,8 +41,7 @@ async def get_base_images_refs_from_dockerfile(
     Returns:
         list[str | None]: List of base images used during build as extracted
                           from the dockerfile in the order they were used.
-                          `FROM scratch` and `FROM oci-archive:` are
-                          identified as `None`.
+                          `FROM SCRATCH` is identified as `None`.
 
     Example:
     If the Dockerfile looks like
@@ -80,13 +79,8 @@ async def get_base_images_refs_from_dockerfile(
             base_images_pullspecs.append(None)
             is_actually_image = False
         base_name: str = stage.get("BaseName")
-        if is_actually_image and base_name and base_name.startswith("oci-archive:"):
-            # oci-archive references are not real base images (used by e.g.
-            # bootc, chunkah, and flatpak builds). Treat them like scratch so
-            # that preceding stages still get recorded as builder images.
-            base_images_pullspecs.append(None)
-            is_actually_image = False
-        if is_actually_image and base_name:
+        if is_actually_image and base_name and not base_name.startswith("oci-archive:"):
+            # flatpak archives are not real base images. So we skip them
             base_images_pullspecs.append(base_name.strip("'\""))
 
         # Don't include images after the target used for build
