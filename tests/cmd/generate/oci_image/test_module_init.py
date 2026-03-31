@@ -15,10 +15,17 @@ from pytest_lazy_fixtures import lf
 from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import Package
 
+from mobster.cmd.enrich import EnrichImageCommand
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.image import Image
-from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom, assert_spdx_sbom
+from tests.conftest import (
+    EnrichOciImageTestCase,
+    GenerateOciImageTestCase,
+    assert_cdx_sbom,
+    assert_spdx_sbom,
+    patch_annotation_date,
+)
 
 
 @pytest.fixture()
@@ -78,6 +85,31 @@ async def test_GenerateOciImageCommand_execute(
     sbom_dict = await GenerateOciImageCommand.dump_sbom_to_dict(sbom)
 
     compare_sbom_dicts(sbom_dict, expected_sbom)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        lf("test_case_enrich_spdx_with_owasp"),
+    ],
+)
+@patch("mobster.cmd.enrich")
+async def test_EnrichOciImageCommand_execute(
+    mock_enrich: MagicMock,
+    test_case: EnrichOciImageTestCase,  # pylint: disable=unused-argument
+) -> None:
+    command = EnrichImageCommand(test_case.args)
+
+    sbom = await command.execute()
+    sbom_dict = await EnrichImageCommand.dump_sbom_to_dict(sbom)
+
+    with open(test_case.expected_sbom_path) as expected_file_stream:
+        expected_sbom = json.load(expected_file_stream)
+
+    patch_annotation_date(sbom_dict, "2025-07-21T08:37:50Z")
+    patch_annotation_date(expected_sbom, "2025-07-21T08:37:50Z")
+    assert sbom_dict == expected_sbom
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,56 @@
+{
+  "primaryPurpose": {
+    "SPDX_Equivalent": "ai_intendedUse"
+  },
+  "standardCompliance": {
+    "SPDX_Equivalent": "ai_standardCompliance"
+  },
+  "domain": {
+    "SPDX_Equivalent": "ai_domain"
+  },
+  "autonomyType": {
+    "SPDX_Equivalent": "ai_autonomyType"
+  },
+  "energyConsumption": {
+    "SPDX_Equivalent": "ai_energyConsumption"
+  },
+  "hyperparameter": {
+    "SPDX_Equivalent": "ai_hyperparameter"
+  },
+  "limitation": {
+    "SPDX_Equivalent": "ai_limitation"
+  },
+  "safetyRiskAssessment": {
+    "SPDX_Equivalent": "ai_safetyRiskAssessment"
+  },
+  "typeOfModel": {
+    "SPDX_Equivalent": "ai_typeOfModel"
+  },
+  "modelExplainability": {
+    "SPDX_Equivalent": "ai_modelExplainability"
+  },
+  "energyQuantity": {
+    "SPDX_Equivalent": "ai_energyQuantity"
+  },
+  "energyUnit": {
+    "SPDX_Equivalent": "ai_energyUnit"
+  },
+  "informationAboutTraining": {
+    "SPDX_Equivalent": "ai_informationAboutTraining"
+  },
+  "informationAboutApplication": {
+    "SPDX_Equivalent": "ai_informationAboutApplication"
+  },
+  "metric": {
+    "SPDX_Equivalent": "ai_metric"
+  },
+  "metricDecisionThreshold": {
+    "SPDX_Equivalent": "ai_metricDecisionThreshold"
+  },
+  "modelDataPreprocessing": {
+    "SPDX_Equivalent": "ai_modelDataPreprocessing"
+  },
+  "useSensitivePersonalInformation": {
+    "SPDX_Equivalent": "ai_useSensitivePersonalInformation"
+  }
+}
