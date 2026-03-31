@@ -69,7 +69,9 @@ async def test_GenerateOciImageCommand_execute(
         mock_get_base_images_digests_lines.return_value = image_digest_file_content
     else:
         # Prevent the test from hitting the network or calling 'oras'
-        mock_get_digest_for_image_ref.return_value = "sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c"
+        mock_get_digest_for_image_ref.return_value = (
+            "sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c"
+        )
 
     command = GenerateOciImageCommand(test_case.args)
 
