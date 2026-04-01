@@ -55,9 +55,7 @@ def image_digest_file_content() -> list[str]:
 @patch(
     "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
 )
-@patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_digest_for_image_ref"
-)
+@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.get_digest_for_image_ref")
 async def test_GenerateOciImageCommand_execute(
     mock_get_digest_for_image_ref: AsyncMock,
     mock_get_base_images_digests_lines: MagicMock,
