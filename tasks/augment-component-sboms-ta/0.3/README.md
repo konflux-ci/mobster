@@ -27,6 +27,9 @@ Update component-level SBOMs with release-time information, optionally upload th
 | `fulcioExternalUrl`       | string |                           | The external URL of the Fulcio certificate authority.                                                                              |
 | `tufExternalUrl`          | string |                           | The external URL of the TUF repository.                                                                                            |
 | `buildIdentityRegexp`     | string |                           | A regular expression to extract build identity from the OIDC token claims, if applicable.                                          |
+| `caTrustConfigMapName`    | string |                           | The name of the ConfigMap to read CA bundle data from.                                                                             |
+| `caTrustConfigMapKey`     | string |                           | The name of the key in the ConfigMap that contains the CA bundle data.                                                             |
+| `caCertPath`              | string |                           | Path to CA certificate bundle for TLS verification with self-signed certificates.                                                  |
 
 ## Secrets
 The augment-component-sboms-ta Task optionally depends on two secrets. If they
