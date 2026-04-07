@@ -24,7 +24,7 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     extend_sbom_with_base_images,
     get_digest_for_image_ref,
 )
-from mobster.cmd.generate.oci_image.buildprobe import SBOMMetadata
+from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderContextualizationError,
     BuilderPkgMetadata,

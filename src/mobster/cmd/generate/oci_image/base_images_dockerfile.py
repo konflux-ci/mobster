@@ -314,7 +314,7 @@ async def extend_sbom_with_base_images(
     Args:
         sbom (CycloneDX1BomWrapper | spdx_tools.spdx.model.Document): SBOM to be edited.
         base_images_refs (dict[str, Any]):
-            The `buildprobe` base_images data loaded into a dictionary.
+            The base_images (from metadata yaml) loaded into a dictionary.
         base_images_objects (dict[str, Image] | None):
             Pre-resolved map
 
