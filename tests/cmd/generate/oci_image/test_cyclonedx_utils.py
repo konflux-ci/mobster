@@ -5,7 +5,7 @@ from cyclonedx.model.bom_ref import BomRef
 from cyclonedx.model.component import Component, ComponentType
 from packageurl import PackageURL
 
-from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.cmd.generate.oci_image.cyclonedx_utils import CycloneDX1BomWrapper
 
 
 @pytest.mark.parametrize(

@@ -14,7 +14,7 @@ from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
 from mobster.cmd.generate.oci_image.constants import IS_BASE_IMAGE_ANNOTATION
-from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.cmd.generate.oci_image.cyclonedx_utils import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.spdx_utils import find_spdx_root_packages_spdxid
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file

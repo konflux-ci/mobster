@@ -37,7 +37,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     get_parent_spdx_id_from_component,
     map_parent_to_component_and_modify_component,
 )
-from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.cmd.generate.oci_image.cyclonedx_utils import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.hermeto_sbom_filter import (
     filter_hermeto_sbom_by_arch,
 )

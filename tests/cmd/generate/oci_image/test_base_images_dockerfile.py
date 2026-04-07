@@ -31,7 +31,7 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     extend_sbom_with_base_images,
     get_objects_for_base_images,
 )
-from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.cmd.generate.oci_image.cyclonedx_utils import CycloneDX1BomWrapper
 from mobster.image import Image
 
 
