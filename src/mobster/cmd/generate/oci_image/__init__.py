@@ -106,7 +106,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         """
         with open(self.cli_args.metadata_path, encoding="utf-8") as metadata_file:
             raw_metadata = yaml.safe_load(metadata_file)
-            self._metadata = SBOMMetadata.from_dict(raw_metadata)
+            self._metadata = SBOMMetadata(**raw_metadata)
 
     async def _handle_bom_inputs(
         self,
