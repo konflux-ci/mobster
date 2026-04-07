@@ -2,6 +2,8 @@
 This module contains OCI data types and code to manipulate them.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -11,12 +13,15 @@ import tempfile
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pydantic
 
 from mobster.error import SBOMError
 from mobster.utils import run_async_subprocess
+
+if TYPE_CHECKING:
+    from mobster.image import Image
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +168,67 @@ def _get_auth_subconfig(config: DockerConfig, reference: str) -> DockerConfig:
         current_ref = current_ref.rsplit("/", 1)[0]
 
     return DockerConfig(auths={})
+
+
+async def get_digest_for_image_ref(image_ref: str, arch: Any = None) -> str | None:
+    """
+    Fetches the digest of a pullspec using oras.
+    Args:
+        image_ref (str): The pullspec
+
+    Returns:
+        str | None: The digest if fetched correctly. None otherwise.
+    """
+    with make_oci_auth_file(image_ref) as auth_file:
+        cmd = [
+            "oras",
+            "resolve",
+            "--registry-config",
+            str(auth_file),
+            f"{image_ref}",
+        ]
+        if arch:
+            cmd.extend(["--platform", f"linux/{arch}"])
+        code, stdout, stderr = await run_async_subprocess(cmd)
+        if (not code) and stdout:
+            return stdout.decode().strip()
+        logger.warning(
+            "Problem getting digest of a base image '%s' by oras. "
+            "Got digest: '%s' and STDERR: %s",
+            image_ref,
+            stdout.decode(),
+            stderr.decode(),
+        )
+        return None
+
+
+async def get_objects_for_base_images(
+    base_images_refs: list[str | None],
+) -> dict[str, Image]:
+    """
+    Gets the digests for pullspecs of the base images.
+    Args:
+        base_images_refs (str): The pullspecs from the parsed Dockerfile
+
+    Returns:
+        dict[str, Image]: Mapping of pullspecs and their image objects
+    """
+    from mobster.image import Image  # noqa: F811 — deferred to avoid circular import
+
+    image_objects = {}
+    for image_ref in base_images_refs:
+        if not image_ref:
+            # Skips the "scratch" image
+            continue
+        if image_ref in image_objects:
+            # Already resolved ref
+            continue
+        digest = await get_digest_for_image_ref(image_ref)
+        if digest:
+            image_objects[image_ref] = Image.from_image_index_url_and_digest(
+                image_ref, digest
+            )
+    return image_objects
 
 
 def _find_auth_file() -> Path | None:

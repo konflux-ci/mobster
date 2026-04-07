@@ -22,16 +22,19 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
 from mobster import get_mobster_version
-from mobster.cmd.generate.oci_image.base_images_dockerfile import (
-    _extend_cdx_with_base_images,
-    _extend_spdx_with_base_images,
-    _get_cdx_components_from_base_images,
-    _get_images_and_their_annotations,
-    _get_spdx_packages_from_base_images,
-    extend_sbom_with_base_images,
-    get_objects_for_base_images,
+from mobster.cmd.generate.oci_image.base_image_utils import (
+    get_images_and_their_annotations,
 )
-from mobster.cmd.generate.oci_image.cyclonedx_utils import CycloneDX1BomWrapper
+from mobster.cmd.generate.oci_image.cyclonedx_utils import (
+    CycloneDX1BomWrapper,
+    extend_cdx_with_base_images,
+    get_cdx_components_from_base_images,
+)
+from mobster.cmd.generate.oci_image.spdx_utils import (
+    extend_spdx_with_base_images,
+    get_spdx_packages_from_base_images,
+)
+from mobster.oci import get_objects_for_base_images
 from mobster.image import Image
 
 
@@ -72,11 +75,11 @@ from mobster.image import Image
         ),
     ],
 )
-@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.run_async_subprocess")
+@patch("mobster.oci.run_async_subprocess")
 @patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.make_oci_auth_file",
+    "mobster.oci.make_oci_auth_file",
 )
-@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.LOGGER")
+@patch("mobster.oci.logger")
 async def test_get_objects_for_base_images(
     mock_logger: AsyncMock,
     mock_make_oci_auth_file: AsyncMock,
@@ -171,13 +174,13 @@ async def test_get_objects_for_base_images(
         ),
     ],
 )
-async def test__get_images_and_their_annotations(
+async def test_get_images_and_their_annotations(
     base_images_refs: list[str | None],
     base_images: dict[str, Image],
     expected_output: list[tuple[Image, list[dict[str, str]]]],
 ) -> None:
     assert (
-        await _get_images_and_their_annotations(base_images_refs, base_images)
+        await get_images_and_their_annotations(base_images_refs, base_images)
         == expected_output
     )
 
@@ -243,12 +246,12 @@ async def test__get_images_and_their_annotations(
         ),
     ],
 )
-async def test__get_cdx_components_from_base_images(
+async def test_get_cdx_components_from_base_images(
     base_images_refs: list[str | None],
     base_images: dict[str, Image],
     expected_output: list[Component],
 ) -> None:
-    components = await _get_cdx_components_from_base_images(
+    components = await get_cdx_components_from_base_images(
         base_images_refs, base_images
     )
     for idx, actual_component in enumerate(components):
@@ -354,8 +357,8 @@ async def test__get_cdx_components_from_base_images(
         ),
     ],
 )
-@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.datetime")
-async def test__get_spdx_packages_from_base_images(
+@patch("mobster.cmd.generate.oci_image.spdx_utils.datetime")
+async def test_get_spdx_packages_from_base_images(
     mock_datetime: MagicMock,
     base_images_refs: list[str | None],
     base_images: dict[str, Image],
@@ -363,7 +366,7 @@ async def test__get_spdx_packages_from_base_images(
 ) -> None:
     mock_datetime.now.return_value = datetime.datetime(1970, 1, 1)
     assert (
-        await _get_spdx_packages_from_base_images(base_images_refs, base_images)
+        await get_spdx_packages_from_base_images(base_images_refs, base_images)
         == expected_output
     )
 
@@ -669,8 +672,8 @@ async def test__get_spdx_packages_from_base_images(
         ),
     ],
 )
-@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.datetime")
-async def test__extend_spdx_with_base_images(
+@patch("mobster.cmd.generate.oci_image.spdx_utils.datetime")
+async def test_extend_spdx_with_base_images(
     mock_datetime: MagicMock,
     spdx_sbom_skeleton: dict[str, Any],
     sbom_additional_fields: dict[str, Any],
@@ -682,7 +685,7 @@ async def test__extend_spdx_with_base_images(
     new_sbom = spdx_sbom_skeleton.copy()
     new_sbom.update(sbom_additional_fields)
     sbom_doc_object = JsonLikeDictParser().parse(new_sbom)  # type: ignore[no-untyped-call]
-    await _extend_spdx_with_base_images(sbom_doc_object, base_image_refs, base_images)
+    await extend_spdx_with_base_images(sbom_doc_object, base_image_refs, base_images)
     assert sbom_doc_object == expected_output
 
 
@@ -824,70 +827,15 @@ async def test__extend_spdx_with_base_images(
         )
     ],
 )
-async def test__extend_cdx_with_base_images(
+async def test_extend_cdx_with_base_images(
     input_sbom_dict: dict[str, Any],
     base_image_refs: list[str | None],
     base_images: dict[str, Image],
     expected_sbom: dict[str, Any],
 ) -> None:
     initial_sbom = CycloneDX1BomWrapper.from_dict(input_sbom_dict)
-    await _extend_cdx_with_base_images(initial_sbom, base_image_refs, base_images)
+    await extend_cdx_with_base_images(initial_sbom, base_image_refs, base_images)
     updated_sbom_dict = initial_sbom.to_dict()
     assert updated_sbom_dict == expected_sbom
 
 
-@pytest.mark.asyncio
-@patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_objects_for_base_images"
-)
-@patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile._extend_cdx_with_base_images"
-)
-@patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile._extend_spdx_with_base_images"
-)
-@pytest.mark.parametrize(
-    ["input_sbom_object"],
-    [
-        (CycloneDX1BomWrapper(sbom=MagicMock()),),
-        (
-            Document(
-                creation_info=CreationInfo(
-                    spdx_version="SPDX-2.3",
-                    spdx_id="SPDXRef-DOCUMENT",
-                    name="foo",
-                    document_namespace="https://foo.example.com/bar",
-                    created=datetime.datetime(1970, 1, 1, 0, 0, 0),
-                    creators=[Actor(actor_type=ActorType.TOOL, name="Konflux")],
-                ),
-            ),
-        ),
-    ],
-)
-async def test_extend_sbom_with_base_images(
-    mock__extend_spdx_with_base_images: AsyncMock,
-    mock__extend_cdx_with_base_images: AsyncMock,
-    mock_get_objects_for_base_images: AsyncMock,
-    input_sbom_object: CycloneDX1BomWrapper | Document,
-) -> None:
-    mock_base_images_objects = None
-    mock_image_refs = ["foo", None]
-
-    await extend_sbom_with_base_images(
-        input_sbom_object,
-        mock_image_refs,
-        mock_base_images_objects,
-    )
-    mock_get_objects_for_base_images.assert_awaited_once_with(mock_image_refs)
-    if isinstance(input_sbom_object, CycloneDX1BomWrapper):
-        mock__extend_cdx_with_base_images.assert_awaited_once_with(
-            input_sbom_object,
-            mock_image_refs,
-            mock_get_objects_for_base_images.return_value,
-        )
-    else:
-        mock__extend_spdx_with_base_images.assert_awaited_once_with(
-            input_sbom_object,
-            mock_image_refs,
-            mock_get_objects_for_base_images.return_value,
-        )

@@ -20,10 +20,6 @@ import mobster.utils
 from mobster import syft
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
-from mobster.cmd.generate.oci_image.base_images_dockerfile import (
-    extend_sbom_with_base_images,
-    get_digest_for_image_ref,
-)
 from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderContextualizationError,
@@ -37,14 +33,19 @@ from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     get_parent_spdx_id_from_component,
     map_parent_to_component_and_modify_component,
 )
-from mobster.cmd.generate.oci_image.cyclonedx_utils import CycloneDX1BomWrapper
+from mobster.cmd.generate.oci_image.cyclonedx_utils import (
+    CycloneDX1BomWrapper,
+    extend_cdx_with_base_images,
+)
 from mobster.cmd.generate.oci_image.hermeto_sbom_filter import (
     filter_hermeto_sbom_by_arch,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
     DocumentIndexOCI,
+    extend_spdx_with_base_images,
     normalize_and_load_sbom,
 )
+from mobster.oci import get_digest_for_image_ref
 from mobster.image import Image
 from mobster.log import log_elapsed
 from mobster.sbom.merge import merge_sboms
@@ -314,7 +315,10 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 )
                 base_images_refs.append(base_image_data.pullspec)
                 base_images_map[base_image_data.pullspec] = base_image
-            await extend_sbom_with_base_images(sbom, base_images_refs, base_images_map)
+            if isinstance(sbom, CycloneDX1BomWrapper):
+                await extend_cdx_with_base_images(sbom, base_images_refs, base_images_map)
+            elif isinstance(sbom, Document):
+                await extend_spdx_with_base_images(sbom, base_images_refs, base_images_map)
             for extra_image_data in self._metadata.extra_images:
                 extra_image = Image.from_image_index_url_and_digest(
                     extra_image_data.pullspec,
