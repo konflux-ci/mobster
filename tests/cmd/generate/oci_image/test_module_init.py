@@ -16,31 +16,13 @@ from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import Package
 
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
+from mobster.cmd.generate.oci_image.buildprobe import ImageData, SBOMMetadata
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.image import Image
 from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom, assert_spdx_sbom
 
 
 @pytest.fixture()
-def image_digest_file_content() -> list[str]:
-    return [
-        (
-            "quay.io/redhat-user-workloads/rhtap-integration-tenant/"
-            "konflux-test:baf5e59d5d35615d0db13b46bd91194458011af8 "
-            "quay.io/redhat-user-workloads/rhtap-integration-tenant/"
-            "konflux-test:baf5e59d5d35615d0db13b46bd91194458011af8@"
-            "sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c"
-        ),
-        (
-            "quay.io/redhat-user-workloads/rhtap-shared-team-tenant/"
-            "tssc-test:tssc-test-on-push-2m6dq-build-container "
-            "quay.io/redhat-user-workloads/rhtap-shared-team-tenant/"
-            "tssc-test:tssc-test-on-push-2m6dq-build-container@"
-            "sha256:04f8c3262172fa024beaed2b120414d6011d0c0d4ea578619e32a3c353ec5ee5"
-        ),
-    ]
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "test_case",
@@ -53,24 +35,12 @@ def image_digest_file_content() -> list[str]:
     ],
 )
 @patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
+    "mobster.cmd.generate.oci_image.get_base_images_digests_lines"
 )
-@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.get_digest_for_image_ref")
+@patch("mobster.cmd.generate.oci_image.get_digest_for_image_ref")
 async def test_GenerateOciImageCommand_execute(
-    mock_get_digest_for_image_ref: AsyncMock,
-    mock_get_base_images_digests_lines: MagicMock,
     test_case: GenerateOciImageTestCase,
-    image_digest_file_content: str,
 ) -> None:
-    # Set up mock for base image digest content if base_image_digest_file is present
-    if test_case.args.base_image_digest_file is not None:
-        mock_get_base_images_digests_lines.return_value = image_digest_file_content
-    else:
-        # Prevent the test from hitting the network or calling 'oras'
-        mock_get_digest_for_image_ref.return_value = (
-            "sha256:3191d33c484a1cfe5d559200aa75670c41770abf3316244c28eec20a8dba3e0c"
-        )
-
     command = GenerateOciImageCommand(test_case.args)
 
     with open(test_case.expected_sbom_path) as expected_file_stream:
@@ -88,11 +58,7 @@ async def test_GenerateOciImageCommand_execute(
 
 
 @pytest.mark.asyncio
-@patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
-)
 async def test_GenerateOciImageCommand_execute_cannot_contextualize_cyclonedx(
-    image_digest_file_content: str,
     test_case_cyclonedx_with_additional: GenerateOciImageTestCase,
 ) -> None:
     test_case_cyclonedx_with_additional.args.contextualize = True
@@ -102,46 +68,6 @@ async def test_GenerateOciImageCommand_execute_cannot_contextualize_cyclonedx(
         match="--contextualize is only allowed when processing SPDX format",
     ):
         await command.execute()
-
-
-@pytest.mark.asyncio
-@patch("mobster.cmd.generate.oci_image.get_base_images_refs_from_dockerfile")
-@patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_objects_for_base_images"
-)
-@patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
-)
-async def test_test_GenerateOciImageCommand_execute_missing_digest(
-    mock_get_lines: MagicMock,
-    mock_get_images: AsyncMock,
-    mock_get_refs: AsyncMock,
-    caplog: LogCaptureFixture,
-) -> None:
-    args = MagicMock(
-        parsed_dockerfile_path="tests/data/dockerfiles/sample1/parsed.json",
-        base_image_digest_file="bar",
-        from_syft=[
-            Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")
-        ],
-        from_hermeto=None,
-        image_pullspec=None,
-        image_digest=None,
-        additional_base_images=[],
-    )
-    mock_get_refs.return_value = ["foo", "bar"]
-    mock_get_images.return_value = {
-        "foo": Image.from_image_index_url_and_digest(
-            "foo.bar/foo/ham:v1", "sha256:a", "amd64"
-        )
-    }
-    command = GenerateOciImageCommand(args)
-    await command.execute()
-    assert (
-        "Cannot get information about base image bar "
-        "mentioned in the Dockerfile! THIS MEANS THE "
-        "PRODUCED SBOM WILL BE INCOMPLETE!" in caplog.messages
-    )
 
 
 @pytest.mark.asyncio
@@ -177,9 +103,7 @@ async def test_GenerateOciImageCommand_execute_handle_pullspec(
     args.from_hermeto = None
     args.image_pullspec = pullspec
     args.image_digest = digest
-    args.parsed_dockerfile_path = None
-    args.dockerfile_target = None
-    args.additional_base_image = []
+    args.metadata_path = None
     command = GenerateOciImageCommand(args)
     if expected_action == "error":
         with pytest.raises(ValueError):
@@ -211,9 +135,7 @@ async def test_GenerateOciImageCommand_execute_unknown_sbom(
     args.from_hermeto = None
     args.image_pullspec = None
     args.image_digest = None
-    args.parsed_dockerfile_path = None
-    args.dockerfile_target = None
-    args.additional_base_image = []
+    args.metadata_path = None
     command = GenerateOciImageCommand(args)
     with pytest.raises(ValueError):
         await command.execute()
@@ -287,23 +209,44 @@ async def test_GenerateOciImageCommand__soft_validate_content_cdx(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ["syft_boms", "hermeto_bom", "image_pullspec", "expected_action"],
+    ["syft_boms", "hermeto_bom", "image_pullspec", "metadata_path", "expected_action"],
     [
         # no SBOMs
-        (None, None, None, "raise_error"),
+        (None, None, None, None, "raise_error"),
         # single syft
-        ([Path("syft.json")], None, None, "load_syft"),
+        ([Path("syft.json")], None, None, None, "load_syft"),
         # multiple syft
-        ([Path("syft1.json"), Path("syft2.json")], None, None, "merge"),
+        ([Path("syft1.json"), Path("syft2.json")], None, None, None, "merge"),
         # syft + hermeto
-        ([Path("syft.json")], Path("hermeto.json"), None, "merge"),
+        ([Path("syft.json")], Path("hermeto.json"), None, None, "merge"),
         # multiple syft + hermeto
-        ([Path("syft1.json"), Path("syft2.json")], Path("hermeto.json"), None, "merge"),
+        (
+            [Path("syft1.json"), Path("syft2.json")],
+            Path("hermeto.json"),
+            None,
+            None,
+            "merge",
+        ),
         # only hermeto
-        (None, Path("hermeto.json"), None, "load_hermeto"),
-        (None, None, "foo:latest", "scan_syft"),
+        (None, Path("hermeto.json"), None, None, "load_hermeto"),
+        (None, None, "foo:latest", None, "scan_syft"),
+        # metadata, no images
+        (None, None, None, Path("metadata.yaml"), "scan_syft_metadata"),
+        # metadata, syft image
+        ([Path("syft.json")], None, None, Path("metadata.yaml"), "load_syft"),
+        # metadata, hermeto image
+        (None, Path("hermeto.json"), None, Path("metadata.yaml"), "load_hermeto"),
+        # metadata, hermeto + spdx images
+        (
+            [Path("syft.json")],
+            Path("hermeto.json"),
+            None,
+            Path("metadata.yaml"),
+            "merge",
+        ),
     ],
 )
+@patch("mobster.cmd.generate.oci_image.GenerateOciImageCommand._load_metadata")
 @patch("mobster.cmd.generate.oci_image.syft.scan_image")
 @patch(
     "mobster.cmd.generate.oci_image.GenerateOciImageCommand._load_and_filter_hermeto_sbom"
@@ -315,15 +258,18 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_load_sbom: AsyncMock,
     mock_load_hermeto_sbom: AsyncMock,
     mock_syft_scan: AsyncMock,
+    mock_load_metadata: MagicMock,
     syft_boms: list[Path],
     hermeto_bom: Path | None,
     image_pullspec: str | None,
+    metadata_path: str | None,
     expected_action: Literal["raise_error", "load_syft", "load_hermeto", "merge"],
 ) -> None:
     command = GenerateOciImageCommand(MagicMock())
     command.cli_args.from_hermeto = hermeto_bom
     command.cli_args.from_syft = syft_boms
     command.cli_args.image_pullspec = image_pullspec
+    command.cli_args.metadata_path = metadata_path
 
     mock_syft_data = {"name": "syft_data"}
     mock_hermeto_data = {"name": "hermeto_data"}
@@ -332,6 +278,15 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_load_sbom.return_value = mock_syft_data
     mock_load_hermeto_sbom.return_value = mock_hermeto_data
     mock_merge.return_value = mock_merged_data
+
+    def mock_metadata() -> None:
+        command._metadata = SBOMMetadata(
+            image=ImageData(pullspec="foo", digest="bar"),
+            base_images=[],
+            extra_images=[],
+        )
+
+    mock_load_metadata.side_effect = mock_metadata
 
     if expected_action == "raise_error":
         with pytest.raises(ArgumentError):
@@ -365,6 +320,11 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
 
         elif expected_action == "scan_syft":
             mock_syft_scan.assert_awaited_once_with(image_pullspec)
+            mock_load_sbom.assert_not_awaited()
+            mock_merge.assert_not_called()
+
+        elif expected_action == "scan_syft_metadata":
+            mock_syft_scan.assert_awaited_once_with(command._metadata.image.pullspec)
             mock_load_sbom.assert_not_awaited()
             mock_merge.assert_not_called()
 

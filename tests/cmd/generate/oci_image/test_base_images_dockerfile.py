@@ -28,121 +28,11 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     _get_cdx_components_from_base_images,
     _get_images_and_their_annotations,
     _get_spdx_packages_from_base_images,
-    extend_sbom_with_base_images_from_dockerfile,
-    get_base_images_refs_from_dockerfile,
-    get_image_objects_from_file,
+    extend_sbom_with_base_images,
     get_objects_for_base_images,
 )
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.image import Image
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ["dockerfile_sample", "target_stage", "expected_list"],
-    [
-        (1, "", ["alpine:3.10", None]),
-        (1, "build", ["alpine:3.10"]),
-        (
-            2,
-            "",
-            [
-                "registry.access.redhat.com/ubi8/ubi:latest",
-                "alpine:3.10",
-                None,
-                "registry.access.redhat.com/ubi9/ubi:latest",
-                "registry.access.redhat.com/ubi8/ubi:latest",
-            ],
-        ),
-        (
-            2,
-            "nothing",
-            [
-                "registry.access.redhat.com/ubi8/ubi:latest",
-                "alpine:3.10",
-                None,
-            ],
-        ),
-        (
-            2,
-            "foo",
-            [
-                "registry.access.redhat.com/ubi8/ubi:latest",
-                "alpine:3.10",
-                None,
-                "registry.access.redhat.com/ubi9/ubi:latest",
-            ],
-        ),
-        (
-            2,
-            "bar",
-            [
-                "registry.access.redhat.com/ubi8/ubi:latest",
-                "alpine:3.10",
-                None,
-                "registry.access.redhat.com/ubi9/ubi:latest",
-                "registry.access.redhat.com/ubi8/ubi:latest",
-            ],
-        ),
-        (
-            2,
-            "registry.access.redhat.com/ubi8/ubi:latest",
-            ["registry.access.redhat.com/ubi8/ubi:latest"],
-        ),
-    ],
-)
-async def test_get_base_images_refs_from_dockerfile(
-    dockerfile_sample: int,
-    target_stage: str,
-    expected_list: list[str | None],
-    sample1_parsed_dockerfile: dict[str, Any],
-    sample2_parsed_dockerfile: dict[str, Any],
-) -> None:
-    dockerfile = (
-        sample1_parsed_dockerfile
-        if dockerfile_sample == 1
-        else sample2_parsed_dockerfile
-    )
-    assert (
-        await get_base_images_refs_from_dockerfile(dockerfile, target_stage)
-        == expected_list
-    )
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ["file_content", "expected_dict"],
-    [
-        (
-            "alpine:3.10 docker.io/library/alpine:3.10"
-            "@sha256:451eee8bedcb2f029756dc3e9d73bab0e7943c1ac55cff3a4861c52a0fdd3e98\n"
-            "quay.io/foo/bar:spam quay.io/foo/bar:spam@"
-            "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-            {
-                "alpine:3.10": Image(
-                    repository="docker.io/library/alpine",
-                    digest="sha256:451eee8bedcb2f029756dc3e9d73bab0e7943c1ac55cff3a4861c52a0fdd3e98",
-                    tag="3.10",
-                    domain="docker.io",
-                ),
-                "quay.io/foo/bar:spam": Image(
-                    repository="quay.io/foo/bar",
-                    digest="sha256:1111111111111111111111111111111111111111111111111111111111111111",
-                    tag="spam",
-                    domain="quay.io",
-                ),
-            },
-        )
-    ],
-)
-@patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_base_images_digests_lines"
-)
-async def test_get_digests_from_file(
-    mock_get_lines: MagicMock, file_content: str, expected_dict: dict[str, Image]
-) -> None:
-    mock_get_lines.return_value = file_content.split("\n")
-    assert await get_image_objects_from_file(MagicMock()) == expected_dict
 
 
 @pytest.mark.asyncio
@@ -974,7 +864,7 @@ async def test__extend_cdx_with_base_images(
         ),
     ],
 )
-async def test_extend_sbom_with_base_images_from_dockerfile(
+async def test_extend_sbom_with_base_images(
     mock__extend_spdx_with_base_images: AsyncMock,
     mock__extend_cdx_with_base_images: AsyncMock,
     mock_get_objects_for_base_images: AsyncMock,
@@ -983,7 +873,7 @@ async def test_extend_sbom_with_base_images_from_dockerfile(
     mock_base_images_objects = None
     mock_image_refs = ["foo", None]
 
-    await extend_sbom_with_base_images_from_dockerfile(
+    await extend_sbom_with_base_images(
         input_sbom_object,
         mock_image_refs,
         mock_base_images_objects,

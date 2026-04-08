@@ -12,6 +12,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import yaml
 from pytest_lazy_fixtures import lf
 
 from mobster.cmd.generate.oci_index import GenerateOciIndexCommand
@@ -301,10 +302,13 @@ def get_sbom_from_test_case(case: GenerateOciImageTestCase, image_digest: str) -
     Load an SBOM from a GenerateOciImageTestCase, replaces digests with
     specified and return it parsed to bytes.
     """
-    with open(case.expected_sbom_path) as fp:
+    assert case.args.metadata_path is not None
+    with open(case.expected_sbom_path) as fp, open(case.args.metadata_path) as md_fp:
+        metadata = yaml.safe_load(md_fp)
+        digest_from_metadata = metadata["image"]["digest"]
         sbom = fp.read()
         sbom = sbom.replace(
-            case.args.image_digest.removeprefix("sha256:"),
+            digest_from_metadata.removeprefix("sha256:"),
             image_digest.removeprefix("sha256:"),
         )
         return sbom.encode()
