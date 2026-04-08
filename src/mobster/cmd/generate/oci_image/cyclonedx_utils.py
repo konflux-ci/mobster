@@ -137,9 +137,7 @@ async def extend_cdx_with_base_images(
     Returns:
         None: Nothing is returned, changes are performed in-place.
     """
-    components = await get_cdx_components_from_base_images(
-        base_image_refs, base_images
-    )
+    components = await get_cdx_components_from_base_images(base_image_refs, base_images)
     sbom_wrapper.formulation.append(
         {"components": CycloneDX1BomWrapper.get_component_dicts(components)}
     )

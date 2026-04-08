@@ -16,8 +16,8 @@ from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import Package
 
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
-from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
 from mobster.cmd.generate.oci_image.cyclonedx_utils import CycloneDX1BomWrapper
+from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
 from mobster.image import Image
 from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom, assert_spdx_sbom
 
@@ -280,14 +280,13 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_merge.return_value = mock_merged_data
 
     def mock_metadata() -> None:
-        command._metadata = SBOMMetadata(**{
-            "image": {
-                "pullspec": "foo",
-                "digest": "bar"
-            },
-            "base_images": [],
-            "extra_images": [],
-        })
+        command._metadata = SBOMMetadata(
+            **{
+                "image": {"pullspec": "foo", "digest": "bar"},
+                "base_images": [],
+                "extra_images": [],
+            }
+        )
 
     mock_load_metadata.side_effect = mock_metadata
 

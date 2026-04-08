@@ -34,8 +34,8 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     extend_spdx_with_base_images,
     get_spdx_packages_from_base_images,
 )
-from mobster.oci import get_objects_for_base_images
 from mobster.image import Image
+from mobster.oci import get_objects_for_base_images
 
 
 @pytest.mark.asyncio
@@ -837,5 +837,3 @@ async def test_extend_cdx_with_base_images(
     await extend_cdx_with_base_images(initial_sbom, base_image_refs, base_images)
     updated_sbom_dict = initial_sbom.to_dict()
     assert updated_sbom_dict == expected_sbom
-
-

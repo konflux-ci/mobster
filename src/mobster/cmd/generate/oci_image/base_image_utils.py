@@ -1,7 +1,6 @@
 """Format-agnostic utilities for base image handling in multi-stage builds."""
 
 import logging
-from typing import Any
 
 from mobster.cmd.generate.oci_image.constants import IS_BASE_IMAGE_ANNOTATION
 from mobster.image import Image
