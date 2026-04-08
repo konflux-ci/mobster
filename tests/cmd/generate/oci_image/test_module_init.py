@@ -12,14 +12,69 @@ from cyclonedx.model.bom_ref import BomRef
 from cyclonedx.model.component import Component, ComponentType
 from cyclonedx.model.dependency import Dependency
 from pytest_lazy_fixtures import lf
+from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import Package
 
-from mobster.cmd.generate.oci_image import GenerateOciImageCommand
+from mobster.cmd.generate.oci_image import (
+    GenerateOciImageCommand,
+    extend_sbom_with_base_images,
+)
 from mobster.cmd.generate.oci_image.cyclonedx_utils import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
 from mobster.image import Image
 from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom, assert_spdx_sbom
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.generate.oci_image.base_image_utils.get_objects_for_base_images")
+@patch("mobster.cmd.generate.oci_image.cyclonedx_utils.extend_cdx_with_base_images")
+@patch("mobster.cmd.generate.oci_image.spdx_utils.extend_spdx_with_base_images")
+@pytest.mark.parametrize(
+    ["input_sbom_object"],
+    [
+        (CycloneDX1BomWrapper(sbom=MagicMock()),),
+        (
+            Document(
+                creation_info=CreationInfo(
+                    spdx_version="SPDX-2.3",
+                    spdx_id="SPDXRef-DOCUMENT",
+                    name="foo",
+                    document_namespace="https://foo.example.com/bar",
+                    created=datetime.datetime(1970, 1, 1, 0, 0, 0),
+                    creators=[Actor(actor_type=ActorType.TOOL, name="Konflux")],
+                ),
+            ),
+        ),
+    ],
+)
+async def test_extend_sbom_with_base_images(
+    mock__extend_spdx_with_base_images: AsyncMock,
+    mock__extend_cdx_with_base_images: AsyncMock,
+    mock_get_objects_for_base_images: AsyncMock,
+    input_sbom_object: CycloneDX1BomWrapper | Document,
+) -> None:
+    mock_base_images_objects = None
+    mock_image_refs = ["foo", None]
+
+    await extend_sbom_with_base_images(
+        input_sbom_object,
+        mock_image_refs,
+        mock_base_images_objects,
+    )
+    mock_get_objects_for_base_images.assert_awaited_once_with(mock_image_refs)
+    if isinstance(input_sbom_object, CycloneDX1BomWrapper):
+        mock__extend_cdx_with_base_images.assert_awaited_once_with(
+            input_sbom_object,
+            mock_image_refs,
+            mock_get_objects_for_base_images.return_value,
+        )
+    else:
+        mock__extend_spdx_with_base_images.assert_awaited_once_with(
+            input_sbom_object,
+            mock_image_refs,
+            mock_get_objects_for_base_images.return_value,
+        )
 
 
 @pytest.fixture()
@@ -34,9 +89,7 @@ from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom, assert_spd
         lf("test_case_cyclonedx_with_additional"),
     ],
 )
-@patch(
-    "mobster.cmd.generate.oci_image.get_base_images_digests_lines"
-)
+@patch("mobster.cmd.generate.oci_image.get_base_images_digests_lines")
 @patch("mobster.cmd.generate.oci_image.get_digest_for_image_ref")
 async def test_GenerateOciImageCommand_execute(
     test_case: GenerateOciImageTestCase,
@@ -280,8 +333,8 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_merge.return_value = mock_merged_data
 
     def mock_metadata() -> None:
-        command._metadata = SBOMMetadata(
-            **{
+        command._metadata = SBOMMetadata.model_validate(
+            {
                 "image": {"pullspec": "foo", "digest": "bar"},
                 "base_images": [],
                 "extra_images": [],

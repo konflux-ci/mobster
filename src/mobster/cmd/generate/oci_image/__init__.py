@@ -20,6 +20,10 @@ import mobster.utils
 from mobster import syft
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
+from mobster.cmd.generate.oci_image.base_image_utils import (
+    get_digest_for_image_ref,
+    get_objects_for_base_images,
+)
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderContextualizationError,
     BuilderPkgMetadata,
@@ -47,12 +51,39 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 )
 from mobster.image import Image
 from mobster.log import log_elapsed
-from mobster.oci import get_digest_for_image_ref
 from mobster.sbom.merge import merge_sboms
 from mobster.utils import load_sbom_from_json
 
 logging.captureWarnings(True)  # CDX validation uses `warn()`
 LOGGER = logging.getLogger(__name__)
+
+
+async def extend_sbom_with_base_images(
+    sbom: CycloneDX1BomWrapper | Document,
+    base_images_refs: list[str | None],
+    base_images_objects: dict[str, Image] | None = None,
+) -> None:
+    """
+    Extend the SBOM with the base images from the provided Dockerfile
+    according to the build target stage.
+    Args:
+        sbom (CycloneDX1BomWrapper | spdx_tools.spdx.model.Document): SBOM to be edited.
+        base_images_refs (dict[str, Any]):
+            The output of `dockerfile-json` command loaded into a dictionary.
+        base_images_objects (dict[str, Image] | None):
+            Pre-resolved map
+
+    Returns:
+        None: Nothing is returned, changes are performed in-place.
+    """
+    base_images = base_images_objects or await get_objects_for_base_images(
+        base_images_refs
+    )
+
+    if isinstance(sbom, CycloneDX1BomWrapper):
+        await extend_cdx_with_base_images(sbom, base_images_refs, base_images)
+    elif isinstance(sbom, Document):
+        await extend_spdx_with_base_images(sbom, base_images_refs, base_images)
 
 
 class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
@@ -107,7 +138,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         """
         with open(self.cli_args.metadata_path, encoding="utf-8") as metadata_file:
             raw_metadata = yaml.safe_load(metadata_file)
-            self._metadata = SBOMMetadata(**raw_metadata)
+            self._metadata = SBOMMetadata.model_validate(raw_metadata)
 
     async def _handle_bom_inputs(
         self,
@@ -315,14 +346,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 )
                 base_images_refs.append(base_image_data.pullspec)
                 base_images_map[base_image_data.pullspec] = base_image
-            if isinstance(sbom, CycloneDX1BomWrapper):
-                await extend_cdx_with_base_images(
-                    sbom, base_images_refs, base_images_map
-                )
-            elif isinstance(sbom, Document):
-                await extend_spdx_with_base_images(
-                    sbom, base_images_refs, base_images_map
-                )
+            await extend_sbom_with_base_images(sbom, base_images_refs, base_images_map)
             for extra_image_data in self._metadata.extra_images:
                 extra_image = Image.from_image_index_url_and_digest(
                     extra_image_data.pullspec,
