@@ -16,7 +16,7 @@ from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import Package
 
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
-from mobster.cmd.generate.oci_image.buildprobe import ImageData, SBOMMetadata
+from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
 from mobster.cmd.generate.oci_image.cyclonedx_utils import CycloneDX1BomWrapper
 from mobster.image import Image
 from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom, assert_spdx_sbom
