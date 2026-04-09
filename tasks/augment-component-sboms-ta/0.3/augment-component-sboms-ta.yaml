@@ -296,6 +296,14 @@ spec:
       script: |
         #!/usr/bin/env bash
         set -eux
+
+        ca_bundle=/mnt/trusted-ca/ca-bundle.crt
+        system_bundle=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+        if [ -f "$ca_bundle" ]; then
+          echo "[$(date --utc -Ins)] Using mounted CA bundle: $ca_bundle"
+          cat "$ca_bundle" >> "$system_bundle"
+        fi
+
         # This is a little fragile, ideally it would be just a param. It's here
         # for consistency with other tasks in release-service-catalog. The
         # script below will verify that the release_id has the correct format.
