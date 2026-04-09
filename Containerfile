@@ -61,7 +61,10 @@ COPY LICENSE /licenses/
 ENV PATH=/app/.venv/bin:$PATH
 ENV PATH=/app/bin:$PATH
 
-USER 1001
+# Allow user to update CA trust
+RUN chmod -R g+w /etc/pki/
+
+USER 1001:0
 
 # Set the command to run your application
 CMD [".venv/bin/mobster"]
