@@ -9,13 +9,18 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from cyclonedx.model import Property
 from cyclonedx.model.bom import Bom
 from cyclonedx.model.component import Component, ComponentType
 from cyclonedx.output import make_outputter
 from cyclonedx.schema import OutputFormat, SchemaVersion
 
 from mobster import get_mobster_version
-from mobster.sbom.cyclonedx import get_manufacturer
+from mobster.cmd.generate.oci_image.base_image_utils import (
+    get_images_and_their_annotations,
+)
+from mobster.image import Image
+from mobster.sbom.cyclonedx import get_component, get_manufacturer
 
 
 @dataclass
@@ -85,3 +90,54 @@ class CycloneDX1BomWrapper:
         )
         bom_object.sbom.metadata.manufacturer = get_manufacturer()
         return bom_object
+
+
+async def get_cdx_components_from_base_images(
+    base_images_refs: list[str | None], base_images: dict[str, Image]
+) -> list[Component]:
+    """
+    Transforms the list of base images and their mapping to
+    an Image object into a list of CDX Components.
+    Args:
+        base_images_refs (list[str]):
+            list of image references, the last one is the parent image.
+        base_images (dict[str, Image]):
+            mapping of those references to Image objects.
+
+    Returns:
+        list[cyclonedx.model.component.Component]:
+            List of CDX components to be added to an SBOM.
+    """
+    components = []
+    for image_component, annotations in await get_images_and_their_annotations(
+        base_images_refs, base_images
+    ):
+        component = get_component(image_component)
+        for annotation in annotations:
+            component.properties.add(Property(**annotation))
+        components.append(component)
+    return components
+
+
+async def extend_cdx_with_base_images(
+    sbom_wrapper: CycloneDX1BomWrapper,
+    base_image_refs: list[str | None],
+    base_images: dict[str, Image],
+) -> None:
+    """
+    Extend the CDX SBOM with the base images.
+    Args:
+        sbom_wrapper (CycloneDX1BomWrapper):
+            SBOM to be edited.
+        base_image_refs (list[str]):
+            list of image references, the last one is the parent image.
+        base_images (dict[str, Image]):
+            mapping of those references to Image objects.
+
+    Returns:
+        None: Nothing is returned, changes are performed in-place.
+    """
+    components = await get_cdx_components_from_base_images(base_image_refs, base_images)
+    sbom_wrapper.formulation.append(
+        {"components": CycloneDX1BomWrapper.get_component_dicts(components)}
+    )

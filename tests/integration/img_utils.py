@@ -1,10 +1,35 @@
 from pathlib import Path
 
+import yaml
+
 from mobster.image import Image, IndexImage
 from mobster.utils import run_async_subprocess
 from tests.integration.oci_client import ReferrersTagOCIClient
 
 TESTDATA_PATH = Path(__file__).parent.parent / "data"
+
+
+def make_metadata_yaml(
+    tmp_path: Path, img: Image, parent_img: Image | None = None
+) -> Path:
+    metadata = {
+        "image": {
+            "pullspec": f"{img.repository}:{img.tag}",
+            "digest": img.digest,
+        },
+        "base_images": [],
+    }
+    if parent_img:
+        metadata["base_images"].append(  # type: ignore[attr-defined]
+            {
+                "pullspec": f"{parent_img.repository}:{parent_img.tag}",
+                "digest": parent_img.digest,
+            }
+        )
+    path = tmp_path / f"{img.digest}.metadata.yaml"
+    with open(path, "w") as fp:
+        fp.write(yaml.dump(metadata))
+    return path
 
 
 async def create_child_image(
@@ -52,18 +77,20 @@ async def create_index_image(
     )
 
 
-async def generate_child_image_sbom(child_image: Image, output_dir: Path) -> Path:
+async def generate_child_image_sbom(child_image: Image, tmp_path: Path) -> Path:
     """
     Generate an SBOM for a child image using the `mobster` command-line tool.
 
     Args:
         child_image (Image): A child image for which the SBOM will be generated.
-        output_dir (Path): A directory where the SBOM will be saved.
+        tmp_path (Path): A directory where the SBOM (and other files necessary
+        for generating it) will be saved.
 
     Returns:
         Path: A path to the generated SBOM file.
     """
-    output_file = output_dir / "oci-image.spdx.json"
+    output_file = tmp_path / "oci-image.spdx.json"
+    metadata_file = make_metadata_yaml(tmp_path, child_image)
     code, _, stderr = await run_async_subprocess(
         [
             "mobster",
@@ -73,14 +100,8 @@ async def generate_child_image_sbom(child_image: Image, output_dir: Path) -> Pat
             "oci-image",
             "--from-syft",
             str(TESTDATA_PATH / "integration" / "image.syft.spdx.json"),
-            "--image-digest",
-            child_image.digest,
-            "--image-pullspec",
-            f"{child_image.repository}:{child_image.tag}",
-            "--parsed-dockerfile-path",
-            str(TESTDATA_PATH / "integration" / "parsed_dockerfile.json"),
-            "--base-image-digest-file",
-            str(TESTDATA_PATH / "integration" / "base_image_digest.txt"),
+            "--metadata-path",
+            str(metadata_file),
         ],
     )
     if code != 0:
@@ -91,22 +112,23 @@ async def generate_child_image_sbom(child_image: Image, output_dir: Path) -> Pat
     return output_file
 
 
-async def generate_index_image_sbom(index_image: IndexImage, output_dir: Path) -> Path:
+async def generate_index_image_sbom(index_image: IndexImage, tmp_path: Path) -> Path:
     """
     Generate an SBOM for an OCI image index using the `mobster` command-line tool.
 
     Args:
         index_image (Image): An index image for which the SBOM will be generated.
-        output_dir (Path): A directory where the SBOM will be saved.
+        tmp_path (Path): A directory where the SBOM (and other files necessary
+        for generating it) will be saved.
 
     Returns:
         Path: A path to the generated SBOM file.
     """
-    index_manifest_path = output_dir / "index-manifest.json"
+    index_manifest_path = tmp_path / "index-manifest.json"
     with open(index_manifest_path, "w", encoding="utf-8") as file:
         file.write(index_image.manifest or "")
 
-    output_file = output_dir / "oci-index.spdx.json"
+    output_file = tmp_path / "oci-index.spdx.json"
     code, _, stderr = await run_async_subprocess(
         [
             "mobster",

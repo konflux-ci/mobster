@@ -15,6 +15,9 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
+from mobster.cmd.generate.oci_image.base_image_utils import (
+    get_images_and_their_annotations,
+)
 from mobster.cmd.generate.oci_image.constants import BUILDER_IMAGE_PROPERTY
 from mobster.image import IMAGE_PKG_SPDX_PREFIX, Image
 from mobster.sbom.spdx import (
@@ -922,3 +925,97 @@ class DocumentIndexOCI:
         new_parent_pkg_ctx.parent_relationships.append(relationship)
         relationship.spdx_element_id = new_parent_spdx_id
         return True
+
+
+async def get_spdx_packages_from_base_images(
+    base_images_refs: list[str | None], base_images: dict[str, Image]
+) -> tuple[list[Package], list[Annotation]]:
+    """
+    Transforms the list of base images and their mapping to
+    an Image object into a list of SPDX Packages.
+    Args:
+        base_images_refs (list[str | None]):
+            list of image references, the last one is the parent image.
+        base_images (dict[str, Image]):
+            mapping of those references to Image objects.
+
+    Returns:
+        list[spdx_tools.spdx.model.Package]:
+            List of SPDX packages to be added to an SBOM.
+    """
+    packages = []
+    result_annotations = []
+    for image, annotations in await get_images_and_their_annotations(
+        base_images_refs, base_images
+    ):
+        package = get_image_package(image, spdx_id=image.propose_spdx_id())
+        for annotation in annotations:
+            result_annotations.append(
+                Annotation(
+                    spdx_id=package.spdx_id,
+                    annotation_type=AnnotationType.OTHER,
+                    annotation_date=datetime.now(timezone.utc),
+                    annotator=Actor(
+                        actor_type=ActorType.TOOL, name="konflux:jsonencoded"
+                    ),
+                    annotation_comment=json.dumps(annotation, separators=(",", ":")),
+                )
+            )
+        packages.append(package)
+    return packages, result_annotations
+
+
+async def extend_spdx_with_base_images(
+    sbom: Document, base_image_refs: list[str | None], base_images: dict[str, Image]
+) -> None:
+    """
+    Extend the SPDX SBOM with the base images.
+    Args:
+        sbom (spdx_tools.spdx.model.Document):
+            SBOM to be edited.
+        base_image_refs (list[str | None]):
+            list of image references, the last one is the parent image.
+        base_images (dict[str, Image]):
+            mapping of those references to Image objects.
+
+    Returns:
+        None: Nothing is returned, changes are performed in-place.
+    """
+    packages, annotations = await get_spdx_packages_from_base_images(
+        base_image_refs, base_images
+    )
+    if not packages:
+        return
+    sbom.packages.extend(packages)
+    sbom.annotations.extend(annotations)
+    root_spdxids = await find_spdx_root_packages_spdxid(sbom)
+    for root_spdxid in root_spdxids:
+        for package in packages[:-1]:
+            # Those are builder images
+            sbom.relationships.append(
+                Relationship(
+                    spdx_element_id=package.spdx_id,
+                    relationship_type=RelationshipType.BUILD_TOOL_OF,
+                    related_spdx_element_id=root_spdxid,
+                )
+            )
+        # Check if the parent is also used as a build tool
+        # (or if building from scratch, where the last package would also need
+        # to be counted as a build tool)
+        if base_image_refs[-1] in base_image_refs[:-1] or base_image_refs[-1] is None:
+            sbom.relationships.append(
+                Relationship(
+                    spdx_element_id=packages[-1].spdx_id,
+                    relationship_type=RelationshipType.BUILD_TOOL_OF,
+                    related_spdx_element_id=root_spdxid,
+                )
+            )
+        # Otherwise, relate this image as a descendant of the last set package
+        if base_image_refs[-1] is not None:
+            sbom.relationships.append(
+                Relationship(
+                    spdx_element_id=root_spdxid,
+                    relationship_type=RelationshipType.DESCENDANT_OF,
+                    related_spdx_element_id=packages[-1].spdx_id,
+                )
+            )

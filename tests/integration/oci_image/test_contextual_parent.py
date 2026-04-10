@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import Any
 
 import pytest
 from pytest_lazy_fixtures import lf
 
+from tests.integration.img_utils import make_metadata_yaml
 from tests.integration.oci_client import ReferrersTagOCIClient
 from tests.integration.oci_image.conftest import (
     GenerateData,
@@ -36,8 +36,6 @@ async def test_parent_content_contextualization(
     parent_packages: list[AnnotatedPackage],
     parent_only_packages: list[AnnotatedPackage],
     component_packages: list[AnnotatedPackage],
-    make_parsed_dockerfile_json: Any,
-    make_base_images_digests: Any,
     grandparent_input: Path,
     deep_grandparent: bool,
     contextualize_parent: bool,
@@ -79,11 +77,9 @@ async def test_parent_content_contextualization(
         await oci_client.attach_sbom(grandparent_img, "spdx", f.read())
 
     parent_gdata = GenerateData(
-        image=parent_img,
+        metadata_path=make_metadata_yaml(tmp_path, parent_img, grandparent_img),
         input_sbom_path=parent_input_sbom,
         output_sbom_path=tmp_path / "parent.output.spdx.json",
-        df_json_path=make_parsed_dockerfile_json(grandparent_img),
-        base_images_path=make_base_images_digests(grandparent_img),
         contextualize=contextualize_parent,
     )
 
@@ -113,11 +109,9 @@ async def test_parent_content_contextualization(
     )
 
     component_gdata = GenerateData(
-        image=component_img,
         input_sbom_path=component_input_sbom,
         output_sbom_path=tmp_path / "component.output.spdx.json",
-        df_json_path=make_parsed_dockerfile_json(parent_img),
-        base_images_path=make_base_images_digests(parent_img),
+        metadata_path=make_metadata_yaml(tmp_path, component_img, parent_img),
     )
 
     run_mobster_generate(component_gdata)
@@ -158,8 +152,6 @@ async def test_parent_content_contextualizaton_legacy(
     parent_packages: list[AnnotatedPackage],
     parent_only_packages: list[AnnotatedPackage],
     component_packages: list[AnnotatedPackage],
-    make_parsed_dockerfile_json: Any,
-    make_base_images_digests: Any,
     legacy_parent_sbom: Path,
     component_input_sbom: Path,
 ) -> None:
@@ -177,11 +169,9 @@ async def test_parent_content_contextualizaton_legacy(
         await oci_client.attach_sbom(parent_img, "spdx", f.read())
 
     component_gdata = GenerateData(
-        image=component_img,
         input_sbom_path=component_input_sbom,
         output_sbom_path=tmp_path / "component.output.spdx.json",
-        df_json_path=make_parsed_dockerfile_json(parent_img),
-        base_images_path=make_base_images_digests(parent_img),
+        metadata_path=make_metadata_yaml(tmp_path, component_img, parent_img),
     )
 
     run_mobster_generate(component_gdata)
