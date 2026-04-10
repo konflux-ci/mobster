@@ -166,12 +166,16 @@ async def verify_sbom(
     """
 
     prov = await cosign_client.fetch_latest_provenance(image)
-    prov_sbom_digest = prov.get_sbom_digest(image)
+    prov_sbom_digest = prov.sbom_digest(image.digest)
+    if prov_sbom_digest is None:
+        raise SBOMVerificationError(
+            f"Provenance does not contain SBOM_BLOB_URL for image {image}."
+        )
 
     if prov_sbom_digest != sbom.digest:
         raise SBOMVerificationError(
-            prov_sbom_digest,
-            sbom.digest,
+            f"Digest {prov_sbom_digest} of SBOM for image {image} in the provenance "
+            f"does not match the actual digest of the sbom {sbom.digest}"
         )
 
 
