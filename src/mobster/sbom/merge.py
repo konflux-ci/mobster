@@ -368,22 +368,22 @@ def _unique_key_syft(component: SBOMItem) -> str:
     if not purl:
         return fallback_key(component)
 
-    name = purl.name
-    version = purl.version
-    subpath = purl.subpath
-
-    if purl.type == "pypi":
-        name = name.lower()
+    name = purl.name.lower() if purl.type == "pypi" else purl.name
 
     if purl.type == "golang":
+        version = purl.version
+        subpath = purl.subpath
         if version:
             version = quote_plus(version)
         if subpath and _subpath_is_version(subpath):
             # put the module version where it belongs (in the module name)
             name = f"{name}/{subpath}"
             subpath = None
+        return purl._replace(
+            name=name, version=version, subpath=subpath, qualifiers=None
+        ).to_string()
 
-    return purl._replace(name=name, version=version, subpath=subpath).to_string()
+    return purl._replace(name=name, qualifiers=None, subpath=None).to_string()
 
 
 def get_merged_components(
