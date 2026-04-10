@@ -61,7 +61,7 @@ class AuthDetails(pydantic.BaseModel):
 class DockerConfig(pydantic.BaseModel):
     """Represents the top-level Docker configuration with authentication information."""
 
-    auths: dict[str, AuthDetails]
+    auths: dict[str, AuthDetails] = pydantic.Field(default_factory=dict)
 
 
 @contextmanager
