@@ -23,7 +23,7 @@ from mobster.cmd.augment import (
 from mobster.cmd.augment.handlers import CycloneDXVersion1, get_purl_digest
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
-from mobster.oci.artifact import SBOM, Provenance02
+from mobster.oci.artifact import SBOM, SLSAProvenance
 from mobster.oci.cosign import SupportsFetch, SupportsProvenanceFetch
 from mobster.release import Component, ReleaseId, ReleaseRepository, Snapshot
 from mobster.sbom import cyclonedx
@@ -320,16 +320,13 @@ class TestAugmentCommand:
         This test verifies the workflow doesn't raise an exception
         when SBOM has a different digest than mentioned in the attestation.
         """
-        mock_verify_sbom.side_effect = SBOMVerificationError("a", "b")
+        mock_verify_sbom.side_effect = SBOMVerificationError()
 
         image = Image("quay.io/repo", "sha256:aaaaaaaa")
         _, attestation_valid = await load_sbom(image, fake_cosign, True)
         assert attestation_valid is False
         assert caplog.records[-1].exc_text
-        assert (
-            "SBOM digest verification from provenance failed. "
-            "Expected digest: a, actual digest: b" in caplog.records[-1].exc_text
-        )
+        assert "Attestation verification failed for image" in caplog.records[-1].message
 
     @pytest.mark.asyncio
     async def test_update_sbom_error_handling(
@@ -355,12 +352,12 @@ class TestAugmentCommand:
 
 class FakeCosign(SupportsFetch, SupportsProvenanceFetch):
     def __init__(
-        self, provenances: dict[str, Provenance02], sboms: dict[str, SBOM]
+        self, provenances: dict[str, SLSAProvenance], sboms: dict[str, SBOM]
     ) -> None:
         self.provenances = provenances
         self.sboms = sboms
 
-    async def fetch_latest_provenance(self, image: Image) -> Provenance02:
+    async def fetch_latest_provenance(self, image: Image) -> SLSAProvenance:
         return [self.provenances[image.digest]][0]
 
     async def fetch_sbom(self, image: Image) -> SBOM:
@@ -372,6 +369,7 @@ class FakeCosign(SupportsFetch, SupportsProvenanceFetch):
         sboms = {}
 
         sbom_path = TESTDATA_PATH.joinpath("sboms")
+
         prov_path = TESTDATA_PATH.joinpath("provenances")
 
         for sbom_file in os.listdir(sbom_path):
@@ -385,27 +383,13 @@ class FakeCosign(SupportsFetch, SupportsProvenanceFetch):
             full = prov_path.joinpath(prov_file)
             with open(full, "rb") as fp:
                 payload = b64encode(fp.read()).decode()
-                prov = Provenance02.from_cosign_output(
-                    json.dumps({"payload": payload}).encode()
-                )
+                prov = SLSAProvenance.parse(json.dumps({"payload": payload}).encode())
                 provenances[prov_file] = prov
 
         return FakeCosign(provenances, sboms)
 
-    async def attest_provenance(self, provenance: Provenance02, image_ref: str) -> None:
+    async def attest_provenance(self, predicate: Any, image_ref: str) -> None:
         pass
-
-
-def load_provenance(prov_dir: Path, digest: str) -> Provenance02 | None:
-    ppath = prov_dir.joinpath(digest)
-    if ppath.exists():
-        with open(ppath, "rb") as fp:
-            payload = b64encode(fp.read()).decode()
-            return Provenance02.from_cosign_output(
-                json.dumps({"payload": payload}).encode()
-            )
-
-    return None
 
 
 def test_get_sbom_to_filename_dict_duplicate_prevention() -> None:

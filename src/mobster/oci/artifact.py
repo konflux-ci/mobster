@@ -3,6 +3,7 @@ Module containing classes for OCI artifact parsing.
 """
 
 import base64
+import binascii
 import datetime
 import hashlib
 import json
@@ -13,67 +14,93 @@ from typing import Any
 import dateutil.parser
 
 from mobster.error import SBOMError
-from mobster.image import Image
+from mobster.image import parse_image_reference
 
 logger = logging.getLogger(__name__)
 
 
-class Provenance02:
+class SLSAParsingError(Exception):
     """
-    Object containing the data of a provenance attestation.
-
-    Attributes:
-        predicate (dict): The attestation predicate.
+    Exception raised when parsing SLSA provenance data fails.
     """
 
-    predicate_type = "https://slsa.dev/provenance/v0.2"
 
-    def __init__(self, predicate: dict[str, Any]) -> None:
-        self.predicate = predicate
+class SLSAProvenance:
+    """
+    Class for parsing and accessing SLSA provenance data.
+
+    Parses SLSA provenance payloads and provides access to build metadata
+    and SBOM digest mappings for container images.
+    """
+
+    def __init__(
+        self, build_finished_on: datetime.datetime | None, sbom_digests: dict[str, str]
+    ) -> None:
+        self._build_finished_on = build_finished_on
+        self._sbom_digests: dict[str, str] = sbom_digests
 
     @staticmethod
-    def from_cosign_output(raw: bytes) -> "Provenance02":
+    def parse(attestation: bytes) -> "SLSAProvenance":
         """
-        Create a Provenance02 object from a line of raw "cosign
-        verify-attestation" output.
+        Parse a raw in-toto attestation into an SLSAProvenance.
+        https://github.com/in-toto/attestation/blob/main/spec/README.md#in-toto-attestation-framework-spec
 
         Args:
-            raw: Raw bytes from cosign verify-attestation command
+            attestation: Bytes containing data of an in-toto attestation.
+                E.g. a line of output from "cosign verify-attestation".
+
+        Raises:
+            SLSAParsingError: If the SLSA version is not supported, the
+                statement is missing a predicateType field, or some required
+                provenance content cannot be decoded.
         """
-        encoded = json.loads(raw)
-        att = json.loads(base64.b64decode(encoded["payload"]))
-        if (pt := att.get("predicateType")) != Provenance02.predicate_type:
-            raise ValueError(
-                f"Cannot parse predicateType {pt}. "
-                f"Expected {Provenance02.predicate_type}"
+        encoded = json.loads(attestation)
+        statement = json.loads(base64.b64decode(encoded["payload"]))
+
+        predicate_type = statement.get("predicateType")
+        if predicate_type is None:
+            raise SLSAParsingError(
+                'Statement is missing required "predicateType" field'
             )
 
-        predicate = att.get("predicate", {})
-        return Provenance02(predicate)
+        predicate = statement.get("predicate")
 
-    @property
-    def build_finished_on(self) -> datetime.datetime:
-        """
-        Return datetime of the build being finished.
-        If it's not available, fallback to datetime.min.
-        """
-        finished_on: str | None = self.predicate.get("metadata", {}).get(
-            "buildFinishedOn"
+        if predicate_type == "https://slsa.dev/provenance/v0.2":
+            return SLSAProvenance._parse_v02(predicate)
+        if predicate_type == "https://slsa.dev/provenance/v1":
+            return SLSAProvenance._parse_v1(predicate)
+
+        raise SLSAParsingError(
+            f"Cannot parse SLSA provenance with predicateType {predicate_type}."
         )
-        if finished_on:
-            return dateutil.parser.isoparse(finished_on)
 
-        return datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
-
-    def get_sbom_digest(self, image: Image) -> str:
+    @staticmethod
+    def _parse_v02(predicate: Any) -> "SLSAProvenance":
         """
-        Find the SBOM_BLOB_URL value in the provenance for the supplied image.
+        Parse an SLSA provenance v0.2 from an in-toto attestation's predicate
+        field.
+        https://github.com/in-toto/attestation/blob/main/spec/README.md#in-toto-attestation-framework-spec
+
+        Spec of the provenance can be found in https://slsa.dev/provenance/v0.2
 
         Args:
-            image: The image to find the SBOM digest for
+            predicate: Contents of the "predicate" field of the in-toto
+                attestation's statement parsed into a dictionary object.
+
+        Returns:
+            An SLSAProvenance object populated with data from the predicate.
         """
+        # parse build_finished_on
+
+        finished_on: str | None = predicate.get("metadata", {}).get("buildFinishedOn")
+        if finished_on:
+            build_finished_on = dateutil.parser.isoparse(finished_on)
+        else:
+            build_finished_on = None
+
+        # map image digests to sbom blob digests
         sbom_blob_urls: dict[str, str] = {}
-        tasks = self.predicate.get("buildConfig", {}).get("tasks", [])
+        tasks = predicate.get("buildConfig", {}).get("tasks", [])
         for task in tasks:
             curr_digest, sbom_url = "", ""
             for result in task.get("results", []):
@@ -83,13 +110,102 @@ class Provenance02:
                     curr_digest = result.get("value")
             if not all([curr_digest, sbom_url]):
                 continue
-            sbom_blob_urls[curr_digest] = sbom_url
 
-        blob_url = sbom_blob_urls.get(image.digest)
-        if blob_url is None:
-            raise SBOMError(f"No SBOM_BLOB_URL found in attestation for image {image}.")
+            sbom_blob_urls[curr_digest] = sbom_url.split("@", 1)[1]
 
-        return blob_url.split("@", 1)[1]
+        return SLSAProvenance(build_finished_on, sbom_blob_urls)
+
+    @staticmethod
+    def _parse_v1(predicate: Any) -> "SLSAProvenance":
+        """
+        Parse an SLSA provenance v1 from an in-toto attestation's predicate
+        field.
+            https://github.com/in-toto/attestation/blob/main/spec/README.md#in-toto-attestation-framework-spec
+
+        Args:
+            predicate: Contents of the "predicate" field of the in-toto
+                attestation's statement parsed into a dictionary object.
+
+        Spec of the provenance can be found in https://slsa.dev/provenance/v1
+
+        Returns:
+            An SLSAProvenance object populated with data from the predicate.
+        """
+        finished_on: str | None = (
+            predicate.get("runDetails", {}).get("metadata", {}).get("finishedOn")
+        )
+        if finished_on:
+            build_finished_on = dateutil.parser.isoparse(finished_on)
+        else:
+            build_finished_on = None
+
+        image_digests: dict[str, str] = {}
+        sbom_digests: dict[str, str] = {}
+        byproducts = predicate.get("runDetails", {}).get("byproducts", [])
+
+        for byproduct in byproducts:
+            name = byproduct.get("name", "")
+            if name not in (
+                "taskRunResults/IMAGE_REF",
+                "taskRunResults/SBOM_BLOB_URL",
+            ):
+                continue
+
+            content = byproduct.get("content")
+            if content is None:
+                raise SLSAParsingError(
+                    f'Byproduct with name {name} is missing "content" field'
+                )
+
+            try:
+                decoded = json.loads(base64.b64decode(content))
+            except (binascii.Error, json.JSONDecodeError) as err:
+                raise SLSAParsingError(
+                    f"Failed to decode {name} content: {err}"
+                ) from err
+
+            if not isinstance(decoded, str):
+                raise SLSAParsingError(
+                    f"Expected string content for {name}, got {type(decoded).__name__}"
+                )
+
+            repository, digest = parse_image_reference(decoded)
+            if name == "taskRunResults/IMAGE_REF":
+                image_digests.setdefault(repository, digest)
+            elif name == "taskRunResults/SBOM_BLOB_URL":
+                sbom_digests[repository] = digest
+
+        sbom_blob_urls = {
+            image_digests[repo]: sbom_digest
+            for repo, sbom_digest in sbom_digests.items()
+            if repo in image_digests
+        }
+
+        return SLSAProvenance(build_finished_on, sbom_blob_urls)
+
+    @property
+    def build_finished_on(self) -> datetime.datetime | None:
+        """
+        Get the timestamp when the build finished.
+
+        Returns:
+            The build completion timestamp, or None if the timestamp was not
+            available in the provenance data.
+        """
+        return self._build_finished_on
+
+    def sbom_digest(self, image_digest: str) -> str | None:
+        """
+        Get the SBOM digest for a given image digest.
+
+        Args:
+            image_digest: SHA256 digest of the container image
+
+        Returns:
+            The corresponding SBOM digest, or None if not found in the
+            provenance data.
+        """
+        return self._sbom_digests.get(image_digest)
 
 
 class SBOMFormat(Enum):
