@@ -278,8 +278,8 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_merge.return_value = mock_merged_data
 
     def mock_metadata() -> None:
-        command._metadata = SBOMMetadata(
-            **{
+        command._metadata = SBOMMetadata.model_validate(
+            {
                 "image": {"pullspec": "foo", "digest": "bar"},
                 "base_images": [],
                 "extra_images": [],
