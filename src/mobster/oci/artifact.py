@@ -40,19 +40,21 @@ class SLSAProvenance:
         self._sbom_digests: dict[str, str] = sbom_digests
 
     @staticmethod
-    def parse(raw: bytes) -> "SLSAProvenance":
+    def parse(attestation: bytes) -> "SLSAProvenance":
         """
-        Parse a raw cosign attestation payload into an SLSAProvenance.
+        Parse a raw in-toto attestation into an SLSAProvenance.
+        https://github.com/in-toto/attestation/blob/main/spec/README.md#in-toto-attestation-framework-spec
 
         Args:
-            raw: Raw bytes from cosign verify-attestation output.
+            attestation: Bytes containing data of an in-toto attestation.
+                E.g. a line of output from "cosign verify-attestation".
 
         Raises:
             SLSAParsingError: If the SLSA version is not supported, the
-                statement is missing a predicateType field, or byproduct
-                content cannot be decoded.
+                statement is missing a predicateType field, or some required
+                provenance content cannot be decoded.
         """
-        encoded = json.loads(raw)
+        encoded = json.loads(attestation)
         statement = json.loads(base64.b64decode(encoded["payload"]))
 
         predicate_type = statement.get("predicateType")
@@ -74,6 +76,20 @@ class SLSAProvenance:
 
     @staticmethod
     def _parse_v02(predicate: Any) -> "SLSAProvenance":
+        """
+        Parse an SLSA provenance v0.2 from an in-toto attestation's predicate
+        field.
+        https://github.com/in-toto/attestation/blob/main/spec/README.md#in-toto-attestation-framework-spec
+
+        Spec of the provenance can be found in https://slsa.dev/provenance/v0.2
+
+        Args:
+            predicate: Contents of the "predicate" field of the in-toto
+                attestation's statement parsed into a dictionary object.
+
+        Returns:
+            An SLSAProvenance object populated with data from the predicate.
+        """
         # parse build_finished_on
 
         finished_on: str | None = predicate.get("metadata", {}).get("buildFinishedOn")
@@ -103,6 +119,20 @@ class SLSAProvenance:
 
     @staticmethod
     def _parse_v1(predicate: Any) -> "SLSAProvenance":
+        """
+        Parse an SLSA provenance v1 from an in-toto attestation's predicate
+        field.
+            https://github.com/in-toto/attestation/blob/main/spec/README.md#in-toto-attestation-framework-spec
+
+        Args:
+            predicate: Contents of the "predicate" field of the in-toto
+                attestation's statement parsed into a dictionary object.
+
+        Spec of the provenance can be found in https://slsa.dev/provenance/v1
+
+        Returns:
+            An SLSAProvenance object populated with data from the predicate.
+        """
         finished_on: str | None = (
             predicate.get("runDetails", {}).get("metadata", {}).get("finishedOn")
         )
