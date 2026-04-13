@@ -5,6 +5,7 @@ import logging
 import os
 import tempfile
 import typing
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -127,7 +128,19 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
         if len(provenances) == 0:
             raise SBOMError(f"No provenances parsed for image {image}.")
 
-        return sorted(provenances, key=lambda x: x.build_finished_on, reverse=True)[0]
+        # sort the provenances to ensure we attempt to use the latest one
+        if any(p.build_finished_on is None for p in provenances):
+            logger.warning(
+                "Some fetched provenances are missing build_finished_on information. "
+                "datetime.min will be used as fallback for sorting."
+            )
+
+        def key_by_build_finished_on(prov: SLSAProvenance) -> datetime:
+            if prov.build_finished_on is not None:
+                return prov.build_finished_on
+            return datetime.min.replace(tzinfo=timezone.utc)
+
+        return sorted(provenances, key=key_by_build_finished_on, reverse=True)[0]
 
     async def fetch_attested_sbom(
         self, image: Image, sbom_format: SBOMFormat
