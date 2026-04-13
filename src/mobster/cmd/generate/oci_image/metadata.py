@@ -1,4 +1,5 @@
 """Pydantic classes for parsing SBOM metadata files."""
+
 import pydantic
 
 

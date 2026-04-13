@@ -24,7 +24,6 @@ from mobster.cmd.generate.oci_image.base_images_dockerfile import (
     extend_sbom_with_base_images,
     get_digest_for_image_ref,
 )
-from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderContextualizationError,
     BuilderPkgMetadata,
@@ -41,6 +40,7 @@ from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrappe
 from mobster.cmd.generate.oci_image.hermeto_sbom_filter import (
     filter_hermeto_sbom_by_arch,
 )
+from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
 from mobster.cmd.generate.oci_image.spdx_utils import (
     DocumentIndexOCI,
     normalize_and_load_sbom,
