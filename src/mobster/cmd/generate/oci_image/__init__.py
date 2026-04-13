@@ -20,10 +20,6 @@ import mobster.utils
 from mobster import syft
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
-from mobster.cmd.generate.oci_image.sbom_utils import (
-    extend_sbom_with_base_images,
-    get_digest_for_image_ref,
-)
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderContextualizationError,
     BuilderPkgMetadata,
@@ -41,6 +37,10 @@ from mobster.cmd.generate.oci_image.hermeto_sbom_filter import (
     filter_hermeto_sbom_by_arch,
 )
 from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
+from mobster.cmd.generate.oci_image.sbom_utils import (
+    extend_sbom_with_base_images,
+    get_digest_for_image_ref,
+)
 from mobster.cmd.generate.oci_image.spdx_utils import (
     DocumentIndexOCI,
     normalize_and_load_sbom,

@@ -22,6 +22,7 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
 from mobster import get_mobster_version
+from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.sbom_utils import (
     _extend_cdx_with_base_images,
     _extend_spdx_with_base_images,
@@ -31,7 +32,6 @@ from mobster.cmd.generate.oci_image.sbom_utils import (
     extend_sbom_with_base_images,
     get_objects_for_base_images,
 )
-from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.image import Image
 
 
@@ -837,15 +837,9 @@ async def test__extend_cdx_with_base_images(
 
 
 @pytest.mark.asyncio
-@patch(
-    "mobster.cmd.generate.oci_image.sbom_utils.get_objects_for_base_images"
-)
-@patch(
-    "mobster.cmd.generate.oci_image.sbom_utils._extend_cdx_with_base_images"
-)
-@patch(
-    "mobster.cmd.generate.oci_image.sbom_utils._extend_spdx_with_base_images"
-)
+@patch("mobster.cmd.generate.oci_image.sbom_utils.get_objects_for_base_images")
+@patch("mobster.cmd.generate.oci_image.sbom_utils._extend_cdx_with_base_images")
+@patch("mobster.cmd.generate.oci_image.sbom_utils._extend_spdx_with_base_images")
 @pytest.mark.parametrize(
     ["input_sbom_object"],
     [
