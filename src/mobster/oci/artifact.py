@@ -34,7 +34,7 @@ class SLSAProvenance:
     """
 
     def __init__(
-        self, build_finished_on: datetime.datetime, sbom_digests: dict[str, str]
+        self, build_finished_on: datetime.datetime | None, sbom_digests: dict[str, str]
     ) -> None:
         self._build_finished_on = build_finished_on
         self._sbom_digests: dict[str, str] = sbom_digests
@@ -96,9 +96,7 @@ class SLSAProvenance:
         if finished_on:
             build_finished_on = dateutil.parser.isoparse(finished_on)
         else:
-            build_finished_on = datetime.datetime.min.replace(
-                tzinfo=datetime.timezone.utc
-            )
+            build_finished_on = None
 
         # map image digests to sbom blob digests
         sbom_blob_urls: dict[str, str] = {}
@@ -139,9 +137,7 @@ class SLSAProvenance:
         if finished_on:
             build_finished_on = dateutil.parser.isoparse(finished_on)
         else:
-            build_finished_on = datetime.datetime.min.replace(
-                tzinfo=datetime.timezone.utc
-            )
+            build_finished_on = None
 
         image_digests: dict[str, str] = {}
         sbom_digests: dict[str, str] = {}
@@ -188,13 +184,13 @@ class SLSAProvenance:
         return SLSAProvenance(build_finished_on, sbom_blob_urls)
 
     @property
-    def build_finished_on(self) -> datetime.datetime:
+    def build_finished_on(self) -> datetime.datetime | None:
         """
         Get the timestamp when the build finished.
 
         Returns:
-            The build completion timestamp, or datetime.min with UTC timezone
-            if the timestamp was not available in the provenance data.
+            The build completion timestamp, or None if the timestamp was not
+            available in the provenance data.
         """
         return self._build_finished_on
 

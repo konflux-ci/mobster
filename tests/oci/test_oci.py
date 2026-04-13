@@ -449,9 +449,7 @@ class TestSLSAProvenance:
 
         prov = SLSAProvenance.parse(raw)
 
-        assert prov.build_finished_on == datetime.datetime.min.replace(
-            tzinfo=datetime.timezone.utc
-        )
+        assert prov.build_finished_on is None
 
     def test_v02_task_missing_sbom_blob_url(self) -> None:
         raw = _make_slsa_raw(
@@ -531,9 +529,7 @@ class TestSLSAProvenance:
 
         prov = SLSAProvenance.parse(raw)
 
-        assert prov.build_finished_on == datetime.datetime.min.replace(
-            tzinfo=datetime.timezone.utc
-        )
+        assert prov.build_finished_on is None
 
     def test_v1_bad_base64_in_byproduct(self) -> None:
         raw = _make_slsa_raw(
