@@ -20,7 +20,7 @@ import mobster.utils
 from mobster import syft
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
-from mobster.cmd.generate.oci_image.base_images_dockerfile import (
+from mobster.cmd.generate.oci_image.sbom_utils import (
     extend_sbom_with_base_images,
     get_digest_for_image_ref,
 )

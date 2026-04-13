@@ -22,7 +22,7 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
 from mobster import get_mobster_version
-from mobster.cmd.generate.oci_image.base_images_dockerfile import (
+from mobster.cmd.generate.oci_image.sbom_utils import (
     _extend_cdx_with_base_images,
     _extend_spdx_with_base_images,
     _get_cdx_components_from_base_images,
@@ -72,11 +72,11 @@ from mobster.image import Image
         ),
     ],
 )
-@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.run_async_subprocess")
+@patch("mobster.cmd.generate.oci_image.sbom_utils.run_async_subprocess")
 @patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.make_oci_auth_file",
+    "mobster.cmd.generate.oci_image.sbom_utils.make_oci_auth_file",
 )
-@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.LOGGER")
+@patch("mobster.cmd.generate.oci_image.sbom_utils.LOGGER")
 async def test_get_objects_for_base_images(
     mock_logger: AsyncMock,
     mock_make_oci_auth_file: AsyncMock,
@@ -354,7 +354,7 @@ async def test__get_cdx_components_from_base_images(
         ),
     ],
 )
-@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.datetime")
+@patch("mobster.cmd.generate.oci_image.sbom_utils.datetime")
 async def test__get_spdx_packages_from_base_images(
     mock_datetime: MagicMock,
     base_images_refs: list[str | None],
@@ -669,7 +669,7 @@ async def test__get_spdx_packages_from_base_images(
         ),
     ],
 )
-@patch("mobster.cmd.generate.oci_image.base_images_dockerfile.datetime")
+@patch("mobster.cmd.generate.oci_image.sbom_utils.datetime")
 async def test__extend_spdx_with_base_images(
     mock_datetime: MagicMock,
     spdx_sbom_skeleton: dict[str, Any],
@@ -838,13 +838,13 @@ async def test__extend_cdx_with_base_images(
 
 @pytest.mark.asyncio
 @patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile.get_objects_for_base_images"
+    "mobster.cmd.generate.oci_image.sbom_utils.get_objects_for_base_images"
 )
 @patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile._extend_cdx_with_base_images"
+    "mobster.cmd.generate.oci_image.sbom_utils._extend_cdx_with_base_images"
 )
 @patch(
-    "mobster.cmd.generate.oci_image.base_images_dockerfile._extend_spdx_with_base_images"
+    "mobster.cmd.generate.oci_image.sbom_utils._extend_spdx_with_base_images"
 )
 @pytest.mark.parametrize(
     ["input_sbom_object"],
