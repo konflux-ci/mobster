@@ -83,7 +83,6 @@ class TestStaticFetcher:
         client: cosign.StaticKeyFetcher,
         monkeypatch: pytest.MonkeyPatch,
         make_provenance_raw: Callable[[datetime.datetime | None], bytes],
-        make_provenance_predicate: Callable[[datetime.datetime | None], dict[str, Any]],
     ) -> None:
         old_date = isoparse("2023-01-01T12:05:30Z")
         new_date = isoparse("2025-01-01T12:05:30Z")
@@ -102,7 +101,7 @@ class TestStaticFetcher:
         )
 
         prov = await client.fetch_latest_provenance(image)
-        assert prov.predicate == make_provenance_predicate(new_date)
+        assert prov.build_finished_on == new_date
 
     @pytest.mark.asyncio
     async def test_fetch_attested_sbom(
@@ -156,15 +155,20 @@ class TestStaticFetcher:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        ["code"],
+        ["code", "stderr"],
         [
-            pytest.param(0, id="no-provenances"),
-            pytest.param(1, id="exit-code"),
+            pytest.param(
+                1,
+                b"none of the attestations matched the predicate type",
+                id="no-provenances",
+            ),
+            pytest.param(1, b"", id="empty stdout"),
         ],
     )
     async def test_fetch_latest_provenance_failure(
         self,
         code: int,
+        stderr: bytes,
         image: Image,
         client: cosign.StaticKeyFetcher,
         monkeypatch: pytest.MonkeyPatch,
@@ -172,7 +176,7 @@ class TestStaticFetcher:
         async def mock_run_async_subprocess(
             cmd: Any, env: Any, retry_times: Any
         ) -> tuple[int, bytes, bytes]:
-            return code, b"", b""
+            return code, b"", stderr
 
         monkeypatch.setattr(
             "mobster.oci.cosign.static.run_async_subprocess",
