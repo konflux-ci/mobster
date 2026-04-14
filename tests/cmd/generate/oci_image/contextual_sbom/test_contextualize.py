@@ -637,6 +637,7 @@ async def test_download_parent_image_sbom(
         spdx_parent_sbom_bytes, "quay.io/foo"
     )
     sbom_doc = await download_parent_image_sbom(Image("quay.io/foo", "sha256:a"), arch)
+    assert sbom_doc is not None
     assert sbom_doc == json.loads(spdx_parent_sbom_bytes)
     assert sbom_doc.get("spdxVersion", "").startswith("SPDX-2.")
     assert (

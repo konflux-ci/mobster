@@ -7,7 +7,6 @@ import pytest
 import yaml
 
 from mobster.image import Image
-from mobster.oci.artifact import Provenance02
 from mobster.oci.cosign import SignConfig, StaticSignConfig
 from mobster.oci.cosign.static import StaticKeySigner
 from mobster.utils import run_async_subprocess
@@ -111,17 +110,17 @@ async def create_image_attestation(
     """
     attestation_template_path = TESTDATA_PATH / "integration" / "img_attestation.json"
     with open(attestation_template_path, encoding="utf-8") as attestation_file:
-        attestation_data = json.load(attestation_file)["predicate"]
+        predicate = json.load(attestation_file)["predicate"]
 
     update_attestation_with_image_details(
-        attestation_data, index_img, child_img, index_sbom_ref, child_sbom_ref
+        predicate, index_img, child_img, index_sbom_ref, child_sbom_ref
     )
 
     await cosign_client.attest_provenance(
-        Provenance02(attestation_data), f"{child_img.repository}@{child_img.digest}"
+        predicate, f"{child_img.repository}@{child_img.digest}", "slsaprovenance02"
     )
     await cosign_client.attest_provenance(
-        Provenance02(attestation_data), f"{index_img.repository}@{index_img.digest}"
+        predicate, f"{index_img.repository}@{index_img.digest}", "slsaprovenance02"
     )
 
 

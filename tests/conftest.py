@@ -438,14 +438,14 @@ def inspected_parent_singlearch() -> bytes:
 
 @pytest.fixture(scope="session")
 def spdx_parent_sbom() -> Document:
-    return parse_file(  # type: ignore[no-any-return]
+    return parse_file(
         "tests/sbom/test_oci_generate_data/contextual/fake_parent_sbom/parent_sbom_legacy_with_builder.spdx.json"
     )
 
 
 @pytest.fixture(scope="session")
 def spdx_parent_sbom_builder_removed() -> Document:
-    return parse_file(  # type: ignore[no-any-return]
+    return parse_file(
         "tests/sbom/test_oci_generate_data/contextual/fake_parent_sbom/parent_sbom_legacy_builder_removed.spdx.json"
     )
 

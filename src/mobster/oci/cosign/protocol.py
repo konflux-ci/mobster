@@ -4,7 +4,7 @@ import typing
 from pathlib import Path
 
 from mobster.image import Image
-from mobster.oci.artifact import SBOM, Provenance02, SBOMFormat
+from mobster.oci.artifact import SBOM, SBOMFormat, SLSAProvenance
 
 
 @typing.runtime_checkable
@@ -30,7 +30,7 @@ class SupportsProvenanceFetch(typing.Protocol):
 
     # pylint: disable=too-few-public-methods
 
-    async def fetch_latest_provenance(self, image: Image) -> Provenance02:
+    async def fetch_latest_provenance(self, image: Image) -> SLSAProvenance:
         """
         Fetch the latest provenance for an image.
         Args:
