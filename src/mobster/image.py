@@ -19,18 +19,20 @@ _REPOSITORY_REGEX_STR = r"""
 """
 _TAG_REGEX_STR = r"(?::(?P<tag>[\w][\w.-]{0,127}))?"
 _DIGEST_REGEX_STR = r"""
-(?:@(?P<digest>
-      (?P<digest_alg>[A-Za-z][A-Za-z0-9]*)(?:[+.-_][A-Za-z][A-Za-z0-9]*)*:
-      (?P<digest_hash>[0-9a-fA-F]{32,}))
+(?P<digest>
+  (?P<digest_alg>[A-Za-z][A-Za-z0-9]*)(?:[+.-_][A-Za-z][A-Za-z0-9]*)*:
+  (?P<digest_hash>[0-9a-fA-F]{32,})
 )
 """
+_PULLSPEC_DIGEST_REGEX_STR=f"(?:@{_DIGEST_REGEX_STR})"
 ARTIFACT_PATTERN = re.compile(
-    f"^{_REPOSITORY_REGEX_STR}{_TAG_REGEX_STR}{_DIGEST_REGEX_STR}$",
+    f"^{_REPOSITORY_REGEX_STR}{_TAG_REGEX_STR}{_PULLSPEC_DIGEST_REGEX_STR}$",
     re.VERBOSE | re.MULTILINE,
 )
 PULLSPEC_PATTERN = re.compile(
     f"^{_REPOSITORY_REGEX_STR}{_TAG_REGEX_STR}$", re.VERBOSE | re.MULTILINE
 )
+DIGEST_PATTERN = re.compile(f"^{_DIGEST_REGEX_STR}$", re.VERBOSE | re.MULTILINE)
 
 IMAGE_PKG_SPDX_PREFIX = "SPDXRef-image"
 

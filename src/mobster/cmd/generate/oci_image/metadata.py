@@ -1,16 +1,16 @@
 """Pydantic classes for parsing SBOM metadata files."""
 
-import pydantic
+from mobster.image import PULLSPEC_PATTERN, DIGEST_PATTERN
+from pydantic import BaseModel, Field
 
-
-class ImageData(pydantic.BaseModel):
+class ImageData(BaseModel):
     """Image information provided by each entry of SBOMMetadata."""
 
-    pullspec: str
-    digest: str
+    pullspec: str = Field(pattern=PULLSPEC_PATTERN)
+    digest: str = Field(pattern=DIGEST_PATTERN)
 
 
-class SBOMMetadata(pydantic.BaseModel):
+class SBOMMetadata(BaseModel):
     """Dataclass describing an OCI image and its dependency images."""
 
     # the OCI image that was built
