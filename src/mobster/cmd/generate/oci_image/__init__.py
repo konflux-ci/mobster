@@ -306,7 +306,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 self._metadata.image.digest,
                 arch=image_arch,
             )
-            await extend_sbom_with_image_reference(sbom, image, False)
+            await extend_sbom_with_image_reference(sbom, image, is_builder_image=False)
             for base_image_data in self._metadata.base_images:
                 base_image = Image.from_image_index_url_and_digest(
                     base_image_data.pullspec,
