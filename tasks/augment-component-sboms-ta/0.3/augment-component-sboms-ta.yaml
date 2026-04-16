@@ -143,13 +143,25 @@ spec:
       type: string
       description: The external URL of the Rekor transparency log.
       default: ""
+    - name: rekorInternalUrl
+      type: string
+      description: The internal URL of the Rekor transparency log.
+      default: ""
     - name: fulcioExternalUrl
       type: string
       description: The external URL of the Fulcio certificate authority.
       default: ""
+    - name: fulcioInternalUrl
+      type: string
+      description: The internal URL of the Fulcio certificate authority.
+      default: ""
     - name: tufExternalUrl
       type: string
       description: The external URL of the TUF repository.
+      default: ""
+    - name: tufInternalUrl
+      type: string
+      description: The internal URL of the TUF repository.
       default: ""
     - name: buildIdentityRegexp
       type: string
@@ -319,26 +331,32 @@ spec:
           --result-dir "$(params.resultsDirPath)"
           --release-data "$(params.releaseData)"
         )
+
+        # Initialize URL parameters to the right value (prioritizing internal url)
+        rekorUrl="$(params.rekorInternalUrl)"; rekorUrl="${rekorUrl:-$(params.rekorExternalUrl)}"
+        fulcioUrl="$(params.fulcioInternalUrl)"; fulcioUrl="${fulcioUrl:-$(params.fulcioExternalUrl)}"
+        tufUrl="$(params.tufInternalUrl)"; tufUrl="${tufUrl:-$(params.tufExternalUrl)}"
+
         # Params are basically Bash commands, their value
         # has to be checked with -n. Env variables should
         # be checked with -v to not leak expanded secrets
         # through xtrace. Bash conditionals ([[) have to
         # be used instead of Shell conditionals ([) to use -v
         if [[ -n "$(params.defaultOIDCIssuer)" \
-          && -n "$(params.rekorExternalUrl)" \
-          && -n "$(params.fulcioExternalUrl)" \
-          && -n "$(params.tufExternalUrl)" \
+          && -n "${rekorUrl}" \
+          && -n "${fulcioUrl}" \
+          && -n "${tufUrl}" \
           && -n "$(params.buildIdentityRegexp)" \
         ]]; then
           # Keyless signing is used for augmentation
-          cosign initialize --root "$(params.tufExternalUrl)/root.json" \
-            --mirror "$(params.tufExternalUrl)"
+          cosign initialize --root "${tufUrl}/root.json" \
+            --mirror "${tufUrl}"
           mobster_args+=(
             --oidc-token /var/run/sigstore/cosign/oidc-token
-            --fulcio-url "$(params.fulcioExternalUrl)"
+            --fulcio-url "${fulcioUrl}"
             --oidc-issuer "$(params.defaultOIDCIssuer)"
             --oidc-identity-pattern "$(params.buildIdentityRegexp)"
-            --rekor-url "$(params.rekorExternalUrl)"
+            --rekor-url "${rekorUrl}"
           )
         elif [[ -n "$(params.attestationPubKey)" \
           && -v SIGN_KEY \
