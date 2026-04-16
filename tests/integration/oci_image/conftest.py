@@ -1,8 +1,6 @@
-import json
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import pytest
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
@@ -20,11 +18,10 @@ class GenerateData:
     call.
     """
 
-    image: Image
     output_sbom_path: Path
+    image: Image | None = None
     input_sbom_path: Path | None = None
-    df_json_path: Path | None = None
-    base_images_path: Path | None = None
+    metadata_path: Path | None = None
     contextualize: bool = True
 
 
@@ -58,16 +55,8 @@ def run_mobster_generate(gdata: GenerateData) -> None:
     if gdata.contextualize:
         cmd.append("--contextualize")
 
-    if gdata.base_images_path:
-        cmd.extend(
-            [
-                "--base-image-digest-file",
-                str(gdata.base_images_path),
-            ]
-        )
-
-    if gdata.df_json_path:
-        cmd.extend(["--parsed-dockerfile-path", str(gdata.df_json_path)])
+    if gdata.metadata_path:
+        cmd.extend(["--metadata-path", str(gdata.metadata_path)])
 
     subprocess.run(cmd, check=True)
 
@@ -420,50 +409,6 @@ def verify_packages_not_included(
         assert pkg.spdx_id not in excluded_spdx_ids, (
             "The SBOM document contains a package that must be excluded."
         )
-
-
-@pytest.fixture
-def make_parsed_dockerfile_json(tmp_path: Path) -> Any:
-    """
-    Factory fixture that returns a function that can generate a parsed
-    dockerfile json from an image, simulating an ancestor relationship.
-    """
-
-    def _make_parsed_dockerfile_json(img: Image) -> Path:
-        parsed_df = {
-            "Stages": [
-                {
-                    "BaseName": f"{img.repository}:{img.tag}",
-                    "From": {"Image": f"{img.repository}:{img.tag}"},
-                },
-            ]
-        }
-
-        path = tmp_path / f"{img.digest}.df.json"
-        with open(path, "w") as fp:
-            fp.write(json.dumps(parsed_df))
-        return path
-
-    return _make_parsed_dockerfile_json
-
-
-@pytest.fixture
-def make_base_images_digests(tmp_path: Path) -> Any:
-    """
-    Factory fixture that returns a function that can generate a
-    base-images-digests file from an image, simulating an ancestor
-    relationship.
-    """
-
-    def _make_base_images_digests(img: Image) -> Path:
-        path = tmp_path / f"{img.digest}.base_images.txt"
-        with open(path, "w") as fp:
-            fp.write(
-                f"{img.repository}:{img.tag} {img.repository}:{img.tag}@{img.digest}\n"
-            )
-        return path
-
-    return _make_base_images_digests
 
 
 def get_dependency_chain_spdx_ids(relationships: list[Relationship]) -> list[str]:

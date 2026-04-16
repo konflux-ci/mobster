@@ -20,6 +20,7 @@ class GenerateCommand(Command, ABC):
         super().__init__(*args, **kwargs)
 
         self._content: Any = None
+        self._metadata: Any = None
 
     @property
     def content(self) -> Any:
