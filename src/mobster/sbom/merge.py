@@ -154,20 +154,73 @@ def wrap_as_spdx(items: list[dict[str, Any]]) -> list[SPDXPackage]:
     return list(map(SPDXPackage, items))
 
 
+def _adaptive_purl_key(component: SBOMItem) -> str:
+    """
+    Create an unique key that works for ANY PURL type.
+
+    Args:
+        component: The component to create a key for
+
+    Returns:
+        str: An unique key for deduplication
+    """
+    purl = component.purl()
+    if not purl:
+        return fallback_key(component)
+
+    name = purl.name
+    version = purl.version or ""
+    subpath = purl.subpath
+
+    # Package-type-specific handling
+    if purl.type == "pypi":
+        name = name.lower()
+    elif purl.type == "golang":
+        if version:
+            version = quote_plus(version)
+        if subpath and _subpath_is_version(subpath):
+            name = f"{name}/{subpath}"
+            subpath = None
+
+    # Keep only identity-critical qualifiers that distinguish different packages
+    clean_qualifiers = None
+    qualifiers = purl.qualifiers
+    if isinstance(qualifiers, dict) and qualifiers:
+        identity_qualifiers = {"arch", "os", "classifier", "type", "epoch", "distro"}
+
+        meaningful_quals = {}
+        for k, v in qualifiers.items():
+            if k in identity_qualifiers:
+                # Skip 'noarch' as it means universal (no architecture distinction)
+                if k == "arch" and v == "noarch":
+                    continue
+                meaningful_quals[k] = v
+
+        if purl.type == "golang" and meaningful_quals.get("type") == "module":
+            meaningful_quals.pop("type", None)
+
+        clean_qualifiers = meaningful_quals if meaningful_quals else None
+
+    normalized_purl = purl._replace(
+        name=name,
+        version=version,
+        qualifiers=clean_qualifiers,
+        subpath=subpath if purl.type == "golang" else None,
+    )
+
+    return normalized_purl.to_string()
+
+
 def merge_by_apparent_sameness(
     components_a: Sequence[SBOMItem], components_b: Sequence[SBOMItem]
 ) -> list[dict[str, Any]]:
     """
     Merge components based on apparent sameness.
     """
-
-    def key(component: SBOMItem) -> str:
-        purl = component.purl()
-        if purl:
-            return purl.to_string()
-        return fallback_key(component)
-
-    return [c.unwrap() for c in get_merged_components(components_a, components_b, key)]
+    return [
+        c.unwrap()
+        for c in get_merged_components(components_a, components_b, _adaptive_purl_key)
+    ]
 
 
 def merge_by_prefering_hermeto(
@@ -177,8 +230,25 @@ def merge_by_prefering_hermeto(
     Merge components by preferring hermeto components over syft components.
     """
     is_duplicate_component = _get_syft_component_filter(hermeto_components)
-    merged = [c for c in syft_components if not is_duplicate_component(c)]
-    merged += hermeto_components
+    key = _adaptive_purl_key
+
+    hermeto_by_key = {}
+    for c in hermeto_components:
+        hermeto_by_key[key(c)] = c
+    hermeto_out = list(hermeto_by_key.values())
+
+    syft_out = []
+    syft_keys_seen = set()
+    for c in syft_components:
+        if is_duplicate_component(c):
+            continue
+        k = key(c)
+        if k in syft_keys_seen:
+            continue
+        syft_keys_seen.add(k)
+        syft_out.append(c)
+
+    merged = syft_out + hermeto_out
     return [c.unwrap() for c in merged]
 
 
@@ -328,62 +398,15 @@ def _is_hermeto_non_registry_dependency(component: SBOMItem) -> bool:
 def _unique_key_hermeto(component: SBOMItem) -> str:
     """
     Create a unique key from hermeto reported components.
-
-    This is done by taking a purl and removing any qualifiers and subpaths.
-    See https://github.com/package-url/purl-spec/tree/master#purl
-    for more info on purls.
-
-    Args:
-        component: The component to create a key for
-
-    Returns:
-        str: A unique key string for the component
     """
-    purl = component.purl()
-    if not purl:
-        return fallback_key(component)
-    return purl._replace(qualifiers=None, subpath=None).to_string()
+    return _adaptive_purl_key(component)
 
 
 def _unique_key_syft(component: SBOMItem) -> str:
     """
     Create a unique key for Syft reported components.
-
-    This is done by taking a lowercase namespace/name, and URL encoding the version.
-
-    Syft does not set any qualifier for NPM, Pip or Golang, so there's
-    no need to remove them
-    as done in _unique_key_hermeto.
-
-    If a Syft component lacks a purl (e.g. type OS), we'll use its
-    name and version instead.
-
-    Args:
-        component: The component to create a key for
-
-    Returns:
-        str: A unique key string for the component
     """
-    purl = component.purl()
-    if not purl:
-        return fallback_key(component)
-
-    name = purl.name.lower() if purl.type == "pypi" else purl.name
-
-    if purl.type == "golang":
-        version = purl.version
-        subpath = purl.subpath
-        if version:
-            version = quote_plus(version)
-        if subpath and _subpath_is_version(subpath):
-            # put the module version where it belongs (in the module name)
-            name = f"{name}/{subpath}"
-            subpath = None
-        return purl._replace(
-            name=name, version=version, subpath=subpath, qualifiers=None
-        ).to_string()
-
-    return purl._replace(name=name, qualifiers=None, subpath=None).to_string()
+    return _adaptive_purl_key(component)
 
 
 def get_merged_components(
