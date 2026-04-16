@@ -1,7 +1,9 @@
 """Pydantic classes for parsing SBOM metadata files."""
 
-from mobster.image import PULLSPEC_PATTERN, DIGEST_PATTERN
 from pydantic import BaseModel, Field
+
+from mobster.image import DIGEST_PATTERN, PULLSPEC_PATTERN
+
 
 class ImageData(BaseModel):
     """Image information provided by each entry of SBOMMetadata."""

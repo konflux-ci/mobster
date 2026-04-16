@@ -280,7 +280,10 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
     def mock_metadata() -> None:
         command._metadata = SBOMMetadata.model_validate(
             {
-                "image": {"pullspec": "foo.io/bar:latest", "digest": "bar:12345678901234567890123456789012"},
+                "image": {
+                    "pullspec": "foo.io/bar:latest",
+                    "digest": "bar:12345678901234567890123456789012",
+                },
                 "base_images": [],
                 "extra_images": [],
             }
