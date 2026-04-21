@@ -1,5 +1,60 @@
 # Changelog
 
+## [2.0.0](https://github.com/konflux-ci/mobster/compare/v1.2.0...v2.0.0) (2026-04-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* base_images_dockerfile -> sbom_utils
+
+### Features
+
+* **ISV-6497:** implement builder content contextualization ([737b4f4](https://github.com/konflux-ci/mobster/commit/737b4f4b11bcaf96cfa6a81ab015e652ff3f110b))
+* **ISV-6497:** implement builder contextualization ([a189f05](https://github.com/konflux-ci/mobster/commit/a189f05994b9a2fa08052d7af542bf2e85c2febe))
+* **ISV-6497:** normalize PURLs in document index ([af0c5dc](https://github.com/konflux-ci/mobster/commit/af0c5dc9ee061a4c5873cfec4f790619f2efba38))
+* **ISV-6497:** validate checksums from capo ([90b3a50](https://github.com/konflux-ci/mobster/commit/90b3a501d9aab76467ea7725fe12aa7c70b92df8))
+* **ISV-6683:** update augmentation tekton task to support keyless signing ([482af52](https://github.com/konflux-ci/mobster/commit/482af5215fee8adba4057cc2f8900f4994966250))
+* **ISV-6683:** update augmentation tekton task to support keyless signing ([5c16733](https://github.com/konflux-ci/mobster/commit/5c16733a70dda7e8e820fc677333f111829b32cc))
+* **ISV-6756:** add support for SLSA provenance v1 ([1897df6](https://github.com/konflux-ci/mobster/commit/1897df6ed23edbb43d2f5f9df8ea8940e7a34a7c))
+* **ISV-6756:** add support for SLSA provenance v1 ([020e2f6](https://github.com/konflux-ci/mobster/commit/020e2f64f40391c1057a2079a7100a8d2083fff7))
+* **ISV-6756:** log a warning when missing build_finished_on timestamp ([4a2659d](https://github.com/konflux-ci/mobster/commit/4a2659d352f4eb3f263c1b6a9cf662df88c75b13))
+* **ISV-6827:** Normalize Red Hat creator ([cc27b85](https://github.com/konflux-ci/mobster/commit/cc27b85605447bde392bba9281810534eb599823))
+* **ISV-6827:** Normalize Red Hat creator ([223c99b](https://github.com/konflux-ci/mobster/commit/223c99b8c640bbd49358f5e117a7516045a66c2d))
+* **ISV-6863:** update image reference in augment tekton task ([45b796b](https://github.com/konflux-ci/mobster/commit/45b796bdc4428f4cb7c322a19a3d3e2200efc9c4))
+* **RELEASE-2177:** ta stepactions support for self-signed certificate ([d8ab30a](https://github.com/konflux-ci/mobster/commit/d8ab30a217939644b5347c5f2a9bd2442ac07e77))
+* **SBOMMetadata:** regex validation ([c54eb91](https://github.com/konflux-ci/mobster/commit/c54eb916a4fde00fbcaaa8108b13fa653ae274ef))
+
+
+### Bug Fixes
+
+* aiohttp -&gt; 3.13.5 ([44a232e](https://github.com/konflux-ci/mobster/commit/44a232e89b1af9ccdd490b87c16b17a8b2645d65))
+* fixed reference to old module ([4e85c0c](https://github.com/konflux-ci/mobster/commit/4e85c0cc83d943c76b9be3fb38f5cdf95998f3f7))
+* **ISV-6497:** add missing attribute ([1acb16a](https://github.com/konflux-ci/mobster/commit/1acb16a7c8fe1564a5a730528176fa52f4bba913))
+* **ISV-6497:** remove unused method on SBOM index ([8473791](https://github.com/konflux-ci/mobster/commit/8473791f6d4ba4bdf52c45d424918469337eed11))
+* **ISV-6832:** ensure correct processing of releaseNotes according to schema ([8a6ed0e](https://github.com/konflux-ci/mobster/commit/8a6ed0e9ed84bd48aea4f04c3bb88b5edf71d1ab))
+* **ISV-6832:** ensure correct processing of releaseNotes according to schema ([c7c0d1d](https://github.com/konflux-ci/mobster/commit/c7c0d1d19c8325eea5b7714925fd150bd834afaa))
+* **ISV-7072:** support custom CA bundles ([53fee6c](https://github.com/konflux-ci/mobster/commit/53fee6cdd37efbb1abd6058bd8357d335cca7cc9))
+* **ISV-7072:** support custom CA bundles ([bb1d649](https://github.com/konflux-ci/mobster/commit/bb1d64926e133d64d11d06eb849defd09a70451f))
+* mypy fixes ([1def5aa](https://github.com/konflux-ci/mobster/commit/1def5aa1556443cb2ef1c9b9c2272cbb40b8856e))
+* mypy violation after upgrade ([869d2ef](https://github.com/konflux-ci/mobster/commit/869d2ef708982608ff1d8b4746b761b245155c00))
+* remove deprecated task result ([56ce7de](https://github.com/konflux-ci/mobster/commit/56ce7de3516200c5a9e7b049838f65d728a8ff83))
+* ruff/pylint fixes ([575cdea](https://github.com/konflux-ci/mobster/commit/575cdea2e4a0cdcabd8c2b96593e61192965c45b))
+* update extend_sbom_with_image for readability ([c003bf0](https://github.com/konflux-ci/mobster/commit/c003bf0d25f1e4b0c5d2fd00eb7ab2e493bae98d))
+
+
+### Documentation
+
+* **ISV-6497:** added examples for types of origins ([fdc5966](https://github.com/konflux-ci/mobster/commit/fdc59668c52162983d3ae28388d86a8b26f4ddde))
+* **ISV-6497:** clarify origin type comment ([726ff21](https://github.com/konflux-ci/mobster/commit/726ff215ad66a39cf04ba5ea51d3569a9c5bf04d))
+* **ISV-6497:** improve builder contextualization docstrings ([959dd84](https://github.com/konflux-ci/mobster/commit/959dd844a70f37610a305de9e66b78835a1aede4))
+* **ISV-6756:** improve docstrings in SLSA parsing ([75f3492](https://github.com/konflux-ci/mobster/commit/75f349270d3bdd40d9159cd1121920c15dad84b1))
+* made buildprobe less central to documentation, add metadata format ([1606192](https://github.com/konflux-ci/mobster/commit/16061924c7491c50608789ef854e560177071946))
+
+
+### Code Refactoring
+
+* base_images_dockerfile -&gt; sbom_utils ([74093df](https://github.com/konflux-ci/mobster/commit/74093df4e3006eb89e9acf2ba8da494ae2ffa7df))
+
 ## [1.2.0](https://github.com/konflux-ci/mobster/compare/v1.1.0...v1.2.0) (2026-03-19)
 
 
