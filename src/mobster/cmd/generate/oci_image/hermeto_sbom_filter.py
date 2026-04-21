@@ -122,7 +122,8 @@ def _filter_spdx_sbom_by_arch(
 
     Args:
         sbom_dict: The SBOM dictionary
-        target_arch: The architecture to filter by (e.g., "x86_64", "aarch64")
+        target_arch: The architecture to filter by in OCI (e.g., "amd64")
+                     or kernel format (e.g., "x86_64")
 
     Returns:
         dict[str, Any]: The filtered SBOM dictionary
@@ -169,7 +170,8 @@ def _filter_cyclonedx_sbom_by_arch(
 
     Args:
         sbom_dict: The SBOM dictionary
-        target_arch: The architecture to filter by (e.g., "x86_64", "aarch64")
+        target_arch: The architecture to filter by in OCI (e.g., "amd64")
+                     or kernel format (e.g., "x86_64")
 
     Returns:
         dict[str, Any]: The filtered SBOM dictionary
@@ -230,7 +232,8 @@ def filter_hermeto_sbom_by_arch(
 
     Args:
         sbom_dict: The SBOM dictionary
-        target_arch: The architecture to filter by (e.g., "x86_64", "aarch64")
+        target_arch: The architecture to filter by in OCI (e.g., "amd64")
+                     or kernel format (e.g., "x86_64")
 
     Returns:
         dict[str, Any]: The filtered SBOM dictionary

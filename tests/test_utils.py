@@ -159,3 +159,23 @@ def test_identify_arch(
     mock_platform.return_value = input_arch
     arch = utils.identify_arch()
     assert arch == expected_arch
+
+
+@pytest.mark.parametrize(
+    "input_arch, expected_arch",
+    [
+        pytest.param("amd64", "amd64", id="oci-amd64-passthrough"),
+        pytest.param("arm64", "arm64", id="oci-arm64-passthrough"),
+        pytest.param("ppc64le", "ppc64le", id="oci-ppc64le-passthrough"),
+        pytest.param("s390x", "s390x", id="oci-s390x-passthrough"),
+        pytest.param("x86_64", "amd64", id="kernel-x86_64"),
+        pytest.param("x64", "amd64", id="kernel-x64"),
+        pytest.param("aarch64", "arm64", id="kernel-aarch64"),
+        pytest.param("armv8l", "arm64", id="kernel-armv8l"),
+        pytest.param("ppc64", "ppc64le", id="kernel-ppc64"),
+        pytest.param("s390", "s390x", id="kernel-s390"),
+        pytest.param("riscv64", "riscv64", id="unknown-passthrough"),
+    ],
+)
+def test_normalize_arch(input_arch: str, expected_arch: str) -> None:
+    assert utils.normalize_arch(input_arch) == expected_arch

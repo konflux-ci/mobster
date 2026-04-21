@@ -54,6 +54,7 @@ mobster --verbose  generate oci-image \
 - `--metadata-path` -- points to a Dockerfile/Containerfile metadata YAML file
 - `--contextualize` -- Allows SBOM contextualization (see [Contextual SBOM](#contextual-sbom))
 - `--output` -- where to save the SBOM. prints it to STDOUT if this is not specified
+- `--arch` -- Image architecture in OCI format (e.g., `amd64`, `arm64`, `ppc64le`, `s390x`). Linux kernel format values (e.g., `x86_64`, `aarch64`) are also accepted and normalized automatically to the OCI format. Defaults to the architecture of the current system.
 - `--skip-validation` -- skips validation of the SBOM
 
 ## Generating a (non-hermetic) SBOM from scratch

@@ -19,6 +19,7 @@ from mobster.cmd.generate import (
 from mobster.cmd.upload import upload
 from mobster.image import PULLSPEC_PATTERN
 from mobster.release import ReleaseId
+from mobster.utils import normalize_arch
 
 
 def setup_arg_parser() -> argparse.ArgumentParser:
@@ -129,8 +130,15 @@ def generate_oci_image_parser(subparsers: Any) -> None:
     )
     oci_image_parser.add_argument(
         "--arch",
-        type=str,
-        help="Image architecture. If not selected the OS arch is used.",
+        type=normalize_arch,
+        help=(
+            "Image architecture in OCI format (e.g., amd64, arm64, ppc64le, s390x). "
+            "Linux kernel format values (e.g., x86_64, aarch64) are also accepted "
+            "and normalized automatically to the OCI format. "
+            "Defaults to the architecture of the current system."
+        ),
+        # default=None ensures normalize_arch is only called when --arch is explicitly
+        # provided
         default=None,
     )
     oci_image_parser.add_argument(
