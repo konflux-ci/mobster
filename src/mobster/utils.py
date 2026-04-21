@@ -80,23 +80,40 @@ async def run_async_subprocess(
     return code, stdout, stderr
 
 
+def normalize_arch(arch: str) -> str:
+    """
+    Normalize an architecture string to OCI manifest format.
+
+    Accepts architecture values in either OCI format (e.g., "amd64")
+    or Linux kernel format (e.g., "x86_64") and returns the OCI format.
+    Values already in OCI format or unknown values are passed through unchanged.
+
+    Args:
+        arch: Architecture string in any recognized format.
+
+    Returns:
+        OCI manifest compatible arch identifier.
+    """
+    if arch in ARCH_TRANSLATION_MAP:
+        return arch
+    for oci_arch, kernel_arches in ARCH_TRANSLATION_MAP.items():
+        if arch in kernel_arches:
+            return oci_arch
+    return arch
+
+
 def identify_arch() -> str:
     """
     Fetches the runtime arch and converts it to oci manifest arch format.
 
     Returns:
-        oci manifest compatible arch identifier.
+        OCI manifest compatible arch identifier.
     """
-
-    platform_arch = platform.machine()
-
-    for oci_arch, uname_arches in ARCH_TRANSLATION_MAP.items():
-        if platform_arch in uname_arches:
-            return oci_arch
-    LOGGER.warning(
-        "Unknown architecture '%s'. Using 'unknown' as fallback.", platform_arch
-    )
-    return platform_arch
+    arch = platform.machine()
+    result = normalize_arch(arch)
+    if result == arch and arch not in ARCH_TRANSLATION_MAP:
+        LOGGER.warning("Unknown architecture '%s'. Using as-is.", arch)
+    return result
 
 
 async def load_sbom_from_json(file_path: Path) -> dict[str, Any]:
