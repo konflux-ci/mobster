@@ -186,7 +186,7 @@ def _adaptive_purl_key(component: SBOMItem) -> str:
     clean_qualifiers = None
     qualifiers = purl.qualifiers
     if isinstance(qualifiers, dict) and qualifiers:
-        identity_qualifiers = {"arch", "os", "classifier", "type", "epoch", "distro"}
+        identity_qualifiers = {"arch", "os", "classifier", "type", "epoch"}
 
         meaningful_quals = {}
         for k, v in qualifiers.items():

@@ -89,39 +89,6 @@
       "versionInfo": "11-13.el9"
     },
     {
-      "SPDXID": "SPDXRef-Package-rpm-bash-a6062d7253817d9d",
-      "copyrightText": "NOASSERTION",
-      "downloadLocation": "NOASSERTION",
-      "externalRefs": [
-        {
-          "referenceCategory": "SECURITY",
-          "referenceLocator": "cpe:2.3:a:redhat:bash:5.1.8-9.el9:*:*:*:*:*:*:*",
-          "referenceType": "cpe23Type"
-        },
-        {
-          "referenceCategory": "SECURITY",
-          "referenceLocator": "cpe:2.3:a:bash:bash:5.1.8-9.el9:*:*:*:*:*:*:*",
-          "referenceType": "cpe23Type"
-        },
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceLocator": "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&upstream=bash-5.1.8-9.el9.src.rpm&distro=rhel-9.5",
-          "referenceType": "purl"
-        }
-      ],
-      "filesAnalyzed": true,
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "LicenseRef-GPLv3-",
-      "name": "bash",
-      "originator": "Organization: Red Hat, Inc.",
-      "packageVerificationCode": {
-        "packageVerificationCodeValue": "9295a01e788345a66a371467a1dd0c085d921f52"
-      },
-      "sourceInfo": "acquired package info from RPM DB: /var/lib/rpm/rpmdb.sqlite",
-      "supplier": "Organization: Red Hat, Inc.",
-      "versionInfo": "5.1.8-9.el9"
-    },
-    {
       "SPDXID": "SPDXRef-Package-rpm-coreutils-single-bc07797a46d14a80",
       "copyrightText": "NOASSERTION",
       "downloadLocation": "NOASSERTION",
@@ -1058,6 +1025,27 @@
       "externalRefs": [],
       "name": "",
       "versionInfo": ""
+    },
+    {
+      "SPDXID": "SPDXRef-Package-rpm-bash-hermeto-merge-test",
+      "annotations": [
+        {
+          "annotationDate": "2024-12-18T11:27:10Z",
+          "annotationType": "OTHER",
+          "annotator": "Tool: cachi2:jsonencoded",
+          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&checksum=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&repository_id=rhel-9-for-x86_64-baseos-rpms",
+          "referenceType": "purl"
+        }
+      ],
+      "name": "bash",
+      "versionInfo": "5.1.8-9.el9"
     },
     {
       "SPDXID": "SPDXRef-Package-@types/prop-types-15.7.5-2d13fa1fda82a31e6ee9a07d7956586c1d91a3b859ff1dcfb40ccc1b4a3dd481",
@@ -6642,11 +6630,6 @@
       "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro"
     },
     {
-      "relatedSpdxElement": "SPDXRef-Package-rpm-bash-a6062d7253817d9d",
-      "relationshipType": "CONTAINS",
-      "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro"
-    },
-    {
       "relatedSpdxElement": "SPDXRef-Package-rpm-coreutils-single-bc07797a46d14a80",
       "relationshipType": "CONTAINS",
       "spdxElementId": "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro"
@@ -8386,6 +8369,12 @@
     {
       "comment": "",
       "relatedSpdxElement": "SPDXRef-Package-wheel-0.38.4-606bf02cfffccacd2677c454d0b8df4350fb5264adf89c37cd32e7128158ea9f",
+      "relationshipType": "CONTAINS",
+      "spdxElementId": "SPDXRef-DocumentRoot-File-"
+    },
+    {
+      "comment": "",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-bash-hermeto-merge-test",
       "relationshipType": "CONTAINS",
       "spdxElementId": "SPDXRef-DocumentRoot-File-"
     }
