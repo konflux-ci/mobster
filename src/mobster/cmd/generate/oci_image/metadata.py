@@ -18,6 +18,7 @@ class ImageData(BaseModel):
         return self
 
     def to_image(self, arch: str | None = None) -> Image:
+        """Convert to a Mobster image."""
         # if the pullspec has a tag then we need to use
         # from_image_index_url_and_digest to init
         if ":" in self.pullspec:
