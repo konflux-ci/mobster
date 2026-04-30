@@ -301,25 +301,15 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         # Extend with image reference
         if self.cli_args.metadata_path:
-            image = Image.from_image_index_url_and_digest(
-                self._metadata.image.pullspec,
-                self._metadata.image.digest,
-                arch=image_arch,
-            )
+            image = self._metadata.image.to_image(image_arch)
             await extend_sbom_with_image_reference(sbom, image, is_builder_image=False)
             for base_image_data in self._metadata.base_images:
-                base_image = Image.from_image_index_url_and_digest(
-                    base_image_data.pullspec,
-                    base_image_data.digest,
-                )
+                base_image = base_image_data.to_image(image_arch)
                 base_images_refs.append(base_image_data.pullspec)
                 base_images_map[base_image_data.pullspec] = base_image
             await extend_sbom_with_base_images(sbom, base_images_refs, base_images_map)
             for extra_image_data in self._metadata.extra_images:
-                extra_image = Image.from_image_index_url_and_digest(
-                    extra_image_data.pullspec,
-                    extra_image_data.digest,
-                )
+                extra_image = extra_image_data.to_image(image_arch)
                 await extend_sbom_with_image_reference(sbom, extra_image, True)
         elif self.cli_args.image_pullspec:
             if not self.cli_args.image_digest:
