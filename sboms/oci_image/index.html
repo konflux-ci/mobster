@@ -1157,6 +1157,7 @@ support combining SPDX and CycloneDX SBOMs.</p>
 <li><code>--metadata-path</code> -- points to a Dockerfile/Containerfile metadata YAML file</li>
 <li><code>--contextualize</code> -- Allows SBOM contextualization (see <a href="#contextual-sbom">Contextual SBOM</a>)</li>
 <li><code>--output</code> -- where to save the SBOM. prints it to STDOUT if this is not specified</li>
+<li><code>--arch</code> -- Image architecture in OCI format (e.g., <code>amd64</code>, <code>arm64</code>, <code>ppc64le</code>, <code>s390x</code>). Linux kernel format values (e.g., <code>x86_64</code>, <code>aarch64</code>) are also accepted and normalized automatically to the OCI format. Defaults to the architecture of the current system.</li>
 <li><code>--skip-validation</code> -- skips validation of the SBOM</li>
 </ul>
 <h2 id="generating-a-non-hermetic-sbom-from-scratch">Generating a (non-hermetic) SBOM from scratch</h2>
