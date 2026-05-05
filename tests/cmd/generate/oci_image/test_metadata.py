@@ -19,6 +19,7 @@ def test_imagedata_to_image_digest() -> None:
     assert image.repository == "example.com/foo"
     assert image.digest == DIGEST
 
+
 def test_imagedata_to_image_tag_and_digest() -> None:
     """Test that ImageData can convert a pullspec with a (redundant) digest."""
     image_data = ImageData(pullspec=f"example.com/foo:bar@{DIGEST}", digest=DIGEST)
