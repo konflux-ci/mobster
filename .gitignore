@@ -173,3 +173,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Editor and OS files
+.vscode/
+*.swp
+*.swo
+.DS_Store
