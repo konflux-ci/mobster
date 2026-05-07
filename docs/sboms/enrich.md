@@ -1,6 +1,9 @@
 # Enriching SBOMS with Mobster
 
 The Mobster tool is capable of enriching SBOMs with AI fields found from scraping Hugging Face repositories of models included in the original SBOM
+OWASP tool
+UI -> https://huggingface.co/spaces/GenAISecurityProject/OWASP-AIBOM-Generator
+Github -> https://github.com/GenAI-Security-Project/aibom-generator
 
 Usage
 ```bash

@@ -1,6 +1,8 @@
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
+from cyclonedx.model.bom import Bom
 from cyclonedx.model.bom_ref import BomRef
 from cyclonedx.model.component import Component, ComponentType
 from packageurl import PackageURL
@@ -196,3 +198,52 @@ def test_with_one_model_card(sbom_model_card: dict[str, Any]) -> None:
     for key in sbom_model_card:
         assert key in sbom_regenerated_dict
         assert sbom_model_card[key] == sbom_regenerated_dict[key]
+
+
+def test_add_back_model_card() -> None:
+    """Test add_back_model_card adds model cards from raw SBOM to wrapper."""
+    from mobster.sbom.enrich import add_back_model_card
+
+    mock_sbom_wrapper = MagicMock(spec=CycloneDX1BomWrapper)
+
+    # Create mock components
+    mock_component = MagicMock(spec=Component)
+    mock_sbom_wrapper.sbom = MagicMock(spec=Bom)
+    mock_sbom_wrapper.sbom.components = [mock_component]
+
+    # Create raw SBOM with modelCard
+    raw_sbom = {
+        "components": [
+            {
+                "name": "test-component",
+                "modelCard": {
+                    "modelParameters": {"task": "text-generation"},
+                    "properties": [{"name": "test", "value": "value"}],
+                },
+            }
+        ]
+    }
+
+    add_back_model_card(mock_sbom_wrapper, raw_sbom)
+
+    assert mock_component.model_card == raw_sbom["components"][0]["modelCard"]
+
+
+def test_add_back_model_card_no_model_card() -> None:
+    """Test add_back_model_card when raw SBOM has no modelCard."""
+    from mobster.sbom.enrich import add_back_model_card
+
+    mock_sbom_wrapper = MagicMock(spec=CycloneDX1BomWrapper)
+    mock_component = MagicMock(spec=Component)
+    mock_sbom_wrapper.sbom = MagicMock(spec=Bom)
+    mock_sbom_wrapper.sbom.components = [mock_component]
+
+    raw_sbom = {"components": [{"name": "test-component"}]}
+
+    # This should not raise an error
+    add_back_model_card(mock_sbom_wrapper, raw_sbom)
+
+    # model_card should not be set if it wasn't in raw_sbom
+    assert (
+        not hasattr(mock_component, "model_card") or mock_component.model_card is None
+    )

@@ -52,7 +52,7 @@ def compare_purls(p1: PackageURL, p2: PackageURL) -> bool:
         and p1.name == p2.name
         and p1.version is not None
         and p2.version is not None
-        and p1.version.startswith(p2.version)
+        and (p1.version.startswith(p2.version) or p2.version.startswith(p1.version))
     )
 
 
@@ -105,6 +105,13 @@ def add_back_model_card(sbom: CycloneDX1BomWrapper, raw_sbom: dict[str, Any]) ->
             component_obj.model_card = raw_comp["modelCard"]
 
 
+def is_cyclonedx(sbom: dict[str, Any]) -> bool:
+    """
+    checks if the sbom is in cyclonedx format
+    """
+    return sbom.get("bomFormat") == "CycloneDX"
+
+
 class SBOMEnricher(ABC):  # pylint: disable=too-few-public-methods
     """
     Abstract base class for SBOM enrichers.
@@ -152,7 +159,7 @@ class CycloneDXEnricher(SBOMEnricher):  # pylint: disable=too-few-public-methods
         sbom_a: CycloneDX1BomWrapper = CycloneDX1BomWrapper.from_dict(target_sbom)
 
         try:
-            if incoming_sbom.get("bomFormat") == "CycloneDX":
+            if is_cyclonedx(incoming_sbom):
                 sbom_b: CycloneDX1BomWrapper = CycloneDX1BomWrapper.from_dict(
                     incoming_sbom, False
                 )
@@ -183,10 +190,13 @@ class CycloneDXEnricher(SBOMEnricher):  # pylint: disable=too-few-public-methods
     ) -> dict[str, Any]:
         """
         Merge incoming into target field-by-field according to field_specs.
-
-        field_specs: { field_name: merge_strategy_callable }
-        Each callable has signature (a, b) -> merged and is only called when
-        both sides are non-None (merge_general semantics preserved).
+        Args:
+            target (dict[str, Any]): the target SBOM to enrich
+            incoming (dict[str, Any]): The SBOM to extract fields from and add to target
+            field_specs (dict[str, Any]):
+                { field_name: merge_strategy_callable }
+                Each callable has signature (a, b) -> merged and is only called when
+                both sides are non-None (merge_general semantics preserved).
         """
         for field, strategy in field_specs.items():
             target_val = target.get(field)
@@ -327,16 +337,16 @@ class CycloneDXEnricher(SBOMEnricher):  # pylint: disable=too-few-public-methods
 def _create_enricher(target_sbom: dict[str, Any]) -> SBOMEnricher:
     """
     Creates a Enricher for the given SBOMs.
+    Raises:
+        if the sbom is not in cyclonedx format, raises ValueError
     """
 
-    if target_sbom.get("bomFormat") == "CycloneDX":
+    if is_cyclonedx(target_sbom):
         return CycloneDXEnricher()
-    raise ValueError("ERROR, expected SBOM to be either CycloneDX")
+    raise ValueError("ERROR, expected SBOM to be in CycloneDX")
 
 
-async def enrich_sbom(
-    target_sbom: Path, incoming_sbom: Path | None = None
-) -> CycloneDX1BomWrapper:
+async def enrich_sbom(target_sbom: Path, incoming_sbom: Path) -> CycloneDX1BomWrapper:
     """
     Merge multiple SBOMs.
 
@@ -364,10 +374,7 @@ async def enrich_sbom(
     target_sbom_loaded = await utils.load_sbom_from_json(target_sbom)
     incoming_sbom_loaded = await utils.load_sbom_from_json(incoming_sbom)
     # we only need the type of the target SBOM to create the enricher
-    try:
-        enricher = _create_enricher(target_sbom_loaded)
-    except ValueError as e:
-        logger.exception(e)
+    enricher = _create_enricher(target_sbom_loaded)
 
     result: CycloneDX1BomWrapper = await enricher.enrich(
         target_sbom_loaded, incoming_sbom_loaded

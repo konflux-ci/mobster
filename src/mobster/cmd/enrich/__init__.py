@@ -4,7 +4,6 @@ __all__ = ["EnrichCommand"]
 
 import json
 import logging
-from argparse import ArgumentError
 from pathlib import Path
 from typing import Any
 
@@ -57,11 +56,6 @@ class EnrichCommand(Command):
         Raises:
             ArgumentError: If the base sbom or enrichment is not provided.
         """
-        if self.cli_args.sbom is None or self.cli_args.enrichment_file is None:
-            raise ArgumentError(
-                None,
-                "Both sbom and the enrichment file must be provided",
-            )
 
         return await enrich_sbom(
             Path(self.cli_args.sbom), Path(self.cli_args.enrichment_file)

@@ -70,12 +70,15 @@ class CycloneDX1BomWrapper:
 
     @staticmethod
     def from_dict(
-        sbom_dict: dict[str, Any], generate: bool = True
+        sbom_dict: dict[str, Any], add_mobster_tool: bool = True
     ) -> "CycloneDX1BomWrapper":
         """
         Loads the object from a dictionary.
         Args:
             sbom_dict (dict[str, Any]): A JSON-like dictionary.
+            add_mobster_tool (bool): specificies whether mobster should be added as a
+            tool (in the case of mobster generate: True, in the case of
+            mobster enrich: False)
         Returns:
             CycloneDX1BomWrapper: the initialized object of this class.
         """
@@ -99,7 +102,7 @@ class CycloneDX1BomWrapper:
             model_cards,
         )
 
-        if generate:
+        if add_mobster_tool:
             bom_object.sbom.metadata.tools.components.add(
                 Component(
                     version=get_mobster_version(),
