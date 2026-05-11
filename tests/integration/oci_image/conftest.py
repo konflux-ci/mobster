@@ -22,6 +22,7 @@ class GenerateData:
     image: Image | None = None
     input_sbom_path: Path | None = None
     metadata_path: Path | None = None
+    build_metadata_path: Path | None = None
     contextualize: bool = True
 
 
@@ -57,6 +58,9 @@ def run_mobster_generate(gdata: GenerateData) -> None:
 
     if gdata.metadata_path:
         cmd.extend(["--metadata-path", str(gdata.metadata_path)])
+
+    if gdata.build_metadata_path:
+        cmd.extend(["--build-metadata-path", str(gdata.build_metadata_path)])
 
     subprocess.run(cmd, check=True)
 
