@@ -170,10 +170,9 @@ def _clean_identity_qualifiers(
             continue
         if k == "arch" and v == "noarch":
             continue
+        if purl_type == "golang" and k == "type" and v == "module":
+            continue
         meaningful_quals[k] = v
-
-    if purl_type == "golang" and meaningful_quals.get("type") == "module":
-        meaningful_quals.pop("type", None)
 
     return meaningful_quals if meaningful_quals else None
 
@@ -352,6 +351,8 @@ def _is_hermeto_non_registry_dependency(component: SBOMItem) -> bool:
 def _unique_key_hermeto(component: SBOMItem) -> str:
     """
     Create a unique key from hermeto reported components.
+
+    This is done by taking a purl and removing subpaths and non-identity qualifiers.
     """
     purl = component.purl()
     if not purl:
@@ -364,6 +365,9 @@ def _unique_key_hermeto(component: SBOMItem) -> str:
 def _unique_key_syft(component: SBOMItem) -> str:
     """
     Create a unique key for Syft reported components.
+
+    This is done by taking a lowercase namespace/name, URL encoding the version,
+    removing subpaths and non-identity qualifiers.
     """
     purl = component.purl()
     if not purl:
