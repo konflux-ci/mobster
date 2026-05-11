@@ -55,13 +55,12 @@ oras_app_pkg = (
     .name("oras")
     .version(oras_version)
     .purl(oras_pkg_purl)
-    .spdx_id("SPDXRef-image-oras-1234")
-    .is_builder_image_for_stage_annotation(0)
+    .spdx_id("SPDXRef-package-oras-1234")
     .build()
 )
 
 oras_metadata_builder = BuilderPkgMetadataItem(
-    purl=oras_img_purl, origin_type="builder", pullspec=f"{oras_repo}@{oras_version}"
+    purl=oras_img_purl, origin_type="builder", pullspec=oras_pullspec
 )
 
 oras_metadata_intermediate = BuilderPkgMetadataItem(
@@ -84,7 +83,7 @@ syft_app_pkg = (
     SPDXPackageBuilder()
     .name("syft")
     .version(syft_version)
-    .purl(f"pkg:foo/{syft_name}@{syft_version}")
+    .purl(syft_pkg_purl)
     .spdx_id("SPDXRef-package-syft-1234")
     .build()
 )
@@ -148,7 +147,10 @@ def parent_only_metadata(tmp_path: Path) -> Path:
 
 
 def test_parent_sbom_builder_content_parentonly(
-    tmp_path: Path, parent_only_sbom, parent_only_build_metadata, parent_only_metadata
+    tmp_path: Path,
+    parent_only_sbom: Path,
+    parent_only_build_metadata: Path,
+    parent_only_metadata: Path,
 ) -> None:
     output_path = tmp_path / "parentonly.output.spdx.json"
     gdata = GenerateData(
@@ -163,7 +165,10 @@ def test_parent_sbom_builder_content_parentonly(
 
 
 def test_parent_sbom_builder_content_split(
-    tmp_path: Path, parent_only_sbom, split_build_metadata, parent_only_metadata
+    tmp_path: Path,
+    parent_only_sbom: Path,
+    split_build_metadata: Path,
+    parent_only_metadata: Path,
 ) -> None:
     output_path = tmp_path / "parentonly.output.spdx.json"
     gdata = GenerateData(
