@@ -1,10 +1,18 @@
 from pathlib import Path
-from mobster.cmd.generate.oci_image.metadata import SBOMMetadata, ImageData
-from mobster.cmd.generate.oci_image.contextual_sbom.builder import BuilderPkgMetadata, BuilderPkgMetadataItem
+
 import pytest
 from spdx_tools.spdx.writer.write_anything import write_file
 
-from tests.integration.oci_image.conftest import GenerateData, run_mobster_generate, verify_sbom_relationships
+from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
+    BuilderPkgMetadata,
+    BuilderPkgMetadataItem,
+)
+from mobster.cmd.generate.oci_image.metadata import ImageData, SBOMMetadata
+from tests.integration.oci_image.conftest import (
+    GenerateData,
+    run_mobster_generate,
+    verify_sbom_relationships,
+)
 from tests.spdx_builder import SPDXPackageBuilder, SPDXSBOMBuilder
 
 repo = "registry.redhat.io/ubi10"
@@ -15,7 +23,7 @@ pullspec = f"{repo}:{tag}"
 purl = f"pkg:oci/{repo}@{digest}?arch={arch}"
 
 oras_name = "oras"
-oras_repo = f"quay.io/konflux-ci/syft"
+oras_repo = "quay.io/konflux-ci/syft"
 oras_tag = "latest"
 oras_digest = "sha256:4ab0d32a67e22a27ea3ba4ad00a3a5aee008386ae4f0086c9a720401ab1aca44"
 oras_pullspec = f"{oras_repo}:{oras_tag}"
@@ -53,15 +61,13 @@ oras_app_pkg = (
 )
 
 oras_metadata_builder = BuilderPkgMetadataItem(
-        purl=oras_img_purl,
-        origin_type="builder",
-        pullspec=f"{oras_repo}@{oras_version}"
+    purl=oras_img_purl, origin_type="builder", pullspec=f"{oras_repo}@{oras_version}"
 )
 
 oras_metadata_intermediate = BuilderPkgMetadataItem(
-        purl=oras_img_purl,
-        origin_type="intermediate",
-        pullspec=f"{oras_repo}@{oras_version}"
+    purl=oras_img_purl,
+    origin_type="intermediate",
+    pullspec=f"{oras_repo}@{oras_version}",
 )
 
 syft_img_pkg = (
@@ -84,16 +90,13 @@ syft_app_pkg = (
 )
 
 syft_metadata_builder = BuilderPkgMetadataItem(
-        purl=syft_pkg_purl,
-        origin_type="builder",
-        pullspec=pullspec
+    purl=syft_pkg_purl, origin_type="builder", pullspec=pullspec
 )
 
 syft_metadata_intermediate = BuilderPkgMetadataItem(
-        purl=syft_pkg_purl,
-        origin_type="intermediate",
-        pullspec=syft_pullspec
+    purl=syft_pkg_purl, origin_type="intermediate", pullspec=syft_pullspec
 )
+
 
 @pytest.fixture
 def parent_only_sbom(tmp_path: Path) -> Path:
@@ -108,6 +111,7 @@ def parent_only_sbom(tmp_path: Path) -> Path:
     write_file(sbom, str(path))
     return path
 
+
 @pytest.fixture
 def parent_only_build_metadata(tmp_path: Path) -> Path:
     build_metadata = BuilderPkgMetadata(
@@ -117,6 +121,7 @@ def parent_only_build_metadata(tmp_path: Path) -> Path:
     with open(path, "w") as file:
         file.write(build_metadata.model_dump_json())
     return path
+
 
 @pytest.fixture
 def split_build_metadata(tmp_path: Path) -> Path:
@@ -128,13 +133,12 @@ def split_build_metadata(tmp_path: Path) -> Path:
         file.write(build_metadata.model_dump_json())
     return path
 
+
 @pytest.fixture
 def parent_only_metadata(tmp_path: Path) -> Path:
     build_metadata = SBOMMetadata(
         image=ImageData(pullspec=pullspec, digest=digest),
-        base_images=[
-            ImageData(pullspec=syft_pullspec, digest=syft_digest)
-        ]
+        base_images=[ImageData(pullspec=syft_pullspec, digest=syft_digest)],
     )
     path = tmp_path / "parentonly.metadata.yaml"
     with open(path, "w") as file:
@@ -143,26 +147,31 @@ def parent_only_metadata(tmp_path: Path) -> Path:
     return path
 
 
-def test_parent_sbom_builder_content_parentonly(tmp_path: Path, parent_only_sbom, parent_only_build_metadata, parent_only_metadata) -> None:
+def test_parent_sbom_builder_content_parentonly(
+    tmp_path: Path, parent_only_sbom, parent_only_build_metadata, parent_only_metadata
+) -> None:
     output_path = tmp_path / "parentonly.output.spdx.json"
     gdata = GenerateData(
-            input_sbom_path=parent_only_sbom,
-            output_sbom_path=output_path,
-            build_metadata_path=parent_only_build_metadata,
-            metadata_path=parent_only_metadata,
-            contextualize=True
+        input_sbom_path=parent_only_sbom,
+        output_sbom_path=output_path,
+        build_metadata_path=parent_only_build_metadata,
+        metadata_path=parent_only_metadata,
+        contextualize=True,
     )
     run_mobster_generate(gdata)
     verify_sbom_relationships(output_path, [[syft_app_pkg, oras_app_pkg], []])
 
-def test_parent_sbom_builder_content_split(tmp_path: Path, parent_only_sbom, split_build_metadata, parent_only_metadata) -> None:
+
+def test_parent_sbom_builder_content_split(
+    tmp_path: Path, parent_only_sbom, split_build_metadata, parent_only_metadata
+) -> None:
     output_path = tmp_path / "parentonly.output.spdx.json"
     gdata = GenerateData(
-            input_sbom_path=parent_only_sbom,
-            output_sbom_path=output_path,
-            build_metadata_path=split_build_metadata,
-            metadata_path=parent_only_metadata,
-            contextualize=True
+        input_sbom_path=parent_only_sbom,
+        output_sbom_path=output_path,
+        build_metadata_path=split_build_metadata,
+        metadata_path=parent_only_metadata,
+        contextualize=True,
     )
     run_mobster_generate(gdata)
     verify_sbom_relationships(output_path, [[oras_app_pkg], [syft_app_pkg]])
