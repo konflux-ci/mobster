@@ -2,6 +2,19 @@
   "bomFormat": "CycloneDX",
   "components": [
     {
+      "bom-ref": "hermeto-rpm-bash-merge-test",
+      "name": "bash",
+      "properties": [
+        {
+          "name": "cachi2:found_by",
+          "value": "cachi2"
+        }
+      ],
+      "purl": "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&checksum=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&repository_id=rhel-9-for-x86_64-baseos-rpms",
+      "type": "library",
+      "version": "5.1.8-9.el9"
+    },
+    {
       "name": "bufio",
       "properties": [
         {
