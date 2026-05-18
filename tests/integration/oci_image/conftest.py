@@ -1,3 +1,4 @@
+import json
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -111,6 +112,24 @@ stdlib_pkg = SBOMPackage(
         verification_code=None,
 
 )
+
+@pytest.fixture
+def parent_build_metadata(tmp_path: Path) -> Path:
+    grandparent_pullspec = "grandparent:latest"
+    parent_pullspec = "parent:latest"
+    build_metadata = BuilderPkgMetadata(
+        packages=[
+            gin_pkg.to_metadata("builder", grandparent_pullspec),
+            crypto_pkg.to_metadata("intermediate", parent_pullspec),
+            random_pkg.to_metadata("intermediate", parent_pullspec),
+            malware_pkg.to_metadata("intermediate", parent_pullspec),
+            ginkgo_pkg.to_metadata("intermediate", parent_pullspec),
+        ]
+    )
+    path = tmp_path / "parent.buildmetadata.json"
+    with open(path, "w") as fp:
+        fp.write(build_metadata.model_dump_json())
+    return path
 
 @dataclass
 class GenerateData:
