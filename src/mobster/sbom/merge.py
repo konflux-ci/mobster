@@ -154,6 +154,29 @@ def wrap_as_spdx(items: list[dict[str, Any]]) -> list[SPDXPackage]:
     return list(map(SPDXPackage, items))
 
 
+def _clean_identity_qualifiers(
+    qualifiers: dict[str, str], purl_type: str
+) -> dict[str, Any] | None:
+    """
+    Drop non-identity PURL qualifiers; keep only fields that distinguish packages.
+    """
+    if not qualifiers:
+        return None
+
+    identity_qualifiers = {"arch", "os", "classifier", "type", "epoch"}
+    meaningful_quals: dict[str, Any] = {}
+    for k, v in qualifiers.items():
+        if k not in identity_qualifiers:
+            continue
+        if k == "arch" and v == "noarch":
+            continue
+        if purl_type == "golang" and k == "type" and v == "module":
+            continue
+        meaningful_quals[k] = v
+
+    return meaningful_quals if meaningful_quals else None
+
+
 def merge_by_apparent_sameness(
     components_a: Sequence[SBOMItem], components_b: Sequence[SBOMItem]
 ) -> list[dict[str, Any]]:
@@ -329,40 +352,22 @@ def _unique_key_hermeto(component: SBOMItem) -> str:
     """
     Create a unique key from hermeto reported components.
 
-    This is done by taking a purl and removing any qualifiers and subpaths.
-    See https://github.com/package-url/purl-spec/tree/master#purl
-    for more info on purls.
-
-    Args:
-        component: The component to create a key for
-
-    Returns:
-        str: A unique key string for the component
+    This is done by taking a purl and removing subpaths and non-identity qualifiers.
     """
     purl = component.purl()
     if not purl:
         return fallback_key(component)
-    return purl._replace(qualifiers=None, subpath=None).to_string()
+
+    cleaned = _clean_identity_qualifiers(purl.qualifiers, purl.type)  # type:ignore[arg-type]
+    return purl._replace(qualifiers=cleaned, subpath=None).to_string()
 
 
 def _unique_key_syft(component: SBOMItem) -> str:
     """
     Create a unique key for Syft reported components.
 
-    This is done by taking a lowercase namespace/name, and URL encoding the version.
-
-    Syft does not set any qualifier for NPM, Pip or Golang, so there's
-    no need to remove them
-    as done in _unique_key_hermeto.
-
-    If a Syft component lacks a purl (e.g. type OS), we'll use its
-    name and version instead.
-
-    Args:
-        component: The component to create a key for
-
-    Returns:
-        str: A unique key string for the component
+    This is done by taking a lowercase namespace/name, URL encoding the version,
+    removing subpaths and non-identity qualifiers.
     """
     purl = component.purl()
     if not purl:
@@ -383,7 +388,13 @@ def _unique_key_syft(component: SBOMItem) -> str:
             name = f"{name}/{subpath}"
             subpath = None
 
-    return purl._replace(name=name, version=version, subpath=subpath).to_string()
+    cleaned = _clean_identity_qualifiers(purl.qualifiers, purl.type)  # type:ignore[arg-type]
+    return purl._replace(
+        name=name,
+        version=version,
+        qualifiers=cleaned,
+        subpath=None,
+    ).to_string()
 
 
 def get_merged_components(

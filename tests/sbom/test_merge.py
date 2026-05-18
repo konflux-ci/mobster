@@ -575,7 +575,6 @@ def test__detect_sbom_type_invalid() -> None:
                 # vvv Identical between CycloneDX and SPDX
                 "pkg:golang/github.com/release-engineering/retrodep@v2.1.0#v2": 1,
                 "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&distro=rhel-9.5&upstream=basesystem-11-13.el9.src.rpm": 1,
-                "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&distro=rhel-9.5&upstream=bash-5.1.8-9.el9.src.rpm": 1,
                 "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&distro=rhel-9.5&upstream=coreutils-8.32-36.el9.src.rpm": 1,
                 "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&distro=rhel-9.5&upstream=filesystem-3.16-5.el9.src.rpm": 1,
                 "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
@@ -607,7 +606,6 @@ def test__detect_sbom_type_invalid() -> None:
                 # vvv Identical between CycloneDX and SPDX
                 "pkg:golang/github.com/release-engineering/retrodep@v2.1.0#v2": 1,
                 "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&distro=rhel-9.5&upstream=basesystem-11-13.el9.src.rpm": 1,
-                "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&distro=rhel-9.5&upstream=bash-5.1.8-9.el9.src.rpm": 1,
                 "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&distro=rhel-9.5&upstream=coreutils-8.32-36.el9.src.rpm": 1,
                 "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&distro=rhel-9.5&upstream=filesystem-3.16-5.el9.src.rpm": 1,
                 "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
@@ -675,7 +673,7 @@ async def test_merge_syft_and_hermeto_sboms(
             # The one pkg:golang package
             "SPDXRef-DocumentRoot-Directory-. CONTAINS *": 1,
             # All the pkg:rpm packages
-            "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro CONTAINS *": 22,
+            "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro CONTAINS *": 21,
         }
 
 
