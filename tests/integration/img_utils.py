@@ -32,10 +32,12 @@ def make_metadata_yaml(
         )
     if extra_imgs:
         for extra_img in extra_imgs:
-            metadata["extra_images"].append({
-                "pullspec": f"{extra_img.repository}:{extra_img.tag}",
-                "digest": extra_img.digest,
-            })
+            metadata["extra_images"].append(
+                {
+                    "pullspec": f"{extra_img.repository}:{extra_img.tag}",
+                    "digest": extra_img.digest,
+                }
+            )
     path = tmp_path / f"{img.digest}.metadata.yaml"
     with open(path, "w") as fp:
         fp.write(yaml.dump(metadata))

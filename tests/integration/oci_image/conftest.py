@@ -1,21 +1,20 @@
-import json
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from mobster.cmd.generate.oci_image.metadata import ImageData
 import pytest
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.parser.parse_anything import parse_file
 from spdx_tools.spdx.writer.write_anything import write_file
 
-from mobster.image import Image
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
-        BuilderPkgMetadata,
-        BuilderPkgMetadataItem
+    BuilderPkgMetadata,
+    BuilderPkgMetadataItem,
 )
+from mobster.image import Image
 from tests.spdx_builder import AnnotatedPackage, SPDXPackageBuilder, SPDXSBOMBuilder
+
 
 @dataclass
 class SBOMPackage:
@@ -25,7 +24,8 @@ class SBOMPackage:
     and BuilderPkgMetadataItem formats, we use this class as to avoid declaring
     the same strings twice.
 
-    This does not support generating AnnotatedPackages for OCI images.""" 
+    This does not support generating AnnotatedPackages for OCI images."""
+
     name: str
     purl: str
     version: str
@@ -38,17 +38,18 @@ class SBOMPackage:
 
         The verification_code and sha256_checksum fields will be added if
         available."""
-        builder = (SPDXPackageBuilder()
-                   .name(self.name)
-                   .purl(self.purl)
-                   .version(self.version))
+        builder = (
+            SPDXPackageBuilder().name(self.name).purl(self.purl).version(self.version)
+        )
         if self.sha256_checksum:
             builder.sha256_checksum(self.sha256_checksum)
         if self.verification_code:
             builder.verification_code(self.verification_code)
         return builder.build()
 
-    def to_metadata(self, origin_type: Literal['builder', 'intermediate'], origin_pullspec: str) -> BuilderPkgMetadataItem:
+    def to_metadata(
+        self, origin_type: Literal["builder", "intermediate"], origin_pullspec: str
+    ) -> BuilderPkgMetadataItem:
         """Convert to BuilderPkgMetadataItem.
 
         Ignores verification_code and sha256_checksum."""
@@ -58,40 +59,41 @@ class SBOMPackage:
             origin_type=origin_type,
         )
 
+
 gin_pkg = SBOMPackage(
-        name="github.com/gin-gonic/gin",
-        version="v1.9.1",
-        purl="pkg:golang/github.com/gin-gonic/gin@v1.9.1",
-        dependency_of_purl=None,
-        sha256_checksum="a1b2c3d4e5f67890123456789012345678901234567890123456789012345678",
-        verification_code=None,
+    name="github.com/gin-gonic/gin",
+    version="v1.9.1",
+    purl="pkg:golang/github.com/gin-gonic/gin@v1.9.1",
+    dependency_of_purl=None,
+    sha256_checksum="a1b2c3d4e5f67890123456789012345678901234567890123456789012345678",
+    verification_code=None,
 )
 
 crypto_pkg = SBOMPackage(
-        name="golang.org/x/crypto",
-        version="v0.14.0",
-        purl="pkg:golang/golang/golang.org/x/crypto@v0.14.0",
-        dependency_of_purl=None,
-        sha256_checksum="9876543210abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-        verification_code=None,
+    name="golang.org/x/crypto",
+    version="v0.14.0",
+    purl="pkg:golang/golang/golang.org/x/crypto@v0.14.0",
+    dependency_of_purl=None,
+    sha256_checksum="9876543210abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    verification_code=None,
 )
 
 random_pkg = SBOMPackage(
-        name="golang.org/x/random",
-        version="v0.14.0",
-        purl="pkg:golang/golang/golang.org/x/random@v0.14.0",
-        dependency_of_purl=None,
-        sha256_checksum=None,
-        verification_code="d6a770ba38583ed4bb4525bd96e50461655d2758",
+    name="golang.org/x/random",
+    version="v0.14.0",
+    purl="pkg:golang/golang/golang.org/x/random@v0.14.0",
+    dependency_of_purl=None,
+    sha256_checksum=None,
+    verification_code="d6a770ba38583ed4bb4525bd96e50461655d2758",
 )
 
 malware_pkg = SBOMPackage(
-        name="golang.org/x/malware",
-        version="v1.14.0",
-        purl="pkg:golang/golang/golang.org/x/malware@v1.14.0",
-        dependency_of_purl=None,
-        sha256_checksum=None,
-        verification_code=None,
+    name="golang.org/x/malware",
+    version="v1.14.0",
+    purl="pkg:golang/golang/golang.org/x/malware@v1.14.0",
+    dependency_of_purl=None,
+    sha256_checksum=None,
+    verification_code=None,
 )
 
 ginkgo_pkg = SBOMPackage(
@@ -104,14 +106,14 @@ ginkgo_pkg = SBOMPackage(
 )
 
 stdlib_pkg = SBOMPackage(
-        name="golang.org/x/stdlib",
-        version="v0.14.0",
-        purl="pkg:golang/golang/golang.org/x/stdlib@v0.14.0",
-        dependency_of_purl=None,
-        sha256_checksum="1237773276cdcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-        verification_code=None,
-
+    name="golang.org/x/stdlib",
+    version="v0.14.0",
+    purl="pkg:golang/golang/golang.org/x/stdlib@v0.14.0",
+    dependency_of_purl=None,
+    sha256_checksum="1237773276cdcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    verification_code=None,
 )
+
 
 @pytest.fixture
 def parent_build_metadata(tmp_path: Path) -> Path:
@@ -130,6 +132,7 @@ def parent_build_metadata(tmp_path: Path) -> Path:
     with open(path, "w") as fp:
         fp.write(build_metadata.model_dump_json())
     return path
+
 
 @dataclass
 class GenerateData:

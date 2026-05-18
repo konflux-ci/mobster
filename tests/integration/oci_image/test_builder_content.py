@@ -4,21 +4,24 @@ import pytest
 
 from tests.integration.img_utils import make_metadata_yaml
 from tests.integration.oci_client import ReferrersTagOCIClient
-from tests.integration.oci_image.conftest import GenerateData, run_mobster_generate, verify_sbom_relationships
+from tests.integration.oci_image.conftest import (
+    GenerateData,
+    run_mobster_generate,
+    verify_sbom_relationships,
+)
 from tests.spdx_builder import AnnotatedPackage
 
 
 @pytest.mark.asyncio
 async def test_builder_content(
-        oci_client: ReferrersTagOCIClient,
-        tmp_path: Path,
-        grandparent_input_sbom: Path,
-        parent_input_sbom: Path,
-        parent_build_metadata: Path,
-        grandparent_packages: list[AnnotatedPackage],
-        parent_packages: list[AnnotatedPackage],
-    ) -> None:
-
+    oci_client: ReferrersTagOCIClient,
+    tmp_path: Path,
+    grandparent_input_sbom: Path,
+    parent_input_sbom: Path,
+    parent_build_metadata: Path,
+    grandparent_packages: list[AnnotatedPackage],
+    parent_packages: list[AnnotatedPackage],
+) -> None:
     # first, set up the parent/grandparent image
     grandparent_img = await oci_client.create_image("grandparent", "latest")
     parent_img = await oci_client.create_image("parent", "latest")
@@ -49,5 +52,6 @@ async def test_builder_content(
 
     run_mobster_generate(parent_gdata)
 
-    verify_sbom_relationships(parent_gdata.output_sbom_path,
-                              [grandparent_packages, parent_packages])
+    verify_sbom_relationships(
+        parent_gdata.output_sbom_path, [grandparent_packages, parent_packages]
+    )
