@@ -20,8 +20,6 @@ from mobster.cmd.enrich.merge_utils import (
 
 logger = logging.getLogger(__name__)
 
-
-# pylint: disable=no-member
 def all_purls(
     sbom_items: Sequence[Component],
 ) -> dict[PackageURL, int]:

@@ -76,7 +76,7 @@ class CycloneDX1BomWrapper:
         Loads the object from a dictionary.
         Args:
             sbom_dict (dict[str, Any]): A JSON-like dictionary.
-            add_mobster_tool (bool): specificies whether mobster should be added as a
+            add_mobster_tool (bool): specifies whether mobster should be added as a
             tool (in the case of mobster generate: True, in the case of
             mobster enrich: False)
         Returns:
