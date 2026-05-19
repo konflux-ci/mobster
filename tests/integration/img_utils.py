@@ -33,7 +33,7 @@ def make_metadata_yaml(
             )
     if extra_imgs:
         for extra_img in extra_imgs:
-            metadata["extra_images"].append( # type: ignore[attr-defined]
+            metadata["extra_images"].append(  # type: ignore[attr-defined]
                 {
                     "pullspec": f"{extra_img.repository}:{extra_img.tag}",
                     "digest": extra_img.digest,
