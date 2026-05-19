@@ -42,14 +42,8 @@ async def test_builder_content(
     # mock build metadata
     parent_build_metadata = BuilderPkgMetadata(
         packages=[
-            # inherited from the real base image
-            gin_pkg.to_metadata("builder", grandparent_img.reference),
-            # COPY'd from the builder
+            # simulates a package COPY'd from the above builder image
             crypto_pkg.to_metadata("builder", builder_img.reference),
-            # part of the parent image's RUN, COPY from local build context, etc.
-            random_pkg.to_metadata("intermediate", parent_img.reference),
-            malware_pkg.to_metadata("intermediate", parent_img.reference),
-            ginkgo_pkg.to_metadata("intermediate", parent_img.reference),
         ]
     )
     parent_build_metadata_path = tmp_path / "parent.buildmetadata.json"
