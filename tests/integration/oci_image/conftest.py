@@ -9,7 +9,6 @@ from spdx_tools.spdx.parser.parse_anything import parse_file
 from spdx_tools.spdx.writer.write_anything import write_file
 
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
-    BuilderPkgMetadata,
     BuilderPkgMetadataItem,
 )
 from mobster.image import Image
@@ -60,78 +59,76 @@ class SBOMPackage:
         )
 
 
-gin_pkg = SBOMPackage(
-    name="github.com/gin-gonic/gin",
-    version="v1.9.1",
-    purl="pkg:golang/github.com/gin-gonic/gin@v1.9.1",
-    dependency_of_purl=None,
-    sha256_checksum="a1b2c3d4e5f67890123456789012345678901234567890123456789012345678",
-    verification_code=None,
-)
-
-crypto_pkg = SBOMPackage(
-    name="golang.org/x/crypto",
-    version="v0.14.0",
-    purl="pkg:golang/golang/golang.org/x/crypto@v0.14.0",
-    dependency_of_purl=None,
-    sha256_checksum="9876543210abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    verification_code=None,
-)
-
-random_pkg = SBOMPackage(
-    name="golang.org/x/random",
-    version="v0.14.0",
-    purl="pkg:golang/golang/golang.org/x/random@v0.14.0",
-    dependency_of_purl=None,
-    sha256_checksum=None,
-    verification_code="d6a770ba38583ed4bb4525bd96e50461655d2758",
-)
-
-malware_pkg = SBOMPackage(
-    name="golang.org/x/malware",
-    version="v1.14.0",
-    purl="pkg:golang/golang/golang.org/x/malware@v1.14.0",
-    dependency_of_purl=None,
-    sha256_checksum=None,
-    verification_code=None,
-)
-
-ginkgo_pkg = SBOMPackage(
-    name="golang.org/x/ginkgo",
-    version="v0.14.0",
-    purl="pkg:golang/golang/golang.org/x/ginkgo@v0.14.0",
-    dependency_of_purl=None,
-    sha256_checksum="487198278acdcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    verification_code=None,
-)
-
-stdlib_pkg = SBOMPackage(
-    name="golang.org/x/stdlib",
-    version="v0.14.0",
-    purl="pkg:golang/golang/golang.org/x/stdlib@v0.14.0",
-    dependency_of_purl=None,
-    sha256_checksum="1237773276cdcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    verification_code=None,
-)
+@pytest.fixture
+def gin_pkg() -> SBOMPackage:
+    return SBOMPackage(
+        name="github.com/gin-gonic/gin",
+        version="v1.9.1",
+        purl="pkg:golang/github.com/gin-gonic/gin@v1.9.1",
+        dependency_of_purl=None,
+        sha256_checksum="a1b2c3d4e5f67890123456789012345678901234567890123456789012345678",
+        verification_code=None,
+    )
 
 
 @pytest.fixture
-def parent_build_metadata(tmp_path: Path) -> Path:
-    grandparent_pullspec = "grandparent:latest"
-    parent_pullspec = "parent:latest"
-    build_metadata = BuilderPkgMetadata(
-        packages=[
-            gin_pkg.to_metadata("builder", grandparent_pullspec),
-            crypto_pkg.to_metadata("intermediate", parent_pullspec),
-            random_pkg.to_metadata("intermediate", parent_pullspec),
-            malware_pkg.to_metadata("intermediate", parent_pullspec),
-            ginkgo_pkg.to_metadata("intermediate", parent_pullspec),
-        ]
+def crypto_pkg() -> SBOMPackage:
+    return SBOMPackage(
+        name="golang.org/x/crypto",
+        version="v0.14.0",
+        purl="pkg:golang/golang/golang.org/x/crypto@v0.14.0",
+        dependency_of_purl=None,
+        sha256_checksum="9876543210abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        verification_code=None,
     )
-    path = tmp_path / "parent.buildmetadata.json"
-    with open(path, "w") as fp:
-        fp.write(build_metadata.model_dump_json())
-    return path
+
+
+@pytest.fixture
+def random_pkg() -> SBOMPackage:
+    return SBOMPackage(
+        name="golang.org/x/random",
+        version="v0.14.0",
+        purl="pkg:golang/golang/golang.org/x/random@v0.14.0",
+        dependency_of_purl=None,
+        sha256_checksum=None,
+        verification_code="d6a770ba38583ed4bb4525bd96e50461655d2758",
+    )
+
+
+@pytest.fixture
+def malware_pkg() -> SBOMPackage:
+    return SBOMPackage(
+        name="golang.org/x/malware",
+        version="v1.14.0",
+        purl="pkg:golang/golang/golang.org/x/malware@v1.14.0",
+        dependency_of_purl="pkg:golang/github.com/gin-gonic/gin@v1.9.1",
+        sha256_checksum=None,
+        verification_code=None,
+    )
+
+
+@pytest.fixture
+def ginkgo_pkg() -> SBOMPackage:
+    return SBOMPackage(
+        name="golang.org/x/ginkgo",
+        version="v0.14.0",
+        purl="pkg:golang/golang/golang.org/x/ginkgo@v0.14.0",
+        dependency_of_purl=None,
+        sha256_checksum="487198278acdcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        verification_code=None,
+    )
+
+
+@pytest.fixture
+def stdlib_pkg() -> SBOMPackage:
+    return SBOMPackage(
+        name="golang.org/x/stdlib",
+        version="v0.14.0",
+        purl="pkg:golang/golang/golang.org/x/stdlib@v0.14.0",
+        dependency_of_purl=None,
+        sha256_checksum="1237773276cdcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        verification_code=None,
+    )
 
 
 @dataclass
@@ -189,7 +186,7 @@ def run_mobster_generate(gdata: GenerateData) -> None:
 
 
 @pytest.fixture
-def grandparent_packages() -> list[AnnotatedPackage]:
+def grandparent_packages(gin_pkg: SBOMPackage) -> list[AnnotatedPackage]:
     """
     Returns a list of annotated packages that should be specific to the
     grandparent after parent/component contextualization.
@@ -198,7 +195,11 @@ def grandparent_packages() -> list[AnnotatedPackage]:
 
 
 @pytest.fixture
-def parent_packages() -> list[AnnotatedPackage]:
+def parent_packages(
+    crypto_pkg: SBOMPackage,
+    random_pkg: SBOMPackage,
+    malware_pkg: SBOMPackage,
+) -> list[AnnotatedPackage]:
     """
     Returns a list of annotated packages that should be specific to the parent
     after component contextualization.
@@ -219,7 +220,7 @@ def parent_packages() -> list[AnnotatedPackage]:
 
 
 @pytest.fixture
-def parent_only_packages() -> list[AnnotatedPackage]:
+def parent_only_packages(ginkgo_pkg: SBOMPackage) -> list[AnnotatedPackage]:
     """
     Returns a list of annotated packages that should be removed from the
     component SBOM after contextualization. This simulates a case when some
@@ -229,7 +230,7 @@ def parent_only_packages() -> list[AnnotatedPackage]:
 
 
 @pytest.fixture
-def component_packages() -> list[AnnotatedPackage]:
+def component_packages(stdlib_pkg: SBOMPackage) -> list[AnnotatedPackage]:
     """
     Returns a list of annotated packages that should be specific to the
     component SBOM after contextualization.
