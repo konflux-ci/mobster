@@ -20,6 +20,7 @@ from mobster.cmd.enrich.merge_utils import (
 
 logger = logging.getLogger(__name__)
 
+
 def all_purls(
     sbom_items: Sequence[Component],
 ) -> dict[PackageURL, int]:
