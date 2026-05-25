@@ -44,6 +44,28 @@ ecosystem. To use those features, you need to install the following tools:
 - [**cosign**](https://github.com/sigstore/cosign): Used for signing and verifying SBOM documents in OCI registries.
 - [**syft**](https://github.com/anchore/syft): Used for generating SBOM documents from container images and filesystems.
 
+## Usage
+
+```bash
+# Generate an SBOM for an OCI image (merging Syft and Hermeto outputs)
+mobster generate --output sbom.json oci-image \
+  --from-syft syft-sbom.json \
+  --image-pullspec registry.example.com/repo:tag \
+  --image-digest sha256:<digest>
+
+# Augment SBOMs for all images in a snapshot
+mobster augment --output sboms/ oci-image --snapshot snapshot.json
+
+# Upload a single SBOM to Trusted Profile Analyzer
+mobster upload tpa \
+  --tpa-base-url https://your-tpa-instance.com \
+  --file sbom.json
+
+# See all available commands and options
+mobster --help
+mobster generate --help
+```
+
 ## Development environment
 
 Follow an instruction in the [development-environment.md](docs/development-environment.md)
