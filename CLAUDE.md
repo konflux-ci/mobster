@@ -103,6 +103,16 @@ The most complex path: `generate oci-image` merges Syft and Hermeto SBOMs, adds 
 - **cosign** — signature verification for image provenance
 - **syft** — generating raw SBOMs from container images (output is parsed by mobster)
 
+## Pattern References
+
+Common change types and reference implementations to follow:
+
+- **New generate command**: see `src/mobster/cmd/generate/modelcar.py` (simplest example of a full generate command)
+- **New augment step**: see `src/mobster/cmd/augment/` for the augment command pattern
+- **New CLI argument**: see `src/mobster/cli.py` — add argument to the relevant `*_command_parser` function and wire it to the `Command` subclass via `set_defaults`
+- **New SBOM utility (SPDX)**: see `src/mobster/sbom/spdx.py`
+- **New SBOM utility (CycloneDX)**: see `src/mobster/sbom/cyclonedx.py`
+
 ### SBOM Formats
 
 Both SPDX (`spdx-tools` library) and CycloneDX (`cyclonedx-python-lib`) are supported. Most generation commands default to CycloneDX; OCI image generation produces SPDX.
