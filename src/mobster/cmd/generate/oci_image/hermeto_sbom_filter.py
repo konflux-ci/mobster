@@ -152,7 +152,7 @@ def _filter_spdx_sbom_by_arch(
         "Filtered %s packages out of %s (%s remaining)",
         removed_count,
         original_count,
-        removed_count,
+        filtered_count,
     )
 
     return {
