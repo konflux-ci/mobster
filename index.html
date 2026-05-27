@@ -447,6 +447,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#development-environment" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1140,6 +1151,25 @@ ecosystem. To use those features, you need to install the following tools:</p>
 <li><a href="https://github.com/sigstore/cosign"><strong>cosign</strong></a>: Used for signing and verifying SBOM documents in OCI registries.</li>
 <li><a href="https://github.com/anchore/syft"><strong>syft</strong></a>: Used for generating SBOM documents from container images and filesystems.</li>
 </ul>
+<h2 id="usage">Usage</h2>
+<pre><code class="language-bash"># Generate an SBOM for an OCI image (merging Syft and Hermeto outputs)
+mobster generate --output sbom.json oci-image \
+  --from-syft syft-sbom.json \
+  --image-pullspec registry.example.com/repo:tag \
+  --image-digest sha256:&lt;digest&gt;
+
+# Augment SBOMs for all images in a snapshot
+mobster augment --output sboms/ oci-image --snapshot snapshot.json
+
+# Upload a single SBOM to Trusted Profile Analyzer
+mobster upload tpa \
+  --tpa-base-url https://your-tpa-instance.com \
+  --file sbom.json
+
+# See all available commands and options
+mobster --help
+mobster generate --help
+</code></pre>
 <h2 id="development-environment">Development environment</h2>
 <p>Follow an instruction in the <a href="development-environment/">development-environment.md</a>
 file to set up your development environment.</p>
