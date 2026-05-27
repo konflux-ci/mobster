@@ -13,11 +13,11 @@ You can either augment a specific OCI image by providing the optional
 `--reference` argument, or augment SBOMs for all images in the supplied
 snapshot:
 ```bash
-$ mobster augment oci-image --output sboms/ oci-image \
+$ mobster augment --output sboms/ oci-image \
     --reference quay.io/repo/image@sha256:<digest> \
     --snapshot snapshot.json
 
-$ mobster augment oci-image --output sboms/ oci-image \
+$ mobster augment --output sboms/ oci-image \
     --snapshot snapshot.json
 ```
 
@@ -58,7 +58,7 @@ package for our single-arch component:
 
 We can now run the command:
 ```bash
-$ mobster augment oci-image --output sboms/ snapshot \
+$ mobster augment --output sboms/ oci-image \
     --snapshot snapshot.json
 ```
 

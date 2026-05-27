@@ -12,8 +12,13 @@ on:  # yamllint disable-line rule:truthy
 
 jobs:
   tox:
-    name: Run unit tests and linters
+    name: ${{ matrix.tox-env }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Running all tox environments including pytest
+        tox-env: [test, ruff, pylint, mypy, yamllint, bandit, pip-audit]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4.2.2
@@ -25,18 +30,11 @@ jobs:
         run: |
           poetry install --no-interaction --no-root
 
-      - name: Install Hadolint and Oras via Brew
-        run: |
-          NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          /home/linuxbrew/.linuxbrew/bin/brew install hadolint oras
-          sudo ln -s /home/linuxbrew/.linuxbrew/bin/hadolint /usr/bin/
-          sudo ln -s /home/linuxbrew/.linuxbrew/bin/oras /usr/bin/
-
-      - name: Run Tests
-        run: |
-            poetry run tox run --skip-env test-integration
+      - name: Run ${{ matrix.tox-env }}
+        run: poetry run tox -e ${{ matrix.tox-env }}
 
       - name: Upload coverage reports to Codecov
+        if: matrix.tox-env == 'test'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -44,11 +42,34 @@ jobs:
           files: ./coverage.xml
           fail_ci_if_error: false
 
+  hadolint:
+    name: hadolint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1.4.1
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction --no-root
+
+      - name: Install Hadolint
+        run: |
+          curl -sSL https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-Linux-x86_64 \
+            -o /usr/local/bin/hadolint
+          chmod +x /usr/local/bin/hadolint
+
+      - name: Run hadolint
+        run: poetry run tox -e hadolint
+
   commitlint:
     name: Conventional Commit Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6.0.2
 
       - uses: webiny/action-conventional-commits@v1.3.0
