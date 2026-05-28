@@ -53,7 +53,12 @@ def parse_vulnerabilities_json(data: dict[str, Any]) -> bool:
             to_update.append(package["name"])
         console = Console()
         console.print(table)
-        print(f"To fix, run:\npdm update {' '.join(to_update)}  --update-reuse")
+        print(
+            f"To fix, run:\n"
+            f"poetry update {' '.join(to_update)}\n"
+            f"or manually edit version in lockfile and run\n"
+            f"poetry lock"
+        )
         return False
     return True
 
