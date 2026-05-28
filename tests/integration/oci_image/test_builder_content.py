@@ -16,8 +16,12 @@ from tests.integration.oci_image.conftest import (
     verify_sbom_relationships,
 )
 
-async def setup_images(tmp_path: Path, grandparent_input_sbom: Path, oci_client: ReferrersTagOCIClient) -> list[Image]:
-    """Initialize the grandparent, parent, and builder image necessary for most builder content tests."""
+
+async def setup_images(
+    tmp_path: Path, grandparent_input_sbom: Path, oci_client: ReferrersTagOCIClient
+) -> list[Image]:
+    """Initialize the grandparent, parent, and builder image necessary for most
+    builder content tests."""
     grandparent_img = await oci_client.create_image("grandparent", "latest")
     parent_img = await oci_client.create_image("parent", "latest")
 
@@ -59,7 +63,9 @@ async def test_builder_content(
     package being COPY'd from the builder image & ensures the origin is swapped
     to the builder image when mobster runs the generate command w/
     --build-metadata-path and --contextualize set."""
-    grandparent_img, parent_img, builder_img = await setup_images(tmp_path, grandparent_input_sbom, oci_client)
+    grandparent_img, parent_img, builder_img = await setup_images(
+        tmp_path, grandparent_input_sbom, oci_client
+    )
 
     # mock build metadata
     parent_build_metadata = BuilderPkgMetadata(
@@ -111,6 +117,7 @@ async def test_builder_content(
         [crypto_pkg.to_spdx()],
     )
 
+
 @pytest.mark.asyncio
 async def test_builder_content_duplicate(
     oci_client: ReferrersTagOCIClient,
@@ -121,10 +128,12 @@ async def test_builder_content_duplicate(
     crypto_pkg: SBOMPackage,
     random_pkg: SBOMPackage,
     malware_pkg: SBOMPackage,
-    ginkgo_pkg: SBOMPackage
+    ginkgo_pkg: SBOMPackage,
 ) -> None:
     """Test that builder content throws a warning for duplicated Capo packages."""
-    grandparent_img, parent_img, builder_img = await setup_images(tmp_path, grandparent_input_sbom, oci_client)
+    grandparent_img, parent_img, builder_img = await setup_images(
+        tmp_path, grandparent_input_sbom, oci_client
+    )
 
     # mock build metadata
     parent_build_metadata = BuilderPkgMetadata(
@@ -172,6 +181,7 @@ async def test_builder_content_duplicate(
         [crypto_pkg.to_spdx()],
     )
 
+
 @pytest.mark.asyncio
 async def test_builder_content_extra(
     oci_client: ReferrersTagOCIClient,
@@ -179,11 +189,13 @@ async def test_builder_content_extra(
     grandparent_input_sbom: Path,
     parent_input_sbom: Path,
     crypto_pkg: SBOMPackage,
-    stdlib_pkg: SBOMPackage
+    stdlib_pkg: SBOMPackage,
 ) -> None:
     """Test that builder content throws a warning for Capo packages that aren't
     actually in the SBOM."""
-    grandparent_img, parent_img, builder_img = await setup_images(tmp_path, grandparent_input_sbom, oci_client)
+    grandparent_img, parent_img, builder_img = await setup_images(
+        tmp_path, grandparent_input_sbom, oci_client
+    )
 
     # mock build metadata
     parent_build_metadata = BuilderPkgMetadata(
@@ -213,7 +225,4 @@ async def test_builder_content_extra(
     run_mobster_generate(parent_gdata)
 
     # make sure stdlib wasn't added to the sbom
-    verify_packages_not_included(parent_gdata.output_sbom_path, [
-        stdlib_pkg.to_spdx()
-    ])
-
+    verify_packages_not_included(parent_gdata.output_sbom_path, [stdlib_pkg.to_spdx()])
