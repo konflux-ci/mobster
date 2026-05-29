@@ -47,6 +47,36 @@ async def setup_images(
     return [grandparent_img, parent_img, builder_img]
 
 
+async def run_builder_content_test(
+    tmp_path: Path,
+    parent_input_sbom: Path,
+    parent_build_metadata: BuilderPkgMetadata,
+    parent_img: Image,
+    builder_img: Image,
+    grandparent_img: Image,
+) -> Path:
+    """Generate the data and build the parent SBOM for builder content testing."""
+    parent_build_metadata_path = tmp_path / "parent.buildmetadata.json"
+    with open(parent_build_metadata_path, "w") as fp:
+        fp.write(parent_build_metadata.model_dump_json())
+
+    parent_gdata = GenerateData(
+        metadata_path=make_metadata_yaml(
+            tmp_path,
+            parent_img,
+            [builder_img, grandparent_img],
+        ),
+        build_metadata_path=parent_build_metadata_path,
+        input_sbom_path=parent_input_sbom,
+        output_sbom_path=tmp_path / "parent.output.spdx.json",
+        contextualize=True,
+    )
+
+    run_mobster_generate(parent_gdata)
+
+    return parent_gdata.output_sbom_path
+
+
 @pytest.mark.asyncio
 async def test_builder_content(
     oci_client: ReferrersTagOCIClient,
@@ -66,7 +96,6 @@ async def test_builder_content(
     grandparent_img, parent_img, builder_img = await setup_images(
         tmp_path, grandparent_input_sbom, oci_client
     )
-
     # mock build metadata
     parent_build_metadata = BuilderPkgMetadata(
         packages=[
@@ -74,27 +103,18 @@ async def test_builder_content(
             crypto_pkg.to_metadata("builder", builder_img.reference),
         ]
     )
-    parent_build_metadata_path = tmp_path / "parent.buildmetadata.json"
-    with open(parent_build_metadata_path, "w") as fp:
-        fp.write(parent_build_metadata.model_dump_json())
-
-    parent_gdata = GenerateData(
-        metadata_path=make_metadata_yaml(
-            tmp_path,
-            parent_img,
-            [builder_img, grandparent_img],
-        ),
-        build_metadata_path=parent_build_metadata_path,
-        input_sbom_path=parent_input_sbom,
-        output_sbom_path=tmp_path / "parent.output.spdx.json",
-        contextualize=True,
+    output_sbom_path = await run_builder_content_test(
+        tmp_path,
+        parent_input_sbom,
+        parent_build_metadata,
+        parent_img,
+        builder_img,
+        grandparent_img,
     )
-
-    run_mobster_generate(parent_gdata)
 
     # verify the DESCENDANT_OF chain (parent → grandparent)
     verify_sbom_relationships(
-        parent_gdata.output_sbom_path,
+        output_sbom_path,
         [
             # parent packages
             [
@@ -110,7 +130,7 @@ async def test_builder_content(
 
     # verify that the crypto package is marked as actually coming from the
     # builder image
-    sbom_doc = parse_file(str(parent_gdata.output_sbom_path))
+    sbom_doc = parse_file(str(output_sbom_path))
     verify_relationships(
         builder_img.propose_spdx_id(),
         sbom_doc.relationships,
@@ -143,27 +163,18 @@ async def test_builder_content_duplicate(
             crypto_pkg.to_metadata("builder", builder_img.reference),
         ]
     )
-    parent_build_metadata_path = tmp_path / "parent.buildmetadata.json"
-    with open(parent_build_metadata_path, "w") as fp:
-        fp.write(parent_build_metadata.model_dump_json())
-
-    parent_gdata = GenerateData(
-        metadata_path=make_metadata_yaml(
-            tmp_path,
-            parent_img,
-            [builder_img, grandparent_img],
-        ),
-        build_metadata_path=parent_build_metadata_path,
-        input_sbom_path=parent_input_sbom,
-        output_sbom_path=tmp_path / "parent.output.spdx.json",
-        contextualize=True,
+    output_sbom_path = await run_builder_content_test(
+        tmp_path,
+        parent_input_sbom,
+        parent_build_metadata,
+        parent_img,
+        builder_img,
+        grandparent_img,
     )
-
-    run_mobster_generate(parent_gdata)
 
     # assertions should be roughly the same as the happy path
     verify_sbom_relationships(
-        parent_gdata.output_sbom_path,
+        output_sbom_path,
         [
             # parent packages
             [
@@ -174,7 +185,7 @@ async def test_builder_content_duplicate(
             [gin_pkg.to_spdx()],
         ],
     )
-    sbom_doc = parse_file(str(parent_gdata.output_sbom_path))
+    sbom_doc = parse_file(str(output_sbom_path))
     verify_relationships(
         builder_img.propose_spdx_id(),
         sbom_doc.relationships,
@@ -206,23 +217,59 @@ async def test_builder_content_extra(
             stdlib_pkg.to_metadata("builder", builder_img.reference),
         ]
     )
-    parent_build_metadata_path = tmp_path / "parent.buildmetadata.json"
-    with open(parent_build_metadata_path, "w") as fp:
-        fp.write(parent_build_metadata.model_dump_json())
-
-    parent_gdata = GenerateData(
-        metadata_path=make_metadata_yaml(
-            tmp_path,
-            parent_img,
-            [builder_img, grandparent_img],
-        ),
-        build_metadata_path=parent_build_metadata_path,
-        input_sbom_path=parent_input_sbom,
-        output_sbom_path=tmp_path / "parent.output.spdx.json",
-        contextualize=True,
+    output_sbom_path = await run_builder_content_test(
+        tmp_path,
+        parent_input_sbom,
+        parent_build_metadata,
+        parent_img,
+        builder_img,
+        grandparent_img,
     )
 
-    run_mobster_generate(parent_gdata)
-
     # make sure stdlib wasn't added to the sbom
-    verify_packages_not_included(parent_gdata.output_sbom_path, [stdlib_pkg.to_spdx()])
+    verify_packages_not_included(output_sbom_path, [stdlib_pkg.to_spdx()])
+
+
+@pytest.mark.asyncio
+async def test_builder_content_duplicate_different_pullspecs(
+    oci_client: ReferrersTagOCIClient,
+    tmp_path: Path,
+    grandparent_input_sbom: Path,
+    parent_input_sbom: Path,
+    crypto_pkg: SBOMPackage,
+) -> None:
+    """Test that the process notes a package as coming from *two* images if
+    specified by the build metadata."""
+    grandparent_img, parent_img, builder_img = await setup_images(
+        tmp_path, grandparent_input_sbom, oci_client
+    )
+
+    # mock build metadata
+    parent_build_metadata = BuilderPkgMetadata(
+        packages=[
+            # crypto package comes from BOTH builder and parent image
+            crypto_pkg.to_metadata("builder", builder_img.reference),
+            crypto_pkg.to_metadata("intermediate", parent_img.reference),
+        ]
+    )
+    output_sbom_path = await run_builder_content_test(
+        tmp_path,
+        parent_input_sbom,
+        parent_build_metadata,
+        parent_img,
+        builder_img,
+        grandparent_img,
+    )
+
+    sbom_doc = parse_file(str(output_sbom_path))
+    # the sbom should show the package as coming from *both* images
+    verify_relationships(
+        builder_img.propose_spdx_id(),
+        sbom_doc.relationships,
+        [crypto_pkg.to_spdx()],
+    )
+    verify_relationships(
+        parent_img.propose_spdx_id(),
+        sbom_doc.relationships,
+        [crypto_pkg.to_spdx()],
+    )
