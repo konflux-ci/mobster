@@ -3,7 +3,10 @@ from pathlib import Path
 import pytest
 from spdx_tools.spdx.parser.parse_anything import parse_file
 
-from mobster.cmd.generate.oci_image.contextual_sbom.builder import BuilderPkgMetadata
+from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
+    BuilderPkgMetadata,
+    BuilderPkgMetadataItem,
+)
 from mobster.image import Image
 from tests.integration.img_utils import make_metadata_yaml
 from tests.integration.oci_client import ReferrersTagOCIClient
@@ -16,6 +19,7 @@ from tests.integration.oci_image.conftest import (
     verify_sbom_relationships,
 )
 
+
 @pytest.fixture
 def builder_img() -> Image:
     return Image(
@@ -23,6 +27,7 @@ def builder_img() -> Image:
         digest="sha256:0000000000000000000000000000000000000000000000000000000000000001",
         tag="latest",
     )
+
 
 @pytest.fixture
 def extra_builder_img() -> Image:
@@ -32,9 +37,10 @@ def extra_builder_img() -> Image:
         tag="latest",
     )
 
+
 async def setup_images(
     tmp_path: Path, grandparent_input_sbom: Path, oci_client: ReferrersTagOCIClient
-) -> tuple[Image,Image]:
+) -> tuple[Image, Image]:
     """Initialize the grandparent, parent, and builder image necessary for most
     builder content tests."""
     grandparent_img = await oci_client.create_image("grandparent", "latest")
@@ -54,15 +60,17 @@ async def setup_images(
     return (grandparent_img, parent_img)
 
 
-async def run_builder_content_workflow(
+async def capture_builder_content_workflow(
     tmp_path: Path,
     parent_input_sbom: Path,
     parent_build_metadata: BuilderPkgMetadata,
     parent_img: Image,
     builder_imgs: list[Image],
     grandparent_img: Image,
-) -> Path:
-    """Generate the data and build the parent SBOM for builder content testing."""
+) -> tuple[str, str, Path]:
+    """Generate the data and build the parent SBOM for builder content testing,
+    while capturing stdout/stderr. Useful for asserting certain things were
+    logged."""
     parent_build_metadata_path = tmp_path / "parent.buildmetadata.json"
     with open(parent_build_metadata_path, "w") as fp:
         fp.write(parent_build_metadata.model_dump_json())
@@ -79,9 +87,28 @@ async def run_builder_content_workflow(
         contextualize=True,
     )
 
-    run_mobster_generate(parent_gdata)
+    result = run_mobster_generate(parent_gdata)
+    return result.stdout.decode(), result.stderr.decode(), parent_gdata.output_sbom_path
 
-    return parent_gdata.output_sbom_path
+
+async def run_builder_content_workflow(
+    tmp_path: Path,
+    parent_input_sbom: Path,
+    parent_build_metadata: BuilderPkgMetadata,
+    parent_img: Image,
+    builder_imgs: list[Image],
+    grandparent_img: Image,
+) -> Path:
+    """Generate the data and build the parent SBOM for builder content testing."""
+    _, _, output_sbom_path = await capture_builder_content_workflow(
+        tmp_path,
+        parent_input_sbom,
+        parent_build_metadata,
+        parent_img,
+        builder_imgs,
+        grandparent_img,
+    )
+    return output_sbom_path
 
 
 @pytest.mark.asyncio
@@ -241,6 +268,129 @@ async def test_builder_content_extra(
 
 
 @pytest.mark.asyncio
+async def test_builder_content_missing_purl(
+    oci_client: ReferrersTagOCIClient,
+    tmp_path: Path,
+    grandparent_input_sbom: Path,
+    parent_input_sbom: Path,
+    builder_img: Image,
+) -> None:
+    """Test how the process handles a package coming from the same image twice
+    being specified in the build metadata."""
+    grandparent_img, parent_img = await setup_images(
+        tmp_path, grandparent_input_sbom, oci_client
+    )
+
+    # set up a package with a missing purl
+    bad_pkg = BuilderPkgMetadataItem(
+        purl="", origin_type="builder", pullspec=builder_img.reference
+    )
+    # mock build metadata
+    parent_build_metadata = BuilderPkgMetadata(packages=[bad_pkg])
+    _, stderr, _ = await capture_builder_content_workflow(
+        tmp_path,
+        parent_input_sbom,
+        parent_build_metadata,
+        parent_img,
+        [builder_img],
+        grandparent_img,
+    )
+
+    # check that an error was thrown expecting a purl string & that the
+    # contextual flow failed
+    assert "A purl string argument is required." in stderr
+    assert "Could not create contextual SBOM." in stderr
+
+
+@pytest.mark.asyncio
+async def test_builder_content_duplicate_same_pullspecs(
+    oci_client: ReferrersTagOCIClient,
+    tmp_path: Path,
+    grandparent_input_sbom: Path,
+    parent_input_sbom: Path,
+    builder_img: Image,
+    crypto_pkg: SBOMPackage,
+) -> None:
+    """Test how the process handles a package coming from the same image twice
+    being specified in the build metadata."""
+    grandparent_img, parent_img = await setup_images(
+        tmp_path, grandparent_input_sbom, oci_client
+    )
+
+    # mock build metadata
+    parent_build_metadata = BuilderPkgMetadata(
+        packages=[
+            # crypto package comes from the same builder image TWICE
+            crypto_pkg.to_metadata("builder", builder_img.reference),
+            crypto_pkg.to_metadata("builder", builder_img.reference),
+        ]
+    )
+    output_sbom_path = await run_builder_content_workflow(
+        tmp_path,
+        parent_input_sbom,
+        parent_build_metadata,
+        parent_img,
+        [builder_img],
+        grandparent_img,
+    )
+
+    sbom_doc = parse_file(str(output_sbom_path))
+    # the sbom should show the package as coming from *both* images
+    verify_relationships(
+        builder_img.propose_spdx_id(),
+        sbom_doc.relationships,
+        [crypto_pkg.to_spdx()],
+    )
+
+
+@pytest.mark.asyncio
+async def test_builder_content_duplicate_from_parent(
+    oci_client: ReferrersTagOCIClient,
+    tmp_path: Path,
+    grandparent_input_sbom: Path,
+    parent_input_sbom: Path,
+    builder_img: Image,
+    extra_builder_img: Image,
+    crypto_pkg: SBOMPackage,
+) -> None:
+    """Test that the process notes a package as coming from both the builder
+    image AND the parent image if specified by the build metadata."""
+    grandparent_img, parent_img = await setup_images(
+        tmp_path, grandparent_input_sbom, oci_client
+    )
+
+    # mock build metadata
+    parent_build_metadata = BuilderPkgMetadata(
+        packages=[
+            # crypto package comes from TWO builder images
+            crypto_pkg.to_metadata("builder", builder_img.reference),
+            crypto_pkg.to_metadata("intermediate", parent_img.reference),
+        ]
+    )
+    output_sbom_path = await run_builder_content_workflow(
+        tmp_path,
+        parent_input_sbom,
+        parent_build_metadata,
+        parent_img,
+        [builder_img],
+        grandparent_img,
+    )
+
+    sbom_doc = parse_file(str(output_sbom_path))
+    # the sbom should show the package as coming from *both* images
+    verify_relationships(
+        builder_img.propose_spdx_id(),
+        sbom_doc.relationships,
+        [crypto_pkg.to_spdx()],
+    )
+    verify_relationships(
+        extra_builder_img.propose_spdx_id(),
+        sbom_doc.relationships,
+        [crypto_pkg.to_spdx()],
+    )
+
+
+@pytest.mark.asyncio
 async def test_builder_content_duplicate_different_pullspecs(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
@@ -250,7 +400,7 @@ async def test_builder_content_duplicate_different_pullspecs(
     extra_builder_img: Image,
     crypto_pkg: SBOMPackage,
 ) -> None:
-    """Test that the process notes a package as coming from *two* images if
+    """Test that the process notes a package as coming from *two* builder images if
     specified by the build metadata."""
     grandparent_img, parent_img = await setup_images(
         tmp_path, grandparent_input_sbom, oci_client

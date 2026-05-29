@@ -146,7 +146,7 @@ class GenerateData:
     contextualize: bool = True
 
 
-def run_mobster_generate(gdata: GenerateData) -> None:
+def run_mobster_generate(gdata: GenerateData) -> subprocess.CompletedProcess[bytes]:
     """
     Run a mobster generate oci image command with the supplied arguments.
     """
@@ -182,7 +182,7 @@ def run_mobster_generate(gdata: GenerateData) -> None:
     if gdata.build_metadata_path:
         cmd.extend(["--build-metadata-path", str(gdata.build_metadata_path)])
 
-    subprocess.run(cmd, check=True)
+    return subprocess.run(cmd, check=True, capture_output=True)
 
 
 @pytest.fixture
