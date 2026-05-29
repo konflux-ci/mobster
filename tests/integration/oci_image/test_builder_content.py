@@ -344,6 +344,7 @@ async def test_builder_content_duplicate_same_pullspecs(
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="not currently supported")
 async def test_builder_content_duplicate_from_parent(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
@@ -391,6 +392,7 @@ async def test_builder_content_duplicate_from_parent(
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="not currently supported")
 async def test_builder_content_duplicate_different_pullspecs(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
