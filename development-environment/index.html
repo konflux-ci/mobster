@@ -918,10 +918,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#git-leaks-detection" class="md-nav__link">
+  <a href="#pre-commit-hooks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Git leaks detection
+        Pre-commit hooks
       
     </span>
   </a>
@@ -1105,17 +1105,18 @@
 <li><code>poetry install</code></li>
 <li>This will create a virtual environment in <code>.venv</code> and install all dependencies</li>
 <li>You can also use <code>poetry shell</code> to activate the virtual environment</li>
-<li>Install <a href="#git-leaks-detection">pre-commit hooks</a></li>
+<li>Install <a href="#pre-commit-hooks">pre-commit hooks</a></li>
 </ol>
 <p>Note: You can also use a custom virtual environment based on your preference.</p>
-<h3 id="git-leaks-detection">Git leaks detection</h3>
-<p>Since the repository currently contains secret information in various encrypted forms there is high chance that developer may push a commit with
-decrypted secrets by mistake. To avoid this problem we recommend
-to use <code>Gitleaks</code> tool that prevent you from commit secret code into git history.</p>
-<p>The repository is already pre-configured but each developer has to make final
-config changes in his/her environment.</p>
-<p>Follow the <a href="https://github.com/gitleaks/gitleaks#pre-commit">documentation</a> to
-configure Gitleaks on your computer.</p>
+<h3 id="pre-commit-hooks">Pre-commit hooks</h3>
+<p>The repository uses pre-commit hooks for:
+- <strong>Gitleaks</strong> — prevents accidentally committing secrets
+- <strong>Conventional commits</strong> — validates commit message format on <code>commit-msg</code></p>
+<p>Install both hook types after cloning:</p>
+<pre><code class="language-bash">pre-commit install
+pre-commit install --hook-type commit-msg
+</code></pre>
+<p>See the <a href="https://github.com/gitleaks/gitleaks#pre-commit">Gitleaks documentation</a> if you need additional Gitleaks configuration on your machine.</p>
 <h2 id="package-management">Package management</h2>
 <p>The project uses Poetry for package management. You can use the following commands to manage packages:</p>
 <ul>
