@@ -6,21 +6,24 @@
    1. `poetry install`
    2. This will create a virtual environment in `.venv` and install all dependencies
    3. You can also use `poetry shell` to activate the virtual environment
-3. Install [pre-commit hooks](#git-leaks-detection)
+3. Install [pre-commit hooks](#pre-commit-hooks)
 
 Note: You can also use a custom virtual environment based on your preference.
 
-### Git leaks detection
+### Pre-commit hooks
 
-Since the repository currently contains secret information in various encrypted forms there is high chance that developer may push a commit with
-decrypted secrets by mistake. To avoid this problem we recommend
-to use `Gitleaks` tool that prevent you from commit secret code into git history.
+The repository uses pre-commit hooks for:
+- **Gitleaks** — prevents accidentally committing secrets
+- **Conventional commits** — validates commit message format on `commit-msg`
 
-The repository is already pre-configured but each developer has to make final
-config changes in his/her environment.
+Install both hook types after cloning:
 
-Follow the [documentation](https://github.com/gitleaks/gitleaks#pre-commit) to
-configure Gitleaks on your computer.
+```bash
+pre-commit install
+pre-commit install --hook-type commit-msg
+```
+
+See the [Gitleaks documentation](https://github.com/gitleaks/gitleaks#pre-commit) if you need additional Gitleaks configuration on your machine.
 
 ## Package management
 The project uses Poetry for package management. You can use the following commands to manage packages:
