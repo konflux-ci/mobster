@@ -17,6 +17,7 @@ from mobster.cmd.enrich.merge_utils import (
     _merge_union_by_key,
     _prefer_a,
 )
+from mobster.sbom.cyclonedx import is_cyclonedx
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,9 @@ def compare_purls(p1: PackageURL, p2: PackageURL) -> bool:
     - p1 and p2 have the same name
     - p2 is contained within p1
     """
+    if not p1 or not p2:
+        return False
+
     return (
         p1.type == p2.type
         and p1.name == p2.name
@@ -104,13 +108,6 @@ def add_back_model_card(sbom: CycloneDX1BomWrapper, raw_sbom: dict[str, Any]) ->
             component_obj.model_card = raw_comp["modelCard"]
 
 
-def is_cyclonedx(sbom: dict[str, Any]) -> bool:
-    """
-    checks if the sbom is in cyclonedx format
-    """
-    return sbom.get("bomFormat") == "CycloneDX"
-
-
 class SBOMEnricher(ABC):  # pylint: disable=too-few-public-methods
     """
     Abstract base class for SBOM enrichers.
@@ -155,18 +152,20 @@ class CycloneDXEnricher(SBOMEnricher):  # pylint: disable=too-few-public-methods
         Returns:
             dict[str, Any]: The enriched SBOM
         """
-        sbom_a: CycloneDX1BomWrapper = CycloneDX1BomWrapper.from_dict(target_sbom)
+        sbom_a: CycloneDX1BomWrapper = CycloneDX1BomWrapper.from_dict(
+            target_sbom, add_mobster_tool=False
+        )
 
         try:
-            if is_cyclonedx(incoming_sbom):
-                sbom_b: CycloneDX1BomWrapper = CycloneDX1BomWrapper.from_dict(
-                    incoming_sbom, False
-                )
-
-                sbom_a.sbom.metadata.tools.components.add(self.get_owasp_tool(sbom_b))
-                general_enrich(self.enrich_components, sbom_a, sbom_b)
-            else:
+            if not is_cyclonedx(incoming_sbom):
                 raise ValueError("ERROR: expecting the incoming SBOM to be CycloneDX")
+
+            sbom_b: CycloneDX1BomWrapper = CycloneDX1BomWrapper.from_dict(
+                incoming_sbom, add_mobster_tool=False
+            )
+
+            sbom_a.sbom.metadata.tools.components.add(self.get_owasp_tool(sbom_b))
+            general_enrich(self.enrich_components, sbom_a, sbom_b)
         except ValueError as e:
             logger.exception(e)
 
@@ -248,9 +247,10 @@ class CycloneDXEnricher(SBOMEnricher):  # pylint: disable=too-few-public-methods
         """
         if component_a.purl is None:
             return
-        sbom_b_model_card = sbom_b.model_cards[component_a.purl]
+        sbom_b_model_card = sbom_b.model_cards.get(component_a.purl)
         if not sbom_a.model_cards or component_a.purl not in sbom_a.model_cards:
-            sbom_a.model_cards = {component_a.purl: sbom_b_model_card}
+            if sbom_b_model_card is not None:
+                sbom_a.model_cards = {component_a.purl: sbom_b_model_card}
             return
 
         model_card_fields = {
@@ -259,6 +259,9 @@ class CycloneDXEnricher(SBOMEnricher):  # pylint: disable=too-few-public-methods
             "modelParameters": self.combine_model_parameters,
             "considerations": self.combine_considerations,
         }
+
+        if sbom_b_model_card is None:
+            return
 
         incoming_model_card = sbom_a.model_cards[component_a.purl]
         sbom_a.model_cards[component_a.purl] = self._merge_fields(

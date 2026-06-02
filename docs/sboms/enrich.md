@@ -11,8 +11,7 @@ mobster enrich \
 	--output output-sbom.json \
 	ai-bom \
 	--sbom sbom.json \
-	--enrichment-file enrichmentFile.json \
-	--image-pullspec quay.io/konflux-ci/mobster:latest
+	--enrichment-file enrichmentFile.json
 ```
 ## List of arguments
 - `output` -- where to save the SBOM, prints it to STDOUT if this is not specified
