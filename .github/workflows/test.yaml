@@ -21,7 +21,7 @@ jobs:
         tox-env: [test, ruff, pylint, mypy, yamllint, bandit, pip-audit]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4.3.1
 
       - name: Install Poetry
         uses: snok/install-poetry@v1.4.1
@@ -70,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4.3.1
 
       - name: Check AGENTS.md is under 150 lines
         run: |
