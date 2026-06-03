@@ -277,6 +277,7 @@ async def test_builder_content_extra(
     # make sure stdlib wasn't added to the sbom
     verify_packages_not_included(output_sbom_path, [stdlib_pkg.to_spdx()])
 
+
 @pytest.mark.asyncio
 async def test_builder_content_missing_purl(
     oci_client: ReferrersTagOCIClient,
