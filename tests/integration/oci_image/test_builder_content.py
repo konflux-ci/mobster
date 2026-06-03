@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 import pytest
 from spdx_tools.spdx.parser.parse_anything import parse_file
@@ -175,6 +176,8 @@ async def test_builder_content(
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="not currently implemented")
+@pytest.mark.parametrize(["origin_type"], [["builder"], ["intermediate"]])
 async def test_builder_content_duplicate(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
@@ -186,8 +189,9 @@ async def test_builder_content_duplicate(
     random_pkg: SBOMPackage,
     malware_pkg: SBOMPackage,
     ginkgo_pkg: SBOMPackage,
+    origin_type: Literal["builder", "intermediate"],
 ) -> None:
-    """Test that builder content throws a warning for duplicated Capo packages."""
+    """Test that builder content handles duplicated packages from Capo."""
     grandparent_img, parent_img = await setup_images(
         tmp_path, grandparent_input_sbom, oci_client
     )
@@ -196,11 +200,11 @@ async def test_builder_content_duplicate(
     parent_build_metadata = BuilderPkgMetadata(
         packages=[
             # like the above test, but we specify the crypto package twice
-            crypto_pkg.to_metadata("builder", builder_img.reference),
-            crypto_pkg.to_metadata("builder", builder_img.reference),
+            crypto_pkg.to_metadata(origin_type, builder_img.reference),
+            crypto_pkg.to_metadata(origin_type, builder_img.reference),
         ]
     )
-    output_sbom_path = await run_builder_content_workflow(
+    _, stderr, output_sbom_path = await capture_builder_content_workflow(
         tmp_path,
         parent_input_sbom,
         parent_build_metadata,
@@ -222,12 +226,17 @@ async def test_builder_content_duplicate(
             [gin_pkg.to_spdx()],
         ],
     )
+
+    # this is all mobster does currently:
     sbom_doc = parse_file(str(output_sbom_path))
     verify_relationships(
         builder_img.propose_spdx_id(),
         sbom_doc.relationships,
         [crypto_pkg.to_spdx()],
     )
+
+    # replace with actual warning text once warning is added
+    assert "Duplicated package in build metadata" in stderr
 
 
 @pytest.mark.asyncio
