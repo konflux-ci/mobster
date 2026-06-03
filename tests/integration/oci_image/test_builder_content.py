@@ -285,8 +285,8 @@ async def test_builder_content_missing_purl(
     parent_input_sbom: Path,
     builder_img: Image,
 ) -> None:
-    """Test how the process handles a package coming from the same image twice
-    being specified in the build metadata."""
+    """Test how the process handles a package with no set purl in the build
+    metadata."""
     grandparent_img, parent_img = await setup_images(
         tmp_path, grandparent_input_sbom, oci_client
     )
