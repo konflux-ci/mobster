@@ -65,6 +65,22 @@ jobs:
       - name: Run hadolint
         run: poetry run tox -e hadolint
 
+  agents-md-size:
+    name: AGENTS.md size check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Check AGENTS.md is under 150 lines
+        run: |
+          lines=$(wc -l < AGENTS.md)
+          if [ "$lines" -gt 150 ]; then
+            echo "AGENTS.md has $lines lines, exceeds the 150-line limit."
+            exit 1
+          fi
+          echo "AGENTS.md has $lines lines (limit: 150). OK."
+
   commitlint:
     name: Conventional Commit Lint
     runs-on: ubuntu-latest
