@@ -235,7 +235,8 @@ async def test_builder_content_duplicate(
         [crypto_pkg.to_spdx()],
     )
 
-    # replace with actual warning text once warning is added
+    # this will probably log a warning later - replace this with the actual
+    # warning text once this is added
     assert "Duplicated package in build metadata" in stderr
 
 
@@ -249,7 +250,7 @@ async def test_builder_content_extra(
     crypto_pkg: SBOMPackage,
     stdlib_pkg: SBOMPackage,
 ) -> None:
-    """Test that builder content throws a warning for Capo packages that aren't
+    """Test that builder content flow handles Capo packages that aren't
     actually in the SBOM."""
     grandparent_img, parent_img = await setup_images(
         tmp_path, grandparent_input_sbom, oci_client
@@ -275,7 +276,6 @@ async def test_builder_content_extra(
 
     # make sure stdlib wasn't added to the sbom
     verify_packages_not_included(output_sbom_path, [stdlib_pkg.to_spdx()])
-
 
 @pytest.mark.asyncio
 async def test_builder_content_missing_purl(
