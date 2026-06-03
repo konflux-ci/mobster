@@ -62,51 +62,52 @@ async def setup_images(
 
 async def capture_builder_content_workflow(
     tmp_path: Path,
-    parent_input_sbom: Path,
-    parent_build_metadata: BuilderPkgMetadata,
-    parent_img: Image,
+    input_sbom: Path,
+    build_metadata: BuilderPkgMetadata,
+    img: Image,
     builder_imgs: list[Image],
-    grandparent_img: Image,
+    base_img: Image,
 ) -> tuple[str, str, Path]:
-    """Generate the data and build the parent SBOM for builder content testing,
-    while capturing stdout/stderr. Useful for asserting certain things were
-    logged."""
-    parent_build_metadata_path = tmp_path / "parent.buildmetadata.json"
-    with open(parent_build_metadata_path, "w") as fp:
-        fp.write(parent_build_metadata.model_dump_json())
+    """Generate build metadata and generate an SBOM for builder content
+    testing, while capturing stdout/stderr. Useful for asserting certain things
+    were logged."""
+    build_metadata_path = tmp_path / "buildmetadata.json"
+    with open(build_metadata_path, "w") as fp:
+        fp.write(build_metadata.model_dump_json())
 
-    parent_gdata = GenerateData(
+    gdata = GenerateData(
         metadata_path=make_metadata_yaml(
             tmp_path,
-            parent_img,
-            builder_imgs + [grandparent_img],
+            img,
+            builder_imgs + [base_img],
         ),
-        build_metadata_path=parent_build_metadata_path,
-        input_sbom_path=parent_input_sbom,
-        output_sbom_path=tmp_path / "parent.output.spdx.json",
+        build_metadata_path=build_metadata_path,
+        input_sbom_path=input_sbom,
+        output_sbom_path=tmp_path / "builder_content.output.spdx.json",
         contextualize=True,
     )
 
-    result = run_mobster_generate(parent_gdata)
-    return result.stdout.decode(), result.stderr.decode(), parent_gdata.output_sbom_path
+    result = run_mobster_generate(gdata)
+    return result.stdout.decode(), result.stderr.decode(), gdata.output_sbom_path
 
 
 async def run_builder_content_workflow(
     tmp_path: Path,
-    parent_input_sbom: Path,
-    parent_build_metadata: BuilderPkgMetadata,
-    parent_img: Image,
+    input_sbom: Path,
+    build_metadata: BuilderPkgMetadata,
+    img: Image,
     builder_imgs: list[Image],
-    grandparent_img: Image,
+    base_img: Image,
 ) -> Path:
-    """Generate the data and build the parent SBOM for builder content testing."""
+    """Generate build metadata and generate an SBOM for builder content
+    testing. This returns just the output path, without stdout/stderr."""
     _, _, output_sbom_path = await capture_builder_content_workflow(
         tmp_path,
-        parent_input_sbom,
-        parent_build_metadata,
-        parent_img,
+        input_sbom,
+        build_metadata,
+        img,
         builder_imgs,
-        grandparent_img,
+        base_img,
     )
     return output_sbom_path
 
