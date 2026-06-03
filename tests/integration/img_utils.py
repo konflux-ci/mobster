@@ -15,6 +15,8 @@ def make_metadata_yaml(
     base_imgs: list[Image] | None = None,
     extra_imgs: list[Image] | None = None,
 ) -> Path:
+    """Create a yaml file suitable for the --metadata-path option in `mobster
+    generate oci-image`."""
     metadata = {
         "image": {
             "pullspec": f"{img.repository}:{img.tag}",
