@@ -40,25 +40,25 @@ def extra_builder_img() -> Image:
 
 
 async def setup_images(
-    tmp_path: Path, grandparent_input_sbom: Path, oci_client: ReferrersTagOCIClient
+    tmp_path: Path, parent_input_sbom: Path, oci_client: ReferrersTagOCIClient
 ) -> tuple[Image, Image]:
-    """Initialize the grandparent, parent, and builder image necessary for most
+    """Initialize the parent and component image necessary for most
     builder content tests."""
-    grandparent_img = await oci_client.create_image("grandparent", "latest")
     parent_img = await oci_client.create_image("parent", "latest")
+    component_img = await oci_client.create_image("component", "latest")
 
-    # generate the grandparent sbom (no contextualization, built FROM scratch)
-    grandparent_gdata = GenerateData(
-        image=grandparent_img,
-        input_sbom_path=grandparent_input_sbom,
-        output_sbom_path=tmp_path / "grandparent.output.spdx.json",
+    # generate the parent sbom (no contextualization)
+    parent_gdata = GenerateData(
+        image=parent_img,
+        input_sbom_path=parent_input_sbom,
+        output_sbom_path=tmp_path / "parent.output.spdx.json",
     )
 
-    run_mobster_generate(grandparent_gdata)
+    run_mobster_generate(parent_gdata)
 
-    with open(grandparent_gdata.output_sbom_path, "rb") as f:
-        await oci_client.attach_sbom(grandparent_img, "spdx", f.read())
-    return (grandparent_img, parent_img)
+    with open(parent_gdata.output_sbom_path, "rb") as f:
+        await oci_client.attach_sbom(parent_img, "spdx", f.read())
+    return (parent_img, component_img)
 
 
 async def capture_builder_content_workflow(
@@ -117,24 +117,24 @@ async def run_builder_content_workflow(
 async def test_builder_content(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
-    grandparent_input_sbom: Path,
     parent_input_sbom: Path,
+    component_input_sbom: Path,
     builder_img: Image,
     gin_pkg: SBOMPackage,
     crypto_pkg: SBOMPackage,
     random_pkg: SBOMPackage,
     malware_pkg: SBOMPackage,
-    ginkgo_pkg: SBOMPackage,
+    stdlib_pkg: SBOMPackage,
 ) -> None:
     """Basic happy-path test of builder content. This just simulates one
     package being COPY'd from the builder image & ensures the origin is swapped
     to the builder image when mobster runs the generate command w/
     --build-metadata-path and --contextualize set."""
-    grandparent_img, parent_img = await setup_images(
-        tmp_path, grandparent_input_sbom, oci_client
+    parent_img, component_img = await setup_images(
+        tmp_path, parent_input_sbom, oci_client
     )
     # mock build metadata
-    parent_build_metadata = BuilderPkgMetadata(
+    component_build_metadata = BuilderPkgMetadata(
         packages=[
             # simulates a package COPY'd from the above builder image
             crypto_pkg.to_metadata("builder", builder_img.reference),
@@ -142,26 +142,28 @@ async def test_builder_content(
     )
     output_sbom_path = await run_builder_content_workflow(
         tmp_path,
-        parent_input_sbom,
-        parent_build_metadata,
-        parent_img,
+        component_input_sbom,
+        component_build_metadata,
+        component_img,
         [builder_img],
-        grandparent_img,
+        parent_img,
     )
 
-    # verify the DESCENDANT_OF chain (parent → grandparent)
+    # verify the DESCENDANT_OF chain (component → parent)
     verify_sbom_relationships(
         output_sbom_path,
         [
-            # parent packages
+            # component packages
             [
+                stdlib_pkg.to_spdx(),
+            ],
+            # parent packages (gin matched via SPDX, crypto stays here
+            # from component contextualization but gets reparented below)
+            [
+                gin_pkg.to_spdx(),
                 random_pkg.to_spdx(),
                 malware_pkg.to_spdx(),
-                ginkgo_pkg.to_spdx(),
             ],
-            # grandparent packages (gin matched via SPDX, crypto stays here
-            # from parent contextualization but gets reparented below)
-            [gin_pkg.to_spdx()],
         ],
     )
 
@@ -181,23 +183,23 @@ async def test_builder_content(
 async def test_builder_content_duplicate(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
-    grandparent_input_sbom: Path,
     parent_input_sbom: Path,
+    component_input_sbom: Path,
     builder_img: Image,
     gin_pkg: SBOMPackage,
     crypto_pkg: SBOMPackage,
     random_pkg: SBOMPackage,
     malware_pkg: SBOMPackage,
-    ginkgo_pkg: SBOMPackage,
+    stdlib_pkg: SBOMPackage,
     origin_type: Literal["builder", "intermediate"],
 ) -> None:
     """Test that builder content handles duplicated packages from Capo."""
-    grandparent_img, parent_img = await setup_images(
-        tmp_path, grandparent_input_sbom, oci_client
+    parent_img, component_img = await setup_images(
+        tmp_path, parent_input_sbom, oci_client
     )
 
     # mock build metadata
-    parent_build_metadata = BuilderPkgMetadata(
+    component_build_metadata = BuilderPkgMetadata(
         packages=[
             # like the above test, but we specify the crypto package twice
             crypto_pkg.to_metadata(origin_type, builder_img.reference),
@@ -206,24 +208,27 @@ async def test_builder_content_duplicate(
     )
     _, stderr, output_sbom_path = await capture_builder_content_workflow(
         tmp_path,
-        parent_input_sbom,
-        parent_build_metadata,
-        parent_img,
+        component_input_sbom,
+        component_build_metadata,
+        component_img,
         [builder_img],
-        grandparent_img,
+        parent_img,
     )
 
     # assertions should be roughly the same as the happy path
     verify_sbom_relationships(
         output_sbom_path,
         [
+            # component packages
+            [
+                stdlib_pkg.to_spdx(),
+            ],
             # parent packages
             [
+                gin_pkg.to_spdx(),
                 random_pkg.to_spdx(),
                 malware_pkg.to_spdx(),
-                ginkgo_pkg.to_spdx(),
             ],
-            [gin_pkg.to_spdx()],
         ],
     )
 
@@ -244,52 +249,52 @@ async def test_builder_content_duplicate(
 async def test_builder_content_extra(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
-    grandparent_input_sbom: Path,
     parent_input_sbom: Path,
+    component_input_sbom: Path,
     builder_img: Image,
     crypto_pkg: SBOMPackage,
-    stdlib_pkg: SBOMPackage,
+    ginkgo_pkg: SBOMPackage,
 ) -> None:
     """Test that builder content flow handles Capo packages that aren't
     actually in the SBOM."""
-    grandparent_img, parent_img = await setup_images(
-        tmp_path, grandparent_input_sbom, oci_client
+    parent_img, component_img = await setup_images(
+        tmp_path, parent_input_sbom, oci_client
     )
 
     # mock build metadata
-    parent_build_metadata = BuilderPkgMetadata(
+    component_build_metadata = BuilderPkgMetadata(
         packages=[
             crypto_pkg.to_metadata("builder", builder_img.reference),
-            # stdlib package isn't in any of our images here
+            # ginkgo package isn't in the component input SBOM
             # we should log a warning
-            stdlib_pkg.to_metadata("builder", builder_img.reference),
+            ginkgo_pkg.to_metadata("builder", builder_img.reference),
         ]
     )
     output_sbom_path = await run_builder_content_workflow(
         tmp_path,
-        parent_input_sbom,
-        parent_build_metadata,
-        parent_img,
+        component_input_sbom,
+        component_build_metadata,
+        component_img,
         [builder_img],
-        grandparent_img,
+        parent_img,
     )
 
-    # make sure stdlib wasn't added to the sbom
-    verify_packages_not_included(output_sbom_path, [stdlib_pkg.to_spdx()])
+    # make sure ginkgo wasn't added to the sbom
+    verify_packages_not_included(output_sbom_path, [ginkgo_pkg.to_spdx()])
 
 
 @pytest.mark.asyncio
 async def test_builder_content_missing_purl(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
-    grandparent_input_sbom: Path,
     parent_input_sbom: Path,
+    component_input_sbom: Path,
     builder_img: Image,
 ) -> None:
     """Test how the process handles a package with no set purl in the build
     metadata."""
-    grandparent_img, parent_img = await setup_images(
-        tmp_path, grandparent_input_sbom, oci_client
+    parent_img, component_img = await setup_images(
+        tmp_path, parent_input_sbom, oci_client
     )
 
     # set up a package with a missing purl
@@ -297,14 +302,14 @@ async def test_builder_content_missing_purl(
         purl="", origin_type="builder", pullspec=builder_img.reference
     )
     # mock build metadata
-    parent_build_metadata = BuilderPkgMetadata(packages=[bad_pkg])
+    component_build_metadata = BuilderPkgMetadata(packages=[bad_pkg])
     _, stderr, _ = await capture_builder_content_workflow(
         tmp_path,
-        parent_input_sbom,
-        parent_build_metadata,
-        parent_img,
+        component_input_sbom,
+        component_build_metadata,
+        component_img,
         [builder_img],
-        grandparent_img,
+        parent_img,
     )
 
     # check that an error was thrown expecting a purl string & that the
@@ -317,19 +322,19 @@ async def test_builder_content_missing_purl(
 async def test_builder_content_duplicate_same_pullspecs(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
-    grandparent_input_sbom: Path,
     parent_input_sbom: Path,
+    component_input_sbom: Path,
     builder_img: Image,
     crypto_pkg: SBOMPackage,
 ) -> None:
     """Test how the process handles a package coming from the same image twice
     being specified in the build metadata."""
-    grandparent_img, parent_img = await setup_images(
-        tmp_path, grandparent_input_sbom, oci_client
+    parent_img, component_img = await setup_images(
+        tmp_path, parent_input_sbom, oci_client
     )
 
     # mock build metadata
-    parent_build_metadata = BuilderPkgMetadata(
+    component_build_metadata = BuilderPkgMetadata(
         packages=[
             # crypto package comes from the same builder image TWICE
             crypto_pkg.to_metadata("builder", builder_img.reference),
@@ -338,11 +343,11 @@ async def test_builder_content_duplicate_same_pullspecs(
     )
     output_sbom_path = await run_builder_content_workflow(
         tmp_path,
-        parent_input_sbom,
-        parent_build_metadata,
-        parent_img,
+        component_input_sbom,
+        component_build_metadata,
+        component_img,
         [builder_img],
-        grandparent_img,
+        parent_img,
     )
 
     sbom_doc = parse_file(str(output_sbom_path))
@@ -358,20 +363,20 @@ async def test_builder_content_duplicate_same_pullspecs(
 async def test_builder_content_same_package_from_multiple_builders(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
-    grandparent_input_sbom: Path,
     parent_input_sbom: Path,
+    component_input_sbom: Path,
     builder_img: Image,
     extra_builder_img: Image,
     crypto_pkg: SBOMPackage,
 ) -> None:
     """Test that the process notes a package as coming from *two* separate
     builder images if specified by the build metadata."""
-    grandparent_img, parent_img = await setup_images(
-        tmp_path, grandparent_input_sbom, oci_client
+    parent_img, component_img = await setup_images(
+        tmp_path, parent_input_sbom, oci_client
     )
 
     # mock build metadata
-    parent_build_metadata = BuilderPkgMetadata(
+    component_build_metadata = BuilderPkgMetadata(
         packages=[
             # crypto package comes from TWO builder images
             crypto_pkg.to_metadata("builder", builder_img.reference),
@@ -380,11 +385,11 @@ async def test_builder_content_same_package_from_multiple_builders(
     )
     output_sbom_path = await run_builder_content_workflow(
         tmp_path,
-        parent_input_sbom,
-        parent_build_metadata,
-        parent_img,
+        component_input_sbom,
+        component_build_metadata,
+        component_img,
         [builder_img, extra_builder_img],
-        grandparent_img,
+        parent_img,
     )
 
     sbom_doc = parse_file(str(output_sbom_path))
