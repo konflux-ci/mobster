@@ -317,6 +317,7 @@ async def test_builder_content_missing_purl(
     assert "A purl string argument is required." in stderr
     assert "Could not create contextual SBOM." in stderr
 
+
 @pytest.mark.asyncio
 @pytest.mark.skip(reason="not currently supported")
 async def test_builder_content_same_package_from_multiple_builders(
