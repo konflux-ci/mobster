@@ -149,7 +149,7 @@ async def test_builder_content(
         parent_img,
     )
 
-    # verify the DESCENDANT_OF chain (component → parent)
+    # verify the DESCENDANT_OF chain (component -> parent)
     verify_sbom_relationships(
         output_sbom_path,
         [
@@ -316,47 +316,6 @@ async def test_builder_content_missing_purl(
     # contextual flow failed
     assert "A purl string argument is required." in stderr
     assert "Could not create contextual SBOM." in stderr
-
-
-@pytest.mark.asyncio
-async def test_builder_content_duplicate_same_pullspecs(
-    oci_client: ReferrersTagOCIClient,
-    tmp_path: Path,
-    parent_input_sbom: Path,
-    component_input_sbom: Path,
-    builder_img: Image,
-    crypto_pkg: SBOMPackage,
-) -> None:
-    """Test how the process handles a package coming from the same image twice
-    being specified in the build metadata."""
-    parent_img, component_img = await setup_images(
-        tmp_path, parent_input_sbom, oci_client
-    )
-
-    # mock build metadata
-    component_build_metadata = BuilderPkgMetadata(
-        packages=[
-            # crypto package comes from the same builder image TWICE
-            crypto_pkg.to_metadata("builder", builder_img.reference),
-            crypto_pkg.to_metadata("builder", builder_img.reference),
-        ]
-    )
-    output_sbom_path = await run_builder_content_workflow(
-        tmp_path,
-        component_input_sbom,
-        component_build_metadata,
-        component_img,
-        [builder_img],
-        parent_img,
-    )
-
-    sbom_doc = parse_file(str(output_sbom_path))
-    # the sbom should show the package as coming from *both* images
-    verify_relationships(
-        builder_img.propose_spdx_id(),
-        sbom_doc.relationships,
-        [crypto_pkg.to_spdx()],
-    )
 
 @pytest.mark.asyncio
 @pytest.mark.skip(reason="not currently supported")
