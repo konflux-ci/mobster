@@ -432,7 +432,7 @@ async def test_builder_content_duplicate_different_pullspecs(
         parent_input_sbom,
         parent_build_metadata,
         parent_img,
-        [builder_img],
+        [builder_img, extra_builder_img],
         grandparent_img,
     )
 
