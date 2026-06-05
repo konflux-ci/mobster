@@ -353,10 +353,9 @@ async def test_builder_content_duplicate_same_pullspecs(
         [crypto_pkg.to_spdx()],
     )
 
-
 @pytest.mark.asyncio
 @pytest.mark.skip(reason="not currently supported")
-async def test_builder_content_duplicate_from_parent(
+async def test_builder_content_same_package_from_multiple_builders(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
     grandparent_input_sbom: Path,
@@ -365,56 +364,8 @@ async def test_builder_content_duplicate_from_parent(
     extra_builder_img: Image,
     crypto_pkg: SBOMPackage,
 ) -> None:
-    """Test that the process notes a package as coming from both the builder
-    image AND the parent image if specified by the build metadata."""
-    grandparent_img, parent_img = await setup_images(
-        tmp_path, grandparent_input_sbom, oci_client
-    )
-
-    # mock build metadata
-    parent_build_metadata = BuilderPkgMetadata(
-        packages=[
-            # crypto package comes from TWO builder images
-            crypto_pkg.to_metadata("builder", builder_img.reference),
-            crypto_pkg.to_metadata("intermediate", parent_img.reference),
-        ]
-    )
-    output_sbom_path = await run_builder_content_workflow(
-        tmp_path,
-        parent_input_sbom,
-        parent_build_metadata,
-        parent_img,
-        [builder_img],
-        grandparent_img,
-    )
-
-    sbom_doc = parse_file(str(output_sbom_path))
-    # the sbom should show the package as coming from *both* images
-    verify_relationships(
-        builder_img.propose_spdx_id(),
-        sbom_doc.relationships,
-        [crypto_pkg.to_spdx()],
-    )
-    verify_relationships(
-        extra_builder_img.propose_spdx_id(),
-        sbom_doc.relationships,
-        [crypto_pkg.to_spdx()],
-    )
-
-
-@pytest.mark.asyncio
-@pytest.mark.skip(reason="not currently supported")
-async def test_builder_content_duplicate_different_pullspecs(
-    oci_client: ReferrersTagOCIClient,
-    tmp_path: Path,
-    grandparent_input_sbom: Path,
-    parent_input_sbom: Path,
-    builder_img: Image,
-    extra_builder_img: Image,
-    crypto_pkg: SBOMPackage,
-) -> None:
-    """Test that the process notes a package as coming from *two* builder images if
-    specified by the build metadata."""
+    """Test that the process notes a package as coming from *two* separate
+    builder images if specified by the build metadata."""
     grandparent_img, parent_img = await setup_images(
         tmp_path, grandparent_input_sbom, oci_client
     )
