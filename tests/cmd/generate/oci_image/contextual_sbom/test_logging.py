@@ -10,15 +10,36 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     MatchBy,
+    OriginType,
     PackageInfo,
     PackageMatchInfo,
     PackageProducer,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.logging import (
+    BuilderStatistics,
     DuplicateTracker,
     MatchingStatistics,
     PackageStats,
+    PerBuilderStats,
 )
+
+
+def test_builder_statistics_log_summary_structured(caplog: LogCaptureFixture) -> None:
+    stats = BuilderStatistics(total_metadata=2, purl_mismatch=1)
+    stats.per_builder_stats["SPDXRef-builder"] = PerBuilderStats(
+        builder_spdx_id="SPDXRef-builder",
+        builder_purl="pkg:oci/builder@sha256:aaaa",
+        origin_types={OriginType.BUILDER: 3, OriginType.INTERMEDIATE: 1},
+    )
+
+    with caplog.at_level("INFO"):
+        stats.log_summary_structured()
+
+    data = json.loads(caplog.records[0].message)
+    assert data["event_type"] == "contextual_sbom_builder_statistics"
+    assert data["component_packages"]["total"] == 2
+    assert data["component_packages"]["purl_mismatch"] == 1
+    assert data["per_builder_stats"][0]["origins"]["builder"] == 3
 
 
 def test_unmatched_packages() -> None:
