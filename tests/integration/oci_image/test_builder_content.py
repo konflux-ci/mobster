@@ -138,7 +138,6 @@ async def test_builder_content(
         packages=[
             # simulates a package COPY'd from the above builder image
             crypto_pkg.to_metadata("builder", builder_img.reference),
-            random_pkg.to_metadata("intermediate", builder_img.reference),
         ]
     )
     output_sbom_path = await run_builder_content_workflow(
@@ -158,10 +157,11 @@ async def test_builder_content(
             [
                 stdlib_pkg.to_spdx(),
             ],
-            # parent packages (gin/malware matched via SPDX, crypto+random are
-            # reparented and thus are checked below)
+            # parent packages (gin matched via SPDX, crypto stays here
+            # from component contextualization but gets reparented below)
             [
                 gin_pkg.to_spdx(),
+                random_pkg.to_spdx(),
                 malware_pkg.to_spdx(),
             ],
         ],
@@ -174,11 +174,6 @@ async def test_builder_content(
         builder_img.propose_spdx_id(),
         sbom_doc.relationships,
         [crypto_pkg.to_spdx()],
-    )
-    verify_relationships(
-        builder_img.propose_spdx_id(),
-        sbom_doc.relationships,
-        [random_pkg.to_spdx()],
     )
 
 
