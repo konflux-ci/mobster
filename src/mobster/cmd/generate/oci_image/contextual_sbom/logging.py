@@ -141,7 +141,7 @@ class BuilderStatistics:
     total_metadata: int = 0
     per_builder_stats: dict[str, PerBuilderStats] = field(default_factory=dict)
     purl_mismatch: int = 0
-    missed_ambiguous_purls_match: int = 0
+    ambiguous_purls: int = 0
     faulty_dependency_of: int = 0
     package_is_not_dependency: int = 0
     dependent_has_no_purl: int = 0
@@ -170,6 +170,7 @@ class BuilderStatistics:
                         "faulty_dependency_of": self.faulty_dependency_of,
                         "package_is_not_dependency": self.package_is_not_dependency,
                         "dependent_has_no_purl": self.dependent_has_no_purl,
+                        "ambiguous_purls": self.ambiguous_purls,
                     },
                     "per_builder_stats": per_builder_dicts,
                 }

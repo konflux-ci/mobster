@@ -479,7 +479,7 @@ def test_contextualize(
     assert document is index.doc
     assert contextualizer.stats.total_metadata == len(metadata.packages)
     assert contextualizer.stats.purl_mismatch == 1
-    assert contextualizer.stats.missed_ambiguous_purls_match == 1
+    assert contextualizer.stats.ambiguous_purls == 1
     assert contextualizer.stats.faulty_dependency_of == 2
     assert contextualizer.stats.package_is_not_dependency == 2
     assert contextualizer.stats.dependent_has_no_purl == 1
@@ -533,6 +533,7 @@ def test_contextualize(
     assert log_data["component_packages"] == {
         "total": len(metadata.packages),
         "purl_mismatch": 1,
+        "ambiguous_purls": 1,
         "faulty_dependency_of": 2,
         "package_is_not_dependency": 2,
         "dependent_has_no_purl": 1,

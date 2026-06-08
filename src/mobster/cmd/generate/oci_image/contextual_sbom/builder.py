@@ -185,7 +185,7 @@ class BuilderContextualizer:
                         "and does not have DEPENDENCY_OF relationship!",
                         pkg_meta.purl,
                     )
-                    self.stats.missed_ambiguous_purls_match += 1
+                    self.stats.ambiguous_purls += 1
                     # can't resolve ambiguous PURL, this package should not be
                     # contextualized
                     continue
@@ -316,6 +316,9 @@ class BuilderContextualizer:
             new_parent_purl = get_package_purl(matched_img_pkg_ctx.pkg)
 
             if origin.type == OriginType.INTERMEDIATE:
+                # This is the only differing branch of code,
+                # external and builder origins should behave the same
+                # at this point
                 int_img_pkg_ctx = index.ensure_intermediate_image_package(
                     matched_img_pkg_ctx
                 )
