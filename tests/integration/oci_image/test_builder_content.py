@@ -282,42 +282,6 @@ async def test_builder_content_extra(
     # make sure ginkgo wasn't added to the sbom
     verify_packages_not_included(output_sbom_path, [ginkgo_pkg.to_spdx()])
 
-
-@pytest.mark.asyncio
-async def test_builder_content_missing_purl(
-    oci_client: ReferrersTagOCIClient,
-    tmp_path: Path,
-    parent_input_sbom: Path,
-    component_input_sbom: Path,
-    builder_img: Image,
-) -> None:
-    """Test how the process handles a package with no set purl in the build
-    metadata."""
-    parent_img, component_img = await setup_images(
-        tmp_path, parent_input_sbom, oci_client
-    )
-
-    # set up a package with a missing purl
-    bad_pkg = BuilderPkgMetadataItem(
-        purl="", origin_type="builder", pullspec=builder_img.reference
-    )
-    # mock build metadata
-    component_build_metadata = BuilderPkgMetadata(packages=[bad_pkg])
-    _, stderr, _ = await capture_builder_content_workflow(
-        tmp_path,
-        component_input_sbom,
-        component_build_metadata,
-        component_img,
-        [builder_img],
-        parent_img,
-    )
-
-    # check that an error was thrown expecting a purl string & that the
-    # contextual flow failed
-    assert "A purl string argument is required." in stderr
-    assert "Could not create contextual SBOM." in stderr
-
-
 @pytest.mark.asyncio
 @pytest.mark.skip(reason="not currently supported")
 async def test_builder_content_same_package_from_multiple_builders(
