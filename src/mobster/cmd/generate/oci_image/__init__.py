@@ -22,9 +22,8 @@ from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderContextualizationError,
+    BuilderContextualizer,
     BuilderPkgMetadata,
-    generate_origins,
-    resolve_origins,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     download_parent_image_sbom,
@@ -211,16 +210,16 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         # Builder content contextualization
         try:
+            LOGGER.debug("Running builder content contextualization...")
             with open(build_metadata_path, encoding="utf-8") as fp:
                 metadata = BuilderPkgMetadata.model_validate_json(fp.read())
 
             builder_ctx_sbom = deepcopy(contextual_sbom)
             index = DocumentIndexOCI(builder_ctx_sbom)
 
-            origins = generate_origins(index, metadata)
-            index = resolve_origins(index, origins)
-
-            contextual_sbom = index.doc
+            builder = BuilderContextualizer()
+            contextual_sbom = builder.contextualize(index, metadata)
+            LOGGER.debug("Builder content contextualization complete.")
         except BuilderContextualizationError:
             LOGGER.exception("Failed to contextualize builder content")
 

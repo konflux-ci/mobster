@@ -5,12 +5,16 @@ Functions and types for builder content contextualization.
 import logging
 import re
 from dataclasses import dataclass
-from enum import Enum, auto
-from typing import Literal
 
 import pydantic as pdc
+from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
+from mobster.cmd.generate.oci_image.contextual_sbom.constants import OriginType
+from mobster.cmd.generate.oci_image.contextual_sbom.logging import (
+    BuilderStatistics,
+    PerBuilderStats,
+)
 from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     validate_and_compare_purls,
 )
@@ -49,14 +53,15 @@ class BuilderPkgMetadataItem(pdc.BaseModel):
         checksums: list of sha256 checksums for the package in string
             representation with algorithm prepended (sha256:...)
         dependency_of_purl: PURL of the package that this package is a DEPENDENCY_OF
-        origin_type: "builder" or "intermediate" based on the origin of the package
+        origin_type: "builder", "intermediate" (or "external" - unused)
+            based on the origin of the package
         pullspec: pullspec of the image this package originates from
     """
 
     purl: str
     checksums: list[str] = pdc.Field(default_factory=list)
     dependency_of_purl: str | None = pdc.Field(default=None)
-    origin_type: Literal["builder"] | Literal["intermediate"]
+    origin_type: OriginType
     pullspec: str
 
     @pdc.field_validator("checksums", mode="after")
@@ -96,32 +101,6 @@ class BuilderPkgMetadata(pdc.BaseModel):
     packages: list[BuilderPkgMetadataItem]
 
 
-class OriginType(Enum):
-    """
-    Type of an origin of an SBOM package.
-
-    Type is builder when the package was copied from a builder stage or an
-    external image. E.g. COPY --from=builder-stage or COPY --from=quay.io/image:latest
-    Example containerfile:
-        FROM image AS alias
-        ...
-        COPY --from=alias /content /target
-        or
-        COPY --from=image /content /target
-
-    Type is intermediate when the package is sourced from an
-    intermediate stage.
-    Example containerfile:
-        FROM builder_image AS alias
-        RUN install package
-        FROM parent_image
-        COPY --from=alias /usr/bin/package /usr/bin/package
-    """
-
-    BUILDER = auto()
-    INTERMEDIATE = auto()
-
-
 @dataclass
 class Origin:
     """
@@ -136,191 +115,257 @@ class Origin:
     type: OriginType
 
 
-def generate_origins(
-    index: DocumentIndexOCI, builder_metadata: BuilderPkgMetadata
-) -> list[tuple[str, Origin]]:
+class BuilderContextualizer:
     """
-    Generate origins of packages in a document based on metadata.
+    Class for builder contextualization handling.
 
-    Args:
-        index: indexed SPDX document to source packages from
-        builder_metadata: parsed builder package metadata from Capo
-
-    Returns:
-        An associative list mapping SPDX IDs of the packages in the passed
-        index to their true image origins.
+    Its contextualize methods automatically populate statistics.
     """
-    origins = []
 
-    for pkg_meta in builder_metadata.packages:
-        packages_by_purl = index.packages_by_purl(pkg_meta.purl)
-        # The following condition would imply that the syft scan during the
-        # build and the syft scan in Capo don't generate all identical PURLs.
-        # This is unlikely to happen but it makes sense to try to contextualize
-        # other packages where this mismatch doesn't exist.
-        if len(packages_by_purl) == 0:
-            continue
+    def __init__(self) -> None:
+        self.stats = BuilderStatistics()
 
-        pkg_to_contextualize = None
-        if len(packages_by_purl) == 1:
-            pkg_to_contextualize = packages_by_purl[0]
-        else:
-            if pkg_meta.dependency_of_purl is None:
-                # can't resolve ambiguous PURL, this package should not be
-                # contextualized
+    def contextualize(
+        self, index: DocumentIndexOCI, builder_metadata: BuilderPkgMetadata
+    ) -> Document:
+        """
+        Run the whole builder contextualization chain, log statistics.
+        Args:
+            index: indexed input SBOM document
+            builder_metadata: builder metadata from Capo
+        Returns:
+            Contextualized SBOM document
+        Raises:
+            BuilderContextualizationError: in case of a problem
+        """
+        origins = self.generate_origins(index, builder_metadata)
+        new_index = self.resolve_origins(index, origins)
+        self.stats.log_summary_structured()
+        return new_index.doc
+
+    def generate_origins(
+        self, index: DocumentIndexOCI, builder_metadata: BuilderPkgMetadata
+    ) -> list[tuple[str, Origin]]:
+        """
+        Generate origins of packages in a document based on metadata.
+
+        Args:
+            index: indexed SPDX document to source packages from
+            builder_metadata: parsed builder package metadata from Capo
+
+        Returns:
+            An associative list mapping SPDX IDs of the packages in the passed
+            index to their true image origins.
+        """
+        origins = []
+
+        self.stats.total_metadata = len(builder_metadata.packages)
+
+        for pkg_meta in builder_metadata.packages:
+            packages_by_purl = index.packages_by_purl(pkg_meta.purl)
+            # The following condition would imply that the syft scan during the
+            # build and the syft scan in Capo don't generate all identical PURLs.
+            # This is unlikely to happen, but it makes sense to try to contextualize
+            # other packages where this mismatch doesn't exist.
+            if len(packages_by_purl) == 0:
+                LOGGER.warning(
+                    "PURLs in generated SBOM do not match PURL from metadata: %s",
+                    pkg_meta.purl,
+                )
+                self.stats.purl_mismatch += 1
                 continue
 
-            pkg_to_contextualize = _resolve_dependency_of(
-                packages_by_purl,
+            pkg_to_contextualize = None
+            if len(packages_by_purl) == 1:
+                pkg_to_contextualize = packages_by_purl[0]
+            else:
+                if pkg_meta.dependency_of_purl is None:
+                    LOGGER.info(
+                        "Ambiguous PURL '%s' describes multiple packages "
+                        "and does not have DEPENDENCY_OF relationship!",
+                        pkg_meta.purl,
+                    )
+                    self.stats.missed_ambiguous_purls_match += 1
+                    # can't resolve ambiguous PURL, this package should not be
+                    # contextualized
+                    continue
+
+                pkg_to_contextualize = self._resolve_dependency_of(
+                    packages_by_purl,
+                    index,
+                    pkg_meta.dependency_of_purl,
+                )
+                if pkg_to_contextualize is None:
+                    LOGGER.info(
+                        "Ambiguous PURL '%s' describes multiple packages "
+                        "and DEPENDENCY_OF relationship (%s) could not be resolved!",
+                        pkg_meta.purl,
+                        pkg_meta.dependency_of_purl,
+                    )
+                    self.stats.faulty_dependency_of += 1
+                    # can't resolve ambiguous PURL, this package should not be
+                    # contextualized
+                    continue
+
+            origins.append(
+                (
+                    pkg_to_contextualize.pkg.spdx_id,
+                    Origin(pullspec=pkg_meta.pullspec, type=pkg_meta.origin_type),
+                )
+            )
+
+        return origins
+
+    def _resolve_dependency_of(
+        self,
+        packages: list[PackageContext],
+        index: DocumentIndexOCI,
+        dependency_of_purl: str,
+    ) -> PackageContext | None:
+        """
+        From candidate packages, try to find the package that has a DEPENDENCY_OF
+        relationship to a package that has the passed dependency_of_purl.
+
+        When multiple packages have the same PURL, we don't know how to
+        contextualize them, since Capo only tracks package origins by PURLs. These
+        packages can differ by which packages they are a dependency of, so we can
+        use the origin of those parent packages to also resolve the dependent
+        packages.
+
+        Args:
+            packages: List of package contexts to search through
+            index: Document index containing SPDX packages and relationships
+            dependency_of_purl: PURL string of the package that the target package
+                is a dependency of
+
+        Returns:
+            PackageContext matching the criteria, or None if package could not be
+            determined.
+        """
+        for pkg_context in packages:
+            rels = pkg_context.filter_parent_relationships(
+                RelationshipType.DEPENDENCY_OF
+            )
+            if len(rels) == 0:
+                LOGGER.warning(
+                    "Package '%s' has no relationships"
+                    " where it is dependency of anything!",
+                    pkg_context.pkg.spdx_id,
+                )
+                self.stats.package_is_not_dependency += 1
+                continue
+
+            dependency_of_spdx_id = rels[0].related_spdx_element_id
+            if not isinstance(dependency_of_spdx_id, str):
+                raise BuilderContextualizationError(
+                    "DEPENDENCY_OF relationship has empty related_spdx_element_id"
+                )
+
+            parent_pkg_context = index.try_package_by_spdx_id(dependency_of_spdx_id)
+            if parent_pkg_context is None:
+                raise BuilderContextualizationError(
+                    f"Invalid SBOM; Package with id {dependency_of_spdx_id} "
+                    "from relationship is not present."
+                )
+
+            parent_purl = get_package_purl(parent_pkg_context.pkg)
+            if not parent_purl:
+                LOGGER.info(
+                    "Parent package with ID '%s' has no PURL", dependency_of_spdx_id
+                )
+                self.stats.dependent_has_no_purl += 1
+                continue
+
+            if validate_and_compare_purls(parent_purl, dependency_of_purl):
+                return pkg_context
+
+        return None
+
+    def resolve_origins(
+        self, index: DocumentIndexOCI, origins: list[tuple[str, Origin]]
+    ) -> DocumentIndexOCI:
+        """
+        Modify the passed index to reflect the passed origins information. Adjusts
+        relationships in the document so they reflect the true origins of packages.
+
+        Args:
+            index: object indexing the underlying SPDX document
+            origins: associate list mapping package SPDX IDs to their origins
+
+        Returns:
+            DocumentIndexOCI: the modified index
+        """
+
+        for pkg_spdx_id, origin in origins:
+            current_relationship = self._find_current_image_contains_relationship(
                 index,
-                pkg_meta.dependency_of_purl,
+                pkg_spdx_id,
             )
-            if pkg_to_contextualize is None:
-                # can't resolve ambiguous PURL, this package should not be
-                # contextualized
+            if current_relationship is None:
+                raise MissingImageContainsPackage(
+                    "Could not find image package CONTAINS "
+                    f"relationship to package {pkg_spdx_id}."
+                )
+
+            matched_img_pkg_ctx = index.image_package_by_pullspec(origin.pullspec)
+            if matched_img_pkg_ctx is None:
+                raise MissingImagePackageForPullspec(
+                    f"Could not find image package for pullspec: {origin.pullspec}"
+                )
+            new_parent_spdx_id = matched_img_pkg_ctx.pkg.spdx_id
+            new_parent_purl = get_package_purl(matched_img_pkg_ctx.pkg)
+
+            if origin.type == OriginType.INTERMEDIATE:
+                int_img_pkg_ctx = index.ensure_intermediate_image_package(
+                    matched_img_pkg_ctx
+                )
+                new_parent_spdx_id = int_img_pkg_ctx.pkg.spdx_id
+                new_parent_purl = get_package_purl(int_img_pkg_ctx.pkg)
+
+            # It is for logging purposes only, no need to interrupt the run
+            # if purl is missing
+            new_parent_purl = new_parent_purl or ""
+
+            builder_stats = self.stats.per_builder_stats.setdefault(
+                new_parent_spdx_id,
+                PerBuilderStats(
+                    builder_spdx_id=new_parent_spdx_id, builder_purl=new_parent_purl
+                ),
+            )
+            builder_stats.origin_types[origin.type] += 1
+            index.reparent_relationship(current_relationship, new_parent_spdx_id)
+
+        return index
+
+    @staticmethod
+    def _find_current_image_contains_relationship(
+        index: DocumentIndexOCI, pkg_spdx_id: str
+    ) -> Relationship | None:
+        """
+        Find the current relationship where an image package CONTAINS the package
+        with the passed spdx_id.
+
+        Args:
+            index: Document index containing SPDX packages and relationships
+            pkg_spdx_id: SPDX ID of the package to find CONTAINS relationship for
+
+        Returns:
+            Relationship where an image package CONTAINS the specified package,
+            or None if no such relationship exists.
+        """
+        current_relationship = None
+
+        for img_pkg_ctx in index.image_packages():
+            rels = [
+                rel
+                for rel in img_pkg_ctx.filter_parent_relationships(
+                    RelationshipType.CONTAINS
+                )
+                if rel.related_spdx_element_id == pkg_spdx_id
+            ]
+            if len(rels) == 0:
                 continue
 
-        origin_type = (
-            OriginType.BUILDER
-            if pkg_meta.origin_type == "builder"
-            else OriginType.INTERMEDIATE
-        )
+            current_relationship = rels[0]
 
-        origins.append(
-            (
-                pkg_to_contextualize.pkg.spdx_id,
-                Origin(pullspec=pkg_meta.pullspec, type=origin_type),
-            )
-        )
-
-    return origins
-
-
-def _resolve_dependency_of(
-    packages: list[PackageContext],
-    index: DocumentIndexOCI,
-    dependency_of_purl: str,
-) -> PackageContext | None:
-    """
-    From candidate packages, try to find the package that has a DEPENDENCY_OF
-    relationship to a package that has the passed dependency_of_purl.
-
-    When multiple packages have the same PURL, we don't know how to
-    contextualize them, since Capo only tracks package origins by PURLs. These
-    packages can differ by which packages they are a dependency of, so we can
-    use the origin of those parent packages to also resolve the dependent
-    packages.
-
-    Args:
-        packages: List of package contexts to search through
-        index: Document index containing SPDX packages and relationships
-        dependency_of_purl: PURL string of the package that the target package
-            is a dependency of
-
-    Returns:
-        PackageContext matching the criteria, or None if package could not be
-        determined.
-    """
-    for pkg_context in packages:
-        rels = pkg_context.filter_parent_relationships(RelationshipType.DEPENDENCY_OF)
-        if len(rels) == 0:
-            continue
-
-        dependency_of_spdx_id = rels[0].related_spdx_element_id
-        if not isinstance(dependency_of_spdx_id, str):
-            raise BuilderContextualizationError(
-                "DEPENDENCY_OF relationship has empty related_spdx_element_id"
-            )
-
-        parent_pkg_context = index.try_package_by_spdx_id(dependency_of_spdx_id)
-        if parent_pkg_context is None:
-            raise BuilderContextualizationError(
-                f"Invalid SBOM; Package with id {dependency_of_spdx_id} "
-                "from relationship is not present."
-            )
-
-        parent_purl = get_package_purl(parent_pkg_context.pkg)
-        if not parent_purl:
-            continue
-
-        if validate_and_compare_purls(parent_purl, dependency_of_purl):
-            return pkg_context
-
-    return None
-
-
-def resolve_origins(
-    index: DocumentIndexOCI, origins: list[tuple[str, Origin]]
-) -> DocumentIndexOCI:
-    """
-    Modify the passed index to reflect the passed origins information. Adjusts
-    relationships in the document so they reflect the true origins of packages.
-
-    Args:
-        index: object indexing the underlying SPDX document
-        origins: associate list mapping package SPDX IDs to their origins
-
-    Returns:
-        DocumentIndexOCI: the modified index
-    """
-
-    for pkg_spdx_id, origin in origins:
-        current_relationship = _find_current_image_contains_relationship(
-            index,
-            pkg_spdx_id,
-        )
-        if current_relationship is None:
-            raise MissingImageContainsPackage(
-                "Could not find image package CONTAINS "
-                f"relationship to package {pkg_spdx_id}."
-            )
-
-        matched_img_pkg_ctx = index.image_package_by_pullspec(origin.pullspec)
-        if matched_img_pkg_ctx is None:
-            raise MissingImagePackageForPullspec(
-                f"Could not find image package for pullspec: {origin.pullspec}"
-            )
-        new_parent_spdx_id = matched_img_pkg_ctx.pkg.spdx_id
-
-        if origin.type == OriginType.INTERMEDIATE:
-            int_img_pkg_ctx = index.ensure_intermediate_image_package(
-                matched_img_pkg_ctx
-            )
-            new_parent_spdx_id = int_img_pkg_ctx.pkg.spdx_id
-
-        index.reparent_relationship(current_relationship, new_parent_spdx_id)
-
-    return index
-
-
-def _find_current_image_contains_relationship(
-    index: DocumentIndexOCI, pkg_spdx_id: str
-) -> Relationship | None:
-    """
-    Find the current relationship where an image package CONTAINS the package
-    with the passed spdx_id.
-
-    Args:
-        index: Document index containing SPDX packages and relationships
-        pkg_spdx_id: SPDX ID of the package to find CONTAINS relationship for
-
-    Returns:
-        Relationship where an image package CONTAINS the specified package,
-        or None if no such relationship exists.
-    """
-    current_relationship = None
-
-    for img_pkg_ctx in index.image_packages():
-        rels = [
-            rel
-            for rel in img_pkg_ctx.filter_parent_relationships(
-                RelationshipType.CONTAINS
-            )
-            if rel.related_spdx_element_id == pkg_spdx_id
-        ]
-        if len(rels) == 0:
-            continue
-
-        current_relationship = rels[0]
-
-    return current_relationship
+        return current_relationship

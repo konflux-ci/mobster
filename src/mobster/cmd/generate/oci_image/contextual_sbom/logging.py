@@ -11,6 +11,7 @@ from spdx_tools.spdx.model.relationship import Relationship
 
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     MatchBy,
+    OriginType,
     PackageMatchInfo,
     PackageProducer,
 )
@@ -120,6 +121,60 @@ class DuplicateTracker:
     def duplicate_purls(self) -> dict[str, set[tuple[str, str]]]:
         """PURLs that matched multiple package pairs."""
         return {k: v for k, v in self.purls.items() if len(v) > 1}
+
+
+@dataclass
+class PerBuilderStats:
+    """Builder content statistics related to this specific builder."""
+
+    builder_spdx_id: str = ""
+    builder_purl: str = ""
+    origin_types: dict[OriginType, int] = field(
+        default_factory=lambda: dict.fromkeys(OriginType, 0)
+    )
+
+
+@dataclass
+class BuilderStatistics:
+    """SPDXID of builder packages mapped to their statistics"""
+
+    total_metadata: int = 0
+    per_builder_stats: dict[str, PerBuilderStats] = field(default_factory=dict)
+    purl_mismatch: int = 0
+    missed_ambiguous_purls_match: int = 0
+    faulty_dependency_of: int = 0
+    package_is_not_dependency: int = 0
+    dependent_has_no_purl: int = 0
+
+    def log_summary_structured(self) -> None:
+        """Log the summary of builder content statistics."""
+        per_builder_dicts = []
+        for builder in self.per_builder_stats.values():
+            per_builder_dicts.append(
+                {
+                    "builder_spdx_id": builder.builder_spdx_id,
+                    "builder_purl": builder.builder_purl,
+                    "origins": {
+                        enum_option.value: value
+                        for enum_option, value in builder.origin_types.items()
+                    },
+                }
+            )
+        LOGGER.info(
+            json.dumps(
+                {
+                    "event_type": "contextual_sbom_builder_statistics",
+                    "component_packages": {
+                        "total": self.total_metadata,
+                        "purl_mismatch": self.purl_mismatch,
+                        "faulty_dependency_of": self.faulty_dependency_of,
+                        "package_is_not_dependency": self.package_is_not_dependency,
+                        "dependent_has_no_purl": self.dependent_has_no_purl,
+                    },
+                    "per_builder_stats": per_builder_dicts,
+                }
+            )
+        )
 
 
 @dataclass
@@ -379,13 +434,12 @@ class MatchingStatistics:
         verification code, purl). Includes duplicate matches.
         """
         total_matches = self.match_methods.total
+        LOGGER.debug("--- Match Method Breakdown ---")
 
         if total_matches == 0:
-            LOGGER.debug("--- Match Method Breakdown ---")
             LOGGER.debug("  No matches found")
             return
 
-        LOGGER.debug("--- Match Method Breakdown ---")
         LOGGER.debug(
             "  Matched by checksum: %d (%.1f%%)",
             self.match_methods.by_checksum,

@@ -49,3 +49,33 @@ class PackageMatchInfo:
     component_info: PackageInfo
     match_by: MatchBy
     identifier_value: str | None = None
+
+
+# builder-specific constants
+
+
+class OriginType(str, Enum):
+    """
+    Type of the origin of an SBOM package.
+
+    Type is builder when the package was copied from a builder stage or an
+    external image. E.g. COPY --from=builder-stage or COPY --from=quay.io/image:latest
+    Example containerfile:
+        FROM image AS alias
+        ...
+        COPY --from=alias /content /target
+        or
+        COPY --from=image /content /target
+
+    Type is intermediate when the package is sourced from an
+    intermediate stage.
+    Example containerfile:
+        FROM builder_image AS alias
+        RUN install package
+        FROM parent_image
+        COPY --from=alias /usr/bin/package /usr/bin/package
+    """
+
+    BUILDER = "builder"
+    INTERMEDIATE = "intermediate"
+    EXTERNAL = "external"
