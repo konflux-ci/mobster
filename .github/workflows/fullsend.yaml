@@ -1,4 +1,3 @@
----
 # lint-workflow-size: max-lines=280
 # fullsend shim workflow (workflow_call mode)
 # Routes events to agent workflows in .fullsend via workflow_call.
