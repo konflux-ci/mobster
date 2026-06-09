@@ -290,15 +290,9 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 raise ArgumentError(
                     None, "--contextualize is only allowed when processing SPDX format"
                 )
-            sbom = CycloneDX1BomWrapper.from_dict(
-                merged_sbom_dict,
-                organization=self.cli_args.organization,
-            )
+            sbom = CycloneDX1BomWrapper.from_dict(merged_sbom_dict)
         elif "spdxVersion" in merged_sbom_dict:
-            sbom = await normalize_and_load_sbom(
-                merged_sbom_dict,
-                organization=self.cli_args.organization,
-            )
+            sbom = await normalize_and_load_sbom(merged_sbom_dict)
         else:
             raise ValueError("Unknown SBOM Format!")
 

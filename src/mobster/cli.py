@@ -72,14 +72,6 @@ def generate_command_parser(subparsers: Any) -> None:
         "to stdout.",
     )
 
-    generate_parser.add_argument(
-        "--organization",
-        type=str,
-        default=None,
-        help="Organization name to use in SBOM creator and supplier fields. "
-        "If not provided, no organization is attributed.",
-    )
-
     generate_oci_image_parser(generate_subparsers)
     generate_oci_index_parser(generate_subparsers)
     generate_product_parser(generate_subparsers)
@@ -227,6 +219,14 @@ def generate_product_parser(subparsers: Any) -> None:
         type=parse_concurrency,
         default=8,
         help="concurrency limit for snapshot parsing (non-zero integer)",
+    )
+
+    product_parser.add_argument(
+        "--organization",
+        type=str,
+        default=None,
+        help="Organization name to use in SBOM creator and supplier fields. "
+        "If not provided, no organization is attributed.",
     )
 
     product_parser.set_defaults(func=product.GenerateProductCommand)

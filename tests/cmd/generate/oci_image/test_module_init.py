@@ -97,7 +97,7 @@ async def test_GenerateOciImageCommand_execute_handle_pullspec(
     mock_get_digest.return_value = oras_response
 
     args = MagicMock()
-    args.organization = None
+
     args.from_syft = [Path("foo")]
     args.from_hermeto = None
     args.image_pullspec = pullspec
@@ -129,7 +129,7 @@ async def test_GenerateOciImageCommand_execute_unknown_sbom(
     mock_load_sbom: AsyncMock,
 ) -> None:
     args = MagicMock()
-    args.organization = None
+
     mock_load_sbom.return_value = {"foo": "bar"}
     args.from_syft = [Path("foo")]
     args.from_hermeto = None

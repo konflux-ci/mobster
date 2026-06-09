@@ -5,7 +5,6 @@ from typing import Any
 
 from cyclonedx.model.bom import Bom
 from cyclonedx.model.dependency import Dependency
-from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
@@ -64,7 +63,6 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
             Any: A CycloneDX SBOM document object.
         """
 
-        organization = self.cli_args.organization
         root_component = cyclonedx.get_component(modelcar)
         base_component = cyclonedx.get_component(base)
         model_component = cyclonedx.get_component(model)
@@ -73,7 +71,6 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
         document = Bom()
         document.metadata.tools.components.add(cyclonedx.get_tools_component())
         document.metadata.component = root_component
-        document.metadata.manufacturer = cyclonedx.get_manufacturer(organization)
 
         # Add the base and model components to the BOM
         document.components.add(base_component)
@@ -104,14 +101,10 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
         Returns:
             Any: A SPDX SBOM document object.
         """
-        organization = self.cli_args.organization
-        supplier = Actor(ActorType.ORGANIZATION, organization) if organization else None
         packages = [
-            spdx.get_image_package(
-                modelcar, modelcar.propose_spdx_id(), supplier=supplier
-            ),
-            spdx.get_image_package(base, base.propose_spdx_id(), supplier=supplier),
-            spdx.get_image_package(model, model.propose_spdx_id(), supplier=supplier),
+            spdx.get_image_package(modelcar, modelcar.propose_spdx_id()),
+            spdx.get_image_package(base, base.propose_spdx_id()),
+            spdx.get_image_package(model, model.propose_spdx_id()),
         ]
         relationships = [
             spdx.get_root_package_relationship(
@@ -127,9 +120,7 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
             ),
         ]
         document = Document(
-            creation_info=spdx.get_creation_info(
-                modelcar.propose_sbom_name(), organization
-            ),
+            creation_info=spdx.get_creation_info(modelcar.propose_sbom_name()),
             packages=packages,
             relationships=relationships,
         )

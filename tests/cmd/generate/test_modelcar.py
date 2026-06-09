@@ -47,7 +47,6 @@ async def test_generate_modelcar_sbom(
         "087dc7896b97911a582702b45ff1d41ffa3e142d0b000b0fbb11058188293cfc"
     )
     args.sbom_type = sbom_type
-    args.organization = None
 
     expected_output_path = current_dir.parent.parent / "data" / expected_result_file
     with open(expected_output_path, encoding="utf8") as expected_file:

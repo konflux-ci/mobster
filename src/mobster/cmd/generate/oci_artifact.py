@@ -6,7 +6,6 @@ from typing import Any
 import yaml
 from cyclonedx.model.bom import Bom
 from cyclonedx.model.dependency import Dependency
-from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
@@ -71,14 +70,12 @@ class GenerateOciArtifactCommand(GenerateCommandWithOutputTypeSelector):
             Any: An SBOM document object in cyclonedx format.
         """
 
-        organization = self.cli_args.organization
         root_component = cyclonedx.get_component(oci_image)
 
         # Create CycloneDX BOM and assign it the root component
         document = Bom()
         document.metadata.tools.components.add(cyclonedx.get_tools_component())
         document.metadata.component = root_component
-        document.metadata.manufacturer = cyclonedx.get_manufacturer(organization)
 
         artifact_components = [
             cyclonedx.get_component_from_artifact(artifact) for artifact in artifacts
@@ -112,16 +109,11 @@ class GenerateOciArtifactCommand(GenerateCommandWithOutputTypeSelector):
         Returns:
             Any: An SBOM document object in SPDX format.
         """
-        organization = self.cli_args.organization
-        supplier = Actor(ActorType.ORGANIZATION, organization) if organization else None
         packages = [
-            spdx.get_image_package(
-                oci_image, oci_image.propose_spdx_id(), supplier=supplier
-            )
+            spdx.get_image_package(oci_image, oci_image.propose_spdx_id())
         ]
         artifact_packages = [
-            spdx.get_package_from_artifact(artifact, supplier=supplier)
-            for artifact in artifacts
+            spdx.get_package_from_artifact(artifact) for artifact in artifacts
         ]
         packages.extend(artifact_packages)
         relationships = [
@@ -134,9 +126,7 @@ class GenerateOciArtifactCommand(GenerateCommandWithOutputTypeSelector):
                 )
             )
         document = Document(
-            creation_info=spdx.get_creation_info(
-                oci_image.propose_sbom_name(), organization
-            ),
+            creation_info=spdx.get_creation_info(oci_image.propose_sbom_name()),
             packages=packages,
             relationships=relationships,
         )

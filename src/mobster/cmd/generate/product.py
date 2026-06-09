@@ -69,7 +69,7 @@ class GenerateProductCommand(GenerateCommand):
                 "Cannot generate product SBOM without release notes. "
                 "Update release data with releaseNotes field."
             )
-        organization = getattr(self.cli_args, "organization", None)
+        organization = self.cli_args.organization
         self.document = create_sbom(
             self.release_notes, snapshot, self.cli_args.release_id, organization
         )

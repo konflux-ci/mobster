@@ -18,7 +18,6 @@ async def test_generate_oci_index_sbom() -> None:
     """
 
     args = MagicMock()
-    args.organization = None
     current_dir = pathlib.Path(__file__).parent.resolve()
     args.index_manifest_path = current_dir.parent.parent / "data/index_manifest.json"
     args.index_image_pullspec = "registry.redhat.io/ubi10-beta/ubi:latest"
@@ -154,9 +153,7 @@ async def test_GenerateOciIndexCommand_execute(
     mock_get_creation_info: MagicMock,
     mock_doc: MagicMock,
 ) -> None:
-    args = MagicMock()
-    args.organization = None
-    command = GenerateOciIndexCommand(args)
+    command = GenerateOciIndexCommand(MagicMock())
 
     mock_child_packages.return_value = ([], [])
 
