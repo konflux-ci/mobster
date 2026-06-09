@@ -6,7 +6,8 @@ Konflux components being released with a Red Hat product.
 ```sh
 $ mobster generate product \
     --release-data data.json \
-    --snapshot snapshot.json > product.json
+    --snapshot snapshot.json \
+    --organization "Red Hat" > product.json
 ```
 
 ## Example generation
@@ -42,7 +43,14 @@ components:
 
 After running the generate product command with the release data and the
 snapshot, we get an SBOM that links the CPEs and product data in the release
-data file with the components being released:
+data file with the components being released.
+
+The `--organization` flag is optional. When provided, the organization name
+appears in the SPDX `creators` list and as the `supplier` for each package.
+When omitted, no organization creator is added and the supplier is set to
+`NOASSERTION`.
+
+Example with `--organization "Red Hat"`:
 ```json
 {
     "SPDXID": "SPDXRef-DOCUMENT",
@@ -72,7 +80,7 @@ data file with the components being released:
                     "referenceCategory": "SECURITY",
                     "referenceLocator": "cpe:/a:redhat:product:1.0::el10",
                     "referenceType": "cpe22Type"
-                },
+                }
             ],
             "filesAnalyzed": false,
             "licenseDeclared": "NOASSERTION",
