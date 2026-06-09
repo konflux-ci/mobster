@@ -6,7 +6,6 @@ from spdx_tools.spdx.parser.parse_anything import parse_file
 
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderPkgMetadata,
-    BuilderPkgMetadataItem,
 )
 from mobster.image import Image
 from tests.integration.img_utils import make_metadata_yaml
@@ -281,6 +280,7 @@ async def test_builder_content_extra(
 
     # make sure ginkgo wasn't added to the sbom
     verify_packages_not_included(output_sbom_path, [ginkgo_pkg.to_spdx()])
+
 
 @pytest.mark.asyncio
 @pytest.mark.skip(reason="not currently supported")
