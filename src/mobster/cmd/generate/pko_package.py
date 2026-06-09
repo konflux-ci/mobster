@@ -78,6 +78,9 @@ class GeneratePkoPackageCommand(GenerateCommandWithOutputTypeSelector):
         document = Bom()
         document.metadata.tools.components.add(cyclonedx.get_tools_component())
         document.metadata.component = package_component
+        manufacturer = cyclonedx.get_manufacturer(self._get_organization())
+        if manufacturer:
+            document.metadata.manufacturer = manufacturer
         document.components.add(package_component)
 
         return document
@@ -100,11 +103,15 @@ class GeneratePkoPackageCommand(GenerateCommandWithOutputTypeSelector):
             locator=url,
         )
 
-        package = spdx.get_image_package(image, image.propose_spdx_id())
+        organization = self._get_organization()
+        supplier = self._get_supplier_actor()
+        package = spdx.get_image_package(
+            image, image.propose_spdx_id(), supplier=supplier
+        )
         package.external_references.append(ref)  # pylint: disable=E1101
 
         document = Document(
-            creation_info=spdx.get_creation_info("package"),
+            creation_info=spdx.get_creation_info("package", organization),
             packages=[package],
         )
         pkg_ref = spdx.get_root_package_relationship(package.spdx_id)

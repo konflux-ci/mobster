@@ -76,6 +76,9 @@ class GenerateOciArtifactCommand(GenerateCommandWithOutputTypeSelector):
         document = Bom()
         document.metadata.tools.components.add(cyclonedx.get_tools_component())
         document.metadata.component = root_component
+        manufacturer = cyclonedx.get_manufacturer(self._get_organization())
+        if manufacturer:
+            document.metadata.manufacturer = manufacturer
 
         artifact_components = [
             cyclonedx.get_component_from_artifact(artifact) for artifact in artifacts
@@ -109,9 +112,16 @@ class GenerateOciArtifactCommand(GenerateCommandWithOutputTypeSelector):
         Returns:
             Any: An SBOM document object in SPDX format.
         """
-        packages = [spdx.get_image_package(oci_image, oci_image.propose_spdx_id())]
+        organization = self._get_organization()
+        supplier = self._get_supplier_actor()
+        packages = [
+            spdx.get_image_package(
+                oci_image, oci_image.propose_spdx_id(), supplier=supplier
+            )
+        ]
         artifact_packages = [
-            spdx.get_package_from_artifact(artifact) for artifact in artifacts
+            spdx.get_package_from_artifact(artifact, supplier=supplier)
+            for artifact in artifacts
         ]
         packages.extend(artifact_packages)
         relationships = [
@@ -124,7 +134,9 @@ class GenerateOciArtifactCommand(GenerateCommandWithOutputTypeSelector):
                 )
             )
         document = Document(
-            creation_info=spdx.get_creation_info(oci_image.propose_sbom_name()),
+            creation_info=spdx.get_creation_info(
+                oci_image.propose_sbom_name(), organization
+            ),
             packages=packages,
             relationships=relationships,
         )

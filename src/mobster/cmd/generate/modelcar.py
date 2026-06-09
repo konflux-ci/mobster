@@ -71,6 +71,9 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
         document = Bom()
         document.metadata.tools.components.add(cyclonedx.get_tools_component())
         document.metadata.component = root_component
+        manufacturer = cyclonedx.get_manufacturer(self._get_organization())
+        if manufacturer:
+            document.metadata.manufacturer = manufacturer
 
         # Add the base and model components to the BOM
         document.components.add(base_component)
@@ -101,10 +104,13 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
         Returns:
             Any: A SPDX SBOM document object.
         """
+        supplier = self._get_supplier_actor()
         packages = [
-            spdx.get_image_package(modelcar, modelcar.propose_spdx_id()),
-            spdx.get_image_package(base, base.propose_spdx_id()),
-            spdx.get_image_package(model, model.propose_spdx_id()),
+            spdx.get_image_package(
+                modelcar, modelcar.propose_spdx_id(), supplier=supplier
+            ),
+            spdx.get_image_package(base, base.propose_spdx_id(), supplier=supplier),
+            spdx.get_image_package(model, model.propose_spdx_id(), supplier=supplier),
         ]
         relationships = [
             spdx.get_root_package_relationship(
@@ -120,7 +126,9 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
             ),
         ]
         document = Document(
-            creation_info=spdx.get_creation_info(modelcar.propose_sbom_name()),
+            creation_info=spdx.get_creation_info(
+                modelcar.propose_sbom_name(), self._get_organization()
+            ),
             packages=packages,
             relationships=relationships,
         )

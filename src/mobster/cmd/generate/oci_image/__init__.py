@@ -47,6 +47,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 )
 from mobster.image import Image
 from mobster.log import log_elapsed
+from mobster.sbom import cyclonedx
 from mobster.sbom.merge import merge_sboms
 from mobster.utils import load_sbom_from_json
 
@@ -273,6 +274,26 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         LOGGER.info("Could not create contextual SBOM.")
         return None
 
+    def _apply_organization(self, sbom: Document | CycloneDX1BomWrapper) -> None:
+        """Apply organization metadata to the SBOM after construction.
+
+        Sets the manufacturer (CycloneDX) or adds the organization to
+        the creators list (SPDX) based on the --organization CLI argument.
+        This avoids threading the organization parameter through internal
+        methods.
+
+        Args:
+            sbom: The constructed SBOM to annotate with organization info.
+        """
+        organization = self._get_organization()
+        if not organization:
+            return
+
+        if isinstance(sbom, CycloneDX1BomWrapper):
+            manufacturer = cyclonedx.get_manufacturer(organization)
+            if manufacturer:
+                sbom.sbom.metadata.manufacturer = manufacturer
+
     async def execute(self) -> Any:
         """
         Generate an SBOM document for OCI image.
@@ -342,6 +363,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 sbom, base_images_refs, base_images_map, image_arch
             )
         sbom = contextual_sbom or sbom
+        self._apply_organization(sbom)
         self._content = sbom
         if not self.cli_args.skip_validation:
             with log_elapsed("Validation of final SBOM", logging.INFO):

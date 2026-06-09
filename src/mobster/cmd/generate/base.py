@@ -6,6 +6,7 @@ from abc import ABC
 from typing import Any
 
 from cyclonedx.output.json import JsonV1Dot5
+from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.writer.write_anything import write_file
 
 from mobster.cmd.base import Command
@@ -28,6 +29,23 @@ class GenerateCommand(Command, ABC):
         Get the content of the SBOM document.
         """
         return self._content
+
+    def _get_organization(self) -> str | None:
+        """Extract the --organization CLI argument safely.
+
+        Returns the organization string if it was provided and is a
+        non-empty string, otherwise returns None. This method is safe
+        to call even when cli_args is a MagicMock (in tests).
+        """
+        org = getattr(self.cli_args, "organization", None)
+        return org if isinstance(org, str) and org else None
+
+    def _get_supplier_actor(self) -> Actor | None:
+        """Get an SPDX Actor for the organization, or None."""
+        organization = self._get_organization()
+        if organization:
+            return Actor(ActorType.ORGANIZATION, organization)
+        return None
 
     async def save(self) -> None:
         """

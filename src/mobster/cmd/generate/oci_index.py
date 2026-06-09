@@ -4,11 +4,13 @@ import json
 import logging
 from typing import Any
 
+from spdx_tools.spdx.model.actor import Actor
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import (
     Package,
 )
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
+from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.writer.write_anything import write_file
 
 from mobster.cmd.generate.base import GenerateCommand
@@ -57,6 +59,7 @@ class GenerateOciIndexCommand(GenerateCommand):
     def get_child_packages(
         self,
         index_image: Image,
+        supplier: Actor | SpdxNoAssertion | None = None,
     ) -> tuple[list[Package], list[Relationship]]:
         """
         Get child packages from the OCI index image.
@@ -98,6 +101,7 @@ class GenerateOciIndexCommand(GenerateCommand):
                 arch_image,
                 spdx_id,
                 package_name=f"{arch_image.name}_{arch}",
+                supplier=supplier,
             )
             relationship = self.get_child_image_relationship(spdx_id)
 
@@ -116,16 +120,20 @@ class GenerateOciIndexCommand(GenerateCommand):
             self.cli_args.index_image_pullspec, self.cli_args.index_image_digest
         )
 
-        main_package = spdx.get_image_package(index_image, self.INDEX_ELEMENT_ID)
+        organization = self._get_organization()
+        supplier = self._get_supplier_actor()
+        main_package = spdx.get_image_package(
+            index_image, self.INDEX_ELEMENT_ID, supplier=supplier
+        )
         main_relationship = spdx.get_root_package_relationship(self.INDEX_ELEMENT_ID)
         component_packages, component_relationships = self.get_child_packages(
-            index_image
+            index_image, supplier=supplier
         )
 
         # Assemble a complete SPDX document
         sbom_name = f"{index_image.repository}@{index_image.digest}"
         document = Document(
-            creation_info=spdx.get_creation_info(sbom_name),
+            creation_info=spdx.get_creation_info(sbom_name, organization),
             packages=[main_package] + component_packages,
             relationships=[main_relationship] + component_relationships,
         )

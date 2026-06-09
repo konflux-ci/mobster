@@ -39,9 +39,9 @@ DIGESTS = Digests(
 class Args:
     snapshot: Path
     release_data: Path
-    output: Path
+    output: Path | None
     skip_validation: bool
-    release_id: ReleaseId
+    release_id: ReleaseId | None
     concurrency: int
     organization: str | None = None
 
@@ -484,6 +484,72 @@ def verify_supplier(sbom: Any) -> None:
         assert package["supplier"] == "NOASSERTION"
 
 
+def verify_supplier_with_org(sbom: Any, organization: str) -> None:
+    # verify suppliers are set to the organization when specified
+    for package in sbom["packages"]:
+        assert package["supplier"] == f"Organization: {organization}"
+
+
 def verify_package_licenses(sbom: Any) -> None:
     for package in sbom["packages"]:
         assert package["licenseDeclared"] == "NOASSERTION"
+
+
+class TestGenerateProductCommandWithOrganization:
+    """Tests for product SBOM generation with --organization specified."""
+
+    @pytest.mark.asyncio
+    async def test_execute_with_organization(
+        self,
+        patch_make_snapshot: Callable[[Snapshot], None],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        snapshot = Snapshot(
+            components=[
+                Component(
+                    name="component",
+                    image=Image(repository="quay.io/repo", digest=DIGESTS.single_arch),
+                    release_repositories=[
+                        ReleaseRepository(
+                            public_repo_url="registry.redhat.io/repo",
+                            tags=["1.0"],
+                            internal_repo_url="quay.io/repo",
+                        )
+                    ],
+                )
+            ]
+        )
+        patch_make_snapshot(snapshot)
+
+        release_notes = ReleaseNotes(
+            product_name="Product",
+            product_version="1.0",
+            cpe="cpe:/a:redhat:product:1.0::el10",
+        )
+        monkeypatch.setattr(
+            "mobster.cmd.generate.product.parse_release_notes", lambda *_: release_notes
+        )
+
+        args = Args(
+            snapshot=Path("snapshot"),
+            release_data=Path("data.json"),
+            output=None,
+            skip_validation=False,
+            release_id=None,
+            concurrency=8,
+            organization="Acme Corp",
+        )
+        cmd = GenerateProductCommand(cli_args=args)
+        await cmd.execute()
+
+        assert cmd.document is not None
+
+        output = StringIO()
+        write_document_to_stream(cmd.document, output)
+        output.seek(0)
+        sbom_dict = json.load(output)
+
+        # Verify organization appears in creators
+        assert "Organization: Acme Corp" in sbom_dict["creationInfo"]["creators"]
+        # Verify supplier is set to the organization
+        verify_supplier_with_org(sbom_dict, "Acme Corp")
