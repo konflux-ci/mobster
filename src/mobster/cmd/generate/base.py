@@ -34,8 +34,7 @@ class GenerateCommand(Command, ABC):
         """Extract the --organization CLI argument safely.
 
         Returns the organization string if it was provided and is a
-        non-empty string, otherwise returns None. This method is safe
-        to call even when cli_args is a MagicMock (in tests).
+        non-empty string, otherwise returns None.
         """
         org = getattr(self.cli_args, "organization", None)
         return org if isinstance(org, str) and org else None

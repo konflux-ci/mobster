@@ -82,13 +82,13 @@ def normalize_org_creator(
 
 
 def normalize_red_hat_creator(creators: list[str]) -> list[str]:
-    """
-    Ensure exactly one canonical "Organization: Red Hat" entry is present in
-    the creators list. Any case-insensitive variant (e.g. "Organization: red hat")
-    is removed and replaced with the correct form.
+    """Ensure exactly one canonical "Organization: Red Hat" entry is present.
 
-    .. deprecated::
-        Use :func:`normalize_org_creator` with an explicit organization instead.
+    Any case-insensitive variant (e.g. "Organization: red hat") is removed
+    and replaced with the correct form.
+
+    Deprecated:
+        Use ``normalize_org_creator`` with an explicit organization instead.
 
     Args:
         creators: The list of SPDX creator strings to normalize.

@@ -12,8 +12,10 @@ from cyclonedx.model.bom_ref import BomRef
 from cyclonedx.model.component import Component, ComponentType
 from cyclonedx.model.dependency import Dependency
 from pytest_lazy_fixtures import lf
+from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import Package
+from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
 from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
@@ -385,3 +387,84 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_
     )
     mock_execute_contextual.assert_awaited_once()
     assert "Contextual SBOM workflow failed." in caplog.messages
+
+
+@pytest.mark.asyncio
+async def test_apply_organization_spdx() -> None:
+    """Test that _apply_organization adds org creator and updates suppliers for SPDX."""
+    args = MagicMock()
+    args.organization = "Acme Corp"
+    command = GenerateOciImageCommand(args)
+
+    doc = Document(
+        creation_info=CreationInfo(
+            spdx_version="SPDX-2.3",
+            spdx_id="SPDXRef-DOCUMENT",
+            name="test",
+            document_namespace="https://example.com/test",
+            created=datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
+            creators=[Actor(ActorType.TOOL, "test-tool")],
+        ),
+        packages=[
+            Package(
+                "SPDXRef-pkg1",
+                "pkg1",
+                "dl1",
+                supplier=SpdxNoAssertion(),
+            ),
+        ],
+    )
+
+    command._apply_organization(doc)
+
+    # Check organization creator was added
+    org_creators = [
+        c
+        for c in doc.creation_info.creators
+        if c.actor_type == ActorType.ORGANIZATION and c.name == "Acme Corp"
+    ]
+    assert len(org_creators) == 1
+
+    # Check supplier was updated on all packages
+    for pkg in doc.packages:
+        assert isinstance(pkg.supplier, Actor)
+        assert pkg.supplier.actor_type == ActorType.ORGANIZATION
+        assert pkg.supplier.name == "Acme Corp"
+
+
+@pytest.mark.asyncio
+async def test_apply_organization_spdx_no_org() -> None:
+    """Test that _apply_organization is a no-op when organization is None."""
+    args = MagicMock()
+    args.organization = None
+    command = GenerateOciImageCommand(args)
+
+    doc = Document(
+        creation_info=CreationInfo(
+            spdx_version="SPDX-2.3",
+            spdx_id="SPDXRef-DOCUMENT",
+            name="test",
+            document_namespace="https://example.com/test",
+            created=datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
+            creators=[Actor(ActorType.TOOL, "test-tool")],
+        ),
+        packages=[
+            Package(
+                "SPDXRef-pkg1",
+                "pkg1",
+                "dl1",
+                supplier=SpdxNoAssertion(),
+            ),
+        ],
+    )
+
+    command._apply_organization(doc)
+
+    # No organization creator should be added
+    org_creators = [
+        c for c in doc.creation_info.creators if c.actor_type == ActorType.ORGANIZATION
+    ]
+    assert len(org_creators) == 0
+
+    # Supplier should remain NOASSERTION
+    assert isinstance(doc.packages[0].supplier, SpdxNoAssertion)

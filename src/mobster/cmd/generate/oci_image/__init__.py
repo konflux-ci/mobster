@@ -12,6 +12,7 @@ from typing import Any
 import yaml
 from cyclonedx.exception import CycloneDxException
 from spdx_tools.spdx.jsonschema.document_converter import DocumentConverter
+from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
 from spdx_tools.spdx.writer.write_utils import convert
@@ -278,9 +279,9 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         """Apply organization metadata to the SBOM after construction.
 
         Sets the manufacturer (CycloneDX) or adds the organization to
-        the creators list (SPDX) based on the --organization CLI argument.
-        This avoids threading the organization parameter through internal
-        methods.
+        the creators list and updates package suppliers (SPDX) based on
+        the --organization CLI argument. This avoids threading the
+        organization parameter through internal methods.
 
         Args:
             sbom: The constructed SBOM to annotate with organization info.
@@ -293,6 +294,20 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             manufacturer = cyclonedx.get_manufacturer(organization)
             if manufacturer:
                 sbom.sbom.metadata.manufacturer = manufacturer
+        elif isinstance(sbom, Document):
+            org_actor = Actor(ActorType.ORGANIZATION, organization)
+
+            # Add organization to creators if not already present
+            has_org = any(
+                c.actor_type == ActorType.ORGANIZATION and c.name == organization
+                for c in sbom.creation_info.creators
+            )
+            if not has_org:
+                sbom.creation_info.creators.insert(0, org_actor)
+
+            # Update supplier on all packages
+            for package in sbom.packages:
+                package.supplier = org_actor
 
     async def execute(self) -> Any:
         """
