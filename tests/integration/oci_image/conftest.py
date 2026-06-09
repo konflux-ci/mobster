@@ -51,12 +51,17 @@ class SBOMPackage:
     ) -> BuilderPkgMetadataItem:
         """Convert to BuilderPkgMetadataItem.
 
-        Ignores verification_code and sha256_checksum."""
-        return BuilderPkgMetadataItem(
+        Ignores verification_code as it is not a valid field for this format
+        currently."""
+        item = BuilderPkgMetadataItem(
             purl=self.purl,
+            dependency_of_purl=self.dependency_of_purl,
             pullspec=origin_pullspec,
             origin_type=origin_type,
         )
+        if self.sha256_checksum:
+            item.checksums = [f"sha256:{self.sha256_checksum}"]
+        return item
 
 
 @pytest.fixture
@@ -448,7 +453,6 @@ def verify_sbom_relationships(
 
     for spdx_id, packages in zip(dep_chain, package_groups, strict=False):
         verify_relationships(spdx_id, sbom_doc.relationships, packages)
-
 
 def verify_relationships(
     spdx_id: str, relationships: list[Relationship], packages: list[AnnotatedPackage]
