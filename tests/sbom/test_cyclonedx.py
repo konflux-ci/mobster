@@ -8,10 +8,21 @@ from mobster.image import Image
 from mobster.sbom import cyclonedx
 
 
-def test_get_manufacturer() -> None:
+def test_get_manufacturer_no_org() -> None:
     result = cyclonedx.get_manufacturer()
+    assert result is None
+
+
+def test_get_manufacturer_with_org() -> None:
+    result = cyclonedx.get_manufacturer("Red Hat")
     assert isinstance(result, OrganizationalEntity)
     assert result.name == "Red Hat"
+
+
+def test_get_manufacturer_with_custom_org() -> None:
+    result = cyclonedx.get_manufacturer("Acme Corp")
+    assert isinstance(result, OrganizationalEntity)
+    assert result.name == "Acme Corp"
 
 
 def test_get_component() -> None:

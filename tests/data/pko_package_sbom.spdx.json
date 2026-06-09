@@ -3,7 +3,6 @@
     "creationInfo": {
         "created": "2025-10-17T16:17:57Z",
         "creators": [
-            "Organization: Red Hat",
             "Tool: Konflux CI"
         ]
     },
@@ -36,7 +35,7 @@
             "filesAnalyzed": false,
             "licenseDeclared": "NOASSERTION",
             "name": "test-stub",
-            "supplier": "Organization: Red Hat",
+            "supplier": "NOASSERTION",
             "versionInfo": "5bfd6fb"
         }
     ],

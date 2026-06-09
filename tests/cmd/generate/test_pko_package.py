@@ -43,6 +43,7 @@ async def test_generate_pko_package_sbom(
     args.package_digest = digest
     args.url = url
     args.sbom_type = sbom_type
+    args.organization = None
 
     expected_output_path = current_dir.parent.parent / "data" / expected_result_file
     with open(expected_output_path, encoding="utf8") as expected_file:

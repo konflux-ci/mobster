@@ -62,11 +62,14 @@ class CycloneDX1BomWrapper:
         return sbom_dict  # type: ignore[no-any-return]
 
     @staticmethod
-    def from_dict(sbom_dict: dict[str, Any]) -> "CycloneDX1BomWrapper":
+    def from_dict(
+        sbom_dict: dict[str, Any], organization: str | None = None
+    ) -> "CycloneDX1BomWrapper":
         """
         Loads the object from a dictionary.
         Args:
             sbom_dict (dict[str, Any]): A JSON-like dictionary.
+            organization: Optional organization name for the manufacturer.
         Returns:
             CycloneDX1VomWrapper: the initialized object of this class.
         """
@@ -83,5 +86,5 @@ class CycloneDX1BomWrapper:
                 type=ComponentType.APPLICATION,
             )
         )
-        bom_object.sbom.metadata.manufacturer = get_manufacturer()
+        bom_object.sbom.metadata.manufacturer = get_manufacturer(organization)
         return bom_object

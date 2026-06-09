@@ -62,14 +62,22 @@ def get_component_from_artifact(artifact: Artifact) -> Component:
     return package
 
 
-def get_manufacturer() -> OrganizationalEntity:
+def get_manufacturer(
+    organization: str | None = None,
+) -> OrganizationalEntity | None:
     """
-    Get the OrganizationalEntity representing Red Hat as the SBOM manufacturer.
+    Get the OrganizationalEntity representing the SBOM manufacturer.
+
+    Args:
+        organization: Optional organization name. If not provided,
+            None is returned (no manufacturer set).
 
     Returns:
-        OrganizationalEntity: Red Hat organizational entity.
+        OrganizationalEntity if organization is provided, None otherwise.
     """
-    return OrganizationalEntity(name="Red Hat")
+    if organization:
+        return OrganizationalEntity(name=organization)
+    return None
 
 
 def get_tools_component() -> Component:

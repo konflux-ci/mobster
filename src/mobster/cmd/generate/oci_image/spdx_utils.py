@@ -23,7 +23,6 @@ from mobster.sbom.spdx import (
     get_mobster_tool_string,
     get_namespace,
     get_package_purl,
-    get_red_hat_org_string,
 )
 
 KONFLUX_JSON_ACTOR = Actor(actor_type=ActorType.TOOL, name="konflux:jsonencoded")
@@ -54,11 +53,42 @@ async def normalize_actor(actor: str) -> str:
     return actor
 
 
+def normalize_org_creator(
+    creators: list[str], organization: str | None = None
+) -> list[str]:
+    """
+    Normalize an organization entry in the creators list.
+
+    If an organization is specified, ensure exactly one canonical entry
+    is present. Any case-insensitive variant is removed and replaced
+    with the correct form.
+
+    If no organization is specified, the creators list is returned unchanged.
+
+    Args:
+        creators: The list of SPDX creator strings to normalize.
+        organization: Optional organization name to normalize in the list.
+
+    Returns:
+        list[str]: Updated creators list.
+    """
+    if not organization:
+        return creators
+
+    org_string = f"Organization: {organization}"
+    result = [c for c in creators if c.lower() != org_string.lower()]
+    result.append(org_string)
+    return result
+
+
 def normalize_red_hat_creator(creators: list[str]) -> list[str]:
     """
     Ensure exactly one canonical "Organization: Red Hat" entry is present in
     the creators list. Any case-insensitive variant (e.g. "Organization: red hat")
     is removed and replaced with the correct form.
+
+    .. deprecated::
+        Use :func:`normalize_org_creator` with an explicit organization instead.
 
     Args:
         creators: The list of SPDX creator strings to normalize.
@@ -66,10 +96,7 @@ def normalize_red_hat_creator(creators: list[str]) -> list[str]:
     Returns:
         list[str]: Updated creators list with the canonical Red Hat entry.
     """
-    red_hat_org = get_red_hat_org_string()
-    result = [c for c in creators if c.lower() != red_hat_org.lower()]
-    result.append(red_hat_org)
-    return result
+    return normalize_org_creator(creators, "Red Hat")
 
 
 async def normalize_package(package: dict[str, Any]) -> None:
@@ -91,7 +118,9 @@ async def normalize_package(package: dict[str, Any]) -> None:
 
 
 async def normalize_sbom(
-    sbom: dict[str, Any], append_mobster_creator: bool = True
+    sbom: dict[str, Any],
+    append_mobster_creator: bool = True,
+    organization: str | None = None,
 ) -> None:
     """
     Adds necessary fields to an SPDX SBOM to be loaded by the
@@ -100,6 +129,8 @@ async def normalize_sbom(
         sbom: The SBOM to be normalized.
         append_mobster_creator: If Mobster should append its name as one of
                                the creators of the SBOM.
+        organization: Optional organization name to normalize in the creators
+                      list. If not provided, no organization is added.
 
     Returns:
         None: Nothing, changes are performed in-place.
@@ -120,7 +151,7 @@ async def normalize_sbom(
         creation_info["created"] = "1970-01-01T00:00:00Z"
     creators = creation_info.get("creators", [])
     new_creators = [await normalize_actor(creator) for creator in creators]
-    new_creators = normalize_red_hat_creator(new_creators)
+    new_creators = normalize_org_creator(new_creators, organization)
     if append_mobster_creator:
         new_creators.append(get_mobster_tool_string())
     creation_info["creators"] = new_creators
@@ -131,7 +162,9 @@ async def normalize_sbom(
 
 
 async def normalize_and_load_sbom(
-    sbom: dict[str, Any], append_mobster: bool = True
+    sbom: dict[str, Any],
+    append_mobster: bool = True,
+    organization: str | None = None,
 ) -> Document:
     """
     Normalize and load the SPDX SBOM.
@@ -139,10 +172,11 @@ async def normalize_and_load_sbom(
         sbom: The SBOM dict to normalize and load.
         append_mobster: If Mobster should append its name as one of
                                the creators of the SBOM.
+        organization: Optional organization name for creator normalization.
     Returns:
         Loaded SPDX SBOM object.
     """
-    await normalize_sbom(sbom, append_mobster)
+    await normalize_sbom(sbom, append_mobster, organization=organization)
     return JsonLikeDictParser().parse(sbom)  # type: ignore[no-untyped-call]
 
 

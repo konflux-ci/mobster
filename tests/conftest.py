@@ -266,6 +266,7 @@ class GenerateOciImageCommandArgs:
     contextualize: bool = False
     skip_validation: bool = False
     arch: str | None = None
+    organization: str | None = None
 
 
 @dataclass

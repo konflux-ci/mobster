@@ -53,32 +53,42 @@ def get_namespace(sbom_name: str) -> str:
     return f"https://konflux-ci.dev/spdxdocs/{sbom_name}-{uuid4()}"
 
 
-def get_creation_info(sbom_name: str) -> CreationInfo:
+def get_creation_info(sbom_name: str, organization: str | None = None) -> CreationInfo:
     """Create the creation information for the SPDX document.
 
     Args:
         sbom_name: The name for the SBOM document.
+        organization: Optional organization name to include as a creator.
+            If not provided, no organization creator is added.
 
     Returns:
         CreationInfo: A creation information object for the SPDX document.
     """
+    creators: list[Actor] = []
+    if organization:
+        creators.append(Actor(ActorType.ORGANIZATION, organization))
+    creators.extend(
+        [
+            Actor(ActorType.TOOL, "Konflux CI"),
+            get_mobster_tool_actor(),
+        ]
+    )
     return CreationInfo(
         spdx_version="SPDX-2.3",
         spdx_id=DOC_ELEMENT_ID,
         name=sbom_name,
         data_license="CC0-1.0",
         document_namespace=get_namespace(sbom_name),
-        creators=[
-            get_red_hat_org_actor(),
-            Actor(ActorType.TOOL, "Konflux CI"),
-            get_mobster_tool_actor(),
-        ],
+        creators=creators,
         created=datetime.now(timezone.utc),
     )
 
 
 def get_image_package(
-    image: Image, spdx_id: str, package_name: str | None = None
+    image: Image,
+    spdx_id: str,
+    package_name: str | None = None,
+    supplier: Actor | SpdxNoAssertion | None = None,
 ) -> Package:
     """Transform the parsed image object into SPDX package object.
 
@@ -111,10 +121,13 @@ def get_image_package(
                 value=image.digest_hex_val,
             )
         ],
+        supplier=supplier,
     )
 
 
-def get_package_from_artifact(artifact: Artifact) -> Package:
+def get_package_from_artifact(
+    artifact: Artifact, supplier: Actor | SpdxNoAssertion | None = None
+) -> Package:
     """Transform the parsed artifact object into SPDX package object.
 
     Args:
@@ -140,6 +153,7 @@ def get_package_from_artifact(artifact: Artifact) -> Package:
                 value=artifact.sha256sum,
             )
         ],
+        supplier=supplier,
     )
 
 
@@ -151,6 +165,7 @@ def get_package(
     checksums: list[Checksum],
     version: str | None = None,
     download_location: str | SpdxNoAssertion | SpdxNone | None = None,
+    supplier: Actor | SpdxNoAssertion | None = None,
 ) -> Package:
     """Create an SPDX package from input data.
 
@@ -162,6 +177,8 @@ def get_package(
         version: Version field of the package.
         download_location: Package download location. If not provided,
             SpdxNoAssertion is used.
+        supplier: Supplier for the package. If not provided,
+            SpdxNoAssertion is used.
 
     Returns:
         Package: An SPDX package object.
@@ -169,12 +186,15 @@ def get_package(
     if download_location is None:
         download_location = SpdxNoAssertion()
 
+    if supplier is None:
+        supplier = SpdxNoAssertion()
+
     return Package(
         spdx_id=spdx_id,
         name=name,
         version=version,
         download_location=download_location,
-        supplier=get_red_hat_org_actor(),
+        supplier=supplier,
         license_declared=SpdxNoAssertion(),
         files_analyzed=False,
         external_references=external_refs,

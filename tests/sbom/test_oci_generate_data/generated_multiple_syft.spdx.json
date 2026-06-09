@@ -4,8 +4,7 @@
     "created": "2024-12-18T11:28:00Z",
     "creators": [
       "Organization: Anchore, Inc",
-      "Tool: syft-1.4.1",
-      "Organization: Red Hat"
+      "Tool: syft-1.4.1"
     ],
     "licenseListVersion": "3.23"
   },
@@ -33,7 +32,7 @@
       "filesAnalyzed": false,
       "licenseDeclared": "NOASSERTION",
       "name": "examplecontainer_amd64",
-      "supplier": "Organization: Red Hat",
+      "supplier": "NOASSERTION",
       "versionInfo": "v10"
     },
     {
@@ -1644,7 +1643,7 @@
       "filesAnalyzed": false,
       "licenseDeclared": "NOASSERTION",
       "name": "konflux-test",
-      "supplier": "Organization: Red Hat",
+      "supplier": "NOASSERTION",
       "versionInfo": "baf5e59d5d35615d0db13b46bd91194458011af8"
     }
   ],

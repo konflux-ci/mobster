@@ -5,6 +5,7 @@ from typing import Any
 
 from cyclonedx.model import ExternalReference, ExternalReferenceType, XsUri
 from cyclonedx.model.bom import Bom
+from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import (
     ExternalPackageRef,
@@ -70,6 +71,7 @@ class GeneratePkoPackageCommand(GenerateCommandWithOutputTypeSelector):
             Any: A CycloneDX SBOM document object.
         """
 
+        organization = self.cli_args.organization
         package_component = cyclonedx.get_component(image)
         package_component.external_references.add(
             ExternalReference(url=XsUri(url), type=ExternalReferenceType.VCS)
@@ -78,7 +80,7 @@ class GeneratePkoPackageCommand(GenerateCommandWithOutputTypeSelector):
         document = Bom()
         document.metadata.tools.components.add(cyclonedx.get_tools_component())
         document.metadata.component = package_component
-        document.metadata.manufacturer = cyclonedx.get_manufacturer()
+        document.metadata.manufacturer = cyclonedx.get_manufacturer(organization)
         document.components.add(package_component)
 
         return document
@@ -95,17 +97,21 @@ class GeneratePkoPackageCommand(GenerateCommandWithOutputTypeSelector):
             Any: A SPDX SBOM document object.
         """
 
+        organization = self.cli_args.organization
+        supplier = Actor(ActorType.ORGANIZATION, organization) if organization else None
         ref = ExternalPackageRef(
             category=ExternalPackageRefCategory.OTHER,
             reference_type="vcs",
             locator=url,
         )
 
-        package = spdx.get_image_package(image, image.propose_spdx_id())
+        package = spdx.get_image_package(
+            image, image.propose_spdx_id(), supplier=supplier
+        )
         package.external_references.append(ref)  # pylint: disable=E1101
 
         document = Document(
-            creation_info=spdx.get_creation_info("package"),
+            creation_info=spdx.get_creation_info("package", organization),
             packages=[package],
         )
         pkg_ref = spdx.get_root_package_relationship(package.spdx_id)

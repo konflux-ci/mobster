@@ -9,6 +9,7 @@ from typing import Any
 import pydantic as pdc
 import spdx_tools.spdx.writer.json.json_writer as spdx_json_writer
 from packageurl import PackageURL
+from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.checksum import Checksum, ChecksumAlgorithm
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import (
@@ -68,8 +69,9 @@ class GenerateProductCommand(GenerateCommand):
                 "Cannot generate product SBOM without release notes. "
                 "Update release data with releaseNotes field."
             )
+        organization = getattr(self.cli_args, "organization", None)
         self.document = create_sbom(
-            self.release_notes, snapshot, self.cli_args.release_id
+            self.release_notes, snapshot, self.cli_args.release_id, organization
         )
         LOGGER.info("Successfully created product-level SBOM.")
 
@@ -125,7 +127,10 @@ class GenerateProductCommand(GenerateCommand):
 
 
 def create_sbom(
-    release_notes: ReleaseNotes, snapshot: Snapshot, release_id: ReleaseId | None
+    release_notes: ReleaseNotes,
+    snapshot: Snapshot,
+    release_id: ReleaseId | None,
+    organization: str | None = None,
 ) -> Document:
     """Create an SPDX document based on release notes and a snapshot.
 
@@ -133,6 +138,7 @@ def create_sbom(
         release_notes: The release notes containing product information.
         snapshot: The snapshot containing component information.
         release_id: A release id to be added to the SBOM's annotations
+        organization: Optional organization name for creator/supplier fields.
 
     Returns:
         Document: The generated SPDX document.
@@ -140,15 +146,18 @@ def create_sbom(
     product_elem_id = "SPDXRef-product"
 
     creation_info = spdx.get_creation_info(
-        f"{release_notes.product_name} {release_notes.product_version}"
+        f"{release_notes.product_name} {release_notes.product_version}",
+        organization,
     )
     annotations = []
     if release_id:
         annotations.append(spdx.get_release_id_annotation(release_id))
-    product_package = create_product_package(product_elem_id, release_notes)
+    product_package = create_product_package(
+        product_elem_id, release_notes, organization
+    )
     product_relationship = spdx.get_root_package_relationship(product_elem_id)
 
-    component_packages = get_component_packages(snapshot.components)
+    component_packages = get_component_packages(snapshot.components, organization)
     component_relationships = get_component_relationships(
         product_elem_id, component_packages
     )
@@ -162,13 +171,16 @@ def create_sbom(
 
 
 def create_product_package(
-    product_elem_id: str, release_notes: ReleaseNotes
+    product_elem_id: str,
+    release_notes: ReleaseNotes,
+    organization: str | None = None,
 ) -> Package:
     """Create SPDX package corresponding to the product.
 
     Args:
         product_elem_id: The SPDX element ID for the product.
         release_notes: The release notes containing product information.
+        organization: Optional organization name for the supplier field.
 
     Returns:
         Package: The SPDX package for the product.
@@ -197,12 +209,14 @@ def create_product_package(
         for cpe in cpes
     ]
 
+    supplier = Actor(ActorType.ORGANIZATION, organization) if organization else None
     return spdx.get_package(
         spdx_id=product_elem_id,
         name=release_notes.product_name,
         version=release_notes.product_version,
         external_refs=refs,
         checksums=[],
+        supplier=supplier,
     )
 
 
@@ -218,17 +232,21 @@ def without_sha_header(digest: str) -> str:
     return digest.split(":", 1)[1]
 
 
-def get_component_packages(components: list[Component]) -> list[Package]:
+def get_component_packages(
+    components: list[Component], organization: str | None = None
+) -> list[Package]:
     """Get a list of SPDX packages - one per each component.
 
     Each component can have multiple external references - purls.
 
     Args:
         components: List of components to convert to SPDX packages.
+        organization: Optional organization name for the supplier field.
 
     Returns:
         list[Package]: List of SPDX packages.
     """
+    supplier = Actor(ActorType.ORGANIZATION, organization) if organization else None
     packages = []
     for component in components:
         checksum = without_sha_header(component.image.digest)
@@ -266,6 +284,7 @@ def get_component_packages(components: list[Component]) -> list[Package]:
             version=None,
             external_refs=external_refs,
             checksums=checksums,
+            supplier=supplier,
         )
         packages.append(package)
 

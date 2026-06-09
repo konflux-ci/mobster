@@ -109,9 +109,26 @@ def test_get_component_dicts(
 )
 def test_cdx_wrapper_to_and_from_dict(sbom: dict[str, Any]) -> None:
     sbom_obj = CycloneDX1BomWrapper.from_dict(sbom)
-    assert sbom_obj.sbom.metadata.manufacturer is not None
-    assert sbom_obj.sbom.metadata.manufacturer.name == "Red Hat"
+    assert sbom_obj.sbom.metadata.manufacturer is None
     sbom_regenerated_dict = sbom_obj.to_dict()
     for key in sbom:
         assert key in sbom_regenerated_dict
         assert sbom[key] == sbom_regenerated_dict[key]
+
+
+def test_cdx_wrapper_from_dict_with_org() -> None:
+    sbom: dict[str, Any] = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "components": [
+            {
+                "bom-ref": "foo",
+                "type": "library",
+                "hashes": [{"alg": "SHA-256", "content": "1"}],
+                "name": "foo",
+            }
+        ],
+    }
+    sbom_obj = CycloneDX1BomWrapper.from_dict(sbom, organization="Red Hat")
+    assert sbom_obj.sbom.metadata.manufacturer is not None
+    assert sbom_obj.sbom.metadata.manufacturer.name == "Red Hat"

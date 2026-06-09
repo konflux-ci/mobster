@@ -43,6 +43,7 @@ class Args:
     skip_validation: bool
     release_id: ReleaseId
     concurrency: int
+    organization: str | None = None
 
 
 @pytest.fixture(
@@ -478,9 +479,9 @@ def verify_relationships(sbom: Any, component_names: list[str]) -> None:
 
 
 def verify_supplier(sbom: Any) -> None:
-    # verify suppliers are set
+    # verify suppliers are set to NOASSERTION when no organization is specified
     for package in sbom["packages"]:
-        assert package["supplier"] == "Organization: Red Hat"
+        assert package["supplier"] == "NOASSERTION"
 
 
 def verify_package_licenses(sbom: Any) -> None:

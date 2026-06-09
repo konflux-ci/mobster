@@ -3,7 +3,6 @@
     "creationInfo": {
         "created": "2025-05-22T11:16:52Z",
         "creators": [
-            "Organization: Red Hat",
             "Tool: Konflux CI"
         ]
     },
@@ -31,7 +30,7 @@
             "filesAnalyzed": false,
             "licenseDeclared": "NOASSERTION",
             "name": "modelcar",
-            "supplier": "Organization: Red Hat",
+            "supplier": "NOASSERTION",
             "versionInfo": "v22"
         },
         {
@@ -53,7 +52,7 @@
             "filesAnalyzed": false,
             "licenseDeclared": "NOASSERTION",
             "name": "base",
-            "supplier": "Organization: Red Hat",
+            "supplier": "NOASSERTION",
             "versionInfo": "9.0"
         },
         {
@@ -75,7 +74,7 @@
             "filesAnalyzed": false,
             "licenseDeclared": "NOASSERTION",
             "name": "model",
-            "supplier": "Organization: Red Hat",
+            "supplier": "NOASSERTION",
             "versionInfo": "v1"
         }
     ],

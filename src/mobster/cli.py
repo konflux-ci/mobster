@@ -72,6 +72,14 @@ def generate_command_parser(subparsers: Any) -> None:
         "to stdout.",
     )
 
+    generate_parser.add_argument(
+        "--organization",
+        type=str,
+        default=None,
+        help="Organization name to use in SBOM creator and supplier fields. "
+        "If not provided, no organization is attributed.",
+    )
+
     generate_oci_image_parser(generate_subparsers)
     generate_oci_index_parser(generate_subparsers)
     generate_product_parser(generate_subparsers)

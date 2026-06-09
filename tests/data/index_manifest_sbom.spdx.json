@@ -3,7 +3,6 @@
   "creationInfo": {
     "created": "2025-05-06T13:14:21Z",
     "creators": [
-      "Organization: Red Hat",
       "Tool: Konflux CI"
     ]
   },
@@ -31,7 +30,7 @@
       "filesAnalyzed": false,
       "licenseDeclared": "NOASSERTION",
       "name": "ubi",
-      "supplier": "Organization: Red Hat",
+      "supplier": "NOASSERTION",
       "versionInfo": "latest"
     },
     {
@@ -53,7 +52,7 @@
       "filesAnalyzed": false,
       "licenseDeclared": "NOASSERTION",
       "name": "ubi_amd64",
-      "supplier": "Organization: Red Hat",
+      "supplier": "NOASSERTION",
       "versionInfo": "latest"
     },
     {
@@ -75,7 +74,7 @@
       "filesAnalyzed": false,
       "licenseDeclared": "NOASSERTION",
       "name": "ubi_arm64",
-      "supplier": "Organization: Red Hat",
+      "supplier": "NOASSERTION",
       "versionInfo": "latest"
     },
     {
@@ -97,7 +96,7 @@
       "filesAnalyzed": false,
       "licenseDeclared": "NOASSERTION",
       "name": "ubi_s390x",
-      "supplier": "Organization: Red Hat",
+      "supplier": "NOASSERTION",
       "versionInfo": "latest"
     },
     {
@@ -119,7 +118,7 @@
       "filesAnalyzed": false,
       "licenseDeclared": "NOASSERTION",
       "name": "ubi_ppc64le",
-      "supplier": "Organization: Red Hat",
+      "supplier": "NOASSERTION",
       "versionInfo": "latest"
     }
   ],

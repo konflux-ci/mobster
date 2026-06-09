@@ -197,7 +197,7 @@ async def test_execute_upload_exception(
 def test_get_sbom_size() -> None:
     current_dir = Path(__file__).parent.resolve()
     mock_sbom_path = current_dir.parent.parent / "data/oci_artifact_sbom.spdx.json"
-    assert TPAUploadCommand.get_sbom_size(mock_sbom_path) == 4146 / 1024
+    assert TPAUploadCommand.get_sbom_size(mock_sbom_path) == 4085 / 1024
 
 
 def test_gather_sboms(tmp_path: Path) -> None:

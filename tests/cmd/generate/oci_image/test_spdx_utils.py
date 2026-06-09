@@ -25,6 +25,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     get_annotations_by_spdx_id,
     is_virtual_root,
     normalize_actor,
+    normalize_org_creator,
     normalize_package,
     normalize_red_hat_creator,
     normalize_sbom,
@@ -100,7 +101,7 @@ async def test_normalize_package(
                 "name": "MOBSTER:UNFILLED_NAME (please update this field)",
                 "creationInfo": {
                     "created": "1970-01-01T00:00:00Z",
-                    "creators": [get_red_hat_org_string(), get_mobster_tool_string()],
+                    "creators": [get_mobster_tool_string()],
                 },
                 "packages": [
                     {
@@ -539,10 +540,7 @@ async def test_redirect_current_roots_to_new_root(
                         download_location=SpdxNoAssertion(),
                         version="v1",
                         files_analyzed=False,
-                        supplier=Actor(
-                            actor_type=ActorType.ORGANIZATION,
-                            name="Red Hat",
-                        ),
+                        supplier=SpdxNoAssertion(),
                         checksums=[
                             Checksum(
                                 algorithm=ChecksumAlgorithm.SHA256,
@@ -649,9 +647,7 @@ async def test_redirect_current_roots_to_new_root(
                             )
                         ],
                         files_analyzed=False,
-                        supplier=Actor(
-                            actor_type=ActorType.ORGANIZATION, name="Red Hat"
-                        ),
+                        supplier=SpdxNoAssertion(),
                         version="v1",
                     ),
                     Package(
@@ -737,10 +733,7 @@ async def test_redirect_current_roots_to_new_root(
                         name="ham",
                         download_location=SpdxNoAssertion(),
                         version="v1",
-                        supplier=Actor(
-                            actor_type=ActorType.ORGANIZATION,
-                            name="Red Hat",
-                        ),
+                        supplier=SpdxNoAssertion(),
                         files_analyzed=False,
                         checksums=[
                             Checksum(
@@ -977,6 +970,49 @@ def test_normalize_red_hat_creator(
     input_creators: list[str], expected_creators: list[str]
 ) -> None:
     assert normalize_red_hat_creator(input_creators) == expected_creators
+
+
+@pytest.mark.parametrize(
+    ["input_creators", "organization", "expected_creators"],
+    [
+        pytest.param(
+            ["Tool: syft"],
+            None,
+            ["Tool: syft"],
+            id="no-org-returns-unchanged",
+        ),
+        pytest.param(
+            [],
+            None,
+            [],
+            id="no-org-empty-list-unchanged",
+        ),
+        pytest.param(
+            [],
+            "Acme Corp",
+            ["Organization: Acme Corp"],
+            id="custom-org-appended",
+        ),
+        pytest.param(
+            ["Tool: syft", "Organization: acme corp"],
+            "Acme Corp",
+            ["Tool: syft", "Organization: Acme Corp"],
+            id="custom-org-normalized",
+        ),
+        pytest.param(
+            ["Organization: Red Hat"],
+            "Red Hat",
+            ["Organization: Red Hat"],
+            id="red-hat-backward-compat",
+        ),
+    ],
+)
+def test_normalize_org_creator(
+    input_creators: list[str],
+    organization: str | None,
+    expected_creators: list[str],
+) -> None:
+    assert normalize_org_creator(input_creators, organization) == expected_creators
 
 
 @pytest.fixture

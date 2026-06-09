@@ -3,7 +3,6 @@
   "creationInfo": {
     "created": "2025-05-30T11:40:49Z",
     "creators": [
-      "Organization: Red Hat",
       "Tool: Konflux CI"
     ]
   },
@@ -31,7 +30,7 @@
       "filesAnalyzed": false,
       "licenseDeclared": "NOASSERTION",
       "name": "base",
-      "supplier": "Organization: Red Hat",
+      "supplier": "NOASSERTION",
       "versionInfo": "v9.0"
     },
     {
@@ -53,7 +52,7 @@
       "filesAnalyzed": false,
       "licenseDeclared": "NOASSERTION",
       "name": "merlinite-7b-lab-Q4_K_M.gguf",
-      "supplier": "Organization: Red Hat"
+      "supplier": "NOASSERTION"
     },
     {
       "SPDXID": "SPDXRef-Package-huggingface.svg-7206c6f7c832ae92d3c1e09864c981221c4371209d05e13862d5d93eaafc7c04",
@@ -74,7 +73,7 @@
       "filesAnalyzed": false,
       "licenseDeclared": "NOASSERTION",
       "name": "huggingface.svg",
-      "supplier": "Organization: Red Hat"
+      "supplier": "NOASSERTION"
     }
   ],
   "relationships": [

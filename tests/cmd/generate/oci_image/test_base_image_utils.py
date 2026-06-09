@@ -282,9 +282,7 @@ async def test__get_cdx_components_from_base_images(
                         name="foobar",
                         version="v1",
                         download_location=SpdxNoAssertion(),
-                        supplier=Actor(
-                            actor_type=ActorType.ORGANIZATION, name="Red Hat"
-                        ),
+                        supplier=SpdxNoAssertion(),
                         files_analyzed=False,
                         checksums=[
                             Checksum(algorithm=ChecksumAlgorithm.SHA256, value="2")
@@ -303,9 +301,7 @@ async def test__get_cdx_components_from_base_images(
                         name="alpine",
                         version="3.10",
                         download_location=SpdxNoAssertion(),
-                        supplier=Actor(
-                            actor_type=ActorType.ORGANIZATION, name="Red Hat"
-                        ),
+                        supplier=SpdxNoAssertion(),
                         files_analyzed=False,
                         checksums=[
                             Checksum(algorithm=ChecksumAlgorithm.SHA256, value="1")
@@ -433,9 +429,7 @@ async def test__get_spdx_packages_from_base_images(
                         name="foobar",
                         download_location=SpdxNoAssertion(),
                         version="v1",
-                        supplier=Actor(
-                            actor_type=ActorType.ORGANIZATION, name="Red Hat"
-                        ),
+                        supplier=SpdxNoAssertion(),
                         files_analyzed=False,
                         checksums=[
                             Checksum(algorithm=ChecksumAlgorithm.SHA256, value="2")
@@ -453,9 +447,7 @@ async def test__get_spdx_packages_from_base_images(
                         spdx_id="SPDXRef-image-alpine-204f767854409b9fcd248f74feb9f61e6e89fe60bb633fa93590c7a397db7fb9",
                         name="alpine",
                         version="3.10",
-                        supplier=Actor(
-                            actor_type=ActorType.ORGANIZATION, name="Red Hat"
-                        ),
+                        supplier=SpdxNoAssertion(),
                         files_analyzed=False,
                         checksums=[
                             Checksum(algorithm=ChecksumAlgorithm.SHA256, value="1")
@@ -574,9 +566,7 @@ async def test__get_spdx_packages_from_base_images(
                         spdx_id="SPDXRef-image-alpine-204f767854409b9fcd248f74feb9f61e6e89fe60bb633fa93590c7a397db7fb9",
                         name="alpine",
                         version="3.10",
-                        supplier=Actor(
-                            actor_type=ActorType.ORGANIZATION, name="Red Hat"
-                        ),
+                        supplier=SpdxNoAssertion(),
                         files_analyzed=False,
                         checksums=[
                             Checksum(algorithm=ChecksumAlgorithm.SHA256, value="1")
@@ -596,9 +586,7 @@ async def test__get_spdx_packages_from_base_images(
                         name="foobar",
                         download_location=SpdxNoAssertion(),
                         version="v1",
-                        supplier=Actor(
-                            actor_type=ActorType.ORGANIZATION, name="Red Hat"
-                        ),
+                        supplier=SpdxNoAssertion(),
                         files_analyzed=False,
                         checksums=[
                             Checksum(algorithm=ChecksumAlgorithm.SHA256, value="2")
@@ -742,7 +730,6 @@ async def test__extend_spdx_with_base_images(
                         "type": "container",
                         "version": "1.0",
                     },
-                    "manufacturer": {"name": "Red Hat"},
                     "timestamp": "1970-01-01T00:00:00+00:00",
                     "tools": {
                         "components": [
