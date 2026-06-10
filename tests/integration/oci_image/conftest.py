@@ -433,6 +433,7 @@ def legacy_parent_sbom(
     write_file(doc, str(path))
     return path
 
+
 def verify_sbom_relationships(
     sbom_path: Path, package_groups: list[list[AnnotatedPackage]]
 ) -> None:
