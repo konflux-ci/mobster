@@ -773,3 +773,103 @@ def test_merge_sboms_invalid(
     """Test the merge_sboms function."""
     with pytest.raises(ValueError):
         merge_sboms(syft_sboms, hermeto_sbom)
+
+
+def test_cyclonedx_merge_prunes_dangling_dependencies() -> None:
+    """Regression test for dangling CycloneDX dependency references.
+
+    When a component is deduplicated during the syft+hermeto merge (the syft
+    copy is dropped in favor of the hermeto one with a different bom-ref), the
+    ``.dependencies`` graph used to keep referencing the removed bom-ref.
+    The resulting SBOM was invalid: ``Bom.from_json`` raised
+    ``UnknownComponentDependencyException``.
+
+    After the fix, the dependency graph must not contain any dangling refs and
+    ``Bom.validate()`` must pass.
+    """
+    from cyclonedx.model.bom import Bom
+
+    # Syft SBOM: a root component plus X and Y, with a dependency graph where
+    # the root depends on X and Y, and X depends on Y.
+    syft_sbom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "version": 1,
+        "metadata": {
+            "tools": [TOOLS_METADATA["syft-cyclonedx-1.4"]],
+            "component": {
+                "bom-ref": "root-ref",
+                "name": "app",
+                "type": "application",
+            },
+        },
+        "components": [
+            {
+                "bom-ref": "syft-X",
+                "name": "github.com/foo/x",
+                "version": "v1.0.0",
+                "type": "library",
+                "purl": "pkg:golang/github.com/foo/x@v1.0.0",
+            },
+            {
+                "bom-ref": "syft-Y",
+                "name": "github.com/foo/y",
+                "version": "v2.0.0",
+                "type": "library",
+                "purl": "pkg:golang/github.com/foo/y@v2.0.0",
+            },
+        ],
+        "dependencies": [
+            {"ref": "root-ref", "dependsOn": ["syft-X", "syft-Y"]},
+            {"ref": "syft-X", "dependsOn": ["syft-Y"]},
+            {"ref": "syft-Y", "dependsOn": []},
+        ],
+    }
+
+    # Hermeto SBOM: the same component X, but reported with a different bom-ref.
+    # The syft copy of X is therefore deduplicated away.
+    hermeto_sbom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "version": 1,
+        "metadata": {
+            "tools": [TOOLS_METADATA["hermeto-cyclonedx-1.4"]],
+        },
+        "components": [
+            {
+                "bom-ref": "hermeto-X",
+                "name": "github.com/foo/x",
+                "version": "v1.0.0",
+                "type": "library",
+                "purl": "pkg:golang/github.com/foo/x@v1.0.0",
+            },
+        ],
+        "dependencies": [
+            {"ref": "hermeto-X", "dependsOn": []},
+        ],
+    }
+
+    merged = merge_sboms([syft_sbom], hermeto_sbom)
+
+    # The syft copy of X is gone, the hermeto copy survives.
+    merged_refs = {c["bom-ref"] for c in merged["components"]}
+    assert "syft-X" not in merged_refs
+    assert "hermeto-X" in merged_refs
+    assert "syft-Y" in merged_refs
+
+    # The dependency graph must reference only known components (or the root).
+    known_refs = merged_refs | {"root-ref"}
+    referenced_refs: set[str] = set()
+    for dep in merged.get("dependencies", []):
+        referenced_refs.add(dep["ref"])
+        referenced_refs.update(dep.get("dependsOn", []))
+    assert referenced_refs <= known_refs, (
+        f"dangling dependency refs: {referenced_refs - known_refs}"
+    )
+
+    # Specifically, the dropped bom-ref must not linger anywhere.
+    assert "syft-X" not in referenced_refs
+
+    # The CycloneDX library must be able to build and validate the BOM.
+    bom = Bom.from_json(merged)  # type: ignore[attr-defined]
+    bom.validate()
