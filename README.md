@@ -66,6 +66,18 @@ mobster --help
 mobster generate --help
 ```
 
+## Context within Konflux
+
+Mobster is a tool used for creating both Build-time and Release-time SBOMs.
+
+- Build-time SBOM creation is invoked in `konflux-ci/build-definitions`
+  repository. 
+- Release-time SBOM creation is invoked through tekton tasks (in the `tasks/`
+  dir) that are distributed to and used in `konflux-ci/release-service-catalog`
+  repository.
+- Build-time SBOMs can be contextualized. For builder-content
+  contextualization, Mobster requires metadata output from `konflux-ci/capo`.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for environment setup, running checks, and submitting a pull request.
