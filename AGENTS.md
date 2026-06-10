@@ -25,5 +25,12 @@ Guidance for AI assistants in this repo. See [CONTRIBUTING.md](CONTRIBUTING.md) 
 ## PR Conventions
 
 - Run `tox` (or at minimum `tox -e ruff` and `tox -e mypy`) before submitting.
-- Integration tests require `docker compose up -d` — CI runs them separately from unit tests.
+- Integration tests require `docker compose up -d` and `tox -e test-integration` — CI runs them separately from unit tests.
+- All checks (`tox` and integration tests) need to pass before a PR can be merged.
 - Coverage gates are enforced in CI; new code needs tests.
+
+## Repository context
+
+- Mobster is used for creating both Build-time SBOM and Release-time SBOM.
+  - Build-time SBOM creation is invoked in `konflux-ci/build-definitions` repository.
+  - Release-time SBOM creation is invoked through tekton tasks (`tasks` dir) in `konflux-ci/release-service-catalog` repository.
