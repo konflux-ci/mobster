@@ -33,4 +33,6 @@ Guidance for AI assistants in this repo. See [CONTRIBUTING.md](CONTRIBUTING.md) 
 
 - Mobster is used for creating both Build-time SBOM and Release-time SBOM.
   - Build-time SBOM creation is invoked in `konflux-ci/build-definitions` repository.
-  - Release-time SBOM creation is invoked through tekton tasks (`tasks` dir) in `konflux-ci/release-service-catalog` repository.
+  - Release-time SBOM creation is invoked through tekton tasks (in the `tasks/` dir) that are distributed to and used in `konflux-ci/release-service-catalog` repository.
+  - For contextualization of build-time oci-image SBOMs, output from `konflux-ci/capo` is used. 
+- Changes to this repository **must** be accompanied by a compatibility check and update of the related repositories if needed!
