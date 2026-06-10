@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Literal
 
 import pytest
+from spdx_tools.spdx.model.relationship import RelationshipType as RT
 from spdx_tools.spdx.parser.parse_anything import parse_file
 
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
@@ -173,6 +174,7 @@ async def test_builder_content(
         builder_img.propose_spdx_id(),
         sbom_doc.relationships,
         [crypto_pkg.to_spdx()],
+        RT.CONTAINS,
     )
 
 
@@ -322,9 +324,11 @@ async def test_builder_content_same_package_from_multiple_builders(
         builder_img.propose_spdx_id(),
         sbom_doc.relationships,
         [crypto_pkg.to_spdx()],
+        RT.CONTAINS,
     )
     verify_relationships(
         extra_builder_img.propose_spdx_id(),
         sbom_doc.relationships,
         [crypto_pkg.to_spdx()],
+        RT.CONTAINS,
     )

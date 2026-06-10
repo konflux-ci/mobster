@@ -434,6 +434,35 @@ def legacy_parent_sbom(
     return path
 
 
+def verify_relationship(
+    relationships: list[Relationship],
+    spdx_id: str,
+    relationship_type: RelationshipType,
+    related_spdx_id: str,
+):
+    """Verify that a list of relationships contains a specific relationship."""
+    matches = []
+    for rel in relationships:
+        # match the 3 relational fields
+        if rel.spdx_element_id != spdx_id:
+            continue
+        if rel.relationship_type != relationship_type:
+            continue
+        if rel.related_spdx_element_id != related_spdx_id:
+            continue
+        # if so we add it here
+        matches.append(rel)
+    assert len(matches) > 0, (
+        f"{spdx_id} does not have expected "
+        f"{rel.relationship_type} relationship to {related_spdx_id}"
+    )
+    # sanity check - unlikely this will happen, but just to be sure:
+    assert len(matches) < 2, (
+        f"{spdx_id} has duplicate "
+        f"{rel.relationship_type} relationship to {related_spdx_id}"
+    )
+
+
 def verify_sbom_relationships(
     sbom_path: Path, package_groups: list[list[AnnotatedPackage]]
 ) -> None:
@@ -454,16 +483,28 @@ def verify_sbom_relationships(
     for spdx_id, packages in zip(dep_chain, package_groups, strict=False):
         verify_relationships(spdx_id, sbom_doc.relationships, packages)
 
+
 def verify_relationships(
-    spdx_id: str, relationships: list[Relationship], packages: list[AnnotatedPackage]
+    spdx_id: str,
+    relationships: list[Relationship],
+    packages: list[AnnotatedPackage],
+    relationship_type: RelationshipType | None = None,
 ) -> None:
     """
     Verify that the passed packages have relationships that point to the
-    specified spdx_id (spdx_id CONTAINS package.spdx_id).
+    specified spdx_id (e.g. spdx_id CONTAINS package.spdx_id)
+    Can also be filtered to verify only a specific relationship, e.g. BUILD_TOOL_OF.
     """
     package_set = {apkg.spdx_id for apkg in packages}
     for apkg in packages:
         for rel in relationships:
+            # skip any relationship that isn't of the specified
+            # relationship_type, if applicable
+            if (
+                relationship_type is not None
+                and rel.relationship_type != relationship_type
+            ):
+                continue
             if rel.related_spdx_element_id != apkg.spdx_id:
                 continue
 
