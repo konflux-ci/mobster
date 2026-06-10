@@ -80,7 +80,8 @@ async def capture_builder_content_workflow(
         metadata_path=make_metadata_yaml(
             tmp_path,
             img,
-            builder_imgs + [base_img],
+            [base_img],
+            builder_imgs,
         ),
         build_metadata_path=build_metadata_path,
         input_sbom_path=input_sbom,
