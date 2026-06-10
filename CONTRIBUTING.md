@@ -15,6 +15,8 @@ Thank you for your interest in contributing! This guide covers everything you ne
 ## Making Changes
 
 - Create a branch from `main` for your change
+  - If your work is tracked in Jira, use the ticket code for the branch name
+  - If your work is tracked in GitHub issues, use `issue_<number>` for the branch name
 - Follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format for commit messages:
   - `feat: add support for OCI artifact SBOMs`
   - `fix: correct purl normalization for rpm packages`
