@@ -2,7 +2,7 @@
 
 Python tool for generating and managing SBOMs (SPDX and CycloneDX) in the Konflux CI/CD platform.
 
-Guidance for AI assistants in this repo. See [CONTRIBUTING.md](CONTRIBUTING.md) for full workflow and setup.
+Guidance for AI assistants in this repo. See [CONTRIBUTING.md](CONTRIBUTING.md) for full workflow and setup and [README.md](README.md) for Konflux context and usage examples.
 
 ## Key Conventions
 
@@ -28,11 +28,3 @@ Guidance for AI assistants in this repo. See [CONTRIBUTING.md](CONTRIBUTING.md) 
 - Integration tests require `docker compose up -d` and `tox -e test-integration` — CI runs them separately from unit tests.
 - All checks (`tox` and integration tests) need to pass before a PR can be merged.
 - Coverage gates are enforced in CI; new code needs tests.
-
-## Repository context
-
-- Mobster is used for creating both Build-time SBOM and Release-time SBOM.
-  - Build-time SBOM creation is invoked in `konflux-ci/build-definitions` repository.
-  - Release-time SBOM creation is invoked through tekton tasks (in the `tasks/` dir) that are distributed to and used in `konflux-ci/release-service-catalog` repository.
-  - For contextualization of build-time oci-image SBOMs, output from `konflux-ci/capo` is used. 
-- Changes to this repository **must** be accompanied by a compatibility check and update of the related repositories if needed!
