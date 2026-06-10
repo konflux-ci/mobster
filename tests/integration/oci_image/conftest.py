@@ -433,36 +433,6 @@ def legacy_parent_sbom(
     write_file(doc, str(path))
     return path
 
-
-def verify_relationship(
-    relationships: list[Relationship],
-    spdx_id: str,
-    relationship_type: RelationshipType,
-    related_spdx_id: str,
-):
-    """Verify that a list of relationships contains a specific relationship."""
-    matches = []
-    for rel in relationships:
-        # match the 3 relational fields
-        if rel.spdx_element_id != spdx_id:
-            continue
-        if rel.relationship_type != relationship_type:
-            continue
-        if rel.related_spdx_element_id != related_spdx_id:
-            continue
-        # if so we add it here
-        matches.append(rel)
-    assert len(matches) > 0, (
-        f"{spdx_id} does not have expected "
-        f"{rel.relationship_type} relationship to {related_spdx_id}"
-    )
-    # sanity check - unlikely this will happen, but just to be sure:
-    assert len(matches) < 2, (
-        f"{spdx_id} has duplicate "
-        f"{rel.relationship_type} relationship to {related_spdx_id}"
-    )
-
-
 def verify_sbom_relationships(
     sbom_path: Path, package_groups: list[list[AnnotatedPackage]]
 ) -> None:
