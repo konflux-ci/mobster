@@ -437,7 +437,7 @@ def legacy_parent_sbom(
 def verify_sbom_relationships(
     sbom_path: Path,
     package_groups: list[list[AnnotatedPackage]],
-    allow_multiple_chains: bool = False
+    allow_multiple_chains: bool = False,
 ) -> None:
     """
     Verify SBOM relationships using dependency chain order.
@@ -453,8 +453,9 @@ def verify_sbom_relationships(
     sbom_doc = parse_file(str(sbom_path))
     dep_chains = get_dependency_chain_spdx_ids(sbom_doc.relationships)
     if not allow_multiple_chains:
-        assert len(dep_chains) > 1, ("Multiple dependency chains exist - a "
-            "package has more than one root")
+        assert len(dep_chains) > 1, (
+            "Multiple dependency chains exist - a package has more than one root"
+        )
 
     for dep_chain in dep_chains:
         assert len(dep_chain) == len(package_groups), (
@@ -553,4 +554,4 @@ def get_dependency_chain_spdx_ids(relationships: list[Relationship]) -> list[lis
             spdx_ids.append(current)
         chains.append(spdx_ids)
 
-    return chains 
+    return chains

@@ -188,6 +188,7 @@ async def test_builder_content(
         RT.CONTAINS,
     )
 
+
 @pytest.mark.asyncio
 @pytest.mark.skip(reason="deferred until behavior is defined (ISV-7349)")
 @pytest.mark.parametrize(["origin_type"], [["builder"], ["intermediate"]])
