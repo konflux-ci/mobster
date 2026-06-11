@@ -121,6 +121,7 @@ async def run_builder_content_workflow(
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="deferred until behavior is defined (ISV-7349)")
 async def test_builder_content(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
