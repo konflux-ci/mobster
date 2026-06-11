@@ -143,8 +143,11 @@ async def test_builder_content(
     # mock build metadata
     component_build_metadata = BuilderPkgMetadata(
         packages=[
-            # simulates a package COPY'd from the above builder image
+            # simulates a package COPY'd directly from a builder image
             crypto_pkg.to_metadata("builder", builder_img.reference),
+            # simulates a package installed/built in the builder image before
+            # being copied
+            random_pkg.to_metadata("intermediate", builder_img.reference),
         ]
     )
     output_sbom_path = await run_builder_content_workflow(
@@ -156,7 +159,8 @@ async def test_builder_content(
         parent_img,
     )
 
-    # verify the DESCENDANT_OF chain (component -> parent)
+    sbom_doc = parse_file(str(output_sbom_path))
+
     verify_sbom_relationships(
         output_sbom_path,
         [
@@ -164,26 +168,24 @@ async def test_builder_content(
             [
                 stdlib_pkg.to_spdx(),
             ],
-            # parent packages (gin matched via SPDX, crypto stays here
-            # from component contextualization but gets reparented below)
+            # parent packages (gin/malware matched via SPDX, crypto/random gets
+            # reparented to the builder image below)
             [
                 gin_pkg.to_spdx(),
-                random_pkg.to_spdx(),
                 malware_pkg.to_spdx(),
             ],
         ],
+        allow_multiple_chains=True,
     )
 
-    # verify that the crypto package is marked as actually coming from the
-    # builder image
-    sbom_doc = parse_file(str(output_sbom_path))
+    # verify that the crypto and random packages are marked as actually coming
+    # from the builder image
     verify_relationships(
         builder_img.propose_spdx_id(),
         sbom_doc.relationships,
-        [crypto_pkg.to_spdx()],
+        [crypto_pkg.to_spdx(), random_pkg.to_spdx()],
         RT.CONTAINS,
     )
-
 
 @pytest.mark.asyncio
 @pytest.mark.skip(reason="deferred until behavior is defined (ISV-7349)")
