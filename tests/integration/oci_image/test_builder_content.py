@@ -1,3 +1,8 @@
+"""Integration tests for builder content contextualization.
+
+Some assertions and tests are deferred until the matching contract
+is defined in ISV-7349. Skipped tests reference this ticket.
+"""
 from pathlib import Path
 from typing import Literal
 
@@ -180,7 +185,7 @@ async def test_builder_content(
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="not currently implemented")
+@pytest.mark.skip(reason="deferred until behavior is defined (ISV-7349)")
 @pytest.mark.parametrize(["origin_type"], [["builder"], ["intermediate"]])
 async def test_builder_content_duplicate(
     oci_client: ReferrersTagOCIClient,
@@ -286,7 +291,7 @@ async def test_builder_content_extra(
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="not currently supported")
+@pytest.mark.skip(reason="deferred until behavior is defined (ISV-7349)")
 async def test_builder_content_same_package_from_multiple_builders(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
