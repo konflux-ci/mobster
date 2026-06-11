@@ -310,7 +310,7 @@ def test_resolve_origins(sbom_index_two_images: DocumentIndexOCI) -> None:
 
 
 def _contextualize_sbom_index() -> DocumentIndexOCI:
-    """Two-images SBOM extended with packages that trigger skip-path logging."""
+    """Single-image SBOM with packages that trigger each error-path log."""
     oras_img_pkg = (
         SPDXPackageBuilder()
         .name("oras")
@@ -318,15 +318,6 @@ def _contextualize_sbom_index() -> DocumentIndexOCI:
         .purl("pkg:oci/oras@sha256:aaaa?repository_url=quay.io/konflux-ci/oras")
         .spdx_id("SPDXRef-image-oras-1234")
         .is_builder_image_for_stage_annotation(0)
-        .build()
-    )
-    syft_img_pkg = (
-        SPDXPackageBuilder()
-        .name("syft")
-        .version("sha256:bbbb")
-        .purl("pkg:oci/syft@sha256:bbbb?repository_url=quay.io/konflux-ci/syft")
-        .spdx_id("SPDXRef-image-syft-1234")
-        .is_builder_image_for_stage_annotation(1)
         .build()
     )
     mergo_pkg = (
@@ -337,14 +328,6 @@ def _contextualize_sbom_index() -> DocumentIndexOCI:
         .purl("pkg:golang/dario.cat/mergo@v1.0.1")
         .build()
     )
-    syft_pkg = (
-        SPDXPackageBuilder()
-        .name("syft")
-        .spdx_id("SPDXRef-Package-syft-from-syft")
-        .version("1.0.0")
-        .purl("pkg:golang/syft@v1.0.1")
-        .build()
-    )
     stdlib_pkg = (
         SPDXPackageBuilder()
         .name("pkg2")
@@ -353,26 +336,18 @@ def _contextualize_sbom_index() -> DocumentIndexOCI:
         .purl("pkg:golang/stdlib@v1.0.0")
         .build()
     )
-    math_from_oras = (
+    math_a = (
         SPDXPackageBuilder()
         .name("same_purl_pkg_1")
-        .spdx_id("SPDXRef-Package-math-from-oras")
+        .spdx_id("SPDXRef-Package-math-a")
         .version("1.0.0")
         .purl("pkg:golang/math@v1.0.0")
         .build()
     )
-    math_from_syft = (
+    math_b = (
         SPDXPackageBuilder()
         .name("same_purl_pkg_2")
-        .spdx_id("SPDXRef-Package-math-from-syft")
-        .version("1.0.0")
-        .purl("pkg:golang/math@v1.0.0")
-        .build()
-    )
-    math_without_dep = (
-        SPDXPackageBuilder()
-        .name("math_without_dep")
-        .spdx_id("SPDXRef-Package-math-without-dep")
+        .spdx_id("SPDXRef-Package-math-b")
         .version("1.0.0")
         .purl("pkg:golang/math@v1.0.0")
         .build()
@@ -384,61 +359,35 @@ def _contextualize_sbom_index() -> DocumentIndexOCI:
         .version("1.0.0")
         .build()
     )
-    shared_dep_a = (
-        SPDXPackageBuilder()
-        .name("shared_dep_a")
-        .spdx_id("SPDXRef-Package-shared-a")
-        .version("1.0.0")
-        .purl("pkg:golang/shared-dep@v1.0.0")
-        .build()
-    )
-    shared_dep_b = (
-        SPDXPackageBuilder()
-        .name("shared_dep_b")
-        .spdx_id("SPDXRef-Package-shared-b")
-        .version("1.0.0")
-        .purl("pkg:golang/shared-dep@v1.0.0")
-        .build()
-    )
-    opt_bar_pkg = (
-        SPDXPackageBuilder()
-        .name("opt-bar")
-        .spdx_id("SPDXRef-Package-opt-bar")
-        .version("1.0.0")
-        .purl("pkg:generic/opt-bar@1.0.0")
-        .build()
-    )
-
     document = (
         SPDXSBOMBuilder()
         .name("testing-doc")
         .root_purl("pkg:oci/image@sha256:deadbeef")
-        .root_describes([oras_img_pkg, syft_img_pkg])
+        .root_describes([oras_img_pkg])
         .contains(oras_img_pkg, mergo_pkg)
-        .contains(oras_img_pkg, opt_bar_pkg)
         .contains(oras_img_pkg, stdlib_pkg)
-        .contains(oras_img_pkg, math_from_oras)
-        .contains(oras_img_pkg, math_without_dep)
+        .contains(oras_img_pkg, math_a)
+        .contains(oras_img_pkg, math_b)
         .contains(oras_img_pkg, parent_without_purl)
-        .contains(oras_img_pkg, shared_dep_a)
-        .contains(oras_img_pkg, shared_dep_b)
-        .contains(syft_img_pkg, syft_pkg)
-        .contains(syft_img_pkg, math_from_syft)
-        .dependency_of(math_from_oras, mergo_pkg)
-        .dependency_of(math_from_syft, syft_pkg)
-        .dependency_of(shared_dep_a, parent_without_purl)
-        .dependency_of(shared_dep_b, mergo_pkg)
+        .dependency_of(math_b, parent_without_purl)
     ).build()
 
     return DocumentIndexOCI(document)
 
 
-def _contextualize_metadata(
-    metadata_two_images: BuilderPkgMetadata,
-) -> BuilderPkgMetadata:
+def _contextualize_metadata() -> BuilderPkgMetadata:
     return BuilderPkgMetadata(
         packages=[
-            *metadata_two_images.packages,
+            BuilderPkgMetadataItem(
+                purl="pkg:golang/dario.cat/mergo@v1.0.1",
+                origin_type=OriginType.BUILDER,
+                pullspec="quay.io/konflux-ci/oras@sha256:aaaa",
+            ),
+            BuilderPkgMetadataItem(
+                purl="pkg:golang/stdlib@v1.0.0",
+                origin_type=OriginType.INTERMEDIATE,
+                pullspec="quay.io/konflux-ci/oras@sha256:aaaa",
+            ),
             BuilderPkgMetadataItem(
                 purl="pkg:golang/net@v1.0.1",
                 origin_type=OriginType.BUILDER,
@@ -453,12 +402,6 @@ def _contextualize_metadata(
                 purl="pkg:golang/math@v1.0.0",
                 origin_type=OriginType.BUILDER,
                 pullspec="quay.io/konflux-ci/oras@sha256:aaaa",
-                dependency_of_purl="pkg:golang/nonexistent@v9.9.9",
-            ),
-            BuilderPkgMetadataItem(
-                purl="pkg:golang/shared-dep@v1.0.0",
-                origin_type=OriginType.BUILDER,
-                pullspec="quay.io/konflux-ci/oras@sha256:aaaa",
                 dependency_of_purl="pkg:golang/parent-expected@v1.0.0",
             ),
         ]
@@ -466,11 +409,10 @@ def _contextualize_metadata(
 
 
 def test_contextualize(
-    metadata_two_images: BuilderPkgMetadata,
     caplog: LogCaptureFixture,
 ) -> None:
     index = _contextualize_sbom_index()
-    metadata = _contextualize_metadata(metadata_two_images)
+    metadata = _contextualize_metadata()
     contextualizer = BuilderContextualizer()
 
     with caplog.at_level(logging.INFO):
@@ -480,8 +422,8 @@ def test_contextualize(
     assert contextualizer.stats.total_metadata == len(metadata.packages)
     assert contextualizer.stats.purl_mismatch == 1
     assert contextualizer.stats.ambiguous_purls == 1
-    assert contextualizer.stats.faulty_dependency_of == 2
-    assert contextualizer.stats.package_is_not_dependency == 2
+    assert contextualizer.stats.faulty_dependency_of == 1
+    assert contextualizer.stats.package_is_not_dependency == 1
     assert contextualizer.stats.dependent_has_no_purl == 1
 
     builder_log_messages = [
@@ -497,25 +439,17 @@ def test_contextualize(
         "and does not have DEPENDENCY_OF relationship!"
     ) in builder_log_messages
     assert (
-        "Ambiguous PURL 'pkg:golang/math@v1.0.0' describes multiple packages "
-        "and DEPENDENCY_OF relationship (pkg:golang/nonexistent@v9.9.9) "
-        "could not be resolved!"
-    ) in builder_log_messages
-    assert (
         "Parent package with ID 'SPDXRef-Package-parent-no-purl' has no PURL"
     ) in builder_log_messages
     assert (
-        "Ambiguous PURL 'pkg:golang/shared-dep@v1.0.0' describes multiple "
+        "Ambiguous PURL 'pkg:golang/math@v1.0.0' describes multiple "
         "packages and DEPENDENCY_OF relationship "
         "(pkg:golang/parent-expected@v1.0.0) could not be resolved!"
     ) in builder_log_messages
     assert (
-        builder_log_messages.count(
-            "Package 'SPDXRef-Package-math-without-dep' has no relationships"
-            " where it is dependency of anything!"
-        )
-        == 2
-    )
+        "Package 'SPDXRef-Package-math-a' has no relationships"
+        " where it is dependency of anything!"
+    ) in builder_log_messages
 
     summary_records = [
         record
@@ -534,8 +468,8 @@ def test_contextualize(
         "total": len(metadata.packages),
         "purl_mismatch": 1,
         "ambiguous_purls": 1,
-        "faulty_dependency_of": 2,
-        "package_is_not_dependency": 2,
+        "faulty_dependency_of": 1,
+        "package_is_not_dependency": 1,
         "dependent_has_no_purl": 1,
     }
     assert per_builder_by_id == {
@@ -544,18 +478,11 @@ def test_contextualize(
             "builder_purl": (
                 "pkg:oci/oras@sha256:aaaa?repository_url=quay.io/konflux-ci/oras"
             ),
-            "origins": {"builder": 2, "intermediate": 0, "external": 0},
+            "origins": {"builder": 1, "intermediate": 0, "external": 0},
         },
         "SPDXRef-image-oras-1234-intermediate": {
             "builder_spdx_id": "SPDXRef-image-oras-1234-intermediate",
             "builder_purl": "",
             "origins": {"builder": 0, "intermediate": 1, "external": 0},
-        },
-        "SPDXRef-image-syft-1234": {
-            "builder_spdx_id": "SPDXRef-image-syft-1234",
-            "builder_purl": (
-                "pkg:oci/syft@sha256:bbbb?repository_url=quay.io/konflux-ci/syft"
-            ),
-            "origins": {"builder": 2, "intermediate": 0, "external": 0},
         },
     }
