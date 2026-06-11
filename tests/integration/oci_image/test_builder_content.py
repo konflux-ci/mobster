@@ -3,6 +3,7 @@
 Some assertions and tests are deferred until the matching contract
 is defined in ISV-7349. Skipped tests reference this ticket.
 """
+
 from pathlib import Path
 from typing import Literal
 
