@@ -5,7 +5,6 @@ is defined in ISV-7349. Skipped tests reference this ticket.
 """
 
 from pathlib import Path
-from pprint import pprint
 from typing import Literal
 
 import pytest
@@ -16,6 +15,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderPkgMetadata,
 )
 from mobster.image import Image
+from mobster.utils import identify_arch
 from tests.integration.img_utils import make_metadata_yaml
 from tests.integration.oci_client import ReferrersTagOCIClient
 from tests.integration.oci_image.conftest import (
@@ -53,6 +53,9 @@ async def setup_images(
     builder content tests."""
     parent_img = await oci_client.create_image("parent", "latest")
     component_img = await oci_client.create_image("component", "latest")
+    # this is required to make propose_spdx_id match the actual id of the sbom
+    # when verifying relationships
+    component_img.arch = identify_arch()
 
     # generate the parent sbom (no contextualization)
     parent_gdata = GenerateData(
@@ -87,8 +90,7 @@ async def capture_builder_content_workflow(
         metadata_path=make_metadata_yaml(
             tmp_path,
             img,
-            [base_img],
-            builder_imgs,
+            builder_imgs + [base_img],
         ),
         build_metadata_path=build_metadata_path,
         input_sbom_path=input_sbom,
@@ -148,7 +150,7 @@ async def test_builder_content(
             crypto_pkg.to_metadata("builder", builder_img.reference),
             # simulates a package installed/built in the builder image before
             # being copied
-            random_pkg.to_metadata("intermediate", builder_img.reference)
+            random_pkg.to_metadata("intermediate", builder_img.reference),
         ]
     )
     output_sbom_path = await run_builder_content_workflow(
@@ -161,6 +163,8 @@ async def test_builder_content(
     )
 
     # verify DESCENDANT_OF relationships for the component/parent packages
+    # (we can't use verify_sbom_relationships here since the intermediate
+    # package will have two roots)
     sbom_doc = parse_file(str(output_sbom_path))
     verify_relationships(
         parent_img.propose_spdx_id(),
@@ -179,7 +183,13 @@ async def test_builder_content(
     verify_relationships(
         builder_img.propose_spdx_id(),
         sbom_doc.relationships,
-        [crypto_pkg.to_spdx(), random_pkg.to_spdx()],
+        [crypto_pkg.to_spdx()],
+        RT.CONTAINS,
+    )
+    verify_relationships(
+        builder_img.propose_spdx_id() + "-intermediate",
+        sbom_doc.relationships,
+        [random_pkg.to_spdx()],
         RT.CONTAINS,
     )
 
