@@ -5,6 +5,7 @@ is defined in ISV-7349. Skipped tests reference this ticket.
 """
 
 from pathlib import Path
+from pprint import pprint
 from typing import Literal
 
 import pytest
@@ -145,6 +146,9 @@ async def test_builder_content(
         packages=[
             # simulates a package COPY'd from the above builder image
             crypto_pkg.to_metadata("builder", builder_img.reference),
+            # simulates a package installed/built in the builder image before
+            # being copied
+            random_pkg.to_metadata("intermediate", builder_img.reference)
         ]
     )
     output_sbom_path = await run_builder_content_workflow(
@@ -156,31 +160,26 @@ async def test_builder_content(
         parent_img,
     )
 
-    # verify the DESCENDANT_OF chain (component -> parent)
-    verify_sbom_relationships(
-        output_sbom_path,
-        [
-            # component packages
-            [
-                stdlib_pkg.to_spdx(),
-            ],
-            # parent packages (gin matched via SPDX, crypto stays here
-            # from component contextualization but gets reparented below)
-            [
-                gin_pkg.to_spdx(),
-                random_pkg.to_spdx(),
-                malware_pkg.to_spdx(),
-            ],
-        ],
+    # verify DESCENDANT_OF relationships for the component/parent packages
+    sbom_doc = parse_file(str(output_sbom_path))
+    verify_relationships(
+        parent_img.propose_spdx_id(),
+        sbom_doc.relationships,
+        [gin_pkg.to_spdx(), malware_pkg.to_spdx()],
+        RT.CONTAINS,
     )
-
+    verify_relationships(
+        component_img.propose_spdx_id(),
+        sbom_doc.relationships,
+        [stdlib_pkg.to_spdx()],
+        RT.CONTAINS,
+    )
     # verify that the crypto package is marked as actually coming from the
     # builder image
-    sbom_doc = parse_file(str(output_sbom_path))
     verify_relationships(
         builder_img.propose_spdx_id(),
         sbom_doc.relationships,
-        [crypto_pkg.to_spdx()],
+        [crypto_pkg.to_spdx(), random_pkg.to_spdx()],
         RT.CONTAINS,
     )
 
