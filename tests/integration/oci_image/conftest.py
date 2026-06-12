@@ -435,9 +435,7 @@ def legacy_parent_sbom(
 
 
 def verify_sbom_relationships(
-    sbom_path: Path,
-    package_groups: list[list[AnnotatedPackage]],
-    allow_multiple_chains: bool = False,
+    sbom_path: Path, package_groups: list[list[AnnotatedPackage]]
 ) -> None:
     """
     Verify SBOM relationships using dependency chain order.
@@ -446,24 +444,15 @@ def verify_sbom_relationships(
         sbom_path: Path to an SBOM document to verify
         package_groups: List of package lists in component-first order
                        [component_packages, parent_packages, grandparent_packages, ...]
-        allow_multiple_chains: Whether to accept multiple dependency chains or not
-            (important for multi-root packages e.g. from intermediate builder
-            content images)
     """
     sbom_doc = parse_file(str(sbom_path))
-    dep_chains = get_dependency_chain_spdx_ids(sbom_doc.relationships)
-    if not allow_multiple_chains:
-        assert len(dep_chains) > 1, (
-            "Multiple dependency chains exist - a package has more than one root"
-        )
+    dep_chain = get_dependency_chain_spdx_ids(sbom_doc.relationships)
+    assert len(dep_chain) == len(package_groups), (
+        f"Invalid number of dependents. Dependency chain: {dep_chain}"
+    )
 
-    for dep_chain in dep_chains:
-        assert len(dep_chain) == len(package_groups), (
-            f"Invalid number of dependents. Dependency chain: {dep_chain}"
-        )
-
-        for spdx_id, packages in zip(dep_chain, package_groups, strict=False):
-            verify_relationships(spdx_id, sbom_doc.relationships, packages)
+    for spdx_id, packages in zip(dep_chain, package_groups, strict=False):
+        verify_relationships(spdx_id, sbom_doc.relationships, packages)
 
 
 def verify_relationships(
@@ -517,11 +506,11 @@ def verify_packages_not_included(
         )
 
 
-def get_dependency_chain_spdx_ids(relationships: list[Relationship]) -> list[list[str]]:
+def get_dependency_chain_spdx_ids(relationships: list[Relationship]) -> list[str]:
     """
-    Using the provided relationships, builds all possible dependency chains
-    based on the DESCENDANT_OF relationships. Fails if a dependency tree is
-    deteced.
+    Using the provided relationships, builds a dependency chain based on the
+    DESCENDANT_OF relationships. The root element is the first element in the
+    list. Fails if there are multiple roots or if a dependency tree is deteced.
     """
     rels = [
         rel
@@ -534,8 +523,10 @@ def get_dependency_chain_spdx_ids(relationships: list[Relationship]) -> list[lis
         parents.add(rel.spdx_element_id)
         children.add(str(rel.related_spdx_element_id))
 
-    # the root elements are never a child in any relationship
-    roots = parents - children
+    # the root element is the one that is never a child in any relationship
+    no_children = parents - children
+    root = no_children.pop()
+    assert len(no_children) == 0, "Found multiple roots in SBOM relationships."
 
     parent_to_child = {}
     for rel in rels:
@@ -544,14 +535,11 @@ def get_dependency_chain_spdx_ids(relationships: list[Relationship]) -> list[lis
         )
         parent_to_child[rel.spdx_element_id] = str(rel.related_spdx_element_id)
 
-    # build chains starting from each root
-    chains = []
-    for root in roots:
-        spdx_ids = [root]
-        current = root
-        while current in parent_to_child:
-            current = parent_to_child[current]
-            spdx_ids.append(current)
-        chains.append(spdx_ids)
+    # build chain starting from root
+    spdx_ids = [root]
+    current = root
+    while current in parent_to_child:
+        current = parent_to_child[current]
+        spdx_ids.append(current)
 
-    return chains
+    return spdx_ids
