@@ -2,7 +2,7 @@
 
 Python tool for generating and managing SBOMs (SPDX and CycloneDX) in the Konflux CI/CD platform.
 
-Guidance for AI assistants in this repo. See [CONTRIBUTING.md](CONTRIBUTING.md) for full workflow and setup.
+Guidance for AI assistants in this repo. See [CONTRIBUTING.md](CONTRIBUTING.md) for full workflow and setup and [README.md](README.md) for Konflux context and usage examples.
 
 ## Key Conventions
 
@@ -25,5 +25,6 @@ Guidance for AI assistants in this repo. See [CONTRIBUTING.md](CONTRIBUTING.md) 
 ## PR Conventions
 
 - Run `tox` (or at minimum `tox -e ruff` and `tox -e mypy`) before submitting.
-- Integration tests require `docker compose up -d` — CI runs them separately from unit tests.
+- Integration tests require `docker compose up -d` and `tox -e test-integration` — CI runs them separately from unit tests.
+- All checks (`tox` and integration tests) need to pass before a PR can be merged.
 - Coverage gates are enforced in CI; new code needs tests.
