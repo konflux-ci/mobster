@@ -1,14 +1,139 @@
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import pytest
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.parser.parse_anything import parse_file
 from spdx_tools.spdx.writer.write_anything import write_file
 
+from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
+    BuilderPkgMetadataItem,
+)
 from mobster.image import Image
 from tests.spdx_builder import AnnotatedPackage, SPDXPackageBuilder, SPDXSBOMBuilder
+
+
+@dataclass
+class SBOMPackage:
+    """Interchange format for a (non-image) package in an SBOM.
+
+    Since our tests sometimes need the same package data in AnnotatedPackage
+    and BuilderPkgMetadataItem formats, we use this class as to avoid declaring
+    the same strings twice.
+
+    This does not support generating AnnotatedPackages for OCI images."""
+
+    name: str
+    purl: str
+    version: str
+    dependency_of_purl: str | None
+    sha256_checksum: str | None
+    verification_code: str | None
+
+    def to_spdx(self) -> AnnotatedPackage:
+        """Convert to AnnotatedPackage (using SPDXPackageBuilder).
+
+        The verification_code and sha256_checksum fields will be added if
+        available."""
+        builder = (
+            SPDXPackageBuilder().name(self.name).purl(self.purl).version(self.version)
+        )
+        if self.sha256_checksum:
+            builder.sha256_checksum(self.sha256_checksum)
+        if self.verification_code:
+            builder.verification_code(self.verification_code)
+        return builder.build()
+
+    def to_metadata(
+        self, origin_type: Literal["builder", "intermediate"], origin_pullspec: str
+    ) -> BuilderPkgMetadataItem:
+        """Convert to BuilderPkgMetadataItem.
+
+        Ignores verification_code as it is not a valid field for this format
+        currently."""
+        item = BuilderPkgMetadataItem(
+            purl=self.purl,
+            dependency_of_purl=self.dependency_of_purl,
+            pullspec=origin_pullspec,
+            origin_type=origin_type,
+        )
+        if self.sha256_checksum:
+            item.checksums = [f"sha256:{self.sha256_checksum}"]
+        return item
+
+
+@pytest.fixture
+def gin_pkg() -> SBOMPackage:
+    return SBOMPackage(
+        name="github.com/gin-gonic/gin",
+        version="v1.9.1",
+        purl="pkg:golang/github.com/gin-gonic/gin@v1.9.1",
+        dependency_of_purl=None,
+        sha256_checksum="a1b2c3d4e5f67890123456789012345678901234567890123456789012345678",
+        verification_code=None,
+    )
+
+
+@pytest.fixture
+def crypto_pkg() -> SBOMPackage:
+    return SBOMPackage(
+        name="golang.org/x/crypto",
+        version="v0.14.0",
+        purl="pkg:golang/golang.org/x/crypto@v0.14.0",
+        dependency_of_purl=None,
+        sha256_checksum="9876543210abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        verification_code=None,
+    )
+
+
+@pytest.fixture
+def random_pkg() -> SBOMPackage:
+    return SBOMPackage(
+        name="golang.org/x/random",
+        version="v0.14.0",
+        purl="pkg:golang/golang.org/x/random@v0.14.0",
+        dependency_of_purl=None,
+        sha256_checksum=None,
+        verification_code="d6a770ba38583ed4bb4525bd96e50461655d2758",
+    )
+
+
+@pytest.fixture
+def malware_pkg() -> SBOMPackage:
+    return SBOMPackage(
+        name="golang.org/x/malware",
+        version="v1.14.0",
+        purl="pkg:golang/golang.org/x/malware@v1.14.0",
+        dependency_of_purl="pkg:golang/github.com/gin-gonic/gin@v1.9.1",
+        sha256_checksum=None,
+        verification_code=None,
+    )
+
+
+@pytest.fixture
+def ginkgo_pkg() -> SBOMPackage:
+    return SBOMPackage(
+        name="golang.org/x/ginkgo",
+        version="v0.14.0",
+        purl="pkg:golang/golang.org/x/ginkgo@v0.14.0",
+        dependency_of_purl=None,
+        sha256_checksum="487198278acdcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        verification_code=None,
+    )
+
+
+@pytest.fixture
+def stdlib_pkg() -> SBOMPackage:
+    return SBOMPackage(
+        name="golang.org/x/stdlib",
+        version="v0.14.0",
+        purl="pkg:golang/golang.org/x/stdlib@v0.14.0",
+        dependency_of_purl=None,
+        sha256_checksum="1237773276cdcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        verification_code=None,
+    )
 
 
 @dataclass
@@ -22,10 +147,11 @@ class GenerateData:
     image: Image | None = None
     input_sbom_path: Path | None = None
     metadata_path: Path | None = None
+    build_metadata_path: Path | None = None
     contextualize: bool = True
 
 
-def run_mobster_generate(gdata: GenerateData) -> None:
+def run_mobster_generate(gdata: GenerateData) -> subprocess.CompletedProcess[bytes]:
     """
     Run a mobster generate oci image command with the supplied arguments.
     """
@@ -58,62 +184,38 @@ def run_mobster_generate(gdata: GenerateData) -> None:
     if gdata.metadata_path:
         cmd.extend(["--metadata-path", str(gdata.metadata_path)])
 
-    subprocess.run(cmd, check=True)
+    if gdata.build_metadata_path:
+        cmd.extend(["--build-metadata-path", str(gdata.build_metadata_path)])
+
+    return subprocess.run(cmd, check=True, capture_output=True)
 
 
 @pytest.fixture
-def grandparent_packages() -> list[AnnotatedPackage]:
+def grandparent_packages(gin_pkg: SBOMPackage) -> list[AnnotatedPackage]:
     """
     Returns a list of annotated packages that should be specific to the
     grandparent after parent/component contextualization.
     """
-    return [
-        SPDXPackageBuilder()
-        .name("github.com/gin-gonic/gin")
-        .version("v1.9.1")
-        .sha256_checksum(
-            "a1b2c3d4e5f67890123456789012345678901234567890123456789012345678"
-        )
-        .purl("pkg:golang/github.com/gin-gonic/gin@v1.9.1")
-        .build()
-    ]
+    return [gin_pkg.to_spdx()]
 
 
 @pytest.fixture
-def parent_packages() -> list[AnnotatedPackage]:
+def parent_packages(
+    crypto_pkg: SBOMPackage,
+    random_pkg: SBOMPackage,
+    malware_pkg: SBOMPackage,
+) -> list[AnnotatedPackage]:
     """
     Returns a list of annotated packages that should be specific to the parent
     after component contextualization.
 
     Tests multiple purl matching mechanisms.
     """
-    checksum_match = (
-        SPDXPackageBuilder()
-        .name("golang.org/x/crypto")
-        .version("v0.14.0")
-        .sha256_checksum(
-            "9876543210abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-        )
-        .purl("pkg:golang/golang/golang.org/x/crypto@v0.14.0")
-        .build()
-    )
+    checksum_match = crypto_pkg.to_spdx()
 
-    verification_code_match = (
-        SPDXPackageBuilder()
-        .name("golang.org/x/random")
-        .version("v0.14.0")
-        .purl("pkg:golang/golang/golang.org/x/random@v0.14.0")
-        .verification_code("d6a770ba38583ed4bb4525bd96e50461655d2758")
-        .build()
-    )
+    verification_code_match = random_pkg.to_spdx()
 
-    purl_match = (
-        SPDXPackageBuilder()
-        .name("golang.org/x/malware")
-        .version("v1.14.0")
-        .purl("pkg:golang/golang/golang.org/x/malware@v1.14.0")
-        .build()
-    )
+    purl_match = malware_pkg.to_spdx()
 
     return [
         checksum_match,
@@ -123,40 +225,22 @@ def parent_packages() -> list[AnnotatedPackage]:
 
 
 @pytest.fixture
-def parent_only_packages() -> list[AnnotatedPackage]:
+def parent_only_packages(ginkgo_pkg: SBOMPackage) -> list[AnnotatedPackage]:
     """
     Returns a list of annotated packages that should be removed from the
     component SBOM after contextualization. This simulates a case when some
     packages are remove during a component build.
     """
-    return [
-        SPDXPackageBuilder()
-        .name("golang.org/x/ginkgo")
-        .version("v0.14.0")
-        .sha256_checksum(
-            "487198278acdcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-        )
-        .purl("pkg:golang/golang/golang.org/x/ginkgo@v0.14.0")
-        .build()
-    ]
+    return [ginkgo_pkg.to_spdx()]
 
 
 @pytest.fixture
-def component_packages() -> list[AnnotatedPackage]:
+def component_packages(stdlib_pkg: SBOMPackage) -> list[AnnotatedPackage]:
     """
     Returns a list of annotated packages that should be specific to the
     component SBOM after contextualization.
     """
-    return [
-        SPDXPackageBuilder()
-        .name("golang.org/x/stdlib")
-        .version("v0.14.0")
-        .sha256_checksum(
-            "1237773276cdcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-        )
-        .purl("pkg:golang/golang/golang.org/x/stdlib@v0.14.0")
-        .build()
-    ]
+    return [stdlib_pkg.to_spdx()]
 
 
 @pytest.fixture
@@ -372,15 +456,26 @@ def verify_sbom_relationships(
 
 
 def verify_relationships(
-    spdx_id: str, relationships: list[Relationship], packages: list[AnnotatedPackage]
+    spdx_id: str,
+    relationships: list[Relationship],
+    packages: list[AnnotatedPackage],
+    relationship_type: RelationshipType | None = None,
 ) -> None:
     """
     Verify that the passed packages have relationships that point to the
-    specified spdx_id (spdx_id CONTAINS package.spdx_id).
+    specified spdx_id (e.g. spdx_id CONTAINS package.spdx_id)
+    Can also be filtered to verify only a specific relationship, e.g. BUILD_TOOL_OF.
     """
     package_set = {apkg.spdx_id for apkg in packages}
     for apkg in packages:
         for rel in relationships:
+            # skip any relationship that isn't of the specified
+            # relationship_type, if applicable
+            if (
+                relationship_type is not None
+                and rel.relationship_type != relationship_type
+            ):
+                continue
             if rel.related_spdx_element_id != apkg.spdx_id:
                 continue
 

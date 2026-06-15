@@ -10,22 +10,37 @@ TESTDATA_PATH = Path(__file__).parent.parent / "data"
 
 
 def make_metadata_yaml(
-    tmp_path: Path, img: Image, parent_img: Image | None = None
+    tmp_path: Path,
+    img: Image,
+    base_imgs: list[Image] | None = None,
+    extra_imgs: list[Image] | None = None,
 ) -> Path:
+    """Create a yaml file suitable for the --metadata-path option in `mobster
+    generate oci-image`."""
     metadata = {
         "image": {
             "pullspec": f"{img.repository}:{img.tag}",
             "digest": img.digest,
         },
         "base_images": [],
+        "extra_images": [],
     }
-    if parent_img:
-        metadata["base_images"].append(  # type: ignore[attr-defined]
-            {
-                "pullspec": f"{parent_img.repository}:{parent_img.tag}",
-                "digest": parent_img.digest,
-            }
-        )
+    if base_imgs:
+        for base_img in base_imgs:
+            metadata["base_images"].append(  # type: ignore[attr-defined]
+                {
+                    "pullspec": f"{base_img.repository}:{base_img.tag}",
+                    "digest": base_img.digest,
+                }
+            )
+    if extra_imgs:
+        for extra_img in extra_imgs:
+            metadata["extra_images"].append(  # type: ignore[attr-defined]
+                {
+                    "pullspec": f"{extra_img.repository}:{extra_img.tag}",
+                    "digest": extra_img.digest,
+                }
+            )
     path = tmp_path / f"{img.digest}.metadata.yaml"
     with open(path, "w") as fp:
         fp.write(yaml.dump(metadata))
