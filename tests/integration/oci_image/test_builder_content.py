@@ -162,7 +162,7 @@ async def test_builder_content(
         parent_img,
     )
 
-    # verify DESCENDANT_OF relationships for the component/parent packages
+    # verify CONTAINS relationships for the component/parent packages
     # (we can't use verify_sbom_relationships here since the intermediate
     # package will have two roots)
     sbom_doc = parse_file(str(output_sbom_path))
