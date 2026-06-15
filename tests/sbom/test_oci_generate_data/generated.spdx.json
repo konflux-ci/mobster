@@ -68,6 +68,28 @@
       "versionInfo": "v10"
     },
     {
+      "SPDXID": "SPDXRef-Package-rpm-bash-hermeto-merge-test",
+      "annotations": [
+        {
+          "annotationDate": "2024-12-18T11:27:10Z",
+          "annotationType": "OTHER",
+          "annotator": "Tool: cachi2:jsonencoded",
+          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&checksum=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&repository_id=rhel-9-for-x86_64-baseos-rpms",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": true,
+      "name": "bash",
+      "versionInfo": "5.1.8-9.el9"
+    },
+    {
       "SPDXID": "SPDXRef-Package-@types/prop-types-15.7.5-2d13fa1fda82a31e6ee9a07d7956586c1d91a3b859ff1dcfb40ccc1b4a3dd481",
       "annotations": [
         {
@@ -7597,6 +7619,12 @@
       "comment": "",
       "relatedSpdxElement": "SPDXRef-Package-wheel-0.38.4-606bf02cfffccacd2677c454d0b8df4350fb5264adf89c37cd32e7128158ea9f",
       "relationshipType": "CONTAINS"
+    },
+    {
+      "comment": "",
+      "relatedSpdxElement": "SPDXRef-Package-rpm-bash-hermeto-merge-test",
+      "relationshipType": "CONTAINS",
+      "spdxElementId": "SPDXRef-image-examplecontainer-5a3f3641c46ab5e7cb885d406b1cc6a5f2691676830004a48da192f7830b7fe8"
     },
     {
       "spdxElementId": "SPDXRef-DOCUMENT",
