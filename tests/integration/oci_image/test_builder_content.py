@@ -146,7 +146,7 @@ async def test_builder_content(
     # mock build metadata
     component_build_metadata = BuilderPkgMetadata(
         packages=[
-            # simulates a package COPY'd from the above builder image
+            # simulates a package present and COPY'd from builder base image to final image
             crypto_pkg.to_metadata("builder", builder_img.reference),
             # simulates a package installed/built in the builder image before
             # being copied
