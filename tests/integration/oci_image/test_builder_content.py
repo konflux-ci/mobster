@@ -148,8 +148,7 @@ async def test_builder_content(
         packages=[
             # simulates a package present and COPY'd from builder base image to final image
             crypto_pkg.to_metadata("builder", builder_img.reference),
-            # simulates a package installed/built in the builder image before
-            # being copied
+            # simulates a package installed/built and COPY'd from intermediate image to final image
             random_pkg.to_metadata("intermediate", builder_img.reference),
         ]
     )
