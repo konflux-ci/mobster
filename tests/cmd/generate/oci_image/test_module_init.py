@@ -22,7 +22,6 @@ from mobster.image import Image
 from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom, assert_spdx_sbom
 
 
-@pytest.fixture()
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "test_case",
@@ -34,8 +33,6 @@ from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom, assert_spd
         lf("test_case_cyclonedx_with_additional"),
     ],
 )
-@patch("mobster.cmd.generate.oci_image.get_base_images_digests_lines")
-@patch("mobster.cmd.generate.oci_image.get_digest_for_image_ref")
 async def test_GenerateOciImageCommand_execute(
     test_case: GenerateOciImageTestCase,
 ) -> None:
