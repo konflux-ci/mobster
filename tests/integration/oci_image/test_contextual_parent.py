@@ -77,7 +77,7 @@ async def test_parent_content_contextualization(
         await oci_client.attach_sbom(grandparent_img, "spdx", f.read())
 
     parent_gdata = GenerateData(
-        metadata_path=make_metadata_yaml(tmp_path, parent_img, grandparent_img),
+        metadata_path=make_metadata_yaml(tmp_path, parent_img, [grandparent_img]),
         input_sbom_path=parent_input_sbom,
         output_sbom_path=tmp_path / "parent.output.spdx.json",
         contextualize=contextualize_parent,
@@ -111,7 +111,7 @@ async def test_parent_content_contextualization(
     component_gdata = GenerateData(
         input_sbom_path=component_input_sbom,
         output_sbom_path=tmp_path / "component.output.spdx.json",
-        metadata_path=make_metadata_yaml(tmp_path, component_img, parent_img),
+        metadata_path=make_metadata_yaml(tmp_path, component_img, [parent_img]),
     )
 
     run_mobster_generate(component_gdata)
@@ -171,7 +171,7 @@ async def test_parent_content_contextualizaton_legacy(
     component_gdata = GenerateData(
         input_sbom_path=component_input_sbom,
         output_sbom_path=tmp_path / "component.output.spdx.json",
-        metadata_path=make_metadata_yaml(tmp_path, component_img, parent_img),
+        metadata_path=make_metadata_yaml(tmp_path, component_img, [parent_img]),
     )
 
     run_mobster_generate(component_gdata)
