@@ -468,15 +468,13 @@ class CycloneDXMerger(SBOMMerger):  # pylint: disable=too-few-public-methods
         merged = self.merge_components_func(components_a, components_b)
 
         sbom_a["components"] = merged
-        self._prune_dependencies(
-            sbom_a, {ref for c in merged if (ref := c.get("bom-ref"))}
-        )
+        self._prune_dependencies(sbom_a)
         self._merge_tools_metadata(sbom_a, sbom_b)
 
         return sbom_a
 
     @staticmethod
-    def _prune_dependencies(sbom: dict[str, Any], known_refs: set[str]) -> None:
+    def _prune_dependencies(sbom: dict[str, Any]) -> None:
         """Drop dangling references from the CycloneDX dependency graph.
 
         Deduplicating components (merge_by_prefering_hermeto / apparent
@@ -486,15 +484,19 @@ class CycloneDXMerger(SBOMMerger):  # pylint: disable=too-few-public-methods
         ``dependsOn`` entry pointing at a component that no longer exists must
         be removed.
 
-        This mirrors what :meth:`SPDXMerger._merge_relationships` already does
-        for the SPDX relationship graph.
+        This mirrors what SPDXMerger._merge_relationships already does for the
+        SPDX relationship graph.
 
         Args:
             sbom: The merged CycloneDX SBOM, modified in place.
-            known_refs: The set of bom-refs of the surviving components.
         """
+        component_refs = {
+            ref
+            for component in sbom.get("components", [])
+            if (ref := component.get("bom-ref"))
+        }
         root_ref = sbom.get("metadata", {}).get("component", {}).get("bom-ref")
-        valid = known_refs | ({root_ref} if root_ref else set())
+        valid = component_refs | ({root_ref} if root_ref else set())
 
         pruned = []
         for dep in sbom.get("dependencies", []):

@@ -7,6 +7,7 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
+from cyclonedx.model.bom import Bom
 from packageurl import PackageURL
 
 from mobster.sbom.merge import (
@@ -787,8 +788,6 @@ def test_cyclonedx_merge_prunes_dangling_dependencies() -> None:
     After the fix, the dependency graph must not contain any dangling refs and
     ``Bom.validate()`` must pass.
     """
-    from cyclonedx.model.bom import Bom
-
     # Syft SBOM: a root component plus X and Y, with a dependency graph where
     # the root depends on X and Y, and X depends on Y.
     syft_sbom = {
@@ -869,6 +868,10 @@ def test_cyclonedx_merge_prunes_dangling_dependencies() -> None:
 
     # Specifically, the dropped bom-ref must not linger anywhere.
     assert "syft-X" not in referenced_refs
+    assert merged.get("dependencies") == [
+        {"ref": "root-ref", "dependsOn": ["syft-Y"]},
+        {"ref": "syft-Y", "dependsOn": []},
+    ]
 
     # The CycloneDX library must be able to build and validate the BOM.
     bom = Bom.from_json(merged)  # type: ignore[attr-defined]
