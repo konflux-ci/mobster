@@ -11,6 +11,7 @@ from spdx_tools.spdx.writer.write_anything import write_file
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderPkgMetadataItem,
 )
+from mobster.cmd.generate.oci_image.contextual_sbom.constants import OriginType
 from mobster.image import Image
 from tests.spdx_builder import AnnotatedPackage, SPDXPackageBuilder, SPDXSBOMBuilder
 
@@ -57,7 +58,7 @@ class SBOMPackage:
             purl=self.purl,
             dependency_of_purl=self.dependency_of_purl,
             pullspec=origin_pullspec,
-            origin_type=origin_type,
+            origin_type=OriginType(origin_type),
         )
         if self.sha256_checksum:
             item.checksums = [f"sha256:{self.sha256_checksum}"]
