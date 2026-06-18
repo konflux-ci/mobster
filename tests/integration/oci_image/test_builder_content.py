@@ -5,9 +5,7 @@ is defined in ISV-7349. Skipped tests reference this ticket.
 """
 
 from pathlib import Path
-from typing import Literal
 
-from mobster.cmd.generate.oci_image.contextual_sbom.constants import OriginType
 import pytest
 from spdx_tools.spdx.model.relationship import RelationshipType as RT
 from spdx_tools.spdx.parser.parse_anything import parse_file
@@ -15,6 +13,7 @@ from spdx_tools.spdx.parser.parse_anything import parse_file
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderPkgMetadata,
 )
+from mobster.cmd.generate.oci_image.contextual_sbom.constants import OriginType
 from mobster.image import Image
 from mobster.utils import identify_arch
 from tests.integration.img_utils import make_metadata_yaml

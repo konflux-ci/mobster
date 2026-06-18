@@ -562,6 +562,7 @@ class KonfluxAnnotationManager:
         | AnnotationIntermediateImage
         | AnnotationBuilderImage
         | AnnotationBaseImage
+        | AnnotationAdditionalImage
     ):
         """
         Parse an SPDX annotation document and return the internal
@@ -645,6 +646,9 @@ class PackageContext:
 
     @property
     def additional_image_annotation(self) -> AnnotationAdditionalImage | None:
+        """
+        Get the additional image annotatoin for this package if present.
+        """
         return self._annotation(AnnotationAdditionalImage)
 
     def filter_parent_relationships(
