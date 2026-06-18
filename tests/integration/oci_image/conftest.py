@@ -48,7 +48,7 @@ class SBOMPackage:
         return builder.build()
 
     def to_metadata(
-        self, origin_type: Literal["builder", "intermediate"], origin_pullspec: str
+        self, origin_type: OriginType, origin_pullspec: str
     ) -> BuilderPkgMetadataItem:
         """Convert to BuilderPkgMetadataItem.
 

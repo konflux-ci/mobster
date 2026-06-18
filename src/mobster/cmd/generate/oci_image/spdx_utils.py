@@ -476,6 +476,11 @@ class AnnotationBaseImage:
 
     name = "konflux:container:is_base_image"
 
+class AnnotationAdditionalImage:
+    """Parsed Konflux annotation for additional builder images."""
+
+    name = "konflux:container:is_builder_image:additional_builder_image"
+
 
 class KonfluxAnnotationManager:
     """
@@ -583,6 +588,9 @@ class KonfluxAnnotationManager:
             if decoded["name"] == AnnotationBaseImage.name:
                 return AnnotationBaseImage()
 
+            if decoded["name"] == AnnotationAdditionalImage.name:
+                return AnnotationAdditionalImage()
+
         except (KeyError, ValueError) as exc:
             raise AnnotationParseError(
                 "Could not decode a Konflux annotation."
@@ -633,6 +641,10 @@ class PackageContext:
         Get the intermediate image annotation for this package if present.
         """
         return self._annotation(AnnotationIntermediateImage)
+
+    @property
+    def additional_image_annotation(self) -> AnnotationAdditionalImage | None:
+        return self._annotation(AnnotationAdditionalImage)
 
     def filter_parent_relationships(
         self, rel_type: RelationshipType
@@ -759,9 +771,12 @@ class DocumentIndexOCI:
             PackageContext for matching builder image package, or None if not found
         """
         for img_pkg_ctx in self._image_ctxs:
-            if img_pkg_ctx.builder_image_annotation is None:
+            if (
+                    img_pkg_ctx.builder_image_annotation is None and
+                    img_pkg_ctx.additional_image_annotation is None
+                ):
                 continue
-
+            
             if DocumentIndexOCI._match_image_package(img_pkg_ctx.pkg, pullspec):
                 return img_pkg_ctx
 

@@ -7,6 +7,7 @@ is defined in ISV-7349. Skipped tests reference this ticket.
 from pathlib import Path
 from typing import Literal
 
+from mobster.cmd.generate.oci_image.contextual_sbom.constants import OriginType
 import pytest
 from spdx_tools.spdx.model.relationship import RelationshipType as RT
 from spdx_tools.spdx.parser.parse_anything import parse_file
@@ -77,6 +78,7 @@ async def capture_builder_content_workflow(
     build_metadata: BuilderPkgMetadata,
     img: Image,
     builder_imgs: list[Image],
+    extra_imgs: list[Image],
     base_img: Image,
 ) -> tuple[str, str, Path]:
     """Generate build metadata and generate an SBOM for builder content
@@ -91,6 +93,7 @@ async def capture_builder_content_workflow(
             tmp_path,
             img,
             builder_imgs + [base_img],
+            extra_imgs,
         ),
         build_metadata_path=build_metadata_path,
         input_sbom_path=input_sbom,
@@ -108,6 +111,7 @@ async def run_builder_content_workflow(
     build_metadata: BuilderPkgMetadata,
     img: Image,
     builder_imgs: list[Image],
+    extra_imgs: list[Image],
     base_img: Image,
 ) -> Path:
     """Generate build metadata and generate an SBOM for builder content
@@ -118,6 +122,7 @@ async def run_builder_content_workflow(
         build_metadata,
         img,
         builder_imgs,
+        extra_imgs,
         base_img,
     )
     return output_sbom_path
@@ -130,6 +135,7 @@ async def test_builder_content(
     parent_input_sbom: Path,
     component_input_sbom: Path,
     builder_img: Image,
+    extra_builder_img: Image,
     gin_pkg: SBOMPackage,
     crypto_pkg: SBOMPackage,
     random_pkg: SBOMPackage,
@@ -148,10 +154,13 @@ async def test_builder_content(
         packages=[
             # simulates a package present and COPY'd from builder base image to
             # final image
-            crypto_pkg.to_metadata("builder", builder_img.reference),
+            crypto_pkg.to_metadata(OriginType.BUILDER, builder_img.reference),
             # simulates a package installed/built and COPY'd from intermediate
             # image to final image
-            random_pkg.to_metadata("intermediate", builder_img.reference),
+            random_pkg.to_metadata(OriginType.INTERMEDIATE, builder_img.reference),
+            # simulates a package COPY'd from an image that was never used
+            # directly as a stage (i.e. `COPY --from=[oci-ref]`)
+            malware_pkg.to_metadata(OriginType.EXTERNAL, extra_builder_img.reference),
         ]
     )
     output_sbom_path = await run_builder_content_workflow(
@@ -160,6 +169,7 @@ async def test_builder_content(
         component_build_metadata,
         component_img,
         [builder_img],
+        [extra_builder_img],
         parent_img,
     )
 
@@ -170,7 +180,7 @@ async def test_builder_content(
     verify_relationships(
         parent_img.propose_spdx_id(),
         sbom_doc.relationships,
-        [gin_pkg.to_spdx(), malware_pkg.to_spdx()],
+        [gin_pkg.to_spdx()],
         RT.CONTAINS,
     )
     verify_relationships(
@@ -193,11 +203,17 @@ async def test_builder_content(
         [random_pkg.to_spdx()],
         RT.CONTAINS,
     )
+    verify_relationships(
+        extra_builder_img.propose_spdx_id(),
+        sbom_doc.relationships,
+        [malware_pkg.to_spdx()],
+        RT.CONTAINS,
+    )
 
 
 @pytest.mark.asyncio
 @pytest.mark.skip(reason="deferred until behavior is defined (ISV-7349)")
-@pytest.mark.parametrize(["origin_type"], [["builder"], ["intermediate"]])
+@pytest.mark.parametrize(["origin_type"], [[OriginType.BUILDER], [OriginType.INTERMEDIATE]])
 async def test_builder_content_duplicate(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
@@ -209,7 +225,7 @@ async def test_builder_content_duplicate(
     random_pkg: SBOMPackage,
     malware_pkg: SBOMPackage,
     stdlib_pkg: SBOMPackage,
-    origin_type: Literal["builder", "intermediate"],
+    origin_type: OriginType,
 ) -> None:
     """Test that builder content handles duplicated packages from Capo."""
     parent_img, component_img = await setup_images(
@@ -230,6 +246,7 @@ async def test_builder_content_duplicate(
         component_build_metadata,
         component_img,
         [builder_img],
+        [],
         parent_img,
     )
 
@@ -282,10 +299,10 @@ async def test_builder_content_extra(
     # mock build metadata
     component_build_metadata = BuilderPkgMetadata(
         packages=[
-            crypto_pkg.to_metadata("builder", builder_img.reference),
+            crypto_pkg.to_metadata(OriginType.BUILDER, builder_img.reference),
             # ginkgo package isn't in the component input SBOM
             # we should log a warning
-            ginkgo_pkg.to_metadata("builder", builder_img.reference),
+            ginkgo_pkg.to_metadata(OriginType.BUILDER, builder_img.reference),
         ]
     )
     output_sbom_path = await run_builder_content_workflow(
@@ -294,6 +311,7 @@ async def test_builder_content_extra(
         component_build_metadata,
         component_img,
         [builder_img],
+        [],
         parent_img,
     )
 
@@ -322,8 +340,8 @@ async def test_builder_content_same_package_from_multiple_builders(
     component_build_metadata = BuilderPkgMetadata(
         packages=[
             # crypto package comes from TWO builder images
-            crypto_pkg.to_metadata("builder", builder_img.reference),
-            crypto_pkg.to_metadata("builder", extra_builder_img.reference),
+            crypto_pkg.to_metadata(OriginType.BUILDER, builder_img.reference),
+            crypto_pkg.to_metadata(OriginType.BUILDER, extra_builder_img.reference),
         ]
     )
     output_sbom_path = await run_builder_content_workflow(
@@ -332,6 +350,7 @@ async def test_builder_content_same_package_from_multiple_builders(
         component_build_metadata,
         component_img,
         [builder_img, extra_builder_img],
+        [],
         parent_img,
     )
 
