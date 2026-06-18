@@ -476,6 +476,7 @@ class AnnotationBaseImage:
 
     name = "konflux:container:is_base_image"
 
+
 class AnnotationAdditionalImage:
     """Parsed Konflux annotation for additional builder images."""
 
@@ -772,11 +773,11 @@ class DocumentIndexOCI:
         """
         for img_pkg_ctx in self._image_ctxs:
             if (
-                    img_pkg_ctx.builder_image_annotation is None and
-                    img_pkg_ctx.additional_image_annotation is None
-                ):
+                img_pkg_ctx.builder_image_annotation is None
+                and img_pkg_ctx.additional_image_annotation is None
+            ):
                 continue
-            
+
             if DocumentIndexOCI._match_image_package(img_pkg_ctx.pkg, pullspec):
                 return img_pkg_ctx
 

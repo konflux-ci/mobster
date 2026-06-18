@@ -213,7 +213,9 @@ async def test_builder_content(
 
 @pytest.mark.asyncio
 @pytest.mark.skip(reason="deferred until behavior is defined (ISV-7349)")
-@pytest.mark.parametrize(["origin_type"], [[OriginType.BUILDER], [OriginType.INTERMEDIATE]])
+@pytest.mark.parametrize(
+    ["origin_type"], [[OriginType.BUILDER], [OriginType.INTERMEDIATE]]
+)
 async def test_builder_content_duplicate(
     oci_client: ReferrersTagOCIClient,
     tmp_path: Path,
