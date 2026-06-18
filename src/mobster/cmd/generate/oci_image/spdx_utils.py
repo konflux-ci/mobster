@@ -555,6 +555,24 @@ class KonfluxAnnotationManager:
         return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
 
     @staticmethod
+    def additional_image(spdx_id: str) -> Annotation:
+        """
+        Create an SPDX Annotation object for an additional image package.
+
+        Args:
+            spdx_id: SPDX ID of the package to annotate
+
+        Returns:
+            Annotation object marking the package as an additional image
+        """
+        comment = {
+            "name": AnnotationAdditionalImage.name,
+            "value": "true",
+        }
+
+        return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
+
+    @staticmethod
     def parse(
         ann: Annotation,
     ) -> (
@@ -647,7 +665,7 @@ class PackageContext:
     @property
     def additional_image_annotation(self) -> AnnotationAdditionalImage | None:
         """
-        Get the additional image annotatoin for this package if present.
+        Get the additional image annotation for this package if present.
         """
         return self._annotation(AnnotationAdditionalImage)
 
