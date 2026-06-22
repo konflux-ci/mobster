@@ -1,5 +1,80 @@
 # Changelog
 
+## [2.1.0](https://github.com/konflux-ci/mobster/compare/v2.0.0...v2.1.0) (2026-06-22)
+
+
+### Features
+
+* Add the tests for merge workflow. ([0fe093b](https://github.com/konflux-ci/mobster/commit/0fe093b0ffbd06ca0f8f1e675091fe7c4e2bdd33))
+* **ISV-6236:** added extra_images to make_metadata_yaml ([e1985cb](https://github.com/konflux-ci/mobster/commit/e1985cbab9ca4ae6f347b30ba7b22842be3cbda5))
+* **ISV-6236:** test rewrite ([3afca53](https://github.com/konflux-ci/mobster/commit/3afca5376ce3ce8bdd7f184e987068ea57439769))
+* **ISV-7294:** add contextual SBOM builder logging ([db57679](https://github.com/konflux-ci/mobster/commit/db57679b0c04df126d723d1bdb57fea916d286ac))
+* **ISV-7294:** add contextual SBOM builder logging ([1bfe15f](https://github.com/konflux-ci/mobster/commit/1bfe15f9732e50010868c22ee2cbc67144b71380))
+* mobster enrich ([b875087](https://github.com/konflux-ci/mobster/commit/b8750877fa36444dd3feca55509dab7e1469b65e))
+* mobster enrich ([09c228f](https://github.com/konflux-ci/mobster/commit/09c228f397b858e96b34e19630ec485d8d1e6446))
+* Update the doc string. ([a5fd81a](https://github.com/konflux-ci/mobster/commit/a5fd81a6c26d7f80527e73014fad001a097ae87b))
+
+
+### Bug Fixes
+
+* added extra builder image to test ([f2797dc](https://github.com/konflux-ci/mobster/commit/f2797dc5c431158febf3d83140dda5d75a2416f3))
+* added missing docstrings and types ([448632a](https://github.com/konflux-ci/mobster/commit/448632a1f11c50fd6d843624f3335fe95defe583))
+* aiohttp -&gt; 3.14.0 ([8ff080d](https://github.com/konflux-ci/mobster/commit/8ff080d28ab1e5fc7d04cfd4f5056d093b4a90a7))
+* **capture_builder_content_workflow:** moved builder_imgs to extra_image ([75c8b4e](https://github.com/konflux-ci/mobster/commit/75c8b4e43b47cecb083ed9c0d9ea79ce7d454473))
+* code review fixes and added more unit tests ([58d5781](https://github.com/konflux-ci/mobster/commit/58d5781e886a97196a2904ee44ca7a3af510ebeb))
+* deleted unused files & other minor fixes ([948fb04](https://github.com/konflux-ci/mobster/commit/948fb041a96925f082b7485c58950590ef0de3c4))
+* fix CI failures ([f3f5f6c](https://github.com/konflux-ci/mobster/commit/f3f5f6c336d146530fcc88441ca26ef64b52d2dc))
+* fix CI failures ([538a62d](https://github.com/konflux-ci/mobster/commit/538a62d1812131f84d350e2288b3d53b65d71446))
+* fixed component_img spdx_id mismatch & finalized asserts ([dbdd9ee](https://github.com/konflux-ci/mobster/commit/dbdd9ee06ab6fecd5b6c47b5daea27cf75e86556))
+* fixed purls ([8eaa12a](https://github.com/konflux-ci/mobster/commit/8eaa12a7493e0b5989cd0d5ee16099cf3e761929))
+* **ISV-6236:** added skips to failing tests ([4fae800](https://github.com/konflux-ci/mobster/commit/4fae800ae7c34cf836fbf4991d43afccb492dbd8))
+* **ISV-6236:** trued up purls/pullspecs/etc ([7932ce4](https://github.com/konflux-ci/mobster/commit/7932ce420e5bf1d65dc2b8499942b9420eb09228))
+* **ISV-6818:** Update the merge sboms workflow. ([835e9eb](https://github.com/konflux-ci/mobster/commit/835e9eb86595100cab942a38c260398ebddb3dc8))
+* **ISV-6818:** Update the purl key normalization function for merge workflow ([e1e5019](https://github.com/konflux-ci/mobster/commit/e1e5019ef2032bebe45f2ebe31d7158abe20c926))
+* **ISV-6818:** Update the SBOM merge process to prevent duplication. ([cf24a86](https://github.com/konflux-ci/mobster/commit/cf24a8625f0c2deee0b71f4097d6700344ae5870))
+* **ISV-6818:** Update the SBOM merge process to prevent duplication. ([c82f3f6](https://github.com/konflux-ci/mobster/commit/c82f3f653213e1093d06f43c614b65b8127b9e3b))
+* **ISV-6997:** normalize --arch flag to OCI format before use ([216209a](https://github.com/konflux-ci/mobster/commit/216209a6ded6e8fe02e6b33b69d774c0c120c316))
+* **ISV-6997:** normalize --arch flag to OCI format before use ([0de5ef2](https://github.com/konflux-ci/mobster/commit/0de5ef294eaca33186847960f425863cdaa498be))
+* **ISV-7175:** ImageData now parses pullspecs with tags and/or digests ([abdd36d](https://github.com/konflux-ci/mobster/commit/abdd36d3277e30878e8fde64806fb613c389cb66))
+* **ISV-7175:** ImageData now parses pullspecs with tags and/or digests ([0bf8461](https://github.com/konflux-ci/mobster/commit/0bf8461450f65d623cdc8a1177b37cd523a0fe67))
+* **ISV-7175:** removed image_arch from certain to_image calls for parity ([8367b81](https://github.com/konflux-ci/mobster/commit/8367b815db72e3fb5c7123e30cbbdd955f1e0330))
+* **ISV-7294:** address comments ([cd4df85](https://github.com/konflux-ci/mobster/commit/cd4df8539bbfc5ede8513df7be18186479624667))
+* **ISV-7327:** deduplicate documentation ([0d16b6d](https://github.com/konflux-ci/mobster/commit/0d16b6de81c70f5cee410be6bf3bf651a0376238))
+* **ISV-7327:** update agents & contributing ([98f8ff5](https://github.com/konflux-ci/mobster/commit/98f8ff5529482a6e1acecdf128855a8aaaa9af94))
+* **ISV-7327:** update agents & contributing ([1e4bdf7](https://github.com/konflux-ci/mobster/commit/1e4bdf7cbe07723768ff32d79a1ab24118434301))
+* log correct number of remaining packages ([74baf6d](https://github.com/konflux-ci/mobster/commit/74baf6d10875dc456c34684a57a563445131c788))
+* log correct number of remaining packages ([b29ca08](https://github.com/konflux-ci/mobster/commit/b29ca08fbf7ee0a00b10ff97efd8d898f43b3ec2))
+* pip-audit ([d9e01d6](https://github.com/konflux-ci/mobster/commit/d9e01d63a176e08f132bb0572c117ca7801c8a64))
+* ran ruff format ([66c8337](https://github.com/konflux-ci/mobster/commit/66c83371d45541446f80ba91ff973a47e664b7c8))
+* re-enable test deactivated by mistake ([782d78e](https://github.com/konflux-ci/mobster/commit/782d78ea9b76be6d45b178cc6978d320e20bf0d3))
+* rebased and resolved merge conflicts ([170f3a0](https://github.com/konflux-ci/mobster/commit/170f3a06fe898cc796598a4c6bda962a1fc2f1dd))
+* rebased, formatting and error checking fixes ([cd8f9fb](https://github.com/konflux-ci/mobster/commit/cd8f9fb77dafe8b907905d0f5f822ea74d663a6b))
+* remove test_builder_content_duplicate_from_parent; rename another test ([a3f2cbc](https://github.com/konflux-ci/mobster/commit/a3f2cbc8f944877e664de7050c257f1984087448))
+* removed duplicate test & reformatted ([fe4ef21](https://github.com/konflux-ci/mobster/commit/fe4ef21d07aa8896fa12233786ffb8ae81ac39a3))
+* removed parent/grandparent images from build metadata ([0b8efdf](https://github.com/konflux-ci/mobster/commit/0b8efdf3fb6c4439a73aac9f9e340ef10e9c3c79))
+* removed unused function ([d9792e3](https://github.com/konflux-ci/mobster/commit/d9792e31fb4f55b5d52b427fd94fcb81dbacdc18))
+* SBOMPackage.to_metadata() now adds checksum and dependency_of_purl ([54468ce](https://github.com/konflux-ci/mobster/commit/54468ce8c523e84df5dcd168eac772e1bde052d3))
+* skipped test_builder_content (it cannot work due to a bug currently) ([713559b](https://github.com/konflux-ci/mobster/commit/713559bf7ab6a487b09b2691da18d4699a041bc7))
+* **test_builder_content:** added intermediate package to build metadata ([9f66aff](https://github.com/konflux-ci/mobster/commit/9f66aff213b7460a6c378e1af97d93c582d17747))
+* use verify_relationships directly instead of ([d6b39c0](https://github.com/konflux-ci/mobster/commit/d6b39c0388a554feae1894980bd115b4e3c095dc))
+* verify_relationships now supports filtering by specific relationshiptype ([bc449c2](https://github.com/konflux-ci/mobster/commit/bc449c24e7b95b43ec995c8b2b10b559e4921811))
+
+
+### Documentation
+
+* add ADR directory with first architecture decision record ([3fe4038](https://github.com/konflux-ci/mobster/commit/3fe4038280103c1bfb5b8e2d971755385c11bb11))
+* add ADRs for dual SBOM format support and asyncio usage ([95399a0](https://github.com/konflux-ci/mobster/commit/95399a09aaa4158fa1c674bf4470c2dcc77cb92f))
+* add CONTRIBUTING guide and improve README structure ([2cf6998](https://github.com/konflux-ci/mobster/commit/2cf6998bb1385bf49e588a5a612ec49395c0a40d))
+* add CONTRIBUTING guide and improve README structure ([389df29](https://github.com/konflux-ci/mobster/commit/389df292f2d24195ab6b793ff8840034c23f7706))
+* add Pattern References section to CLAUDE.md ([850d54f](https://github.com/konflux-ci/mobster/commit/850d54feb7859efc3eaaa2347ce29d564e87ce40))
+* add Usage section to README and fix augment command examples ([7f5ab73](https://github.com/konflux-ci/mobster/commit/7f5ab73a1c969e5a1d927d9607d3f2b2c781d6ea))
+* added docstring for make_metadata_yaml ([73f552a](https://github.com/konflux-ci/mobster/commit/73f552a02f5847a2b1c00256c06783c26a5cec2b))
+* docstring update ([0120d7f](https://github.com/konflux-ci/mobster/commit/0120d7f60aba472987edce747ebef3af768dc68f))
+* fix incorrect docstring for test_builder_content_missing_purl ([463911a](https://github.com/konflux-ci/mobster/commit/463911a6e5b4910f98ab0940fa7018b6d9f0eaaa))
+* **ISV-7327:** update the context description ([e031e2b](https://github.com/konflux-ci/mobster/commit/e031e2bf347ea0ed322f6028209eb9cdab1d39d4))
+* Remove obsolete CLAUDE.md ([522ad61](https://github.com/konflux-ci/mobster/commit/522ad6171bed91809c5a235b83090c41fcb671f5))
+* Remove obsolete CLAUDE.md ([978d9bd](https://github.com/konflux-ci/mobster/commit/978d9bdeb70d9363e20c225615b0d8a50fe4c570))
+
 ## [2.0.0](https://github.com/konflux-ci/mobster/compare/v1.2.0...v2.0.0) (2026-04-16)
 
 
