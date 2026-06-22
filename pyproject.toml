@@ -32,7 +32,7 @@ dependencies = [
     "cyclonedx-python-lib (==9.1.0)",
     "pydantic (>=2.11.4,<3.0.0)",
     "python-dateutil (>=2.9.0.post0,<3.0.0)",
-    "packageurl-python (>=0.16.0,<0.17.0)",
+    "packageurl-python (>=0.17.6,<0.18.0)",
     "aiofiles (>=24.1.0,<25.0.0)",
     "httpx (>=0.28.1,<0.29.0)",
     "aioboto3 (>=15.2.0,<15.3.0)",
