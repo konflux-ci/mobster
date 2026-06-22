@@ -99,3 +99,10 @@ def get_tools_component_dict() -> dict[str, Any]:
         "type": component.type.value,
         "version": component.version,
     }
+
+
+def is_cyclonedx(sbom: dict[str, Any]) -> bool:
+    """
+    checks if the sbom is in cyclonedx format
+    """
+    return sbom.get("bomFormat") == "CycloneDX"

@@ -1,0 +1,24 @@
+# Enriching SBOMS with Mobster
+
+The Mobster tool is capable of enriching SBOMs with AI fields found from scraping Hugging Face repositories of models included in the original SBOM
+OWASP tool
+UI -> https://huggingface.co/spaces/GenAISecurityProject/OWASP-AIBOM-Generator
+Github -> https://github.com/GenAI-Security-Project/aibom-generator
+
+Usage
+```bash
+mobster enrich \
+	--output output-sbom.json \
+	ai-bom \
+	--sbom sbom.json \
+	--enrichment-file enrichmentFile.json
+```
+## List of arguments
+- `output` -- where to save the SBOM, prints it to STDOUT if this is not specified
+- `enrichment-file` -- points to an CycloneDX SBOM file (in JSON format) produced by OWASP AIBOM Generator
+- `sbom` -- points to an SBOM file (in CycloneDX format)
+- `image-pullspec`-- the pullspec of the image processed in the format `<registry>/<repository>:<tag>`
+
+
+## Example Command
+mobster enrich --output enriched_sbom.json ai-bom --sbom llm_compress_cdx.json --enrichment-file TinyLlama.json
