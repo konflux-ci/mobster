@@ -157,8 +157,8 @@ async def test_builder_content(
             # simulates a package installed/built and COPY'd from intermediate
             # image to final image
             random_pkg.to_metadata(OriginType.INTERMEDIATE, builder_img.reference),
-            # simulates a package COPY'd from an image that was never used
-            # directly as a stage (i.e. `COPY --from=[oci-ref]`)
+            # simulates a package COPY'd from an image referenced as `COPY
+            # --from=[oci-ref]`
             malware_pkg.to_metadata(OriginType.EXTERNAL, extra_builder_img.reference),
         ]
     )
