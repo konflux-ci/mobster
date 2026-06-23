@@ -38,7 +38,9 @@ from mobster.cmd.generate.oci_image.hermeto_sbom_filter import (
 from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
 from mobster.cmd.generate.oci_image.sbom_utils import (
     extend_sbom_with_base_images,
+    get_base_images_refs_from_dockerfile,
     get_digest_for_image_ref,
+    get_image_objects_from_file,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
     DocumentIndexOCI,
@@ -101,11 +103,27 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
     def _load_metadata(self) -> None:
         """
         Load a metadata file from the --metadata-path argument into
-        self._metadata.
+        self._metadata. If the file does not exist (e.g. buildprobe failed),
+        self._metadata remains unset and the deprecated dockerfile-json
+        fallback path is used.
         """
-        with open(self.cli_args.metadata_path, encoding="utf-8") as metadata_file:
-            raw_metadata = yaml.safe_load(metadata_file)
-            self._metadata = SBOMMetadata.model_validate(raw_metadata)
+        try:
+            with open(self.cli_args.metadata_path, encoding="utf-8") as metadata_file:
+                raw_metadata = yaml.safe_load(metadata_file)
+                if raw_metadata is None:
+                    raise ValueError("metadata file is empty")
+                self._metadata = SBOMMetadata.model_validate(raw_metadata)
+        except (
+            FileNotFoundError,
+            ValueError,
+            yaml.YAMLError,
+        ) as exc:
+            LOGGER.warning(
+                "Cannot load metadata file %s (%s), "
+                "falling back to deprecated dockerfile-json path",
+                self.cli_args.metadata_path,
+                exc,
+            )
 
     async def _handle_bom_inputs(
         self,
@@ -298,8 +316,9 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         base_images_refs = []
         base_images_map: dict[str, Image] = {}
 
-        # Extend with image reference
-        if self.cli_args.metadata_path:
+        # Use buildprobe metadata if loaded successfully, otherwise fall back to
+        # deprecated dockerfile-json path
+        if self._metadata is not None:
             image = self._metadata.image.to_image(image_arch)
             await extend_sbom_with_image_reference(sbom, image, is_builder_image=False)
             for base_image_data in self._metadata.base_images:
@@ -335,6 +354,46 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             LOGGER.warning(
                 "Provided image digest but no pullspec. The digest value is ignored."
             )
+
+        # Deprecated fallback if buildprobe metadata are not available:
+        # dockerfile-json input, support for parent contextualization only.
+        if not self._metadata:
+            # Extending with base images references from a dockerfile
+            if self.cli_args.parsed_dockerfile_path:
+                with open(
+                    self.cli_args.parsed_dockerfile_path, encoding="utf-8"
+                ) as parsed_dockerfile_io:
+                    parsed_dockerfile = json.load(parsed_dockerfile_io)
+
+                base_images_refs = await get_base_images_refs_from_dockerfile(
+                    parsed_dockerfile, self.cli_args.dockerfile_target
+                )
+
+                if self.cli_args.base_image_digest_file:
+                    LOGGER.debug(
+                        "Supplied pre-parsed image digest file, will operate offline."
+                    )
+                    base_images_map = await get_image_objects_from_file(
+                        self.cli_args.base_image_digest_file
+                    )
+                await extend_sbom_with_base_images(
+                    sbom, base_images_refs, base_images_map
+                )
+
+            # Extending with additional base images
+            for image_ref in self.cli_args.additional_base_image:
+                image_object = Image.from_oci_artifact_reference(image_ref)
+                await extend_sbom_with_image_reference(
+                    sbom, image_object, is_builder_image=True
+                )
+
+            # Builder contextualization not supported in deprecated path
+            if self.cli_args.build_metadata_path:
+                LOGGER.warning(
+                    "--build-metadata-path is ignored in deprecated fallback path. "
+                    "Builder contextualization requires successful buildprobe metadata."
+                )
+                self.cli_args.build_metadata_path = None
 
         with log_elapsed("Contextual workflow", logging.INFO):
             contextual_sbom = await self._assess_and_dispatch_contextual_workflow(
