@@ -15,11 +15,17 @@ from pytest_lazy_fixtures import lf
 from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import Package
 
+from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.cmd.enrich import EnrichCommand
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
-from mobster.cmd.generate.oci_image.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
 from mobster.image import Image
-from tests.conftest import GenerateOciImageTestCase, assert_cdx_sbom, assert_spdx_sbom
+from tests.conftest import (
+    EnrichTestCase,
+    GenerateOciImageTestCase,
+    assert_cdx_sbom,
+    assert_spdx_sbom,
+)
 
 
 @pytest.mark.asyncio
@@ -380,3 +386,34 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_
     )
     mock_execute_contextual.assert_awaited_once()
     assert "Contextual SBOM workflow failed." in caplog.messages
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        lf("test_case_enrich_cdx_with_owasp"),
+    ],
+)
+@patch("mobster.cmd.enrich")
+async def test_EnrichCommand_execute(
+    mock_enrich: MagicMock,
+    test_case: EnrichTestCase,  # pylint: disable=unused-argument
+) -> None:
+    command = EnrichCommand(test_case.args)
+
+    sbom = await command.execute()
+    sbom_dict = await EnrichCommand.dump_sbom_to_dict(sbom)
+
+    with open(test_case.expected_sbom_path) as expected_file_stream:
+        expected_sbom = json.load(expected_file_stream)
+
+    root_bom_ref = sbom_dict["components"][0]["bom-ref"]
+    expected_sbom["components"][0]["bom-ref"] = root_bom_ref
+    ignored_keys = {"metadata"}
+
+    for key in {*sbom_dict.keys(), *expected_sbom.keys()}:
+        if key in ignored_keys:
+            continue
+
+        assert sbom_dict.get(key) == expected_sbom.get(key)

@@ -18,10 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         # Running all tox environments including pytest
-        tox-env: [test, ruff, pylint, mypy, yamllint, bandit, pip-audit]
+        tox-env: [test, ruff, pylint, mypy, yamllint, bandit]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6.0.2
 
       - name: Install Poetry
         uses: snok/install-poetry@v1.4.1
@@ -35,12 +35,36 @@ jobs:
 
       - name: Upload coverage reports to Codecov
         if: matrix.tox-env == 'test'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: unit-tests
           files: ./coverage.xml
           fail_ci_if_error: false
+
+  pip-audit:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Check for poetry.lock changes
+        id: changed-files
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96  # v47.0.6
+        with:
+          files: poetry.lock
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1.4.1
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction --no-root
+
+      - name: Run pip-audit
+        continue-on-error: ${{ steps.changed-files.outputs.any_changed != 'true' }}
+        run: poetry run tox -e pip-audit
 
   hadolint:
     name: hadolint
@@ -70,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6.0.2
 
       - name: Check AGENTS.md is under 150 lines
         run: |
