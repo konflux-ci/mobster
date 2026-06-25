@@ -1,7 +1,6 @@
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
 
 import pytest
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
@@ -48,7 +47,7 @@ class SBOMPackage:
         return builder.build()
 
     def to_metadata(
-        self, origin_type: Literal["builder", "intermediate"], origin_pullspec: str
+        self, origin_type: OriginType, origin_pullspec: str
     ) -> BuilderPkgMetadataItem:
         """Convert to BuilderPkgMetadataItem.
 
