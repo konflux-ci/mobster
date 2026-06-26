@@ -95,6 +95,60 @@
       "version": "11-13.el9"
     },
     {
+      "bom-ref": "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&upstream=bash-5.1.8-9.el9.src.rpm&distro=rhel-9.5&package-id=a6062d7253817d9d",
+      "cpe": "cpe:2.3:a:redhat:bash:5.1.8-9.el9:*:*:*:*:*:*:*",
+      "licenses": [
+        {
+          "license": {
+            "name": "GPLv3+"
+          }
+        }
+      ],
+      "name": "bash",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "rpm-db-cataloger"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "rpm"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "rpm-db-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:bash:bash:5.1.8-9.el9:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:layerID",
+          "value": "sha256:80526afc1420aa15b68150d4edd3d97bead4bb6f451b560a9465456f7c9273b1"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/var/lib/rpm/rpmdb.sqlite"
+        },
+        {
+          "name": "syft:metadata:release",
+          "value": "9.el9"
+        },
+        {
+          "name": "syft:metadata:size",
+          "value": "7738778"
+        },
+        {
+          "name": "syft:metadata:sourceRpm",
+          "value": "bash-5.1.8-9.el9.src.rpm"
+        }
+      ],
+      "publisher": "Red Hat, Inc.",
+      "purl": "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&upstream=bash-5.1.8-9.el9.src.rpm&distro=rhel-9.5",
+      "type": "library",
+      "version": "5.1.8-9.el9"
+    },
+    {
       "bom-ref": "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&upstream=coreutils-8.32-36.el9.src.rpm&distro=rhel-9.5&package-id=bc07797a46d14a80",
       "cpe": "cpe:2.3:a:coreutils-single:coreutils-single:8.32-36.el9:*:*:*:*:*:*:*",
       "licenses": [
@@ -1412,19 +1466,6 @@
       },
       "type": "operating-system",
       "version": "9.5"
-    },
-    {
-      "bom-ref": "hermeto-rpm-bash-merge-test",
-      "name": "bash",
-      "properties": [
-        {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
-        }
-      ],
-      "purl": "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&checksum=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&repository_id=rhel-9-for-x86_64-baseos-rpms",
-      "type": "library",
-      "version": "5.1.8-9.el9"
     },
     {
       "name": "bufio",

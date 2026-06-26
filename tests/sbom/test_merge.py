@@ -575,6 +575,9 @@ def test__detect_sbom_type_invalid() -> None:
                 # vvv Identical between CycloneDX and SPDX
                 "pkg:golang/github.com/release-engineering/retrodep@v2.1.0#v2": 1,
                 "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&distro=rhel-9.5&upstream=basesystem-11-13.el9.src.rpm": 1,
+                # bash: syft RPM (with upstream) is preferred over hermeto RPM (with checksum)
+                "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&distro=rhel-9.5&upstream=bash-5.1.8-9.el9.src.rpm": 1,
+                "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&checksum=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&repository_id=rhel-9-for-x86_64-baseos-rpms": -1,
                 "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&distro=rhel-9.5&upstream=coreutils-8.32-36.el9.src.rpm": 1,
                 "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&distro=rhel-9.5&upstream=filesystem-3.16-5.el9.src.rpm": 1,
                 "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
@@ -606,6 +609,9 @@ def test__detect_sbom_type_invalid() -> None:
                 # vvv Identical between CycloneDX and SPDX
                 "pkg:golang/github.com/release-engineering/retrodep@v2.1.0#v2": 1,
                 "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&distro=rhel-9.5&upstream=basesystem-11-13.el9.src.rpm": 1,
+                # bash: syft RPM (with upstream) is preferred over hermeto RPM (with checksum)
+                "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&distro=rhel-9.5&upstream=bash-5.1.8-9.el9.src.rpm": 1,
+                "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&checksum=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&repository_id=rhel-9-for-x86_64-baseos-rpms": -1,
                 "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&distro=rhel-9.5&upstream=coreutils-8.32-36.el9.src.rpm": 1,
                 "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&distro=rhel-9.5&upstream=filesystem-3.16-5.el9.src.rpm": 1,
                 "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
@@ -672,8 +678,10 @@ async def test_merge_syft_and_hermeto_sboms(
             "SPDXRef-DOCUMENT DESCRIBES SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro": 1,
             # The one pkg:golang package
             "SPDXRef-DocumentRoot-Directory-. CONTAINS *": 1,
-            # All the pkg:rpm packages
-            "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro CONTAINS *": 21,
+            # All the pkg:rpm packages (22 = 21 syft-only RPMs + bash from syft preferred over hermeto)
+            "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro CONTAINS *": 22,
+            # The hermeto bash RPM relationship is no longer in the merged SBOM
+            "SPDXRef-DocumentRoot-File- CONTAINS *": -1,
         }
 
 
@@ -757,6 +765,102 @@ async def test_merge_multiple_syft_sboms(
             "SPDXRef-DocumentRoot-Directory-. CONTAINS *": 117,
             "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro CONTAINS *": 22,
         }
+
+
+def test__get_syft_component_filter_rpm_not_filtered() -> None:
+    """Syft RPM components should never be considered duplicates of hermeto RPMs."""
+    syft_rpm = make_spdx_package(
+        "acl",
+        "2.3.1-4.el9",
+        "pkg:rpm/redhat/acl@2.3.1-4.el9?arch=x86_64&distro=rhel-9.8&upstream=acl-2.3.1-4.el9.src.rpm",
+    )
+    hermeto_rpm = make_spdx_package(
+        "acl",
+        "2.3.1-4.el9",
+        "pkg:rpm/redhat/acl@2.3.1-4.el9?arch=x86_64&checksum=sha256:abc123&repository_id=rhel-9-baseos",
+    )
+    is_duplicate = _get_syft_component_filter([hermeto_rpm])
+    assert is_duplicate(syft_rpm) is False
+
+
+def test__get_syft_component_filter_rpm_not_filtered_cdx() -> None:
+    """Syft RPM components should never be considered duplicates (CycloneDX)."""
+    syft_rpm = make_cdx_component(
+        "acl",
+        "2.3.1-4.el9",
+        "pkg:rpm/redhat/acl@2.3.1-4.el9?arch=x86_64&upstream=acl-2.3.1-4.el9.src.rpm",
+    )
+    hermeto_rpm = make_cdx_component(
+        "acl",
+        "2.3.1-4.el9",
+        "pkg:rpm/redhat/acl@2.3.1-4.el9?arch=x86_64&checksum=sha256:abc123",
+    )
+    is_duplicate = _get_syft_component_filter([hermeto_rpm])
+    assert is_duplicate(syft_rpm) is False
+
+
+def test_merge_by_prefering_hermeto_preserves_rpm_upstream() -> None:
+    """RPM PURLs from syft should be preserved with upstream qualifier intact."""
+    syft_rpm_purl = "pkg:rpm/redhat/acl@2.3.1-4.el9?arch=x86_64&distro=rhel-9.8&upstream=acl-2.3.1-4.el9.src.rpm"
+    hermeto_rpm_purl = "pkg:rpm/redhat/acl@2.3.1-4.el9?arch=x86_64&checksum=sha256:abc123&repository_id=rhel-9-baseos"
+
+    syft_components = [
+        make_spdx_package("acl", "2.3.1-4.el9", syft_rpm_purl),
+        make_spdx_package("requests", "2.31.0", "pkg:pypi/requests@2.31.0"),
+    ]
+    hermeto_components = [
+        make_spdx_package("acl", "2.3.1-4.el9", hermeto_rpm_purl),
+        make_spdx_package("requests", "2.31.0", "pkg:pypi/requests@2.31.0"),
+    ]
+
+    merged = merge_by_prefering_hermeto(syft_components, hermeto_components)
+
+    # Syft RPM (with upstream) should be kept, hermeto RPM should be filtered out
+    rpm_purls = [
+        ref["referenceLocator"]
+        for item in merged
+        for ref in item.get("externalRefs", [])
+        if ref.get("referenceLocator", "").startswith("pkg:rpm")
+    ]
+    assert len(rpm_purls) == 1
+    assert "upstream=" in rpm_purls[0]
+    assert "distro=" in rpm_purls[0]
+
+    # Non-RPM components should still prefer hermeto
+    pypi_purls = [
+        ref["referenceLocator"]
+        for item in merged
+        for ref in item.get("externalRefs", [])
+        if ref.get("referenceLocator", "").startswith("pkg:pypi")
+    ]
+    assert len(pypi_purls) == 1
+
+
+def test_merge_by_prefering_hermeto_preserves_rpm_upstream_cdx() -> None:
+    """RPM PURLs from syft should be preserved (CycloneDX variant)."""
+    syft_rpm_purl = "pkg:rpm/redhat/glibc@2.34-125.el9?arch=x86_64&distro=rhel-9.8&upstream=glibc-2.34-125.el9.src.rpm"
+    hermeto_rpm_purl = "pkg:rpm/redhat/glibc@2.34-125.el9?arch=x86_64&checksum=sha256:def456"
+
+    syft_components = [make_cdx_component("glibc", "2.34-125.el9", syft_rpm_purl)]
+    hermeto_components = [make_cdx_component("glibc", "2.34-125.el9", hermeto_rpm_purl)]
+
+    merged = merge_by_prefering_hermeto(syft_components, hermeto_components)
+
+    assert len(merged) == 1
+    assert "upstream=" in merged[0]["purl"]
+    assert "distro=" in merged[0]["purl"]
+
+
+def test_merge_by_prefering_hermeto_keeps_hermeto_only_rpms() -> None:
+    """Hermeto RPMs not in syft should still be included in the merge."""
+    hermeto_rpm_purl = "pkg:rpm/redhat/extra-pkg@1.0?arch=x86_64&checksum=sha256:aaa"
+    hermeto_components = [
+        make_spdx_package("extra-pkg", "1.0", hermeto_rpm_purl),
+    ]
+    syft_components: list[SPDXPackage] = []
+
+    merged = merge_by_prefering_hermeto(syft_components, hermeto_components)
+    assert len(merged) == 1
 
 
 @pytest.mark.parametrize(
