@@ -266,6 +266,11 @@ class GenerateOciImageCommandArgs:
     contextualize: bool = False
     skip_validation: bool = False
     arch: str | None = None
+    build_metadata_path: Path | None = None
+    parsed_dockerfile_path: Path | None = None
+    base_image_digest_file: Path | None = None
+    dockerfile_target: str | None = None
+    additional_base_image: list[str] | None = None
 
 
 @dataclass

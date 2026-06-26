@@ -17,7 +17,7 @@ from mobster.cmd.generate import (
     product,
 )
 from mobster.cmd.upload import upload
-from mobster.image import PULLSPEC_PATTERN
+from mobster.image import ARTIFACT_PATTERN, PULLSPEC_PATTERN
 from mobster.release import ReleaseId
 from mobster.utils import normalize_arch
 
@@ -158,6 +158,44 @@ def generate_oci_image_parser(subparsers: Any) -> None:
             "Required for builder contextualization."
         ),
     )
+
+    def validated_additional_reference(value: str) -> str:
+        assert re.match(ARTIFACT_PATTERN, value), (
+            "Additional references must be in the format "
+            "<registry>/<repository>:<tag>@sha256:<digest>"
+        )
+        return value
+
+    oci_image_parser.add_argument(
+        "--parsed-dockerfile-path",
+        type=Path,
+        help="[Deprecated: use --metadata-path] Path to the parsed Dockerfile file",
+    )
+    oci_image_parser.add_argument(
+        "--base-image-digest-file",
+        type=Path,
+        help="[Deprecated: use --metadata-path] Path to the file containing references "
+        "to images in the Dockerfile and their digests. "
+        "Expected format: "
+        "`<registry>/<repository>:<tag> <registry>/<repository>:<tag>@sha256:<digest>`",
+    )
+    oci_image_parser.add_argument(
+        "--dockerfile-target",
+        type=str,
+        default=None,
+        help="[Deprecated: use --metadata-path] "
+        "The name of the build target from the Dockerfile",
+    )
+    oci_image_parser.add_argument(
+        "--additional-base-image",
+        type=validated_additional_reference,
+        action="append",
+        default=[],
+        help="[Deprecated: use --metadata-path] "
+        "Base (builder) image to add, can be specified multiple times. "
+        "Expects the format <registry>/<repository>:<tag>@sha256:<digest value>",
+    )
+
     oci_image_parser.set_defaults(func=oci_image.GenerateOciImageCommand)
 
 
