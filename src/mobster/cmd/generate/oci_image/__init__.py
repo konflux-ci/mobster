@@ -290,7 +290,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         LOGGER.info("Could not create contextual SBOM.")
         return None
 
-    async def execute(self) -> Any:
+    async def execute(self) -> Any:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
         """
         Generate an SBOM document for OCI image.
         """
