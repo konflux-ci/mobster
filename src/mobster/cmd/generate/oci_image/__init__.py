@@ -103,9 +103,8 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
     def _load_metadata(self) -> None:
         """
         Load a metadata file from the --metadata-path argument into
-        self._metadata. If the file does not exist (e.g. buildprobe failed),
-        self._metadata remains unset and the deprecated dockerfile-json
-        fallback path is used.
+        self._metadata. If the file cannot be loaded (e.g. buildprobe failed),
+        self._metadata remains unset.
         """
         try:
             with open(self.cli_args.metadata_path, encoding="utf-8") as metadata_file:
