@@ -708,6 +708,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="List of arguments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deprecated-arguments-will-be-removed-in-future-versions-and-fully-replaced-by-metadata-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deprecated arguments (will be removed in future versions and fully replaced by --metadata-path)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -718,6 +735,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Generating a (non-hermetic) SBOM from scratch">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deprecated-using-dockerfile-json-instead-of-buildprobe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deprecated: using dockerfile-json instead of buildprobe
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1160,6 +1194,13 @@ support combining SPDX and CycloneDX SBOMs.</p>
 <li><code>--arch</code> -- Image architecture in OCI format (e.g., <code>amd64</code>, <code>arm64</code>, <code>ppc64le</code>, <code>s390x</code>). Linux kernel format values (e.g., <code>x86_64</code>, <code>aarch64</code>) are also accepted and normalized automatically to the OCI format. Defaults to the architecture of the current system.</li>
 <li><code>--skip-validation</code> -- skips validation of the SBOM</li>
 </ul>
+<h3 id="deprecated-arguments-will-be-removed-in-future-versions-and-fully-replaced-by-metadata-path">Deprecated arguments (will be removed in future versions and fully replaced by --metadata-path)</h3>
+<ul>
+<li><code>--parsed-dockerfile-path</code> -- points to a dockerfile processed by <code>dockerfile-json</code>. Use <code>--metadata-path</code> instead.</li>
+<li><code>--base-image-digest-file</code> -- points to a file with digests for images used in Dockerfile. Expected format: <code>&lt;registry&gt;/&lt;repository&gt;:&lt;tag&gt; &lt;registry&gt;/&lt;repository&gt;:&lt;tag&gt;@sha256:&lt;digest&gt;</code>. Use <code>--metadata-path</code> instead.</li>
+<li><code>--dockerfile-target</code> -- the name of the build target from the Dockerfile. Use <code>--metadata-path</code> instead.</li>
+<li><code>--additional-base-image</code> -- base (builder) image to add, can be specified multiple times. Expects the format <code>&lt;registry&gt;/&lt;repository&gt;:&lt;tag&gt;@sha256:&lt;digest value&gt;</code>. Use <code>--metadata-path</code> instead.</li>
+</ul>
 <h2 id="generating-a-non-hermetic-sbom-from-scratch">Generating a (non-hermetic) SBOM from scratch</h2>
 <p>To build an SBOM with only the OCI image, you will need to run several tools to
 get prerequisite files to use in the <code>mobster generate</code> command. These two tools are:</p>
@@ -1195,6 +1236,21 @@ get prerequisite files to use in the <code>mobster generate</code> command. Thes
 </code></pre>
 <p>Once the command is complete, you should see the full Mobster SBOM in
 <code>full-sbom.json</code> in your working directory.</p>
+<h3 id="deprecated-using-dockerfile-json-instead-of-buildprobe">Deprecated: using dockerfile-json instead of buildprobe</h3>
+<p>For backward compatibility, you can still use the deprecated <code>dockerfile-json</code>
+based workflow. 
+Note: This path only supports parent contextualization (no builder content).
+It will be removed in a future version. Full contextualization parent + builder
+content can be achieved only by use of the --metadata-path argument.</p>
+<pre><code class="language-sh">mobster generate \
+    --output full-sbom.json \
+    oci-image \
+    --from-syft syft.json \
+    --parsed-dockerfile-path containerfile.json \
+    --base-image-digest-file base_images_digests.txt \
+    --image-pullspec quay.io/konflux-ci/mobster:latest \
+    --image-digest sha256:1234567890abcdef...
+</code></pre>
 <h2 id="contextual-sbom">Contextual SBOM</h2>
 <p>Contextual SBOM is a feature that establishes relationships between container images and their parent
 (base) or builder images in the software supply chain. Instead of treating each
