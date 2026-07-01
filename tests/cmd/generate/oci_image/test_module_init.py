@@ -58,6 +58,32 @@ async def test_GenerateOciImageCommand_execute(
     compare_sbom_dicts(sbom_dict, expected_sbom)
 
 
+@pytest.mark.parametrize(
+    ["file_content", "description"],
+    [
+        (None, "non-existent file"),
+        ("", "empty file"),
+        ("{{invalid yaml: [", "invalid yaml"),
+        ("foo: bar\n", "wrong schema"),
+    ],
+)
+def test_load_metadata_fallback(
+    tmp_path: Path,
+    file_content: str | None,
+    description: str,
+) -> None:
+    """Test that _load_metadata falls back gracefully on bad input."""
+    metadata_path = tmp_path / "metadata.yaml"
+    if file_content is not None:
+        metadata_path.write_text(file_content)
+
+    args = MagicMock()
+    args.metadata_path = metadata_path
+    command = GenerateOciImageCommand(args)
+    command._load_metadata()
+    assert command._metadata is None, f"Expected fallback for: {description}"
+
+
 @pytest.mark.asyncio
 async def test_GenerateOciImageCommand_execute_cannot_contextualize_cyclonedx(
     test_case_cyclonedx_with_additional: GenerateOciImageTestCase,
@@ -105,6 +131,7 @@ async def test_GenerateOciImageCommand_execute_handle_pullspec(
     args.image_pullspec = pullspec
     args.image_digest = digest
     args.metadata_path = None
+    args.parsed_dockerfile_path = None
     command = GenerateOciImageCommand(args)
     if expected_action == "error":
         with pytest.raises(ValueError):
@@ -137,6 +164,7 @@ async def test_GenerateOciImageCommand_execute_unknown_sbom(
     args.image_pullspec = None
     args.image_digest = None
     args.metadata_path = None
+    args.parsed_dockerfile_path = None
     command = GenerateOciImageCommand(args)
     with pytest.raises(ValueError):
         await command.execute()

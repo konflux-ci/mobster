@@ -2,7 +2,9 @@
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from cyclonedx.model import Property
@@ -55,6 +57,117 @@ async def get_digest_for_image_ref(image_ref: str, arch: Any = None) -> str | No
             stderr.decode(),
         )
         return None
+
+
+async def get_base_images_refs_from_dockerfile(
+    parsed_dockerfile: dict[str, Any], target_stage: str | None = None
+) -> list[str | None]:
+    """
+    Reads the base images from provided parsed dockerfile, does not include
+    stages after the target of the build. So the last image returned is
+    the parent image used.
+
+    Deprecated: use --metadata-path with buildprobe output instead.
+
+    Args:
+        parsed_dockerfile (dict[str, Any]): Contents of the parsed dockerfile
+        target_stage (str): The target stage for the build
+    Returns:
+        list[str | None]: List of base images used during build as extracted
+                          from the dockerfile in the order they were used.
+                          `FROM SCRATCH` is identified as `None`.
+
+    Example:
+    If the Dockerfile looks like
+    FROM registry.access.redhat.com/ubi8/ubi:latest as builder
+    ...
+    FROM builder
+    ...
+
+    Then the relevant part of parsed_dockerfile look like
+    {
+        "Stages": [
+            {
+                "BaseName": "registry.access.redhat.com/ubi8/ubi:latest",
+                "As": "builder",
+                "From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"},
+            },
+            {
+                "BaseName": "builder",
+                "From": {"Stage": {"Named": "builder", "Index": 0}},
+            },
+        ]
+    },
+    """
+    base_images_pullspecs: list[str | None] = []
+    for stage in parsed_dockerfile.get("Stages", []):
+        is_actually_image = True
+
+        from_field = stage.get("From", {})
+        # Ignore scratch image as well as
+        # references to previous stages
+        if "Stage" in from_field:
+            is_actually_image = False
+        if from_field.get("Scratch"):
+            # It is an empty image
+            base_images_pullspecs.append(None)
+            is_actually_image = False
+        base_name: str = stage.get("BaseName")
+        if is_actually_image and base_name and not base_name.startswith("oci-archive:"):
+            # flatpak archives are not real base images. So we skip them
+            base_images_pullspecs.append(base_name.strip("'\""))
+
+        # Don't include images after the target used for build
+        alias = stage.get("As")
+        if target_stage and alias and alias == target_stage:
+            # The `AS` keyword of this stage matches the target
+            break
+        if target_stage and not alias and base_name == target_stage:
+            # This stage does not use the `AS` keyword,
+            # the pull-spec matches the target
+            break
+    return base_images_pullspecs
+
+
+def get_base_images_digests_lines(base_images_digests: Path) -> list[str]:
+    """
+    Return lines of the base_images_digests file.
+
+    Deprecated: use --metadata-path with buildprobe output instead.
+
+    Args:
+        base_images_digests: File containing the digests of images.
+            expects the format <image_ref> <name>:<tag>@sha256:<digest>
+
+    Returns
+        List of file lines.
+    """
+    with open(base_images_digests, encoding="utf-8") as input_file_stream:
+        return list(input_file_stream)
+
+
+async def get_image_objects_from_file(base_images_digests: Path) -> dict[str, Image]:
+    """
+    Parses the base image digest file into a dictionary of
+    image references present in a Dockerfile and Image
+    objects.
+
+    Deprecated: use --metadata-path with buildprobe output instead.
+
+    Args:
+        base_images_digests (Path): File containing the digests of images.
+            expects the format <image_ref> <name>:<tag>@sha256:<digest>
+
+    Returns:
+        dict[str, Image]: Mapping of the references to Image objects
+    """
+    base_images_mapping = {}
+    for line in get_base_images_digests_lines(base_images_digests):
+        line = line.strip()
+        image_ref, image_full_reference = re.split(r"\s+", line)
+        image_obj = Image.from_oci_artifact_reference(image_full_reference.strip("'\""))
+        base_images_mapping[image_ref.strip("'\"")] = image_obj
+    return base_images_mapping
 
 
 async def get_objects_for_base_images(

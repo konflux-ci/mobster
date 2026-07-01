@@ -57,6 +57,12 @@ mobster --verbose  generate oci-image \
 - `--arch` -- Image architecture in OCI format (e.g., `amd64`, `arm64`, `ppc64le`, `s390x`). Linux kernel format values (e.g., `x86_64`, `aarch64`) are also accepted and normalized automatically to the OCI format. Defaults to the architecture of the current system.
 - `--skip-validation` -- skips validation of the SBOM
 
+### Deprecated arguments (will be removed in future versions and fully replaced by --metadata-path)
+- `--parsed-dockerfile-path` -- points to a dockerfile processed by `dockerfile-json`. Use `--metadata-path` instead.
+- `--base-image-digest-file` -- points to a file with digests for images used in Dockerfile. Expected format: `<registry>/<repository>:<tag> <registry>/<repository>:<tag>@sha256:<digest>`. Use `--metadata-path` instead.
+- `--dockerfile-target` -- the name of the build target from the Dockerfile. Use `--metadata-path` instead.
+- `--additional-base-image` -- base (builder) image to add, can be specified multiple times. Expects the format `<registry>/<repository>:<tag>@sha256:<digest value>`. Use `--metadata-path` instead.
+
 ## Generating a (non-hermetic) SBOM from scratch
 
 To build an SBOM with only the OCI image, you will need to run several tools to
@@ -98,6 +104,25 @@ mobster generate \
 
 Once the command is complete, you should see the full Mobster SBOM in
 `full-sbom.json` in your working directory.
+
+### Deprecated: using dockerfile-json instead of buildprobe
+
+For backward compatibility, you can still use the deprecated `dockerfile-json`
+based workflow. 
+Note: This path only supports parent contextualization (no builder content).
+It will be removed in a future version. Full contextualization parent + builder
+content can be achieved only by use of the --metadata-path argument.
+
+```sh
+mobster generate \
+	--output full-sbom.json \
+	oci-image \
+	--from-syft syft.json \
+	--parsed-dockerfile-path containerfile.json \
+	--base-image-digest-file base_images_digests.txt \
+	--image-pullspec quay.io/konflux-ci/mobster:latest \
+	--image-digest sha256:1234567890abcdef...
+```
 
 ## Contextual SBOM
 
