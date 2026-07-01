@@ -193,15 +193,34 @@ def merge_by_apparent_sameness(
     return [c.unwrap() for c in get_merged_components(components_a, components_b, key)]
 
 
+def _is_rpm_component(component: SBOMItem) -> bool:
+    """Check if a component is an RPM package."""
+    purl = component.purl()
+    return purl is not None and purl.type == "rpm"
+
+
 def merge_by_prefering_hermeto(
     syft_components: Sequence[SBOMItem], hermeto_components: Sequence[SBOMItem]
 ) -> list[dict[str, Any]]:
     """
     Merge components by preferring hermeto components over syft components.
+
+    RPM components are an exception: syft is preferred for RPMs because it
+    reads the installed RPM database and provides richer metadata (upstream,
+    distro qualifiers) that hermeto does not include.
     """
     is_duplicate_component = _get_syft_component_filter(hermeto_components)
+    syft_rpm_keys = {
+        _unique_key_syft(c) for c in syft_components if _is_rpm_component(c)
+    }
     merged = [c for c in syft_components if not is_duplicate_component(c)]
-    merged += hermeto_components
+    merged += [
+        c
+        for c in hermeto_components
+        if not (
+            _is_rpm_component(c) and _unique_key_hermeto(c) in syft_rpm_keys
+        )
+    ]
     return [c.unwrap() for c in merged]
 
 
@@ -256,6 +275,9 @@ def _get_syft_component_filter(
         """
         Determine if a component from Syft is duplicated in hermeto.
 
+        RPM components are never considered duplicates because syft provides
+        richer RPM metadata (upstream, distro qualifiers) than hermeto.
+
         Args:
             component: The Syft component to check
 
@@ -263,6 +285,9 @@ def _get_syft_component_filter(
            bool: True if the component should be considered a duplicate, False
            otherwise
         """
+        if _is_rpm_component(component):
+            return False
+
         key = _unique_key_syft(component)
 
         return (
