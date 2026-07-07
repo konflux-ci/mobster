@@ -5,7 +5,7 @@ import json
 from base64 import b64decode
 from typing import Literal
 
-from mobster.oci.artifact import SBOM, SBOMFormat
+from mobster.oci.artifact import SBOM, SBOMFormat, get_payload_from_attestation_bytes
 
 
 def get_sbom_from_attestation_bytes(
@@ -13,6 +13,8 @@ def get_sbom_from_attestation_bytes(
 ) -> SBOM:
     """
     Parse an SBOM from an Attestation bytes.
+    Supports both attestations produced by Cosign v2 and v3
+    (Cosign Bundles).
     Args:
         attestation_bytes: The raw attestation bytes.
             Must be only a single attestation!
@@ -21,7 +23,9 @@ def get_sbom_from_attestation_bytes(
         SBOM object from this attestation.
     """
     return SBOM(
-        json.loads(b64decode(json.loads(attestation_bytes)["payload"]))["predicate"],
+        json.loads(b64decode(get_payload_from_attestation_bytes(attestation_bytes)))[
+            "predicate"
+        ],
         hashlib.sha256(attestation_bytes).hexdigest(),
         image_reference,
     )

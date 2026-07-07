@@ -19,6 +19,17 @@ from mobster.image import parse_image_reference
 logger = logging.getLogger(__name__)
 
 
+def get_payload_from_attestation_bytes(attestation_bytes: bytes) -> str:
+    """Returns the B64-encoded payload of this attestation."""
+    loaded_attestation_dict = json.loads(attestation_bytes)
+    if (
+        loaded_attestation_dict.get("mediaType")
+        == "application/vnd.dev.sigstore.bundle.v0.3+json"
+    ):
+        return loaded_attestation_dict["dsseEnvelope"]["payload"]  # type: ignore[no-any-return]
+    return loaded_attestation_dict["payload"]  # type: ignore[no-any-return]
+
+
 class SLSAParsingError(Exception):
     """
     Exception raised when parsing SLSA provenance data fails.
@@ -54,8 +65,9 @@ class SLSAProvenance:
                 statement is missing a predicateType field, or some required
                 provenance content cannot be decoded.
         """
-        encoded = json.loads(attestation)
-        statement = json.loads(base64.b64decode(encoded["payload"]))
+        statement = json.loads(
+            base64.b64decode(get_payload_from_attestation_bytes(attestation))
+        )
 
         predicate_type = statement.get("predicateType")
         if predicate_type is None:

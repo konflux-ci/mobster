@@ -2,11 +2,10 @@
 
 from mobster.oci.cosign.anonymous_fetcher import AnonymousFetcher
 from mobster.oci.cosign.config import (
-    KeylessSignConfig,
     KeylessVerifyConfig,
-    RekorConfig,
     SignConfig,
     StaticSignConfig,
+    URLSigningConfig,
     VerifyConfig,
 )
 from mobster.oci.cosign.keyless import KeylessSBOMFetcher, KeylessSigner
@@ -28,7 +27,11 @@ def get_cosign_fetcher(config: VerifyConfig) -> SupportsFetch:
     Returns:
         Cosign client
     """
-    if config.keyless_verify_config is not None and config.rekor_config is not None:
+    if (
+        config.keyless_verify_config
+        and config.keyless_verify_config.oidc_issuer
+        and config.keyless_verify_config.identity_pattern
+    ):
         return KeylessSBOMFetcher(config)
     if config.static_verify_key is not None:
         return StaticKeyFetcher(config)
@@ -49,7 +52,7 @@ def get_cosign_signer(config: SignConfig) -> SupportsSign:
     Returns:
         Cosign signer
     """
-    if config.keyless_config is not None and config.rekor_config is not None:
+    if config.url_config.is_keyless_ready() and config.keyless_token_file is not None:
         return KeylessSigner(config)
     if (
         config.static_sign_config is not None
@@ -64,20 +67,19 @@ def get_cosign_signer(config: SignConfig) -> SupportsSign:
 
 
 __all__ = [
+    "URLSigningConfig",
     "get_cosign_fetcher",
     "get_cosign_signer",
     "SignConfig",
     "VerifyConfig",
-    "KeylessVerifyConfig",
     "StaticSignConfig",
-    "KeylessSignConfig",
-    "RekorConfig",
     "SupportsSign",
     "SupportsFetch",
     "SupportsProvenanceFetch",
     "AnonymousFetcher",
     "KeylessSBOMFetcher",
     "KeylessSigner",
+    "KeylessVerifyConfig",
     "StaticKeyFetcher",
     "StaticKeySigner",
 ]

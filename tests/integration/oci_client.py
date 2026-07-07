@@ -87,6 +87,7 @@ class ReferrersTagOCIClient:
         cmd = [
             "oras",
             "push",
+            "--plain-http",
             image_pullspec,
             "--config",
             # These are just dummy values that registry requires, but they
@@ -151,6 +152,7 @@ class ReferrersTagOCIClient:
                 "oras",
                 "manifest",
                 "push",
+                "--plain-http",
                 "--media-type",
                 "application/vnd.oci.image.index.v1+json",
                 image_pullspec,
@@ -184,7 +186,7 @@ class ReferrersTagOCIClient:
             str: Image manigest.
         """
         image_pullspec = f"{self.registry}/{name}:{tag}"
-        cmd = ["oras", "manifest", "fetch", image_pullspec]
+        cmd = ["oras", "manifest", "fetch", "--plain-http", image_pullspec]
         code, stdout, stderr = await run_async_subprocess(cmd)
         if code != 0:
             raise RuntimeError(
@@ -312,6 +314,29 @@ class ReferrersTagOCIClient:
             resp.raise_for_status()
             digest = resp.headers["location"].split("/")[-1]
             return digest
+
+    async def copy_image(self, source_ref: str, dest_ref: str) -> None:
+        """
+        Copy an image (or index) from one repo to another within the registry,
+        preserving digests.
+
+        Args:
+            source_ref: Source image reference (e.g. "localhost:9000/src:tag").
+            dest_ref: Destination image reference (e.g. "localhost:9000/dest:tag").
+        """
+        cmd = [
+            "oras",
+            "cp",
+            "--from-plain-http",
+            "--to-plain-http",
+            source_ref,
+            dest_ref,
+        ]
+        code, _, stderr = await run_async_subprocess(cmd)
+        if code != 0:
+            raise RuntimeError(
+                f"Failed to copy {source_ref} to {dest_ref}: {stderr.decode()}"
+            )
 
     async def cleanup(self) -> None:
         """

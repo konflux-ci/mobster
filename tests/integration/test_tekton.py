@@ -381,6 +381,7 @@ async def test_process_component_sboms_happypath(
     cosign_verify_key: Path,
     create_image_with_build_sbom: CreateImageFunc,
     create_index_with_build_sbom: CreateIndexFunc,
+    oci_client: ReferrersTagOCIClient,
 ) -> None:
     """
     Create an image and an index with build-time SBOMs, run the augmentation
@@ -398,7 +399,7 @@ async def test_process_component_sboms_happypath(
     registry = registry_url.removeprefix("http://")
     repo_with_registry = f"{registry}/{repo_name}"
     cosign_signer = StaticKeySigner(
-        SignConfig(StaticSignConfig(sign_key=cosign_sign_key))
+        SignConfig(static_sign_config=StaticSignConfig(sign_key=cosign_sign_key))
     )
     image = await create_image_with_build_sbom(
         generate_oci_image_case, repo_name, cosign_signer
@@ -406,6 +407,12 @@ async def test_process_component_sboms_happypath(
     index = await create_index_with_build_sbom(
         repo_with_registry, repo_name, [image], cosign_signer
     )
+
+    # Copy the index to all target repos referenced in the snapshot so that
+    # cosign can find the manifest by digest when attesting.
+    source_ref = f"{registry}/{repo_name}:index"
+    await oci_client.copy_image(source_ref, f"{registry}/test:latest")
+    await oci_client.copy_image(source_ref, f"{registry}/anothertest:1.0")
 
     snapshot: dict[str, Any] = {
         "components": [
@@ -562,7 +569,7 @@ async def test_process_component_sboms_big_release(
 
     sbom_ref = await oci_client.attach_sbom(image, "spdx", sbom.encode())
     cosign_signer = StaticKeySigner(
-        SignConfig(StaticSignConfig(sign_key=cosign_sign_key))
+        SignConfig(static_sign_config=StaticSignConfig(sign_key=cosign_sign_key))
     )
     await add_provenance_to_sbom(cosign_signer, sbom_ref, image)
 

@@ -19,6 +19,8 @@ from mobster.oci.cosign.attestation_utils import (
 )
 from mobster.oci.cosign.config import (
     SignConfig,
+    StaticSignConfig,
+    URLSigningConfig,
     VerifyConfig,
 )
 from mobster.oci.cosign.protocol import (
@@ -36,8 +38,7 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
     Client used to get OCI artifacts using Cosign with static keys.
 
     Attributes:
-        verify_key: Verification (public) key path
-        rekor_config: TLOG configuration
+        config: The configuration for this client instance
     """
 
     def __init__(
@@ -50,8 +51,7 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
         Args:
             cosign_config: The configuration for this client instance
         """
-        self.verify_key = cosign_config.static_verify_key
-        self.rekor_config = cosign_config.rekor_config
+        self.config: VerifyConfig = cosign_config
         # Some cosign operations are extremely heavy, requiring a mutex mechanism
         # to not get OOM killed within the pipeline
 
@@ -87,7 +87,7 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
             cmd = [
                 "cosign",
                 "verify-attestation",
-                f"--key={self.verify_key}",
+                f"--key={self.config.static_verify_key}",
                 f"--type={attestation_type}",
                 "--insecure-ignore-tlog=true",
                 image.reference,
@@ -191,8 +191,8 @@ class StaticKeySigner(SupportsSign):
     def __init__(self, config: SignConfig):
         if config.static_sign_config is None or not config.static_sign_config.sign_key:
             raise SBOMError("Cannot attest SBOM, no signing key was provided.")
-        self.rekor_config = config.rekor_config
-        self.sign_config = config.static_sign_config
+        self.url_config: URLSigningConfig = config.url_config
+        self.static_sign_config: StaticSignConfig = config.static_sign_config
 
     async def _attest_anything(
         self,
@@ -221,51 +221,43 @@ class StaticKeySigner(SupportsSign):
                 will be attached to
             data_format: Cosign-dependent attestation format
         """
-
-        # Translate SPDX format to a cosign-supported version. See
-        # https://github.com/sigstore/cosign/blob/main/doc/cosign_attest.md#options
-        cosign_command = [
-            "cosign",
-            "attest",
-            "--yes",
-            "--key",
-            str(self.sign_config.sign_key),
-            "--type",
-            data_format,
-            "--predicate",
-            str(file_path),
-            push_reference,
-        ]
-        with make_oci_auth_file(push_reference) as authfile:
-            cosign_env = {"DOCKER_CONFIG": str(authfile.parent)}
-            for env_var_name in (
-                "AWS_DEFAULT_REGION",
-                "AWS_ACCESS_KEY_ID",
-                "AWS_SECRET_ACCESS_KEY",
-            ):
-                if env_var_value := os.environ.get(f"COSIGN_{env_var_name}"):
-                    cosign_env[env_var_name] = str(env_var_value)
-            if not self.rekor_config:
-                logger.debug("[Cosign] TLog won't be used for sbom attestation.")
-                cosign_command.insert(-1, "--tlog-upload=false")
-            else:
-                cosign_command.insert(-1, f"--rekor-url={self.rekor_config.rekor_url}")
-                cosign_env["SIGSTORE_REKOR_PUBLIC_KEY"] = str(
-                    self.rekor_config.rekor_key
+        with self.url_config.file() as config_file:
+            cosign_command = [
+                "cosign",
+                "attest",
+                "--signing-config",
+                str(config_file.absolute()),
+                "--yes",
+                "--key",
+                str(self.static_sign_config.sign_key),
+                "--type",
+                data_format,
+                "--predicate",
+                str(file_path),
+                push_reference,
+            ]
+            with make_oci_auth_file(push_reference) as authfile:
+                cosign_env = {"DOCKER_CONFIG": str(authfile.parent)}
+                for env_var_name in (
+                    "AWS_DEFAULT_REGION",
+                    "AWS_ACCESS_KEY_ID",
+                    "AWS_SECRET_ACCESS_KEY",
+                ):
+                    if env_var_value := os.environ.get(f"COSIGN_{env_var_name}"):
+                        cosign_env[env_var_name] = str(env_var_value)
+                with tempfile.NamedTemporaryFile() as sign_key_passwd_file:
+                    sign_key_passwd_file.write(self.static_sign_config.sign_password)
+                    code, _, stderr = await run_async_subprocess(
+                        cosign_command,
+                        env=cosign_env,
+                        retry_times=3,
+                        stdin=sign_key_passwd_file,
+                    )
+            if code:
+                raise SBOMError(
+                    f"Could not attest SBOM ({' '.join(cosign_command)}) "
+                    f"failed with code {code}, STDERR: {stderr.decode()}",
                 )
-            with tempfile.NamedTemporaryFile() as sign_key_passwd_file:
-                sign_key_passwd_file.write(self.sign_config.sign_password)
-                code, _, stderr = await run_async_subprocess(
-                    cosign_command,
-                    env=cosign_env,
-                    retry_times=3,
-                    stdin=sign_key_passwd_file,
-                )
-        if code:
-            raise SBOMError(
-                f"Could not attest SBOM ({' '.join(cosign_command)}) "
-                f"failed with code {code}, STDERR: {stderr.decode()}",
-            )
 
     async def attest_provenance(
         self,
@@ -277,8 +269,9 @@ class StaticKeySigner(SupportsSign):
         Attach a provenance predicate to an image. For test purposes only.
 
         Args:
-            provenance: Provenance object to attach
+            predicate: Provenance object to attach
             image_ref: Reference of image to attach to
+            cosign_type: SLSA provenance version
         """
         # Used in integration tests only, unit-testing won't add any benefit
         # as this is just a wrapper for another function which is covered by
@@ -314,8 +307,14 @@ class StaticKeySigner(SupportsSign):
             image_ref: The image which should be cleaned
             blob_type: What type of attachments should be cleaned
         """
+        cmd = [
+            "cosign",
+            "clean",
+            "--force=true",
+            f"--type={blob_type}",
+            image_ref,
+        ]
         with make_oci_auth_file(image_ref) as authfile:
-            cmd = ["cosign", "clean", "--force=true", f"--type={blob_type}", image_ref]
             code, _, stderr = await run_async_subprocess(
                 cmd, env={"DOCKER_CONFIG": str(authfile.parent)}
             )
@@ -332,39 +331,32 @@ class StaticKeySigner(SupportsSign):
         Args:
             image_ref: The image to sign.
         """
-        if self.sign_config is None:
-            raise SBOMError("Cannot sign image without a signing config")
-        cosign_command = [
-            "cosign",
-            "sign",
-            "--key",
-            str(self.sign_config.sign_key),
-            image_ref,
-        ]
-        with make_oci_auth_file(image_ref) as authfile:
-            cosign_env = {"DOCKER_CONFIG": str(authfile.parent)}
+        with self.url_config.file() as config_file:
+            cosign_command = [
+                "cosign",
+                "sign",
+                "--signing-config",
+                str(config_file.absolute()),
+                "--key",
+                str(self.static_sign_config.sign_key),
+                image_ref,
+            ]
+            with make_oci_auth_file(image_ref) as authfile:
+                cosign_env = {"DOCKER_CONFIG": str(authfile.parent)}
 
-            if not self.rekor_config:
-                logger.debug("[Cosign] TLog won't be used for sbom attestation.")
-                cosign_command.insert(-1, "--tlog-upload=false")
-            else:
-                cosign_command.insert(-1, f"--rekor-url={self.rekor_config.rekor_url}")
-                cosign_env["SIGSTORE_REKOR_PUBLIC_KEY"] = str(
-                    self.rekor_config.rekor_key
-                )
-
-            with tempfile.NamedTemporaryFile() as sign_key_passwd_file:
-                sign_key_passwd_file.write(self.sign_config.sign_password)
-                code, _, stderr = await run_async_subprocess(
-                    cosign_command,
-                    env=cosign_env,
-                    retry_times=3,
-                    stdin=sign_key_passwd_file,
-                )
-            if code != 0:
-                raise RuntimeError(
-                    f"Failed to sign image {image_ref} in registry.\n"
-                    f"CMD: {' '.join(cosign_command)}\n"
-                    f"Error: {stderr.decode()}"
-                )
+                with tempfile.NamedTemporaryFile() as sign_key_passwd_file:
+                    sign_key_passwd_file.write(self.static_sign_config.sign_password)
+                    sign_key_passwd_file.seek(0)
+                    code, _, stderr = await run_async_subprocess(
+                        cosign_command,
+                        env=cosign_env,
+                        retry_times=3,
+                        stdin=sign_key_passwd_file,
+                    )
+                if code != 0:
+                    raise RuntimeError(
+                        f"Failed to sign image {image_ref} in registry.\n"
+                        f"CMD: {' '.join(cosign_command)}\n"
+                        f"Error: {stderr.decode()}"
+                    )
         return None
