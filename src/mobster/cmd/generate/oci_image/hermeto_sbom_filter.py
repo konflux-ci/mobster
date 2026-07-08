@@ -200,7 +200,14 @@ def _filter_cyclonedx_sbom_by_arch(
 
         arch, checksum = _extract_arch_and_checksum_from_purl(purl)
 
-        if arch == "noarch":
+        # If the target architecture was identified by Mobster, consider all
+        # the potential values returned by Python's platform.machine method
+        if target_arch in ARCH_TRANSLATION_MAP:
+            filter_set = {"noarch", *ARCH_TRANSLATION_MAP[target_arch]}
+        else:
+            filter_set = {"noarch", target_arch}
+
+        if arch in filter_set:
             if not checksum or checksum not in noarch_checksums:
                 filtered_components.append(component)
                 noarch_checksums.add(checksum)
@@ -211,8 +218,6 @@ def _filter_cyclonedx_sbom_by_arch(
                     component.get("version"),
                     checksum,
                 )
-        elif arch == target_arch:
-            filtered_components.append(component)
         else:
             LOGGER.debug(
                 "Removing component %s@%s with arch=%s",
@@ -220,6 +225,17 @@ def _filter_cyclonedx_sbom_by_arch(
                 component.get("version"),
                 arch,
             )
+
+    original_count = len(components)
+    filtered_count = len(filtered_components)
+    removed_count = original_count - filtered_count
+
+    LOGGER.info(
+        "Filtered %s packages out of %s (%s remaining)",
+        removed_count,
+        original_count,
+        filtered_count,
+    )
 
     return {**sbom_dict, "components": filtered_components}
 

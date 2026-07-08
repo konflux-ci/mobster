@@ -156,6 +156,12 @@ class TestFilterHermetoCycloneDXSbomByArch:
                 id="x86_64",
             ),
             pytest.param(
+                "amd64",
+                ALWAYS_KEPT_CYCLONEDX_COMPONENTS
+                | {"pkg:rpm/redhat/gzip@1.12-1.el9?arch=x86_64&checksum=sha256:abc123"},
+                id="x86_64-arch-identified-by-mobster",
+            ),
+            pytest.param(
                 "aarch64",
                 ALWAYS_KEPT_CYCLONEDX_COMPONENTS
                 | {
