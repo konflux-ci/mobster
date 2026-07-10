@@ -154,10 +154,14 @@ class URLSigningConfig:
         Yields:
             The path to the Cosign Signing Config file.
         """
-        with tempfile.NamedTemporaryFile(delete_on_close=False, delete=True) as f:
-            f.write(TypeAdapter(type(self)).dump_json(self))
-            f.close()
-            yield Path(f.name)
+        tempdir = tempfile.TemporaryDirectory()
+        try:
+            sign_config_path = Path(tempdir.name).joinpath("signing_config.json")
+            with open(sign_config_path, "wb") as f:
+                f.write(TypeAdapter(type(self)).dump_json(self, by_alias=True))
+            yield sign_config_path
+        finally:
+            tempdir.cleanup()
 
     def is_keyless_ready(self) -> bool:
         """
