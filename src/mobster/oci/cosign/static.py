@@ -247,6 +247,7 @@ class StaticKeySigner(SupportsSign):
                         cosign_env[env_var_name] = str(env_var_value)
                 with tempfile.NamedTemporaryFile() as sign_key_passwd_file:
                     sign_key_passwd_file.write(self.static_sign_config.sign_password)
+                    sign_key_passwd_file.seek(0)
                     code, _, stderr = await run_async_subprocess(
                         cosign_command,
                         env=cosign_env,
