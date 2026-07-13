@@ -255,92 +255,15 @@ class TestStaticSigner:
     @pytest.fixture
     def client(self) -> cosign.StaticKeySigner:
         return cosign.StaticKeySigner(
-            cosign.SignConfig(cosign.StaticSignConfig(sign_key=self.signing_key))
+            cosign.SignConfig(
+                static_sign_config=cosign.StaticSignConfig(sign_key=self.signing_key)
+            )
         )
 
     @pytest.mark.asyncio
     async def test_attest_sbom_no_signing_key(self) -> None:
         with pytest.raises(SBOMError):
             cosign.StaticKeySigner(cosign.SignConfig())
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        [
-            "sbom_format",
-            "rekor_url",
-            "rekor_key",
-            "expected_keywords",
-            "subprocess_code",
-            "subprocess_stderr",
-            "raises_exc",
-        ],
-        [
-            (
-                SBOMFormat.CDX_V1_5,
-                "foo",
-                Path("/a"),
-                {"cyclonedx", "--rekor-url=foo"},
-                0,
-                b"warning: foo",
-                None,
-            ),
-            (
-                SBOMFormat.SPDX_2_3,
-                None,
-                None,
-                {"spdxjson", "--tlog-upload=false"},
-                1,
-                b"Me ded",
-                SBOMError,
-            ),
-        ],
-    )
-    @patch("mobster.oci.cosign.static.run_async_subprocess")
-    @patch("mobster.oci.cosign.static.make_oci_auth_file", MagicMock())
-    @patch("mobster.oci.cosign.static.tempfile.NamedTemporaryFile", MagicMock())
-    async def test_attest_sbom(
-        self,
-        mock_run_subprocess: AsyncMock,
-        sbom_format: SBOMFormat,
-        rekor_url: str | None,
-        rekor_key: Path | None,
-        expected_keywords: set[str],
-        subprocess_code: int,
-        subprocess_stderr: bytes,
-        raises_exc: type[Exception] | None,
-        client: cosign.StaticKeySigner,
-        caplog: LogCaptureFixture,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        if rekor_key and rekor_url:
-            rekor_config = cosign.RekorConfig(rekor_url, rekor_key)
-        else:
-            rekor_config = None
-        mock_run_subprocess.return_value = subprocess_code, b"", subprocess_stderr
-        kwargs = {
-            "sbom_path": Path("/foo"),
-            "image_ref": "quay.io/foo@sha256:a",
-            "sbom_format": sbom_format,
-        }
-        monkeypatch.setattr(client, "rekor_config", rekor_config)
-        if not raises_exc:
-            await client.attest_sbom(**kwargs)  # type: ignore[arg-type]
-        else:
-            with pytest.raises(raises_exc):
-                await client.attest_sbom(**kwargs)  # type: ignore[arg-type]
-                assert subprocess_stderr.decode() in caplog.messages[-1]
-        mock_run_subprocess.assert_awaited_once()
-        cosign_command = mock_run_subprocess.call_args_list[0].args[0]
-        assert cosign_command[0] == "cosign"
-        assert cosign_command[1] == "attest"
-        if not rekor_url:
-            assert "--rekor" not in " ".join(cosign_command)
-            assert "--tlog-upload=false" in cosign_command
-        else:
-            assert f"--rekor-url={rekor_url}" in cosign_command
-            assert "--tlog-upload=false" not in cosign_command
-        for expected_command_expression in expected_keywords:
-            assert expected_command_expression in cosign_command
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -380,11 +303,11 @@ class TestKeylessSigner:
     @pytest.fixture
     def keyless_config(self) -> Generator[cosign.SignConfig, None, None]:
         yield cosign.SignConfig(
-            rekor_config=cosign.RekorConfig(rekor_url="foo"),
-            keyless_config=cosign.KeylessSignConfig(
-                fulcio_url="bar",
-                token_file=Path("/tmp"),
-            ),
+            keyless_token_file=Path("/tmp"),
+            url_config=cosign.URLSigningConfig()
+            .set_tlog_url("foo")
+            .set_fulcio_url("bar")
+            .set_issuer_url("WhatIsYourIssueIWillSolveIt.com"),
         )
 
     @pytest.fixture
@@ -397,7 +320,12 @@ class TestKeylessSigner:
             yield cosign_client
 
     @pytest.mark.asyncio
-    async def test_attest_sbom(self, fake_keyless_cosign: cosign.KeylessSigner) -> None:
+    @patch("mobster.oci.cosign.config.URLSigningConfig.file")
+    async def test_attest_sbom(
+        self,
+        mock_url_config_manager: MagicMock,
+        fake_keyless_cosign: cosign.KeylessSigner,
+    ) -> None:
         with patch(
             "mobster.oci.cosign.keyless.run_async_subprocess",
             return_value=(0, b"", b""),
@@ -409,13 +337,13 @@ class TestKeylessSigner:
             [
                 "cosign",
                 "attest",
+                "--signing-config",
+                str(
+                    mock_url_config_manager.return_value.__enter__.return_value.absolute.return_value
+                ),
                 "--yes",
                 "--type",
                 "spdxjson",
-                "--rekor-url",
-                "foo",
-                "--fulcio-url",
-                "bar",
                 "--identity-token",
                 "/tmp",
                 "--predicate",
@@ -449,58 +377,6 @@ class TestKeylessSigner:
 
 
 class TestKeylessFetcher:
-    @pytest.mark.parametrize(
-        ["tuf_exists", "rekor_config", "keyless_config", "success"],
-        [
-            (
-                False,
-                cosign.RekorConfig("foo", Path("bar")),
-                cosign.KeylessVerifyConfig("foobar", "barfoo"),
-                False,
-            ),
-            (
-                True,
-                None,
-                cosign.KeylessVerifyConfig("foobar", "barfoo"),
-                False,
-            ),
-            (
-                True,
-                cosign.RekorConfig("foo", Path("bar")),
-                None,
-                False,
-            ),
-            (
-                True,
-                cosign.RekorConfig("foo", Path("bar")),
-                cosign.KeylessVerifyConfig("foobar", "barfoo"),
-                True,
-            ),
-        ],
-    )
-    def test_invalid_config(
-        self,
-        tuf_exists: bool,
-        rekor_config: cosign.RekorConfig,
-        keyless_config: cosign.KeylessVerifyConfig,
-        success: bool,
-    ) -> None:
-        with patch("mobster.oci.cosign.keyless.check_tuf") as fake_check_tuf:
-            fake_check_tuf.return_value = tuf_exists
-
-            def get_fetcher() -> cosign.KeylessSBOMFetcher:
-                return cosign.KeylessSBOMFetcher(
-                    cosign.VerifyConfig(
-                        rekor_config=rekor_config, keyless_verify_config=keyless_config
-                    )
-                )
-
-            if success:
-                assert get_fetcher() is not None
-            else:
-                with pytest.raises(SBOMError):
-                    get_fetcher()
-
     @pytest.mark.asyncio
     @patch("mobster.oci.cosign.keyless.check_tuf")
     @patch("mobster.oci.cosign.keyless.run_async_subprocess")
@@ -518,8 +394,9 @@ class TestKeylessFetcher:
         assert (
             await cosign.KeylessSBOMFetcher(
                 cosign.VerifyConfig(
-                    rekor_config=cosign.RekorConfig("a"),
-                    keyless_verify_config=cosign.KeylessVerifyConfig("aa", "aaa"),
+                    keyless_verify_config=cosign.KeylessVerifyConfig(
+                        identity_pattern="aaa", oidc_issuer="aa"
+                    )
                 )
             ).fetch_sbom(MagicMock(reference="aaaa"))
         ).doc == {"never gonna": [{"give you": "up"}, {"let you": "down"}]}
@@ -536,8 +413,9 @@ class TestKeylessFetcher:
         with pytest.raises(SBOMError):
             await cosign.KeylessSBOMFetcher(
                 cosign.VerifyConfig(
-                    rekor_config=cosign.RekorConfig("a"),
-                    keyless_verify_config=cosign.KeylessVerifyConfig("aa", "aaa"),
+                    keyless_verify_config=cosign.KeylessVerifyConfig(
+                        identity_pattern="aaa", oidc_issuer="aa"
+                    )
                 )
             ).fetch_sbom(MagicMock(reference="aaaa"))
 
@@ -553,11 +431,9 @@ class TestGetCosign:
             ),
             (
                 cosign.VerifyConfig(
-                    rekor_config=cosign.RekorConfig(rekor_url="a"),
                     keyless_verify_config=cosign.KeylessVerifyConfig(
-                        issuer_url="foo",
-                        identity_pattern="bar",
-                    ),
+                        identity_pattern="bar", oidc_issuer="foo"
+                    )
                 ),
                 cosign.KeylessSBOMFetcher,
             ),

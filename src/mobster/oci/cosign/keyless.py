@@ -13,8 +13,6 @@ from mobster.oci.cosign.attestation_utils import (
     get_sbom_from_attestation_bytes,
 )
 from mobster.oci.cosign.config import (
-    KeylessSignConfig,
-    RekorConfig,
     SignConfig,
     VerifyConfig,
 )
@@ -48,16 +46,12 @@ class KeylessSBOMFetcher(SupportsFetch):
             raise SBOMError(
                 "Cannot fetch SBOM verifiably, TUF has not been initialized."
             )
-        if not config.rekor_config:
-            raise SBOMError(
-                "Cannot fetch SBOM verifiably, No Rekor information provided."
-            )
         if not config.keyless_verify_config:
             raise SBOMError(
-                "Cannot fetch SBOM verifiably, missing issuer and identity patterns."
+                "Cannot fetch SBOM verifiably, missing "
+                "OIDC issuer or identity information."
             )
-        self.keyless_config = config.keyless_verify_config
-        self.rekor_config = config.rekor_config
+        self.config = config.keyless_verify_config
 
     async def fetch_sbom(self, image: Image) -> SBOM:
         raw_attestation = b""
@@ -69,12 +63,10 @@ class KeylessSBOMFetcher(SupportsFetch):
                     command = [
                         "cosign",
                         "verify-attestation",
-                        "--rekor-url",
-                        self.rekor_config.rekor_url,
                         "--certificate-oidc-issuer",
-                        self.keyless_config.issuer_url,
+                        self.config.oidc_issuer,
                         "--certificate-identity-regexp",
-                        self.keyless_config.identity_pattern,
+                        str(self.config.identity_pattern),
                         "--type",
                         sbom_spec,
                         image.reference,
@@ -106,14 +98,15 @@ class KeylessSigner(SupportsSign):
     def __init__(self, config: SignConfig):
         if (
             not check_tuf()
-            or config.keyless_config is None
-            or config.rekor_config is None
+            or not config.url_config.oidc_urls
+            or not config.url_config.ca_urls
+            or not config.url_config.rekor_tlog_urls
+            or not config.keyless_token_file
         ):
             raise SBOMError(
-                "Cannot attest SBOM, no signing configuration was provided."
+                "Cannot attest SBOM, insufficient signing configuration was provided."
             )
-        self.keyless_config: KeylessSignConfig = config.keyless_config
-        self.rekor_config: RekorConfig = config.rekor_config
+        self.config = config
 
     async def attest_sbom(
         self,
@@ -121,29 +114,28 @@ class KeylessSigner(SupportsSign):
         image_ref: str,
         sbom_format: SBOMFormat,
     ) -> None:
-        cosign_command = [
-            "cosign",
-            "attest",
-            "--yes",
-            "--type",
-            get_cosign_attestation_type(sbom_format),
-            "--rekor-url",
-            str(self.rekor_config.rekor_url),
-            "--fulcio-url",
-            str(self.keyless_config.fulcio_url),
-            "--identity-token",
-            str(self.keyless_config.token_file),
-            "--predicate",
-            str(sbom_path),
-            image_ref,
-        ]
-        with make_oci_auth_file(image_ref) as authfile:
-            cosign_env = {"DOCKER_CONFIG": str(authfile.parent)}
-            code, _, stderr = await run_async_subprocess(
-                cosign_command,
-                env=cosign_env,
-                retry_times=3,
-            )
+        with self.config.url_config.file() as config_file:
+            cosign_command = [
+                "cosign",
+                "attest",
+                "--signing-config",
+                str(config_file.absolute()),
+                "--yes",
+                "--type",
+                get_cosign_attestation_type(sbom_format),
+                "--identity-token",
+                str(self.config.keyless_token_file),
+                "--predicate",
+                str(sbom_path),
+                image_ref,
+            ]
+            with make_oci_auth_file(image_ref) as authfile:
+                cosign_env = {"DOCKER_CONFIG": str(authfile.parent)}
+                code, _, stderr = await run_async_subprocess(
+                    cosign_command,
+                    env=cosign_env,
+                    retry_times=3,
+                )
         if code:
             raise SBOMError(
                 f"Could not attest SBOM ({' '.join(cosign_command)}) "

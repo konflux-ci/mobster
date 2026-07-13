@@ -50,7 +50,7 @@ def update_child_image_step(
     Args:
         task (dict[str, Any]): A child image build task from attestation data.
         child_img (Image): A created child image object.
-        child_sbom_digest (str): A reference of the child image SBOM.
+        child_sbom_ref (str): A reference of the child image SBOM.
     """
     for result in task.get("results", []):
         if result.get("name") == "IMAGE_DIGEST":
@@ -210,7 +210,9 @@ async def test_oci_image_sboms_using_conforma(
 
     private_key_path, public_key_path = cosign_keys
     cosign_client = StaticKeySigner(
-        config=SignConfig(StaticSignConfig(sign_key=private_key_path))
+        config=SignConfig(
+            static_sign_config=StaticSignConfig(sign_key=private_key_path)
+        )
     )
 
     child_image = await img_utils.create_child_image(oci_client, repository, tag_prefix)

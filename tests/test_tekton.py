@@ -12,16 +12,7 @@ from mobster.cmd.upload.upload import (
     TPAUploadReport,
     UploadConfig,
 )
-from mobster.oci.cosign import (
-    KeylessSignConfig,
-    KeylessVerifyConfig,
-    RekorConfig,
-    SignConfig,
-    StaticSignConfig,
-    VerifyConfig,
-)
-from mobster.oci.cosign.keyless import KeylessSBOMFetcher
-from mobster.oci.cosign.static import StaticKeyFetcher
+from mobster.oci import cosign
 from mobster.release import ReleaseId
 from mobster.tekton.common import upload_sboms
 from mobster.tekton.component import (
@@ -119,6 +110,12 @@ async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> No
             "spam",
         ]
     )
+    expected_file_config = (
+        cosign.URLSigningConfig()
+        .set_fulcio_url("a")
+        .set_tlog_url("https://spam.example")
+        .set_issuer_url("https://foo")
+    )
     assert parsed_args == ProcessComponentArgs(
         data_dir=Path("foo"),
         snapshot_spec=Path("foo/bar"),
@@ -133,24 +130,19 @@ async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> No
         skip_s3_upload=False,
         augment_concurrency=8,
         attestation_concurrency=4,
-        cosign_sign_config=SignConfig(
-            keyless_config=KeylessSignConfig(
-                fulcio_url="a",
-                token_file=Path("/tmp/token"),
-            ),
-            rekor_config=RekorConfig(rekor_url="https://spam.example", rekor_key=None),
+        cosign_sign_config=cosign.SignConfig(
+            keyless_token_file=Path("/tmp/token"),
+            url_config=expected_file_config,
         ),
-        cosign_verify_config=VerifyConfig(
-            keyless_verify_config=KeylessVerifyConfig(
-                issuer_url="https://foo",
-                identity_pattern=".*",
+        cosign_verify_config=cosign.VerifyConfig(
+            keyless_verify_config=cosign.KeylessVerifyConfig(
+                identity_pattern=".*", oidc_issuer="https://foo"
             ),
-            rekor_config=RekorConfig(rekor_url="https://spam.example", rekor_key=None),
         ),
         release_data=Path("foo/spam"),
     )
     await process_component_sboms(parsed_args)
-    assert isinstance(mock_augment_sboms.call_args.args[3], KeylessSBOMFetcher)
+    assert isinstance(mock_augment_sboms.call_args.args[3], cosign.KeylessSBOMFetcher)
 
 
 @pytest.mark.asyncio
@@ -174,8 +166,6 @@ async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> Non
             "https://spam.example",
             "--sign-key",
             "a",
-            "--rekor-key",
-            "/tmp/public_key",
             "--verify-key",
             "/tmp/public_key_cosign",
             "--atlas-api-url",
@@ -187,6 +177,7 @@ async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> Non
             "spam",
         ]
     )
+    expected_url_config = cosign.URLSigningConfig().set_tlog_url("https://spam.example")
     assert parsed_args == ProcessComponentArgs(
         data_dir=Path("foo"),
         snapshot_spec=Path("foo/bar"),
@@ -201,24 +192,19 @@ async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> Non
         skip_s3_upload=False,
         augment_concurrency=8,
         attestation_concurrency=4,
-        cosign_sign_config=SignConfig(
-            rekor_config=RekorConfig(
-                rekor_url="https://spam.example", rekor_key=Path("/tmp/public_key")
-            ),
-            static_sign_config=StaticSignConfig(
+        cosign_sign_config=cosign.SignConfig(
+            url_config=expected_url_config,
+            static_sign_config=cosign.StaticSignConfig(
                 sign_key="a",  # type: ignore
             ),
         ),
-        cosign_verify_config=VerifyConfig(
-            rekor_config=RekorConfig(
-                rekor_url="https://spam.example", rekor_key=Path("/tmp/public_key")
-            ),
+        cosign_verify_config=cosign.VerifyConfig(
             static_verify_key="/tmp/public_key_cosign",  # type: ignore
         ),
         release_data=Path("foo/spam"),
     )
     await process_component_sboms(parsed_args)
-    assert isinstance(mock_augment_sboms.call_args.args[3], StaticKeyFetcher)
+    assert isinstance(mock_augment_sboms.call_args.args[3], cosign.StaticKeyFetcher)
 
 
 @pytest.mark.asyncio

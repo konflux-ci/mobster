@@ -7,9 +7,8 @@ import asyncio
 import logging
 import tempfile
 from collections.abc import Sequence
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TypeVar
 
 from mobster.cmd.augment import AugmentConfig, SBOMRefDetail, augment_sboms
 from mobster.cmd.generate.product import parse_release_notes
@@ -30,14 +29,6 @@ from mobster.tekton.common import (
 )
 
 LOGGER = logging.getLogger(__name__)
-
-_Conf = TypeVar(
-    "_Conf",
-    cosign.KeylessSignConfig,
-    cosign.StaticSignConfig,
-    cosign.RekorConfig,
-    cosign.KeylessVerifyConfig,
-)
 
 
 @dataclass
@@ -67,13 +58,6 @@ def _add_component_args(parser: ap.ArgumentParser) -> None:
         type=Path,
         help="path to the merged data file in JSON format",
         required=True,
-    )
-    parser.add_argument(
-        "--rekor-key",
-        type=Path,
-        help="The public key file of the rekor server used for SBOM "
-        "attestation within a registry",
-        default=None,
     )
     parser.add_argument(
         "--rekor-url", type=str, help="The URL of the Rekor server", default=None
@@ -119,21 +103,6 @@ def _add_component_args(parser: ap.ArgumentParser) -> None:
     )
 
 
-def _check_empty_config(
-    config: _Conf,
-) -> _Conf | None:
-    """Utility function that nulls a configuration if it is unused."""
-    has_value = False
-    for field in fields(config):
-        field_val = getattr(config, field.name)
-        if field_val is not None and field_val != field.default:
-            has_value = True
-            break
-    if not has_value:
-        return None
-    return config
-
-
 def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
     """
     Parse command line arguments for component SBOM processing.
@@ -147,32 +116,29 @@ def parse_args(cli_args: Sequence[str] | None = None) -> ProcessComponentArgs:
 
     args = parser.parse_args(args=cli_args)
 
-    rekor_config = _check_empty_config(
-        cosign.RekorConfig(rekor_url=args.rekor_url, rekor_key=args.rekor_key)
-    )
+    static_sign_config = None
+    if args.sign_key:
+        static_sign_config = cosign.StaticSignConfig(
+            sign_key=args.sign_key, sign_password=args.sign_password.encode("utf-8")
+        )
     sign_config = cosign.SignConfig(
-        static_sign_config=_check_empty_config(
-            cosign.StaticSignConfig(
-                sign_key=args.sign_key, sign_password=args.sign_password.encode("utf-8")
-            )
+        static_sign_config=static_sign_config,
+        url_config=(
+            cosign.URLSigningConfig()
+            .set_tlog_url(args.rekor_url)
+            .set_fulcio_url(args.fulcio_url)
+            .set_issuer_url(args.oidc_issuer)
         ),
-        rekor_config=rekor_config,
-        keyless_config=_check_empty_config(
-            cosign.KeylessSignConfig(
-                fulcio_url=args.fulcio_url,
-                token_file=args.oidc_token,
-            )
-        ),
+        keyless_token_file=args.oidc_token,
     )
+    keyless_verify_config = None
+    if args.oidc_identity_pattern and args.oidc_issuer:
+        keyless_verify_config = cosign.KeylessVerifyConfig(
+            identity_pattern=args.oidc_identity_pattern, oidc_issuer=args.oidc_issuer
+        )
     verify_config = cosign.VerifyConfig(
         static_verify_key=args.verify_key,
-        rekor_config=rekor_config,
-        keyless_verify_config=_check_empty_config(
-            cosign.KeylessVerifyConfig(
-                issuer_url=args.oidc_issuer,
-                identity_pattern=args.oidc_identity_pattern,
-            ),
-        ),
+        keyless_verify_config=keyless_verify_config,
     )
 
     # the snapshot_spec is joined with the data_dir as previous tasks provide
@@ -253,7 +219,7 @@ async def augment_component_sboms(
     result_details = await augment_sboms(config, snapshot)
     if not all(result_details):
         raise SBOMError("Could not augment all SBOMs!")
-    LOGGER.debug("Successfully augmented SBoms for ReleaseId: %s", str(release_id))
+    LOGGER.debug("Successfully augmented SBOMs for ReleaseId: %s", str(release_id))
 
     if not cosign_signer:
         LOGGER.warning(
