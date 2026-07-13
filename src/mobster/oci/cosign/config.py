@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from pydantic import BeforeValidator, Field, PlainSerializer, TypeAdapter
-from pydantic.dataclasses import dataclass
+from pydantic.dataclasses import dataclass as pdc_dataclass
 
 
 def _serialize_datetime(value: datetime) -> str:
@@ -31,7 +31,7 @@ def _validate_config_selector(value: str) -> str:
     )
 
 
-@dataclass
+@pdc_dataclass
 class ValidFor:
     """
     Type for specifying validity of a URL.
@@ -43,7 +43,7 @@ class ValidFor:
     )
 
 
-@dataclass
+@pdc_dataclass
 class URL:
     """
     Type for specifying a URL.
@@ -68,7 +68,7 @@ class URL:
         )
 
 
-@dataclass
+@pdc_dataclass
 class ServiceConfig:
     """
     Type for specifying a Sigstore service configuration about
@@ -86,7 +86,7 @@ def _get_urls(*urls: str) -> list[URL]:
     return result_urls
 
 
-@dataclass
+@pdc_dataclass
 class URLSigningConfig:
     """
     Signing Configuration for Cosign CLI.
@@ -175,7 +175,7 @@ class URLSigningConfig:
         )
 
 
-@dataclass
+@pdc_dataclass
 class StaticSignConfig:
     """
     Static (using keys) cosign configuration.
@@ -191,7 +191,7 @@ class StaticSignConfig:
     sign_password: bytes = b""
 
 
-@dataclass
+@pdc_dataclass
 class KeylessVerifyConfig:
     """
     Class holding information needed to verify a Cosign Signing Config.
@@ -207,7 +207,7 @@ class KeylessVerifyConfig:
     oidc_issuer: str
 
 
-@dataclass
+@pdc_dataclass
 class SignConfig:
     """
     Configuration of Cosign keys for signing.
@@ -226,7 +226,7 @@ class SignConfig:
     keyless_token_file: Path | None = Field(default=None)
 
 
-@dataclass
+@pdc_dataclass
 class VerifyConfig:
     """
     Configuration of Cosign keys for verification.
