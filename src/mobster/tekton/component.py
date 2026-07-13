@@ -9,7 +9,6 @@ import tempfile
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TypeVar
 
 from mobster.cmd.augment import AugmentConfig, SBOMRefDetail, augment_sboms
 from mobster.cmd.generate.product import parse_release_notes
@@ -30,12 +29,6 @@ from mobster.tekton.common import (
 )
 
 LOGGER = logging.getLogger(__name__)
-
-_Conf = TypeVar(
-    "_Conf",
-    cosign.StaticSignConfig,
-    cosign.URLSigningConfig,
-)
 
 
 @dataclass

@@ -107,9 +107,12 @@ class URLSigningConfig:
     )
     tsa_urls: list[URL] = Field(serialization_alias="tsaUrls", default_factory=list)
     rekor_tlog_config: ServiceConfig = Field(
-        default_factory=lambda: ServiceConfig("ANY")
+        serialization_alias="rekorTlogConfig",
+        default_factory=lambda: ServiceConfig("ANY"),
     )
-    tsa_config: ServiceConfig = Field(default_factory=lambda: ServiceConfig("ANY"))
+    tsa_config: ServiceConfig = Field(
+        serialization_alias="tsaConfig", default_factory=lambda: ServiceConfig("ANY")
+    )
 
     def set_tlog_url(self, *urls: str) -> "URLSigningConfig":
         """
