@@ -1914,14 +1914,14 @@ files = [
 
 [[package]]
 name = "packageurl-python"
-version = "0.16.0"
+version = "0.17.6"
 description = "A purl aka. Package URL parser and builder"
 optional = false
 python-versions = ">=3.8"
 groups = ["main", "dev"]
 files = [
-    {file = "packageurl_python-0.16.0-py3-none-any.whl", hash = "sha256:5c3872638b177b0f1cf01c3673017b7b27ebee485693ae12a8bed70fa7fa7c35"},
-    {file = "packageurl_python-0.16.0.tar.gz", hash = "sha256:69e3bf8a3932fe9c2400f56aaeb9f86911ecee2f9398dbe1b58ec34340be365d"},
+    {file = "packageurl_python-0.17.6-py3-none-any.whl", hash = "sha256:31a85c2717bc41dd818f3c62908685ff9eebcb68588213745b14a6ee9e7df7c9"},
+    {file = "packageurl_python-0.17.6.tar.gz", hash = "sha256:1252ce3a102372ca6f86eb968e16f9014c4ba511c5c37d95a7f023e2ca6e5c25"},
 ]
 
 [package.extras]
@@ -4358,4 +4358,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "4bdd693924f3d071eeae8c3cbf5eaaf1db542ae9030a83b579333f33bf574a30"
+content-hash = "531aabe309043a7aed4b5011b94ccded9db21b7292aa69a132b2963e4475cae1"
