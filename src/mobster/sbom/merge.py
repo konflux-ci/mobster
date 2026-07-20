@@ -468,9 +468,67 @@ class CycloneDXMerger(SBOMMerger):  # pylint: disable=too-few-public-methods
         merged = self.merge_components_func(components_a, components_b)
 
         sbom_a["components"] = merged
+        self._merge_dependencies(sbom_a, sbom_b)
         self._merge_tools_metadata(sbom_a, sbom_b)
 
         return sbom_a
+
+    def _merge_dependencies(
+        self, sbom_a: dict[str, Any], sbom_b: dict[str, Any]
+    ) -> None:
+        """Merge and prune the .dependencies arrays of two CycloneDX SBOMs.
+
+        After component deduplication, some bom-ref values referenced in
+        .dependencies may no longer correspond to any component. This method
+        builds the set of valid bom-refs and removes dangling references,
+        mirroring what SPDXMerger._merge_relationships does for SPDX.
+        """
+        # Collect all valid bom-refs: merged components + metadata.component
+        valid_refs: set[str] = {
+            c["bom-ref"] for c in sbom_a.get("components", []) if "bom-ref" in c
+        }
+        meta_component = sbom_a.get("metadata", {}).get("component", {})
+        if meta_ref := meta_component.get("bom-ref"):
+            valid_refs.add(meta_ref)
+
+        deps_a = sbom_a.get("dependencies", [])
+        deps_b = sbom_b.get("dependencies", [])
+
+        merged_deps = self._prune_dependencies(
+            itertools.chain(deps_a, deps_b), valid_refs
+        )
+        if merged_deps:
+            sbom_a["dependencies"] = merged_deps
+        else:
+            sbom_a.pop("dependencies", None)
+
+    @staticmethod
+    def _prune_dependencies(
+        dependencies: Iterable[dict[str, Any]], valid_refs: set[str]
+    ) -> list[dict[str, Any]]:
+        """Filter a dependencies list, keeping only entries with valid refs.
+
+        - Drop entries whose top-level ``ref`` is not in *valid_refs*.
+        - Remove invalid items from ``dependsOn`` lists.
+        - Deduplicate by ``ref`` (first occurrence wins).
+        """
+        seen_refs: set[str] = set()
+        result: list[dict[str, Any]] = []
+
+        for dep in dependencies:
+            ref = dep.get("ref", "")
+            if ref not in valid_refs or ref in seen_refs:
+                continue
+            seen_refs.add(ref)
+
+            pruned_dep: dict[str, Any] = {"ref": ref}
+            if "dependsOn" in dep:
+                pruned_dep["dependsOn"] = [
+                    d for d in dep["dependsOn"] if d in valid_refs
+                ]
+            result.append(pruned_dep)
+
+        return result
 
     def _merge_tools_metadata(
         self, sbom_a: dict[Any, Any], sbom_b: dict[Any, Any]
