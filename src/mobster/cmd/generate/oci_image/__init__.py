@@ -27,6 +27,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderPkgMetadata,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
+    ParentContextualizationError,
     download_parent_image_sbom,
     get_descendant_of_items_from_used_parent,
     get_parent_spdx_id_from_component,
@@ -43,9 +44,11 @@ from mobster.cmd.generate.oci_image.sbom_utils import (
     get_image_objects_from_file,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
+    ContextualWorkflowError,
     DocumentIndexOCI,
     normalize_and_load_sbom,
 )
+from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.log import log_elapsed
 from mobster.sbom.merge import merge_sboms
@@ -124,6 +127,23 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 exc,
             )
 
+    @staticmethod
+    async def _load_builder_metadata(
+        build_metadata_path: Path,
+    ) -> BuilderPkgMetadata | None:
+        """
+        Load builder content metadata from the --build-metadata-path argument.
+        Returns None if the file cannot be loaded.
+        """
+        try:
+            with open(build_metadata_path, encoding="utf-8") as fp:
+                return BuilderPkgMetadata.model_validate_json(fp.read())
+        except (FileNotFoundError, ValueError) as exc:
+            LOGGER.warning(
+                "Cannot load builder metadata file %s (%s)", build_metadata_path, exc
+            )
+            return None
+
     async def _handle_bom_inputs(
         self,
     ) -> dict[str, Any]:
@@ -171,41 +191,22 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         return await syft.scan_image(self.cli_args.image_pullspec)
 
     @staticmethod
-    async def _execute_contextual_workflow(
-        component_sbom_doc: Document,
-        parent_image_ref: Image,
-        arch: str,
-        build_metadata_path: Path | None,
-    ) -> Document | None:
+    async def execute_parent_contextualization(
+        parent_image_ref: Image, arch: str, component_sbom_doc: Document
+    ) -> Document:
         """
-        Run all steps from the contextual workflow. Finds and
-        downloads used parent image SBOM (if exists), maps packages
+        Finds and downloads used parent image SBOM (if exists), maps packages
         from parent to component and modifies relationships in
         component, expressing which packages came to component
         from used parent or grandparents.
-
-        Also attempts to parse build metadata from Capo and perform builder
-        contextualization if successful. If an error specific to builder
-        contextualization occurs, the parent-contextualized SBOM is returned.
-
-        Args:
-            component_sbom_doc:
-                The component SBOM created for this image.
-                Warning: component SBOM is intentionally
-                modified by this workflow.
-            parent_image_ref: Reference to the parent image.
-            arch: CPU architecture of this image.
-            build_metadata_path: Path to build metadata output from Capo
-
-        Returns:
-            spdx_tools.spdx.model.document.Document | None:
-                The contextual SBOM if the workflow was successful.
-                None otherwise.
         """
-        # Parent content contextualization
+        LOGGER.debug("Running parent content contextualization...")
         parent_image_sbom = await download_parent_image_sbom(parent_image_ref, arch)
         if not parent_image_sbom:
-            return None
+            raise ParentContextualizationError(
+                "Parent image SBOM could not be found skipping "
+                "contextualization, non-contextual SBOM will be produced"
+            )
         parent_sbom_doc = await normalize_and_load_sbom(
             parent_image_sbom, append_mobster=False
         )
@@ -221,26 +222,147 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             parent_spdx_id_from_component,
             descendant_of_items_from_used_parent,
         )
-
-        if build_metadata_path is None:
-            return contextual_sbom
-
-        # Builder content contextualization
-        try:
-            LOGGER.debug("Running builder content contextualization...")
-            with open(build_metadata_path, encoding="utf-8") as fp:
-                metadata = BuilderPkgMetadata.model_validate_json(fp.read())
-
-            builder_ctx_sbom = deepcopy(contextual_sbom)
-            index = DocumentIndexOCI(builder_ctx_sbom)
-
-            builder = BuilderContextualizer()
-            contextual_sbom = builder.contextualize(index, metadata)
-            LOGGER.debug("Builder content contextualization complete.")
-        except BuilderContextualizationError:
-            LOGGER.exception("Failed to contextualize builder content")
-
+        LOGGER.debug("Parent content contextualization complete.")
         return contextual_sbom
+
+    @staticmethod
+    def execute_builder_contextualization(
+        parent_contextualized_sbom: Document, builder_metadata: BuilderPkgMetadata
+    ) -> Document:
+        """
+        Matches capo's builder metadata packages to parent contextualized SBOM
+        and reparents matched packages to builder base images / intermediate images
+        """
+        LOGGER.debug("Running builder content contextualization...")
+        builder_ctx_sbom = deepcopy(parent_contextualized_sbom)
+        index = DocumentIndexOCI(builder_ctx_sbom)
+
+        builder = BuilderContextualizer()
+        contextual_sbom = builder.contextualize(index, builder_metadata)
+        LOGGER.debug("Builder content contextualization complete.")
+        return contextual_sbom
+
+    async def _execute_contextual_workflow(
+        self,
+        component_sbom_doc: Document,
+        parent_image_ref: Image,
+        arch: str,
+        build_metadata_path: Path | None,
+    ) -> Document:
+        """
+        Run all steps from the contextual workflow.
+
+        - if user specifies --build-metadata-path, function attempts to load file.
+            - if builder metadata file is missing or malformed (i.e. capo failed)
+              ContextualWorkflowError is raised resulting in non-contextual SBOM
+              later on.
+            - if builder metadata is present but packages are empty ( {"packages": []} )
+              and buildprobe metadata contain no extra or builder base images
+              image is evaluated as single stage, builder contextualization is
+              skipped and parent contextualized SBOM is returned
+        - if user omits --build-metadata-path, function executes
+          parent contextualization but checks buildprobe output
+          and if extra of builder base images are present
+          warns user that build was multistage, and contextualization
+          is very likely to be incomplete.
+
+        If any error during parent or builder contextualization
+        occurs, mobster will produce non-contextual SBOM.
+
+        User is also warned when capo and buildprobe inputs seem
+        to be conflicting - i.e. build appears to be multistage,
+        but capo did not detect any packages.
+
+        Args:
+            component_sbom_doc:
+                The component SBOM created for this image.
+                Warning: component SBOM is intentionally
+                modified by this workflow.
+            parent_image_ref: Reference to the parent image.
+            arch: CPU architecture of this image.
+            build_metadata_path: Path to build metadata output from Capo
+
+        Returns:
+            Contextual SBOM document — either parent-only contextualized
+            (when builder content is not applicable) or fully contextualized
+            (parent + builder).
+
+        Raises:
+            ContextualWorkflowError: When capo metadata cannot be loaded,
+                parent contextualization fails, or builder contextualization
+                fails. Caller is expected to fall back to non-contextual SBOM.
+        """
+        if build_metadata_path:
+            builder_metadata = await GenerateOciImageCommand._load_builder_metadata(
+                build_metadata_path
+            )
+            if builder_metadata is None:
+                raise ContextualWorkflowError(
+                    "Cannot load builder metadata file "
+                    f"from capo {build_metadata_path}, "
+                    "skipping entire contextualization (parent, builder)"
+                )
+
+        try:
+            parent_contextualized_sbom = (
+                await GenerateOciImageCommand.execute_parent_contextualization(
+                    parent_image_ref, arch, component_sbom_doc
+                )
+            )
+        except (ParentContextualizationError, SBOMError) as exc:
+            raise ContextualWorkflowError(
+                "Failed to contextualize parent content. "
+                "Non-contextual SBOM will be generated."
+            ) from exc
+
+        build_is_multistage = (
+            self._metadata.extra_images or self._metadata.builder_base_images
+        )
+        if not build_metadata_path:
+            if build_is_multistage:
+                LOGGER.warning(
+                    "Build of the processed image was "
+                    "multistage but no --build-metadata-path provided, "
+                    "cannot execute builder content contextualization. "
+                    "Provided buildprobe contains "
+                    "extra images: %d, builder base images: %d. "
+                    "This means that contextualization is very likely INCOMPLETE "
+                    "reflecting parent but not builder content.",
+                    len(self._metadata.extra_images),
+                    len(self._metadata.builder_base_images),
+                )
+            # else: single-stage build - build metadata are not needed
+            return parent_contextualized_sbom
+
+        assert builder_metadata is not None
+        if not builder_metadata.packages:
+            if build_is_multistage:
+                LOGGER.warning(
+                    "Detected multistage build but no builder packages in capo "
+                    "metadata. Possible reasons: "
+                    "no content might be copied from extra images or stages. "
+                    "If this is not the case: "
+                    "check correctness of the capo/buildprobe mobster inputs "
+                    "with respect to original Containerfile, "
+                    "check capo unsupported features or scan feature."
+                )
+            # else: single-stage build - packages are not expected
+            return parent_contextualized_sbom
+
+        try:
+            parent_builder_contextualized_sbom = (
+                GenerateOciImageCommand.execute_builder_contextualization(
+                    parent_contextualized_sbom, builder_metadata
+                )
+            )
+        except BuilderContextualizationError as exc:
+            raise ContextualWorkflowError(
+                "Failed to contextualize builder content. Rollback-ing "
+                "parent content contextualization to prevent incomplete "
+                "contextualization. Non-contextual SBOM will be generated."
+            ) from exc
+
+        return parent_builder_contextualized_sbom
 
     async def _assess_and_dispatch_contextual_workflow(
         self,
@@ -250,7 +372,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         image_arch: str,
     ) -> Document | None:
         """
-        Check if the contextual Workflow should be attempted
+        Check if the Contextual workflow should be attempted
         and try to run it. Contextual workflow modifies
         mobster-produced component SBOM in place. Before
         workflow a deep copy is created from this SBOM.
@@ -284,8 +406,8 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 )
                 LOGGER.info("Contextual SBOM workflow finished successfully.")
                 return contextual_sbom
-            except Exception:  # pylint: disable=broad-exception-caught
-                LOGGER.exception("Contextual SBOM workflow failed.")
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                LOGGER.exception("Contextual SBOM workflow failed: %s", exc)
         LOGGER.info("Could not create contextual SBOM.")
         return None
 

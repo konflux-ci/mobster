@@ -28,6 +28,13 @@ from mobster.oci import cosign
 LOGGER = logging.getLogger(__name__)
 
 
+class ParentContextualizationError(Exception):
+    """
+    Raised when an unexpected error occurred while contextualizing parent
+    content.
+    """
+
+
 def get_grandparent_annotation(parent_sbom_doc: Document) -> Annotation | None:
     """
     Searches used parent image annotation in the used parent

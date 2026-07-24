@@ -155,7 +155,12 @@ def generate_oci_image_parser(subparsers: Any) -> None:
         default=None,
         help=(
             "Path to the build metadata from Capo. "
-            "Required for builder contextualization."
+            "Required for builder contextualization. "
+            "If --contextualize flag provided but "
+            "--build-metadata-path not provided, "
+            "only parent contextualization will be executed. "
+            "If source image is multistage the contextualization "
+            "will be very likely incomplete."
         ),
     )
 

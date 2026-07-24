@@ -34,9 +34,12 @@ class SBOMMetadata(BaseModel):
 
     # the OCI image that was built
     image: ImageData
-    # images used as base images for builder stages
-    # order is significant, last base image is the "parent" image
-    base_images: list[ImageData] = []
+    # parent (base) image of the final stage (FROM in the last stage)
+    base_image: ImageData | None = None
+    # base images of builder stages (non-final FROM stages)
+    builder_base_images: list[ImageData] = []
     # any extra images to be included in the SBOM
     # such as "external" images (COPY --from=image)
     extra_images: list[ImageData] = []
+    # deprecated: flat list where the last entry is the parent image
+    base_images: list[ImageData] = []
