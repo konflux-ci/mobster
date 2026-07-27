@@ -128,7 +128,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             )
 
     @staticmethod
-    async def _load_builder_metadata(
+    def _load_builder_metadata(
         build_metadata_path: Path,
     ) -> BuilderPkgMetadata | None:
         """
@@ -293,7 +293,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 fails. Caller is expected to fall back to non-contextual SBOM.
         """
         if build_metadata_path:
-            builder_metadata = await GenerateOciImageCommand._load_builder_metadata(
+            builder_metadata = GenerateOciImageCommand._load_builder_metadata(
                 build_metadata_path
             )
             if builder_metadata is None:
@@ -439,6 +439,8 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
         # Use buildprobe metadata if loaded successfully, otherwise fall back to
         # deprecated dockerfile-json path
+        # Buildprobe metadata path supports full contextualization parent / builder
+        # dockerfile-json path supports non-contextualized SBOM only
         if self._metadata is not None:
             image = self._metadata.image.to_image(image_arch)
             await extend_sbom_with_image_reference(sbom, image, is_builder_image=False)
@@ -450,6 +452,11 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             for extra_image_data in self._metadata.extra_images:
                 extra_image = extra_image_data.to_image()
                 await extend_sbom_with_image_reference(sbom, extra_image, True)
+            with log_elapsed("Contextual workflow", logging.INFO):
+                contextual_sbom = await self._assess_and_dispatch_contextual_workflow(
+                    sbom, base_images_refs, base_images_map, image_arch
+                )
+            sbom = contextual_sbom or sbom
         elif self.cli_args.image_pullspec:
             if not self.cli_args.image_digest:
                 LOGGER.info(
@@ -477,7 +484,8 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             )
 
         # Deprecated fallback if buildprobe metadata are not available:
-        # dockerfile-json input, support for parent contextualization only.
+        # dockerfile-json input, enrich SBOM for image packages,
+        # but do not contextualize content.
         if not self._metadata:
             # Extending with base images references from a dockerfile
             if self.cli_args.parsed_dockerfile_path:
@@ -508,19 +516,6 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                     sbom, image_object, is_builder_image=True
                 )
 
-            # Builder contextualization not supported in deprecated path
-            if self.cli_args.build_metadata_path:
-                LOGGER.warning(
-                    "--build-metadata-path is ignored in deprecated fallback path. "
-                    "Builder contextualization requires successful buildprobe metadata."
-                )
-                self.cli_args.build_metadata_path = None
-
-        with log_elapsed("Contextual workflow", logging.INFO):
-            contextual_sbom = await self._assess_and_dispatch_contextual_workflow(
-                sbom, base_images_refs, base_images_map, image_arch
-            )
-        sbom = contextual_sbom or sbom
         self._content = sbom
         if not self.cli_args.skip_validation:
             with log_elapsed("Validation of final SBOM", logging.INFO):
