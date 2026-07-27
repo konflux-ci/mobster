@@ -22,12 +22,10 @@ from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
-    BuilderContextualizationError,
     BuilderContextualizer,
     BuilderPkgMetadata,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
-    ParentContextualizationError,
     download_parent_image_sbom,
     get_descendant_of_items_from_used_parent,
     get_parent_spdx_id_from_component,
@@ -44,11 +42,15 @@ from mobster.cmd.generate.oci_image.sbom_utils import (
     get_image_objects_from_file,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
-    ContextualWorkflowError,
     DocumentIndexOCI,
     normalize_and_load_sbom,
 )
-from mobster.error import SBOMError
+from mobster.error import (
+    BuilderContextualizationError,
+    ContextualWorkflowError,
+    ParentContextualizationError,
+    SBOMError,
+)
 from mobster.image import Image
 from mobster.log import log_elapsed
 from mobster.sbom.merge import merge_sboms
@@ -407,7 +409,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 LOGGER.info("Contextual SBOM workflow finished successfully.")
                 return contextual_sbom
             except Exception as exc:  # pylint: disable=broad-exception-caught
-                LOGGER.exception("Contextual SBOM workflow failed: %s", exc)
+                LOGGER.error("Contextual SBOM workflow failed: %s", exc)
         LOGGER.info("Could not create contextual SBOM.")
         return None
 

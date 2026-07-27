@@ -29,12 +29,6 @@ from mobster.sbom.spdx import (
 KONFLUX_JSON_ACTOR = Actor(actor_type=ActorType.TOOL, name="konflux:jsonencoded")
 
 
-class ContextualWorkflowError(Exception):
-    """
-    Raised when Contextual workflow cannot be resolved.
-    """
-
-
 class MissingBuilderAnnotation(Exception):
     """
     Raised when an intermediate image package for an image package couldn't be

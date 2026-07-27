@@ -20,7 +20,7 @@ from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.enrich import EnrichCommand
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
 from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
-from mobster.cmd.generate.oci_image.spdx_utils import ContextualWorkflowError
+from mobster.error import ContextualWorkflowError
 from mobster.image import Image
 from tests.conftest import (
     EnrichTestCase,
@@ -566,6 +566,45 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_
     )
     mock_execute_contextual.assert_awaited_once()
     assert "Contextual SBOM workflow failed: error" in caplog.messages
+
+
+@pytest.mark.asyncio
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand._assess_and_dispatch_contextual_workflow"
+)
+@patch("mobster.cmd.generate.oci_image.extend_sbom_with_base_images")
+@patch("mobster.cmd.generate.oci_image.get_base_images_refs_from_dockerfile")
+@patch("mobster.cmd.generate.oci_image.load_sbom_from_json")
+async def test_execute_deprecated_path_no_attribute_error(
+    mock_load_sbom: AsyncMock,
+    mock_get_base_refs: AsyncMock,
+    mock_extend_base: AsyncMock,
+    mock_assess_dispatch: AsyncMock,
+    tmp_path: Path,
+) -> None:
+    """Regression: when metadata is None (deprecated dockerfile-json path),
+    contextualization should not be attempted anymore."""
+    mock_load_sbom.return_value = {"spdxVersion": "SPDX-2.3"}
+    mock_get_base_refs.return_value = ["registry.example.com/ubi:latest"]
+
+    parsed_df = tmp_path / "parsed.json"
+    parsed_df.write_text('{"Stages": []}')
+
+    args = MagicMock()
+    args.from_syft = [Path("foo")]
+    args.from_hermeto = None
+    args.image_pullspec = None
+    args.image_digest = None
+    args.metadata_path = None
+    args.parsed_dockerfile_path = parsed_df
+    args.additional_base_image = []
+    args.contextualize = True
+    args.skip_validation = True
+
+    command = GenerateOciImageCommand(args)
+    await command.execute()
+
+    mock_assess_dispatch.assert_not_awaited()
 
 
 @pytest.mark.asyncio

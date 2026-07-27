@@ -19,16 +19,10 @@ from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     validate_and_compare_purls,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import DocumentIndexOCI, PackageContext
+from mobster.error import BuilderContextualizationError
 from mobster.sbom.spdx import get_package_purl
 
 LOGGER = logging.getLogger(__name__)
-
-
-class BuilderContextualizationError(Exception):
-    """
-    Raised when an unexpected error occurred while contextualizing builder
-    content.
-    """
 
 
 class MissingImagePackageForPullspec(BuilderContextualizationError):
