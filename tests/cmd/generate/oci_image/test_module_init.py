@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 from argparse import ArgumentError
 from pathlib import Path
 from typing import Any, Literal
@@ -19,6 +20,7 @@ from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.enrich import EnrichCommand
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
 from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
+from mobster.error import ContextualWorkflowError
 from mobster.image import Image
 from tests.conftest import (
     EnrichTestCase,
@@ -369,13 +371,163 @@ async def test_GenerateOciImageCommand__execute_contextual_workflow_no_downloade
     mock_download_sbom: AsyncMock,
 ) -> None:
     mock_download_sbom.return_value = None
+    component_sbom = MagicMock()
     command = GenerateOciImageCommand(MagicMock(from_hermeto=None))
-    assert (
+    with pytest.raises(ContextualWorkflowError):
         await command._execute_contextual_workflow(
-            MagicMock(), Image("foo", "sha256:1"), "bar", None
+            component_sbom, Image("foo", "sha256:1"), "bar", None
         )
-        is None
+
+
+@pytest.mark.asyncio
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand.execute_builder_contextualization"
+)
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand.execute_parent_contextualization"
+)
+async def test__execute_contextual_workflow_capo_metadata_missing(
+    mock_parent_ctx: AsyncMock,
+    mock_builder_ctx: MagicMock,
+    tmp_path: Path,
+    caplog: LogCaptureFixture,
+) -> None:
+    missing_metadata = tmp_path / "nonexistent.json"
+
+    command = GenerateOciImageCommand(MagicMock(from_hermeto=None))
+    command._metadata = MagicMock()
+
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(
+            ContextualWorkflowError, match="Cannot load builder metadata"
+        ):
+            await command._execute_contextual_workflow(
+                component_sbom_doc=MagicMock(spec=Document),
+                parent_image_ref=Image("parent", "sha256:1"),
+                arch="amd64",
+                build_metadata_path=missing_metadata,
+            )
+
+    mock_parent_ctx.assert_not_awaited()
+    mock_builder_ctx.assert_not_called()
+    assert any("Cannot load builder metadata" in msg for msg in caplog.messages)
+
+
+@pytest.mark.asyncio
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand.execute_builder_contextualization"
+)
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand.execute_parent_contextualization"
+)
+async def test__execute_contextual_workflow_happy_path(
+    mock_parent_ctx: AsyncMock,
+    mock_builder_ctx: MagicMock,
+    tmp_path: Path,
+) -> None:
+    parent_ctx_sbom = MagicMock(spec=Document)
+    mock_parent_ctx.return_value = parent_ctx_sbom
+    builder_ctx_sbom = MagicMock(spec=Document)
+    mock_builder_ctx.return_value = builder_ctx_sbom
+
+    metadata_file = tmp_path / "metadata.json"
+    metadata_file.write_text(
+        '{"packages": [{"purl": "pkg:rpm/rhel/glibc@2.34", '
+        '"origin_type": "builder", '
+        '"pullspec": "registry.example.com/ubi@sha256:abc123"}]}'
     )
+
+    command = GenerateOciImageCommand(MagicMock(from_hermeto=None))
+    command._metadata = MagicMock(
+        extra_images=[MagicMock()],
+        builder_base_images=[MagicMock()],
+    )
+
+    result = await command._execute_contextual_workflow(
+        component_sbom_doc=MagicMock(spec=Document),
+        parent_image_ref=Image("parent", "sha256:1"),
+        arch="amd64",
+        build_metadata_path=metadata_file,
+    )
+    assert result is builder_ctx_sbom
+    mock_parent_ctx.assert_awaited_once()
+    mock_builder_ctx.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand.execute_builder_contextualization"
+)
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand.execute_parent_contextualization"
+)
+async def test__execute_contextual_workflow_multistage_empty_packages(
+    mock_parent_ctx: AsyncMock,
+    mock_builder_ctx: MagicMock,
+    tmp_path: Path,
+    caplog: LogCaptureFixture,
+) -> None:
+    parent_ctx_sbom = MagicMock(spec=Document)
+    mock_parent_ctx.return_value = parent_ctx_sbom
+    builder_ctx_sbom = MagicMock(spec=Document)
+    mock_builder_ctx.return_value = builder_ctx_sbom
+
+    metadata_file = tmp_path / "metadata.json"
+    metadata_file.write_text('{"packages": []}')
+
+    command = GenerateOciImageCommand(MagicMock(from_hermeto=None))
+    command._metadata = MagicMock(
+        extra_images=[MagicMock()],
+        builder_base_images=[MagicMock()],
+    )
+
+    result = await command._execute_contextual_workflow(
+        component_sbom_doc=MagicMock(spec=Document),
+        parent_image_ref=Image("parent", "sha256:1"),
+        arch="amd64",
+        build_metadata_path=metadata_file,
+    )
+    assert result is parent_ctx_sbom
+    assert "multistage build but no builder packages" in caplog.text
+    mock_parent_ctx.assert_awaited_once()
+    mock_builder_ctx.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand.execute_builder_contextualization"
+)
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand.execute_parent_contextualization"
+)
+async def test__execute_contextual_workflow_no_build_metadata_path_multistage(
+    mock_parent_ctx: AsyncMock,
+    mock_builder_ctx: MagicMock,
+    caplog: LogCaptureFixture,
+) -> None:
+    parent_ctx_sbom = MagicMock(spec=Document)
+    mock_parent_ctx.return_value = parent_ctx_sbom
+    builder_ctx_sbom = MagicMock(spec=Document)
+    mock_builder_ctx.return_value = builder_ctx_sbom
+
+    command = GenerateOciImageCommand(MagicMock(from_hermeto=None))
+    command._metadata = MagicMock(
+        extra_images=[MagicMock()],
+        builder_base_images=[MagicMock()],
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = await command._execute_contextual_workflow(
+            component_sbom_doc=MagicMock(spec=Document),
+            parent_image_ref=Image("parent", "sha256:1"),
+            arch="amd64",
+            build_metadata_path=None,
+        )
+    assert result is parent_ctx_sbom
+    assert "multistage but no --build-metadata-path provided" in caplog.text
+    assert "contextualization is very likely INCOMPLETE" in caplog.text
+    mock_parent_ctx.assert_awaited_once()
+    mock_builder_ctx.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -413,7 +565,46 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_
         "amd64",
     )
     mock_execute_contextual.assert_awaited_once()
-    assert "Contextual SBOM workflow failed." in caplog.messages
+    assert "Contextual SBOM workflow failed: error" in caplog.messages
+
+
+@pytest.mark.asyncio
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand._assess_and_dispatch_contextual_workflow"
+)
+@patch("mobster.cmd.generate.oci_image.extend_sbom_with_base_images")
+@patch("mobster.cmd.generate.oci_image.get_base_images_refs_from_dockerfile")
+@patch("mobster.cmd.generate.oci_image.load_sbom_from_json")
+async def test_execute_deprecated_path_no_attribute_error(
+    mock_load_sbom: AsyncMock,
+    mock_get_base_refs: AsyncMock,
+    mock_extend_base: AsyncMock,
+    mock_assess_dispatch: AsyncMock,
+    tmp_path: Path,
+) -> None:
+    """Regression: when metadata is None (deprecated dockerfile-json path),
+    contextualization should not be attempted anymore."""
+    mock_load_sbom.return_value = {"spdxVersion": "SPDX-2.3"}
+    mock_get_base_refs.return_value = ["registry.example.com/ubi:latest"]
+
+    parsed_df = tmp_path / "parsed.json"
+    parsed_df.write_text('{"Stages": []}')
+
+    args = MagicMock()
+    args.from_syft = [Path("foo")]
+    args.from_hermeto = None
+    args.image_pullspec = None
+    args.image_digest = None
+    args.metadata_path = None
+    args.parsed_dockerfile_path = parsed_df
+    args.additional_base_image = []
+    args.contextualize = True
+    args.skip_validation = True
+
+    command = GenerateOciImageCommand(args)
+    await command.execute()
+
+    mock_assess_dispatch.assert_not_awaited()
 
 
 @pytest.mark.asyncio
