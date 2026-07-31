@@ -38,6 +38,9 @@ from tests.conftest import (
         lf("test_case_spdx_with_hermeto_and_content_filtering"),
         lf("test_case_spdx_without_hermeto_without_additional"),
         lf("test_case_spdx_multiple_syft"),
+        lf("test_case_spdx_from_scratch"),
+        lf("test_case_spdx_from_scratch_single_stage"),
+        lf("test_case_spdx_with_extra_image"),
         lf("test_case_cyclonedx_with_additional"),
     ],
 )
@@ -317,7 +320,7 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
                     "pullspec": "foo.io/bar:latest",
                     "digest": "bar:12345678901234567890123456789012",
                 },
-                "base_images": [],
+                "builder_base_images": [],
                 "extra_images": [],
             }
         )
@@ -541,8 +544,7 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow(
     command.cli_args.contextualize = True
     await command._assess_and_dispatch_contextual_workflow(
         MagicMock(spec=Document),
-        ["foo:latest"],
-        {"foo:latest": Image("foo:latest", "sha256:1")},
+        Image("foo:latest", "sha256:1"),
         "amd64",
     )
     mock_execute_contextual.assert_awaited_once()
@@ -560,8 +562,7 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_
     mock_execute_contextual.side_effect = ValueError("error")
     await command._assess_and_dispatch_contextual_workflow(
         MagicMock(spec=Document),
-        ["foo:latest"],
-        {"foo:latest": Image("foo:latest", "sha256:1")},
+        Image("foo:latest", "sha256:1"),
         "amd64",
     )
     mock_execute_contextual.assert_awaited_once()

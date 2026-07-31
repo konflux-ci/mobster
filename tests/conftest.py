@@ -309,7 +309,7 @@ def test_case_spdx_with_hermeto_and_content_filtering() -> GenerateOciImageTestC
                 "tests/cmd/generate/oci_image/test_hermeto_sbom_filter_data/spdx.bom.json"
             ),
             metadata_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/metadata_no_ubi.yaml"
+                "tests/data/dockerfiles/somewhat_believable_sample/metadata_multistage_base_with_builder_no_extra.yaml"
             ),
         ),
         expected_sbom_path=Path(
@@ -328,11 +328,11 @@ def test_case_spdx_without_hermeto_without_additional() -> GenerateOciImageTestC
             ],
             from_hermeto=None,
             metadata_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/metadata_no_tssc_or_ubi.yaml"
+                "tests/data/dockerfiles/somewhat_believable_sample/metadata_single_stage_base_no_builder_no_extra.yaml"
             ),
         ),
         expected_sbom_path=Path(
-            "tests/sbom/test_oci_generate_data/generated_without_hermet_without_additional.spdx.json"
+            "tests/sbom/test_oci_generate_data/generated_single_stage_base_no_builder_no_extra.spdx.json"
         ),
     )
 
@@ -346,7 +346,7 @@ def test_case_spdx_multiple_syft() -> GenerateOciImageTestCase:
     return GenerateOciImageTestCase(
         args=GenerateOciImageCommandArgs(
             metadata_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/metadata_no_tssc_or_ubi.yaml"
+                "tests/data/dockerfiles/somewhat_believable_sample/metadata_single_stage_base_no_builder_no_extra.yaml"
             ),
             from_syft=[
                 Path(
@@ -363,12 +363,72 @@ def test_case_spdx_multiple_syft() -> GenerateOciImageTestCase:
 
 
 @pytest.fixture()
+def test_case_spdx_from_scratch() -> GenerateOciImageTestCase:
+    """Test case with SPDX format, FROM scratch (no base_image in metadata)."""
+    return GenerateOciImageTestCase(
+        args=GenerateOciImageCommandArgs(
+            from_syft=[
+                Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")
+            ],
+            from_hermeto=None,
+            metadata_path=Path(
+                "tests/data/dockerfiles/somewhat_believable_sample/metadata_multistage_from_scratch_with_builder_no_extra.yaml"
+            ),
+        ),
+        expected_sbom_path=Path(
+            "tests/sbom/test_oci_generate_data/generated_multistage_from_scratch_with_builder_no_extra.spdx.json"
+        ),
+    )
+
+
+@pytest.fixture()
+def test_case_spdx_from_scratch_single_stage() -> GenerateOciImageTestCase:
+    """
+    Test case with SPDX format, FROM scratch
+    without builder stage (component-only).
+    """
+    return GenerateOciImageTestCase(
+        args=GenerateOciImageCommandArgs(
+            from_syft=[
+                Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")
+            ],
+            from_hermeto=None,
+            metadata_path=Path(
+                "tests/data/dockerfiles/somewhat_believable_sample/metadata_single_stage_from_scratch_no_builder_no_extra.yaml"
+            ),
+        ),
+        expected_sbom_path=Path(
+            "tests/sbom/test_oci_generate_data/generated_single_stage_from_scratch_no_builder_no_extra.spdx.json"
+        ),
+    )
+
+
+@pytest.fixture()
+def test_case_spdx_with_extra_image() -> GenerateOciImageTestCase:
+    """Test case with SPDX format, external image content (COPY --from=image:tag)."""
+    return GenerateOciImageTestCase(
+        args=GenerateOciImageCommandArgs(
+            from_syft=[
+                Path("tests/sbom/test_merge_data/spdx/syft-sboms/pip-e2e-test.bom.json")
+            ],
+            from_hermeto=None,
+            metadata_path=Path(
+                "tests/data/dockerfiles/somewhat_believable_sample/metadata_single_stage_base_with_extra_image_no_builder.yaml"
+            ),
+        ),
+        expected_sbom_path=Path(
+            "tests/sbom/test_oci_generate_data/generated_single_stage_base_with_extra_image_no_builder.spdx.json"
+        ),
+    )
+
+
+@pytest.fixture()
 def test_case_cyclonedx_with_additional() -> GenerateOciImageTestCase:
     """Test case with CycloneDX format and additional base images."""
     return GenerateOciImageTestCase(
         args=GenerateOciImageCommandArgs(
             metadata_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/metadata_no_tssc.yaml"
+                "tests/data/dockerfiles/somewhat_believable_sample/metadata_single_stage_base_and_extra_image_no_builder.yaml"
             ),
             from_syft=[
                 Path(
@@ -377,7 +437,9 @@ def test_case_cyclonedx_with_additional() -> GenerateOciImageTestCase:
             ],
             from_hermeto=None,
         ),
-        expected_sbom_path=Path("tests/sbom/test_oci_generate_data/generated.cdx.json"),
+        expected_sbom_path=Path(
+            "tests/sbom/test_oci_generate_data/generated_single_stage_base_and_extra_image_no_builder.cdx.json"
+        ),
     )
 
 

@@ -41,5 +41,3 @@ class SBOMMetadata(BaseModel):
     # any extra images to be included in the SBOM
     # such as "external" images (COPY --from=image)
     extra_images: list[ImageData] = []
-    # deprecated: flat list where the last entry is the parent image
-    base_images: list[ImageData] = []

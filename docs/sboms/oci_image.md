@@ -18,16 +18,25 @@ image:
   pullspec: example.com/foo:1.2.3
   digest: sha256:bf07a7fbb825fc0aae7bf4a1177b2b31fcf8a3feeaf7092761e18c859ee52a9c
 
-# for images used directly to build the OCI image:
-base_images:
-- pullspec: example.com/bar:4.5.6
+# base (parent) image of the final stage (FROM in the last stage):
+base_image:
+  pullspec: example.com/bar:4.5.6
   digest: sha256:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c
 
-# for other images used in the OCI image (i.e. for copying files):
+# base images of builder stages (non-final FROM stages):
+builder_base_images:
+- pullspec: example.com/builder:1.0
+  digest: sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
+
+# for other images used in the OCI image (COPY --from=image:tag):
 extra_images:
 - pullspec: example.com/baz:7.8.9
   digest: sha256:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730
 ```
+
+Note: `base_image` is absent when the final stage is `FROM scratch` or
+`FROM oci-archive:...`. `builder_base_images` and `extra_images` are empty
+lists when there are no builder stages or external image references.
 
 
 You can easily generate this metadata using buildprobe (see
