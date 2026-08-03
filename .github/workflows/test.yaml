@@ -112,4 +112,4 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
 
-      - uses: webiny/action-conventional-commits@v1.3.0
+      - uses: webiny/action-conventional-commits@v1.4.2
