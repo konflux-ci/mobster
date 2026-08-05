@@ -76,9 +76,9 @@ async def capture_builder_content_workflow(
     input_sbom: Path,
     build_metadata: BuilderPkgMetadata,
     img: Image,
-    builder_imgs: list[Image],
-    extra_imgs: list[Image],
-    base_img: Image,
+    builder_imgs: list[Image] | None = None,
+    extra_imgs: list[Image] | None = None,
+    base_img: Image | None = None,
 ) -> tuple[str, str, Path]:
     """Generate build metadata and generate an SBOM for builder content
     testing, while capturing stdout/stderr. Useful for asserting certain things
@@ -91,8 +91,9 @@ async def capture_builder_content_workflow(
         metadata_path=make_metadata_yaml(
             tmp_path,
             img,
-            builder_imgs + [base_img],
-            extra_imgs,
+            builder_base_imgs=builder_imgs,
+            extra_imgs=extra_imgs,
+            base_img=base_img,
         ),
         build_metadata_path=build_metadata_path,
         input_sbom_path=input_sbom,
@@ -109,9 +110,9 @@ async def run_builder_content_workflow(
     input_sbom: Path,
     build_metadata: BuilderPkgMetadata,
     img: Image,
-    builder_imgs: list[Image],
-    extra_imgs: list[Image],
-    base_img: Image,
+    builder_imgs: list[Image] | None = None,
+    extra_imgs: list[Image] | None = None,
+    base_img: Image | None = None,
 ) -> Path:
     """Generate build metadata and generate an SBOM for builder content
     testing. This returns just the output path, without stdout/stderr."""
@@ -368,4 +369,162 @@ async def test_builder_content_same_package_from_multiple_builders(
         sbom_doc.relationships,
         [crypto_pkg.to_spdx()],
         RT.CONTAINS,
+    )
+
+
+@pytest.mark.asyncio
+async def test_builder_content_from_scratch(
+    oci_client: ReferrersTagOCIClient,
+    tmp_path: Path,
+    component_input_sbom: Path,
+    builder_img: Image,
+    crypto_pkg: SBOMPackage,
+    stdlib_pkg: SBOMPackage,
+) -> None:
+    """FROM scratch with builder stage: no parent contextualization,
+    builder content reparenting should still work."""
+    component_img = await oci_client.create_image("component", "latest")
+    component_img.arch = identify_arch()
+
+    component_build_metadata = BuilderPkgMetadata(
+        packages=[
+            crypto_pkg.to_metadata(OriginType.BUILDER, builder_img.reference),
+        ]
+    )
+
+    output_sbom_path = await run_builder_content_workflow(
+        tmp_path,
+        component_input_sbom,
+        component_build_metadata,
+        component_img,
+        builder_imgs=[builder_img],
+    )
+
+    sbom_doc = parse_file(str(output_sbom_path))
+
+    # builder content should be reparented
+    verify_relationships(
+        builder_img.propose_spdx_id(),
+        sbom_doc.relationships,
+        [crypto_pkg.to_spdx()],
+        RT.CONTAINS,
+    )
+
+    # no DESCENDANT_OF - FROM scratch has no parent
+    descendant_rels = [
+        r for r in sbom_doc.relationships if r.relationship_type == RT.DESCENDANT_OF
+    ]
+    assert len(descendant_rels) == 0, (
+        f"FROM scratch should have no DESCENDANT_OF, got: {descendant_rels}"
+    )
+
+    # exactly one BUILD_TOOL_OF - the builder base image
+    build_tool_rels = [
+        r for r in sbom_doc.relationships if r.relationship_type == RT.BUILD_TOOL_OF
+    ]
+    assert len(build_tool_rels) == 1, (
+        "FROM scratch with one builder should have "
+        f"exactly one BUILD_TOOL_OF, got: {build_tool_rels}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_builder_content_from_scratch_single_stage(
+    oci_client: ReferrersTagOCIClient,
+    tmp_path: Path,
+    component_input_sbom: Path,
+    stdlib_pkg: SBOMPackage,
+) -> None:
+    """FROM scratch without builder stage: component-only content,
+    no contextualization at all."""
+    component_img = await oci_client.create_image("component", "latest")
+    component_img.arch = identify_arch()
+
+    component_build_metadata = BuilderPkgMetadata(packages=[])
+
+    output_sbom_path = await run_builder_content_workflow(
+        tmp_path,
+        component_input_sbom,
+        component_build_metadata,
+        component_img,
+    )
+
+    sbom_doc = parse_file(str(output_sbom_path))
+
+    # component packages should remain under component image
+    verify_relationships(
+        component_img.propose_spdx_id(),
+        sbom_doc.relationships,
+        [stdlib_pkg.to_spdx()],
+        RT.CONTAINS,
+    )
+
+    # no DESCENDANT_OF or BUILD_TOOL_OF
+    non_describes = [
+        r for r in sbom_doc.relationships if r.relationship_type != RT.DESCRIBES
+    ]
+    assert all(r.relationship_type == RT.CONTAINS for r in non_describes), (
+        f"Single stage FROM scratch should only have CONTAINS, got: {non_describes}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_builder_content_external_image(
+    oci_client: ReferrersTagOCIClient,
+    tmp_path: Path,
+    parent_input_sbom: Path,
+    component_input_sbom: Path,
+    crypto_pkg: SBOMPackage,
+) -> None:
+    """External image content: package from COPY --from=image:tag
+    should be reparented to the extra image."""
+    extra_img = Image(
+        repository="localhost:9000/extra-tools",
+        digest="sha256:0000000000000000000000000000000000000000000000000000000000000099",
+        tag="latest",
+    )
+
+    parent_img, component_img = await setup_images(
+        tmp_path, parent_input_sbom, oci_client
+    )
+
+    component_build_metadata = BuilderPkgMetadata(
+        packages=[
+            crypto_pkg.to_metadata(OriginType.BUILDER, extra_img.reference),
+        ]
+    )
+
+    output_sbom_path = await run_builder_content_workflow(
+        tmp_path,
+        component_input_sbom,
+        component_build_metadata,
+        component_img,
+        extra_imgs=[extra_img],
+        base_img=parent_img,
+    )
+
+    sbom_doc = parse_file(str(output_sbom_path))
+
+    # extra image should have the package reparented to it
+    verify_relationships(
+        extra_img.propose_spdx_id(),
+        sbom_doc.relationships,
+        [crypto_pkg.to_spdx()],
+        RT.CONTAINS,
+    )
+
+    # exactly one DESCENDANT_OF - component descends from parent
+    descendant_rels = [
+        r for r in sbom_doc.relationships if r.relationship_type == RT.DESCENDANT_OF
+    ]
+    assert len(descendant_rels) == 1, (
+        f"Expected exactly one DESCENDANT_OF, got: {descendant_rels}"
+    )
+
+    # exactly one BUILD_TOOL_OF - the extra image
+    build_tool_rels = [
+        r for r in sbom_doc.relationships if r.relationship_type == RT.BUILD_TOOL_OF
+    ]
+    assert len(build_tool_rels) == 1, (
+        f"Expected exactly one BUILD_TOOL_OF, got: {build_tool_rels}"
     )

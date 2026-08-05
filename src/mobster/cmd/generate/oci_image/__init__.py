@@ -247,7 +247,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
     async def _execute_contextual_workflow(
         self,
         component_sbom_doc: Document,
-        parent_image_ref: Image,
+        parent_image_ref: Image | None,
         arch: str,
         build_metadata_path: Path | None,
     ) -> Document:
@@ -274,6 +274,9 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         User is also warned when capo and buildprobe inputs seem
         to be conflicting - i.e. build appears to be multistage,
         but capo did not detect any packages.
+
+        If parent image is missing (scratch, oci-archive)
+        parent contextualization is not executed.
 
         Args:
             component_sbom_doc:
@@ -305,17 +308,25 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                     "skipping entire contextualization (parent, builder)"
                 )
 
-        try:
-            parent_contextualized_sbom = (
-                await GenerateOciImageCommand.execute_parent_contextualization(
-                    parent_image_ref, arch, component_sbom_doc
+        # FROM scratch or FROM oci-archive:... - parent content does not exist
+        parent_contextualized_sbom = None
+        if parent_image_ref:
+            try:
+                parent_contextualized_sbom = (
+                    await GenerateOciImageCommand.execute_parent_contextualization(
+                        parent_image_ref, arch, component_sbom_doc
+                    )
                 )
+            except (ParentContextualizationError, SBOMError) as exc:
+                raise ContextualWorkflowError(
+                    "Failed to contextualize parent content. "
+                    "Non-contextual SBOM will be generated."
+                ) from exc
+        else:
+            LOGGER.debug(
+                "No base image found in buildprobe metadata, "
+                "skipping parent contextualization."
             )
-        except (ParentContextualizationError, SBOMError) as exc:
-            raise ContextualWorkflowError(
-                "Failed to contextualize parent content. "
-                "Non-contextual SBOM will be generated."
-            ) from exc
 
         build_is_multistage = (
             self._metadata.extra_images or self._metadata.builder_base_images
@@ -334,7 +345,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                     len(self._metadata.builder_base_images),
                 )
             # else: single-stage build - build metadata are not needed
-            return parent_contextualized_sbom
+            return parent_contextualized_sbom or component_sbom_doc
 
         assert builder_metadata is not None
         if not builder_metadata.packages:
@@ -349,12 +360,12 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                     "check capo unsupported features or scan feature."
                 )
             # else: single-stage build - packages are not expected
-            return parent_contextualized_sbom
+            return parent_contextualized_sbom or component_sbom_doc
 
         try:
-            parent_builder_contextualized_sbom = (
+            contextualized_sbom = (
                 GenerateOciImageCommand.execute_builder_contextualization(
-                    parent_contextualized_sbom, builder_metadata
+                    parent_contextualized_sbom or component_sbom_doc, builder_metadata
                 )
             )
         except BuilderContextualizationError as exc:
@@ -364,13 +375,12 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 "contextualization. Non-contextual SBOM will be generated."
             ) from exc
 
-        return parent_builder_contextualized_sbom
+        return contextualized_sbom
 
     async def _assess_and_dispatch_contextual_workflow(
         self,
         component_sbom_doc: Document | CycloneDX1BomWrapper,
-        base_images_refs: list[str | None],
-        base_images: dict[str, Image],
+        base_image: Image | None,
         image_arch: str,
     ) -> Document | None:
         """
@@ -383,7 +393,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         (non-modified) SBOM is furtherly processed by mobster.
         Args:
             component_sbom_doc: The component SBOM created for this image.
-            base_images_refs: List of references from the build.
+            base_image: parent image of the component.
             image_arch: CPU architecture of this image.
 
         Returns:
@@ -391,18 +401,12 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 The contextual SBOM if the workflow was successful.
                 None otherwise.
         """
-        if (
-            self.cli_args.contextualize
-            and isinstance(component_sbom_doc, Document)
-            and base_images_refs
-            and (parent_image_ref := base_images_refs[-1])
-        ):
+        if self.cli_args.contextualize and isinstance(component_sbom_doc, Document):
             try:
-                parent_image_obj = base_images[parent_image_ref]
                 copied_component_sbom_doc = deepcopy(component_sbom_doc)
                 contextual_sbom = await self._execute_contextual_workflow(
                     copied_component_sbom_doc,
-                    parent_image_obj,
+                    base_image,
                     image_arch,
                     self.cli_args.build_metadata_path,
                 )
@@ -410,7 +414,13 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 return contextual_sbom
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 LOGGER.error("Contextual SBOM workflow failed: %s", exc)
-        LOGGER.info("Could not create contextual SBOM.")
+                return None
+        LOGGER.info(
+            "Could not create contextual SBOM. "
+            "Contextualization enabled: %s SPDX format %s",
+            self.cli_args.contextualize,
+            isinstance(component_sbom_doc, Document),
+        )
         return None
 
     async def execute(self) -> Any:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
@@ -444,19 +454,43 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         # Buildprobe metadata path supports full contextualization parent / builder
         # dockerfile-json path supports non-contextualized SBOM only
         if self._metadata is not None:
+            # built image reference
             image = self._metadata.image.to_image(image_arch)
             await extend_sbom_with_image_reference(sbom, image, is_builder_image=False)
-            for base_image_data in self._metadata.base_images:
-                base_image = base_image_data.to_image()
-                base_images_refs.append(base_image_data.pullspec)
-                base_images_map[base_image_data.pullspec] = base_image
+
+            # builder base images
+            for builder_base_image_data in self._metadata.builder_base_images:
+                builder_base_image = builder_base_image_data.to_image()
+                base_images_refs.append(builder_base_image_data.pullspec)
+                base_images_map[builder_base_image_data.pullspec] = builder_base_image
+
+            # base image
+            # must be added after builder base images to be
+            # correctly processed by extend_sbom_with_base_images
+            if self._metadata.base_image:
+                base_image = self._metadata.base_image.to_image()
+                base_image_pullspec = self._metadata.base_image.pullspec
+                base_images_refs.append(base_image_pullspec)
+                base_images_map[base_image_pullspec] = base_image
+            else:
+                # FROM scratch / oci-archive: no parent image, append None sentinel
+                # so _get_images_and_their_annotations skips it and no builder
+                # base image gets is_base_image annotation
+                base_image = None
+                base_images_refs.append(None)
+
             await extend_sbom_with_base_images(sbom, base_images_refs, base_images_map)
+
+            # extra images (COPY --from=image:tag)
             for extra_image_data in self._metadata.extra_images:
                 extra_image = extra_image_data.to_image()
-                await extend_sbom_with_image_reference(sbom, extra_image, True)
+                await extend_sbom_with_image_reference(
+                    sbom, extra_image, is_builder_image=True
+                )
+
             with log_elapsed("Contextual workflow", logging.INFO):
                 contextual_sbom = await self._assess_and_dispatch_contextual_workflow(
-                    sbom, base_images_refs, base_images_map, image_arch
+                    sbom, base_image, image_arch
                 )
             sbom = contextual_sbom or sbom
         elif self.cli_args.image_pullspec:
@@ -479,7 +513,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 self.cli_args.image_digest,
                 arch=image_arch,
             )
-            await extend_sbom_with_image_reference(sbom, image, False)
+            await extend_sbom_with_image_reference(sbom, image, is_builder_image=False)
         elif self.cli_args.image_digest:
             LOGGER.warning(
                 "Provided image digest but no pullspec. The digest value is ignored."

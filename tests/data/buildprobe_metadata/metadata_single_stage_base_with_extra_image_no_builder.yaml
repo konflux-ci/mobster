@@ -1,0 +1,14 @@
+---
+image:
+  pullspec: quay.io/foobar/examplecontainer:v10
+  digest: sha256:11111111111111111111111111111111
+
+base_image:
+  pullspec: quay.io/redhat-user-workloads/rhtap-shared-team-tenant/tssc-test:tssc-test-on-push-2m6dq-build-container
+  digest: sha256:04f8c3262172fa024beaed2b120414d6011d0c0d4ea578619e32a3c353ec5ee5
+
+builder_base_images: []
+
+extra_images:
+  - pullspec: quay.io/ubi9:latest
+    digest: sha256:123456789012345678901234567789012

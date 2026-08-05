@@ -1,0 +1,6 @@
+---
+image:
+  pullspec: quay.io/foobar/examplecontainer:v10
+  digest: sha256:11111111111111111111111111111111
+
+extra_images: []
