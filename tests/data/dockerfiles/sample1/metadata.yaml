@@ -1,8 +1,0 @@
----
-image:
-  pullspec: alpine:3.10
-  digest: sha256@1234567890123456789012
-
-builder_base_images: []
-
-extra_images: []

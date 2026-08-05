@@ -289,11 +289,11 @@ def test_case_spdx_with_hermeto_and_additional() -> GenerateOciImageTestCase:
             ],
             from_hermeto=Path("tests/sbom/test_merge_data/spdx/cachi2.bom.json"),
             metadata_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/metadata.yaml"
+                "tests/data/buildprobe_metadata/metadata_multistage_base_with_builder_and_extra.yaml"
             ),
         ),
         expected_sbom_path=Path(
-            "tests/sbom/test_oci_generate_data/generated.spdx.json"
+            "tests/sbom/test_oci_generate_data/generated_multistage_base_with_builder_and_extra.spdx.json"
         ),
     )
 
@@ -309,7 +309,7 @@ def test_case_spdx_with_hermeto_and_content_filtering() -> GenerateOciImageTestC
                 "tests/cmd/generate/oci_image/test_hermeto_sbom_filter_data/spdx.bom.json"
             ),
             metadata_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/metadata_multistage_base_with_builder_no_extra.yaml"
+                "tests/data/buildprobe_metadata/metadata_multistage_base_with_builder_no_extra.yaml"
             ),
         ),
         expected_sbom_path=Path(
@@ -328,7 +328,7 @@ def test_case_spdx_without_hermeto_without_additional() -> GenerateOciImageTestC
             ],
             from_hermeto=None,
             metadata_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/metadata_single_stage_base_no_builder_no_extra.yaml"
+                "tests/data/buildprobe_metadata/metadata_single_stage_base_no_builder_no_extra.yaml"
             ),
         ),
         expected_sbom_path=Path(
@@ -346,7 +346,7 @@ def test_case_spdx_multiple_syft() -> GenerateOciImageTestCase:
     return GenerateOciImageTestCase(
         args=GenerateOciImageCommandArgs(
             metadata_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/metadata_single_stage_base_no_builder_no_extra.yaml"
+                "tests/data/buildprobe_metadata/metadata_single_stage_base_no_builder_no_extra.yaml"
             ),
             from_syft=[
                 Path(
@@ -372,7 +372,7 @@ def test_case_spdx_from_scratch() -> GenerateOciImageTestCase:
             ],
             from_hermeto=None,
             metadata_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/metadata_multistage_from_scratch_with_builder_no_extra.yaml"
+                "tests/data/buildprobe_metadata/metadata_multistage_from_scratch_with_builder_no_extra.yaml"
             ),
         ),
         expected_sbom_path=Path(
@@ -394,7 +394,7 @@ def test_case_spdx_from_scratch_single_stage() -> GenerateOciImageTestCase:
             ],
             from_hermeto=None,
             metadata_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/metadata_single_stage_from_scratch_no_builder_no_extra.yaml"
+                "tests/data/buildprobe_metadata/metadata_single_stage_from_scratch_no_builder_no_extra.yaml"
             ),
         ),
         expected_sbom_path=Path(
@@ -413,7 +413,7 @@ def test_case_spdx_with_extra_image() -> GenerateOciImageTestCase:
             ],
             from_hermeto=None,
             metadata_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/metadata_single_stage_base_with_extra_image_no_builder.yaml"
+                "tests/data/buildprobe_metadata/metadata_single_stage_base_with_extra_image_no_builder.yaml"
             ),
         ),
         expected_sbom_path=Path(
@@ -428,7 +428,7 @@ def test_case_cyclonedx_with_additional() -> GenerateOciImageTestCase:
     return GenerateOciImageTestCase(
         args=GenerateOciImageCommandArgs(
             metadata_path=Path(
-                "tests/data/dockerfiles/somewhat_believable_sample/metadata_single_stage_base_and_extra_image_no_builder.yaml"
+                "tests/data/buildprobe_metadata/metadata_single_stage_base_and_extra_image_no_builder.yaml"
             ),
             from_syft=[
                 Path(

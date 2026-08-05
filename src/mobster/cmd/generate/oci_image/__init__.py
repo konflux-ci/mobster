@@ -363,7 +363,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
             return parent_contextualized_sbom or component_sbom_doc
 
         try:
-            parent_builder_contextualized_sbom = (
+            contextualized_sbom = (
                 GenerateOciImageCommand.execute_builder_contextualization(
                     parent_contextualized_sbom or component_sbom_doc, builder_metadata
                 )
@@ -375,7 +375,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 "contextualization. Non-contextual SBOM will be generated."
             ) from exc
 
-        return parent_builder_contextualized_sbom
+        return contextualized_sbom
 
     async def _assess_and_dispatch_contextual_workflow(
         self,

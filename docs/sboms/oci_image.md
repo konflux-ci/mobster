@@ -52,7 +52,7 @@ mobster --verbose  generate oci-image \
 --from-syft tests/sbom/test_merge_data/cyclonedx/syft-sboms/pip-e2e-test.bom.json \
 --from-syft tests/sbom/test_merge_data/cyclonedx/syft-sboms/ubi-micro.bom.json \
 --from-hermeto tests/sbom/test_merge_data/cyclonedx/cachi2.bom.json \
---metadata-path tests/data/dockerfiles/somewhat_believable_sample/metadata.yaml
+--metadata-path tests/data/buildprobe_metadata/metadata_multistage_base_with_builder_and_extra.yaml
 ```
 
 ## List of arguments
