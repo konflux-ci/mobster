@@ -51,10 +51,11 @@ COPY --from=builder /app /app
 
 USER 0
 
-# Copy needed binaries for SBOM augmentation
+# Copy needed binaries for SBOM augmentation & metadata manipulation
 COPY --from=golang /usr/local/bin/oras /usr/bin/oras
 COPY --from=golang /usr/local/bin/cosign /usr/bin/cosign
 COPY --from=golang /usr/local/bin/syft /usr/bin/syft
+COPY --from=golang /usr/local/bin/yq /usr/bin/yq
 # Copy license to the container
 COPY LICENSE /licenses/
 
