@@ -577,6 +577,11 @@ async def test_process_component_sboms_big_release(
         repo_with_registry, repo_name, [image], cosign_signer
     )
 
+    # Copy the index to the target repo referenced in the snapshot so that
+    # cosign can find the manifest by digest when attesting.
+    source_ref = f"{registry}/{repo_name}:index"
+    await oci_client.copy_image(source_ref, f"{registry}/test:latest")
+
     # We assign a unique tag to each component, so that we upload different
     # SBOMs. TPA has trouble when uploading multiple identical large SBOMs
     # concurrently. Based on the number of workers, the final state of TPA
