@@ -609,6 +609,34 @@ async def test_execute_deprecated_path_no_attribute_error(
 
 
 @pytest.mark.asyncio
+async def test_additional_base_image_merges_with_metadata_extra_images(
+    test_case_spdx_with_extra_image: GenerateOciImageTestCase,
+) -> None:
+    """Verify that --additional-base-image entries and metadata extra_images
+    both appear in the final SBOM."""
+    cli_image_ref = "quay.io/extra/tooling:v1@sha256:aabbccddaabbccddaabbccddaabbccdd"
+    test_case_spdx_with_extra_image.args.additional_base_image = [cli_image_ref]
+
+    command = GenerateOciImageCommand(test_case_spdx_with_extra_image.args)
+    sbom = await command.execute()
+    sbom_dict = await GenerateOciImageCommand.dump_sbom_to_dict(sbom)
+
+    purls = {
+        ref["referenceLocator"]
+        for pkg in sbom_dict.get("packages", [])
+        for ref in pkg.get("externalRefs", [])
+        if ref.get("referenceType") == "purl"
+    }
+
+    assert any("quay.io/ubi9" in p for p in purls), (
+        "Extra image from metadata not found in SBOM"
+    )
+    assert any("quay.io/extra/tooling" in p for p in purls), (
+        "Additional base image from CLI not found in SBOM"
+    )
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "test_case",
     [

@@ -65,12 +65,12 @@ mobster --verbose  generate oci-image \
 - `--output` -- where to save the SBOM. prints it to STDOUT if this is not specified
 - `--arch` -- Image architecture in OCI format (e.g., `amd64`, `arm64`, `ppc64le`, `s390x`). Linux kernel format values (e.g., `x86_64`, `aarch64`) are also accepted and normalized automatically to the OCI format. Defaults to the architecture of the current system.
 - `--skip-validation` -- skips validation of the SBOM
+- `--additional-base-image` -- base (builder) image to add, can be specified multiple times. Expects the format `<registry>/<repository>:<tag>@sha256:<digest value>`.
 
 ### Deprecated arguments (will be removed in future versions and fully replaced by --metadata-path)
 - `--parsed-dockerfile-path` -- points to a dockerfile processed by `dockerfile-json`. Use `--metadata-path` instead.
 - `--base-image-digest-file` -- points to a file with digests for images used in Dockerfile. Expected format: `<registry>/<repository>:<tag> <registry>/<repository>:<tag>@sha256:<digest>`. Use `--metadata-path` instead.
 - `--dockerfile-target` -- the name of the build target from the Dockerfile. Use `--metadata-path` instead.
-- `--additional-base-image` -- base (builder) image to add, can be specified multiple times. Expects the format `<registry>/<repository>:<tag>@sha256:<digest value>`. Use `--metadata-path` instead.
 
 ## Generating a (non-hermetic) SBOM from scratch
 
