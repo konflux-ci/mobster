@@ -545,7 +545,9 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                     sbom, base_images_refs, base_images_map
                 )
 
-            # Extending with additional base images
+        # Extending with additional base images (e.g. images for scripts
+        # used in build automation specific for the given pipeline)
+        if self.cli_args.additional_base_image:
             for image_ref in self.cli_args.additional_base_image:
                 image_object = Image.from_oci_artifact_reference(image_ref)
                 await extend_sbom_with_image_reference(

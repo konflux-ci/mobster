@@ -55,7 +55,6 @@ USER 0
 COPY --from=golang /usr/local/bin/oras /usr/bin/oras
 COPY --from=golang /usr/local/bin/cosign /usr/bin/cosign
 COPY --from=golang /usr/local/bin/syft /usr/bin/syft
-COPY --from=golang /usr/local/bin/yq /usr/bin/yq
 # Copy license to the container
 COPY LICENSE /licenses/
 

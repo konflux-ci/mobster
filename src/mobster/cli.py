@@ -196,8 +196,7 @@ def generate_oci_image_parser(subparsers: Any) -> None:
         type=validated_additional_reference,
         action="append",
         default=[],
-        help="[Deprecated: use --metadata-path] "
-        "Base (builder) image to add, can be specified multiple times. "
+        help="Base (builder) image to add, can be specified multiple times. "
         "Expects the format <registry>/<repository>:<tag>@sha256:<digest value>",
     )
 
