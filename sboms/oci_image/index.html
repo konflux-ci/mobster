@@ -1201,13 +1201,13 @@ support combining SPDX and CycloneDX SBOMs.</p>
 <li><code>--output</code> -- where to save the SBOM. prints it to STDOUT if this is not specified</li>
 <li><code>--arch</code> -- Image architecture in OCI format (e.g., <code>amd64</code>, <code>arm64</code>, <code>ppc64le</code>, <code>s390x</code>). Linux kernel format values (e.g., <code>x86_64</code>, <code>aarch64</code>) are also accepted and normalized automatically to the OCI format. Defaults to the architecture of the current system.</li>
 <li><code>--skip-validation</code> -- skips validation of the SBOM</li>
+<li><code>--additional-base-image</code> -- base (builder) image to add, can be specified multiple times. Expects the format <code>&lt;registry&gt;/&lt;repository&gt;:&lt;tag&gt;@sha256:&lt;digest value&gt;</code>.</li>
 </ul>
 <h3 id="deprecated-arguments-will-be-removed-in-future-versions-and-fully-replaced-by-metadata-path">Deprecated arguments (will be removed in future versions and fully replaced by --metadata-path)</h3>
 <ul>
 <li><code>--parsed-dockerfile-path</code> -- points to a dockerfile processed by <code>dockerfile-json</code>. Use <code>--metadata-path</code> instead.</li>
 <li><code>--base-image-digest-file</code> -- points to a file with digests for images used in Dockerfile. Expected format: <code>&lt;registry&gt;/&lt;repository&gt;:&lt;tag&gt; &lt;registry&gt;/&lt;repository&gt;:&lt;tag&gt;@sha256:&lt;digest&gt;</code>. Use <code>--metadata-path</code> instead.</li>
 <li><code>--dockerfile-target</code> -- the name of the build target from the Dockerfile. Use <code>--metadata-path</code> instead.</li>
-<li><code>--additional-base-image</code> -- base (builder) image to add, can be specified multiple times. Expects the format <code>&lt;registry&gt;/&lt;repository&gt;:&lt;tag&gt;@sha256:&lt;digest value&gt;</code>. Use <code>--metadata-path</code> instead.</li>
 </ul>
 <h2 id="generating-a-non-hermetic-sbom-from-scratch">Generating a (non-hermetic) SBOM from scratch</h2>
 <p>To build an SBOM with only the OCI image, you will need to run several tools to
