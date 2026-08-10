@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
-      - uses: hynek/build-and-inspect-python-package@v2.14.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: hynek/build-and-inspect-python-package@2abe76da66d0a6a4a227101f9348ee855797cfa5
 
 
   upload-to-pypi:
@@ -27,8 +27,8 @@ jobs:
 
     steps:
       - name: Download built artifact to dist/
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@ad191675b41f6a5b46da9a048cb6893812da158b
         with:
           name: Packages
           path: dist
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
