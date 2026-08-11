@@ -307,6 +307,148 @@ async def test__request_content_factory_on_exhausted_retries(
 
 
 @pytest.mark.asyncio
+@patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._fetch_token")
+async def test__request_async_content_factory_invoked_per_attempt(
+    mock_fetch_token: AsyncMock,
+    httpx_mock: HTTPXMock,
+    oidc_client: OIDCClientCredentialsClient,
+) -> None:
+    """Async content factory must be awaited; invoked once per attempt."""
+    body = b"async-chunk-a" + b"async-chunk-b"
+    factory_calls = 0
+
+    async def content_factory() -> AsyncGenerator[bytes, None]:
+        nonlocal factory_calls
+        factory_calls += 1
+
+        async def _gen() -> AsyncGenerator[bytes, None]:
+            yield b"async-chunk-a"
+            yield b"async-chunk-b"
+
+        return _gen()
+
+    httpx_mock.add_response(
+        url=f"{BASE_URL}hello",
+        method="post",
+        headers=AUTHORIZATION_HEADER,
+        status_code=500,
+    )
+    httpx_mock.add_response(
+        url=f"{BASE_URL}hello",
+        method="post",
+        headers=AUTHORIZATION_HEADER,
+        status_code=200,
+        text="ok",
+    )
+
+    resp = await oidc_client._request(
+        "post",
+        "hello",
+        content=content_factory,
+        retries=3,
+        backoff_factor=0.01,
+    )
+
+    assert resp.status_code == 200
+    assert factory_calls == 2
+    requests = httpx_mock.get_requests()
+    assert len(requests) == 2
+    assert all(req.content == body for req in requests)
+    mock_fetch_token.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_close_request_content_async_generator() -> None:
+    closed = False
+
+    async def _gen() -> AsyncGenerator[bytes, None]:
+        nonlocal closed
+        try:
+            yield b"chunk"
+        finally:
+            closed = True
+
+    gen = _gen()
+    await anext(gen)
+    await oidc._close_request_content(gen)
+    assert closed
+
+
+@pytest.mark.asyncio
+async def test_close_request_content_sync_closeable() -> None:
+    mock_content = MagicMock(spec=["close"])
+
+    await oidc._close_request_content(mock_content)
+
+    mock_content.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_close_request_content_none() -> None:
+    await oidc._close_request_content(None)
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.upload.oidc._close_request_content", new_callable=AsyncMock)
+@patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._fetch_token")
+async def test__request_closes_content_each_attempt(
+    mock_fetch_token: AsyncMock,
+    mock_close_content: AsyncMock,
+    httpx_mock: HTTPXMock,
+    oidc_client: OIDCClientCredentialsClient,
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}hello",
+        method="post",
+        headers=AUTHORIZATION_HEADER,
+        status_code=500,
+    )
+    httpx_mock.add_response(
+        url=f"{BASE_URL}hello",
+        method="post",
+        headers=AUTHORIZATION_HEADER,
+        status_code=200,
+        text="ok",
+    )
+
+    await oidc_client._request(
+        "post",
+        "hello",
+        content=b"payload",
+        retries=3,
+        backoff_factor=0.01,
+    )
+
+    assert mock_close_content.await_count == 2
+    mock_fetch_token.assert_awaited()
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.upload.oidc._close_request_content", new_callable=AsyncMock)
+@patch("httpx.AsyncClient.request")
+@patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._fetch_token")
+async def test__request_closes_content_on_non_retryable_error(
+    mock_fetch_token: AsyncMock,
+    mock_httpx_request: AsyncMock,
+    mock_close_content: AsyncMock,
+    oidc_client: OIDCClientCredentialsClient,
+) -> None:
+    mock_httpx_request.side_effect = ZeroDivisionError("Error")
+
+    with pytest.raises(ZeroDivisionError):
+        await oidc_client._request(
+            "post",
+            "hello",
+            content=b"payload",
+            retries=2,
+            backoff_factor=0.01,
+        )
+
+    mock_close_content.assert_awaited_once()
+    mock_fetch_token.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 @patch("httpx.AsyncClient.request")
 @patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._fetch_token")
 async def test__request_fail_on_error(

@@ -134,7 +134,7 @@ class TPAClient(OIDCClientCredentialsClient):
             chunk_size: Size of each chunk in bytes. Defaults to 64 KiB.
 
         Yields:
-            bytes: File content chunks.
+            File content chunks.
         """
         async with aiofiles.open(path, "rb") as sbom_file:
             while chunk := await sbom_file.read(chunk_size):
