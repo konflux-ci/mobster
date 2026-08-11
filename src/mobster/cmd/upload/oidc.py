@@ -225,7 +225,7 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too
     # Mypy doesn't recognize that either a value is returned
     # or an exception is raised in all cases
     async def _request(  # type: ignore[return]
-        # pylint: disable=too-many-arguments
+        # pylint: disable=too-many-arguments, too-many-locals
         self,
         method: str,
         url: str,
@@ -246,7 +246,10 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too
             method: HTTP method (GET, POST, ...)
             url: Relative URL of the endpoint. Will be combined with the base URL.
             headers: headers to add to the request. Defaults to None.
-            content: data to send in the request. Defaults to None.
+            content: Request body, or a zero-arg callable that returns a fresh body
+                for each attempt (useful for streaming uploads that must be
+                re-opened on retry). Accepts any httpx-compatible body (bytes,
+                str, iterable, or async iterable). Defaults to None.
             params: Parameters to add to the request. Defaults to None.
             retries: Maximum number of retries. Default to 10.
             backoff_factor: A backoff factor to apply between attempts.
@@ -273,10 +276,12 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too
         for attempt in range(retries):
             await self._ensure_valid_token()
             try:
+                # Resolve callables per attempt so streaming bodies can be recreated
+                request_content = content() if callable(content) else content
                 resp = await self.client.request(  # type:ignore[union-attr]
                     method,
                     effective_url,
-                    content=content,
+                    content=request_content,
                     params=params,
                     headers=headers,
                 )
@@ -370,7 +375,8 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too
 
         Args:
             url: endpoint to call
-            content: data to send in request body
+            content: Request body, or a zero-arg callable that returns a fresh
+                body for each attempt (see `_request`).
             headers: headers to add to the request.
                 Defaults to None.
             params: Parameters to add to the request.
@@ -401,7 +407,8 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too
 
         Args:
             url: endpoint to call
-            content: data to send in request body
+            content: Request body, or a zero-arg callable that returns a fresh
+                body for each attempt (see `_request`).
             headers: headers to add to the request.
                 Defaults to None.
             params: Parameters to add to the request.

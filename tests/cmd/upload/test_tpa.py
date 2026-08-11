@@ -26,17 +26,13 @@ async def tpa_client() -> AsyncGenerator[TPAClient, None]:
 
 
 @pytest.mark.asyncio
-@patch("aiofiles.open")
 @patch("mobster.cmd.upload.tpa.TPAClient.post")
 async def test_upload_sbom_success(
-    mock_post: AsyncMock, mock_aiofiles_open: AsyncMock, tpa_client: TPAClient
+    mock_post: AsyncMock, tpa_client: TPAClient, tmp_path: Path
 ) -> None:
-    sbom_filepath = Path("/path/to/sbom.json")
     file_content = b'{"sbom": "content"}'
-
-    mock_file = AsyncMock()
-    mock_file.read.return_value = file_content
-    mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
+    sbom_filepath = tmp_path / "sbom.json"
+    sbom_filepath.write_bytes(file_content)
 
     mock_response = httpx.Response(
         200,
@@ -47,29 +43,29 @@ async def test_upload_sbom_success(
 
     response = await tpa_client.upload_sbom(sbom_filepath)
 
-    mock_aiofiles_open.assert_called_once_with(sbom_filepath, "rb")
-    mock_post.assert_called_once_with(
-        "api/v2/sbom",
-        content=file_content,
-        headers={"content-type": "application/json"},
-        params={},
-        retries=3,
-    )
+    mock_post.assert_called_once()
+    assert mock_post.await_args is not None
+    call_kwargs = mock_post.await_args.kwargs
+    assert call_kwargs["headers"] == {
+        "content-type": "application/json",
+        "content-length": str(len(file_content)),
+    }
+    assert call_kwargs["params"] == {}
+    assert call_kwargs["retries"] == 3
+    assert callable(call_kwargs["content"])
+
+    streamed = b"".join([chunk async for chunk in call_kwargs["content"]()])
+    assert streamed == file_content
     assert response == "urn:uuid:12345678-1234-5678-9012-123456789012"
 
 
 @pytest.mark.asyncio
-@patch("aiofiles.open")
 @patch("mobster.cmd.upload.tpa.TPAClient.post")
 async def test_upload_sbom_error(
-    mock_post: AsyncMock, mock_aiofiles_open: AsyncMock, tpa_client: TPAClient
+    mock_post: AsyncMock, tpa_client: TPAClient, tmp_path: Path
 ) -> None:
-    sbom_filepath = Path("/path/to/sbom.json")
-    file_content = b'{"sbom": "content"}'
-
-    mock_file = AsyncMock()
-    mock_file.read.return_value = file_content
-    mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
+    sbom_filepath = tmp_path / "sbom.json"
+    sbom_filepath.write_bytes(b'{"sbom": "content"}')
 
     request = httpx.Request("POST", "https://api.example.com/v1/api/v2/sbom")
     error_response = httpx.Response(500, request=request, content=b"Server Error")
@@ -80,22 +76,18 @@ async def test_upload_sbom_error(
     with pytest.raises(TPAError):
         await tpa_client.upload_sbom(sbom_filepath)
 
-    mock_aiofiles_open.assert_called_once_with(sbom_filepath, "rb")
     mock_post.assert_called_once()
+    assert mock_post.await_args is not None
+    assert callable(mock_post.await_args.kwargs["content"])
 
 
 @pytest.mark.asyncio
-@patch("aiofiles.open")
 @patch("mobster.cmd.upload.tpa.TPAClient.post")
 async def test_upload_sbom_retry_exhausted_error(
-    mock_post: AsyncMock, mock_aiofiles_open: AsyncMock, tpa_client: TPAClient
+    mock_post: AsyncMock, tpa_client: TPAClient, tmp_path: Path
 ) -> None:
-    sbom_filepath = Path("/path/to/sbom.json")
-    file_content = b'{"sbom": "content"}'
-
-    mock_file = AsyncMock()
-    mock_file.read.return_value = file_content
-    mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
+    sbom_filepath = tmp_path / "sbom.json"
+    sbom_filepath.write_bytes(b'{"sbom": "content"}')
 
     mock_post.side_effect = RetryExhaustedException("Retries exhausted")
 
@@ -104,22 +96,31 @@ async def test_upload_sbom_retry_exhausted_error(
 
 
 @pytest.mark.asyncio
-@patch("aiofiles.open")
 @patch("mobster.cmd.upload.tpa.TPAClient.post")
 async def test_upload_sbom_http_error(
-    mock_post: AsyncMock, mock_aiofiles_open: AsyncMock, tpa_client: TPAClient
+    mock_post: AsyncMock, tpa_client: TPAClient, tmp_path: Path
 ) -> None:
-    sbom_filepath = Path("/path/to/sbom.json")
-    file_content = b'{"sbom": "content"}'
-
-    mock_file = AsyncMock()
-    mock_file.read.return_value = file_content
-    mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
+    sbom_filepath = tmp_path / "sbom.json"
+    sbom_filepath.write_bytes(b'{"sbom": "content"}')
 
     mock_post.side_effect = httpx.HTTPError("Connection failed")
 
     with pytest.raises(TPAError):
         await tpa_client.upload_sbom(sbom_filepath)
+
+
+@pytest.mark.asyncio
+async def test_iter_sbom_file_chunks(tmp_path: Path) -> None:
+    content = b"abcdefghijklmnopqrstuvwxyz"
+    sbom_filepath = tmp_path / "sbom.json"
+    sbom_filepath.write_bytes(content)
+
+    chunks = [
+        chunk async for chunk in TPAClient._iter_sbom_file(sbom_filepath, chunk_size=10)
+    ]
+
+    assert chunks == [b"abcdefghij", b"klmnopqrst", b"uvwxyz"]
+    assert b"".join(chunks) == content
 
 
 @pytest.mark.asyncio

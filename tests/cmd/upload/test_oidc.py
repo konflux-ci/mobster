@@ -223,6 +223,90 @@ async def test__request_fail_on_request(
 
 
 @pytest.mark.asyncio
+@patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._fetch_token")
+async def test__request_content_factory_invoked_per_attempt(
+    mock_fetch_token: AsyncMock,
+    httpx_mock: HTTPXMock,
+    oidc_client: OIDCClientCredentialsClient,
+) -> None:
+    """Content factory must be called once per attempt so streams can be recreated."""
+    body = b"chunk-a" + b"chunk-b"
+    factory_calls = 0
+
+    def content_factory() -> AsyncGenerator[bytes, None]:
+        nonlocal factory_calls
+        factory_calls += 1
+
+        async def _gen() -> AsyncGenerator[bytes, None]:
+            yield b"chunk-a"
+            yield b"chunk-b"
+
+        return _gen()
+
+    httpx_mock.add_response(
+        url=f"{BASE_URL}hello",
+        method="post",
+        headers=AUTHORIZATION_HEADER,
+        status_code=500,
+    )
+    httpx_mock.add_response(
+        url=f"{BASE_URL}hello",
+        method="post",
+        headers=AUTHORIZATION_HEADER,
+        status_code=200,
+        text="ok",
+    )
+
+    resp = await oidc_client._request(
+        "post",
+        "hello",
+        content=content_factory,
+        retries=3,
+        backoff_factor=0.01,
+    )
+
+    assert resp.status_code == 200
+    assert factory_calls == 2
+    requests = httpx_mock.get_requests()
+    assert len(requests) == 2
+    assert all(req.content == body for req in requests)
+    mock_fetch_token.assert_awaited()
+
+
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.request")
+@patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._fetch_token")
+async def test__request_content_factory_on_exhausted_retries(
+    mock_fetch_token: AsyncMock,
+    mock_httpx_request: AsyncMock,
+    oidc_client: OIDCClientCredentialsClient,
+) -> None:
+    """Factory is invoked once per attempt even when all retries fail."""
+    retries = 3
+    factory_calls = 0
+
+    def content_factory() -> bytes:
+        nonlocal factory_calls
+        factory_calls += 1
+        return b"payload"
+
+    mock_httpx_request.side_effect = httpx.RequestError("Request failed")
+
+    with pytest.raises(RetryExhaustedException):
+        await oidc_client._request(
+            "post",
+            "hello",
+            content=content_factory,
+            retries=retries,
+            backoff_factor=0.01,
+        )
+
+    assert factory_calls == retries
+    assert mock_httpx_request.await_count == retries
+    mock_fetch_token.assert_awaited()
+
+
+@pytest.mark.asyncio
 @patch("httpx.AsyncClient.request")
 @patch("mobster.cmd.upload.oidc.OIDCClientCredentialsClient._fetch_token")
 async def test__request_fail_on_error(
