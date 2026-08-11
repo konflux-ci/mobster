@@ -1,18 +1,82 @@
 """A module for generating SBOM documents for OCI index images."""
 
 import logging
+from argparse import ArgumentError
+from pathlib import Path
 from typing import Any
 
 from cyclonedx.model.bom import Bom
 from cyclonedx.model.dependency import Dependency
+from spdx_tools.spdx.jsonschema.document_converter import DocumentConverter
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
+from spdx_tools.spdx.writer.write_utils import convert
 
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
+from mobster.cmd.generate.oci_image.spdx_utils import normalize_and_load_sbom
 from mobster.image import Image
 from mobster.sbom import cyclonedx, spdx
+from mobster.utils import load_sbom_from_json
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _spdx_purls(package: dict[str, Any]) -> list[str]:
+    return [
+        ref["referenceLocator"]
+        for ref in package.get("externalRefs", [])
+        if ref.get("referenceType") == "purl"
+    ]
+
+
+def merge_syft_packages_into_modelcar_spdx(
+    modelcar_sbom: dict[str, Any],
+    syft_sboms: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """
+    Merge packages from Syft SPDX SBOMs into a modelcar composition SBOM.
+
+    Packages already present (matched by purl) are skipped. New packages are
+    linked to the modelcar root with CONTAINS relationships.
+    """
+    existing_ids = {pkg["SPDXID"] for pkg in modelcar_sbom.get("packages", [])}
+    existing_purls = {
+        purl
+        for pkg in modelcar_sbom.get("packages", [])
+        for purl in _spdx_purls(pkg)
+    }
+    root_id = next(
+        (
+            rel["relatedSpdxElement"]
+            for rel in modelcar_sbom.get("relationships", [])
+            if rel.get("relationshipType") == "DESCRIBES"
+        ),
+        None,
+    )
+
+    for syft in syft_sboms:
+        for pkg in syft.get("packages", []):
+            purls = _spdx_purls(pkg)
+            if purls and any(purl in existing_purls for purl in purls):
+                continue
+            pkg = dict(pkg)
+            spdx_id = pkg["SPDXID"]
+            if spdx_id in existing_ids:
+                spdx_id = f"{spdx_id}-from-syft"
+                pkg["SPDXID"] = spdx_id
+            modelcar_sbom.setdefault("packages", []).append(pkg)
+            existing_ids.add(spdx_id)
+            existing_purls.update(purls)
+            if root_id:
+                modelcar_sbom.setdefault("relationships", []).append(
+                    {
+                        "spdxElementId": root_id,
+                        "relationshipType": "CONTAINS",
+                        "relatedSpdxElement": spdx_id,
+                    }
+                )
+
+    return modelcar_sbom
 
 
 class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
@@ -29,9 +93,34 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
         model = Image.from_oci_artifact_reference(self.cli_args.model_image)
 
         sbom = await self.to_sbom(modelcar, base, model)
+        if self.cli_args.from_syft:
+            sbom = await self._merge_from_syft(sbom)
 
         self._content = sbom
         return self.content
+
+    async def _merge_from_syft(self, sbom: Any) -> Document:
+        """
+        Merge Syft SPDX package inventory into the modelcar composition SBOM.
+        """
+        if self.cli_args.sbom_type != "spdx":
+            raise ArgumentError(
+                None,
+                "--from-syft is only supported with --sbom-type spdx",
+            )
+        if not isinstance(sbom, Document):
+            raise TypeError("Expected SPDX Document when merging --from-syft")
+
+        modelcar_dict = convert(sbom, DocumentConverter())  # type: ignore[no-untyped-call]
+        syft_sboms = [
+            await load_sbom_from_json(Path(path)) for path in self.cli_args.from_syft
+        ]
+        LOGGER.info(
+            "Merging packages from %d Syft SBOM(s) into modelcar SBOM",
+            len(syft_sboms),
+        )
+        merged = merge_syft_packages_into_modelcar_spdx(modelcar_dict, syft_sboms)
+        return await normalize_and_load_sbom(merged)
 
     async def to_sbom(self, modelcar: Image, base: Image, model: Image) -> Any:
         """

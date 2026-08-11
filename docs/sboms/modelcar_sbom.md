@@ -16,10 +16,27 @@ mobster generate \
     --sbom-type spdx
 ```
 
+To also include the package inventory from a Syft scan of the base image
+(recommended for ModelCars — scan the base, not the assembled ModelCar with
+weight layers):
+
+```bash
+syft scan "$BASE_IMAGE" -o spdx-json@2.3 > sbom-base-syft.json
+
+mobster generate \
+    --output modelcar.sbom.spdx.json \
+    modelcar \
+    --modelcar-image ... \
+    --base-image ... \
+    --model-image ... \
+    --sbom-type spdx \
+    --from-syft sbom-base-syft.json
+```
+
 
 **List of arguments:**
 
-- `---modelcar-image`
+- `--modelcar-image`
   - Modelcar image pullspec with digest (optional tag) `repository/image:tag@sha256:hexvalue`
   - Example value `quay.io/example/modelcar:v22@sha256:cc6016b62f25d56507033c48b04517ba40b3490b1e9b01f1c485371311ed42c4`
 - `--base-image`
@@ -30,8 +47,13 @@ mobster generate \
   - Example value `quay.io/example/modelcar:v22@sha256:cc6016b62f25d56507033c48b04517ba40b3490b1e9b01f1c485371311ed42c4`
 - `--output`
   - Path where the SBOM should be written
-- ` --sbom-type`
+- `--sbom-type`
   - Type of SBOM to generate (`spdx` or `cyclonedx`)
+- `--from-syft`
+  - Optional path to an SPDX SBOM produced by Syft. Packages are merged into the
+    composition SBOM and linked to the modelcar root with `CONTAINS`
+    relationships. Duplicate packages (matched by purl) are skipped. Only
+    supported with `--sbom-type spdx`. May be repeated.
 
 
 ## Example
@@ -48,6 +70,15 @@ The generated SBOM has following structure:
     - SPDXRef-modelcar-image
         - Base image (DESCENDANT_OF)
         - Model image (DESCENDANT_OF)
+```
+
+With `--from-syft`, packages from the Syft SBOM are also attached:
+```
+ - SPDXRef-DOCUMENT
+    - SPDXRef-modelcar-image
+        - Base image (DESCENDANT_OF)
+        - Model image (DESCENDANT_OF)
+        - Syft packages (CONTAINS)
 ```
 
 The Cyclonedx SBOM has the equivalent structure:
