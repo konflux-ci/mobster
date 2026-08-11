@@ -154,6 +154,87 @@ def test_merge_syft_packages_into_modelcar_spdx() -> None:
     } == {(rel["spdxElementId"], rel["relatedSpdxElement"]) for rel in contains}
 
 
+def test_merge_syft_packages_double_spdx_id_collision() -> None:
+    """Renamed -from-syft ID must itself be uniquified if already taken."""
+    modelcar = {
+        "packages": [
+            {"SPDXID": "SPDXRef-root", "name": "modelcar", "externalRefs": []},
+            {
+                "SPDXID": "SPDXRef-root-from-syft",
+                "name": "already-renamed",
+                "externalRefs": [],
+            },
+        ],
+        "relationships": [
+            {
+                "spdxElementId": "SPDXRef-DOCUMENT",
+                "relationshipType": "DESCRIBES",
+                "relatedSpdxElement": "SPDXRef-root",
+            }
+        ],
+    }
+    syft_sbom = {
+        "packages": [
+            {
+                "SPDXID": "SPDXRef-root",
+                "name": "collision",
+                "externalRefs": [
+                    {
+                        "referenceType": "purl",
+                        "referenceLocator": "pkg:rpm/collision@1.0",
+                    }
+                ],
+            }
+        ]
+    }
+
+    merged = merge_syft_packages_into_modelcar_spdx(modelcar, [syft_sbom])
+    package_ids = {pkg["SPDXID"] for pkg in merged["packages"]}
+    assert "SPDXRef-root-from-syft-1" in package_ids
+    assert len(package_ids) == len(merged["packages"])
+
+    contains = [
+        rel for rel in merged["relationships"] if rel["relationshipType"] == "CONTAINS"
+    ]
+    assert contains == [
+        {
+            "spdxElementId": "SPDXRef-root",
+            "relationshipType": "CONTAINS",
+            "relatedSpdxElement": "SPDXRef-root-from-syft-1",
+        }
+    ]
+
+
+def test_merge_syft_packages_warns_without_describes(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    modelcar: dict[str, object] = {"packages": [], "relationships": []}
+    syft_sbom = {
+        "packages": [
+            {
+                "SPDXID": "SPDXRef-bash",
+                "name": "bash",
+                "externalRefs": [
+                    {
+                        "referenceType": "purl",
+                        "referenceLocator": "pkg:rpm/bash@1.0",
+                    }
+                ],
+            }
+        ]
+    }
+
+    with caplog.at_level("WARNING"):
+        merged = merge_syft_packages_into_modelcar_spdx(modelcar, [syft_sbom])
+
+    assert "no DESCRIBES relationship" in caplog.text
+    assert {pkg["SPDXID"] for pkg in merged["packages"]} == {"SPDXRef-bash"}
+    assert not any(
+        rel.get("relationshipType") == "CONTAINS"
+        for rel in merged.get("relationships", [])
+    )
+
+
 @pytest.mark.asyncio
 async def test_generate_modelcar_from_syft() -> None:
     current_dir = pathlib.Path(__file__).parent.resolve()

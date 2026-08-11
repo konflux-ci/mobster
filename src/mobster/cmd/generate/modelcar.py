@@ -51,18 +51,27 @@ def merge_syft_packages_into_modelcar_spdx(
         ),
         None,
     )
+    if root_id is None:
+        LOGGER.warning(
+            "Modelcar SBOM has no DESCRIBES relationship; Syft packages will be "
+            "merged without CONTAINS links to a root package"
+        )
 
-    for syft in syft_sboms:
-        for pkg in syft.get("packages", []):
+    for syft_sbom in syft_sboms:
+        for pkg in syft_sbom.get("packages", []):
             purls = _spdx_purls(pkg)
             if purls and any(purl in existing_purls for purl in purls):
                 continue
-            pkg = dict(pkg)
-            spdx_id = pkg["SPDXID"]
-            if spdx_id in existing_ids:
-                spdx_id = f"{spdx_id}-from-syft"
-                pkg["SPDXID"] = spdx_id
-            modelcar_sbom.setdefault("packages", []).append(pkg)
+            pkg_copy = dict(pkg)
+            original_id = pkg_copy["SPDXID"]
+            spdx_id = original_id
+            counter = 0
+            while spdx_id in existing_ids:
+                suffix = "-from-syft" if counter == 0 else f"-from-syft-{counter}"
+                spdx_id = f"{original_id}{suffix}"
+                counter += 1
+            pkg_copy["SPDXID"] = spdx_id
+            modelcar_sbom.setdefault("packages", []).append(pkg_copy)
             existing_ids.add(spdx_id)
             existing_purls.update(purls)
             if root_id:
@@ -100,6 +109,10 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
     async def _merge_from_syft(self, sbom: Any) -> Document:
         """
         Merge Syft SPDX package inventory into the modelcar composition SBOM.
+
+        Raises:
+            ArgumentError: If `--from-syft` is used with a non-SPDX SBOM type.
+            TypeError: If `sbom` is not an SPDX `Document`.
         """
         if self.cli_args.sbom_type != "spdx":
             raise ArgumentError(
