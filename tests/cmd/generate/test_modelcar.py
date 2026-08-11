@@ -205,3 +205,12 @@ async def test_generate_modelcar_from_syft_rejects_cyclonedx() -> None:
 
     with pytest.raises(ArgumentError, match="--from-syft is only supported"):
         await command.execute()
+
+
+@pytest.mark.asyncio
+async def test_merge_from_syft_rejects_non_document() -> None:
+    args = _modelcar_args(from_syft=[pathlib.Path("unused.json")])
+    command = GenerateModelcarCommand(args)
+
+    with pytest.raises(TypeError, match="Expected SPDX Document"):
+        await command._merge_from_syft(object())
