@@ -16,17 +16,10 @@ from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.spdx_utils import normalize_and_load_sbom
 from mobster.image import Image
 from mobster.sbom import cyclonedx, spdx
+from mobster.sbom.merge import SPDXPackage
 from mobster.utils import load_sbom_from_json
 
 LOGGER = logging.getLogger(__name__)
-
-
-def _spdx_purls(package: dict[str, Any]) -> list[str]:
-    return [
-        ref["referenceLocator"]
-        for ref in package.get("externalRefs", [])
-        if ref.get("referenceType") == "purl"
-    ]
 
 
 def merge_syft_packages_into_modelcar_spdx(
@@ -36,12 +29,20 @@ def merge_syft_packages_into_modelcar_spdx(
     """
     Merge packages from Syft SPDX SBOMs into a modelcar composition SBOM.
 
-    Packages already present (matched by purl) are skipped. New packages are
-    linked to the modelcar root with CONTAINS relationships.
+    Packages already present (matched by purl via ``SPDXPackage.all_purls``)
+    are skipped. Packages without an SPDXID or without a purl are skipped
+    (purl is required for deduplication). New packages are linked to the
+    modelcar root with CONTAINS relationships.
     """
-    existing_ids = {pkg["SPDXID"] for pkg in modelcar_sbom.get("packages", [])}
+    existing_ids = {
+        SPDXPackage(pkg).id()
+        for pkg in modelcar_sbom.get("packages", [])
+        if "SPDXID" in pkg
+    }
     existing_purls = {
-        purl for pkg in modelcar_sbom.get("packages", []) for purl in _spdx_purls(pkg)
+        str(purl)
+        for pkg in modelcar_sbom.get("packages", [])
+        for purl in SPDXPackage(pkg).all_purls()
     }
     root_id = next(
         (
@@ -59,8 +60,21 @@ def merge_syft_packages_into_modelcar_spdx(
 
     for syft_sbom in syft_sboms:
         for pkg in syft_sbom.get("packages", []):
-            purls = _spdx_purls(pkg)
-            if purls and any(purl in existing_purls for purl in purls):
+            if "SPDXID" not in pkg:
+                LOGGER.warning(
+                    "Skipping Syft package without SPDXID: %s", pkg.get("name")
+                )
+                continue
+            syft_pkg = SPDXPackage(pkg)
+            purls = [str(purl) for purl in syft_pkg.all_purls()]
+            if not purls:
+                LOGGER.warning(
+                    "Skipping Syft package %s (%s): no purl for deduplication",
+                    pkg.get("name"),
+                    pkg["SPDXID"],
+                )
+                continue
+            if any(purl in existing_purls for purl in purls):
                 continue
             pkg_copy = dict(pkg)
             original_id = pkg_copy["SPDXID"]
@@ -120,7 +134,10 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
                 "--from-syft is only supported with --sbom-type spdx",
             )
         if not isinstance(sbom, Document):
-            raise TypeError("Expected SPDX Document when merging --from-syft")
+            raise TypeError(
+                "Expected SPDX Document when merging --from-syft, "
+                f"got {type(sbom).__name__}"
+            )
 
         modelcar_dict = convert(sbom, DocumentConverter())  # type: ignore[no-untyped-call]
         syft_sboms = [

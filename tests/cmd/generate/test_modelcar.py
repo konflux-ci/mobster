@@ -235,6 +235,48 @@ def test_merge_syft_packages_warns_without_describes(
     )
 
 
+def test_merge_syft_packages_skips_missing_spdxid_and_purl(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    modelcar: dict[str, object] = {
+        "packages": [],
+        "relationships": [
+            {
+                "spdxElementId": "SPDXRef-DOCUMENT",
+                "relationshipType": "DESCRIBES",
+                "relatedSpdxElement": "SPDXRef-root",
+            }
+        ],
+    }
+    syft_sbom = {
+        "packages": [
+            {"name": "no-id", "externalRefs": []},
+            {
+                "SPDXID": "SPDXRef-nopurl",
+                "name": "no-purl",
+                "externalRefs": [],
+            },
+            {
+                "SPDXID": "SPDXRef-bash",
+                "name": "bash",
+                "externalRefs": [
+                    {
+                        "referenceType": "purl",
+                        "referenceLocator": "pkg:rpm/bash@1.0",
+                    }
+                ],
+            },
+        ]
+    }
+
+    with caplog.at_level("WARNING"):
+        merged = merge_syft_packages_into_modelcar_spdx(modelcar, [syft_sbom])
+
+    assert "without SPDXID" in caplog.text
+    assert "no purl for deduplication" in caplog.text
+    assert {pkg["SPDXID"] for pkg in merged["packages"]} == {"SPDXRef-bash"}
+
+
 @pytest.mark.asyncio
 async def test_generate_modelcar_from_syft() -> None:
     current_dir = pathlib.Path(__file__).parent.resolve()
@@ -293,5 +335,5 @@ async def test_merge_from_syft_rejects_non_document() -> None:
     args = _modelcar_args(from_syft=[pathlib.Path("unused.json")])
     command = GenerateModelcarCommand(args)
 
-    with pytest.raises(TypeError, match="Expected SPDX Document"):
+    with pytest.raises(TypeError, match="Expected SPDX Document.*got object"):
         await command._merge_from_syft(object())
