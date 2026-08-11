@@ -146,9 +146,7 @@ def test_merge_syft_packages_into_modelcar_spdx() -> None:
     assert "SPDXRef-dup" not in package_ids
 
     contains = [
-        rel
-        for rel in merged["relationships"]
-        if rel["relationshipType"] == "CONTAINS"
+        rel for rel in merged["relationships"] if rel["relationshipType"] == "CONTAINS"
     ]
     assert {
         ("SPDXRef-root", "SPDXRef-bash"),

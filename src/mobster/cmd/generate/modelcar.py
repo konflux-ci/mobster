@@ -41,9 +41,7 @@ def merge_syft_packages_into_modelcar_spdx(
     """
     existing_ids = {pkg["SPDXID"] for pkg in modelcar_sbom.get("packages", [])}
     existing_purls = {
-        purl
-        for pkg in modelcar_sbom.get("packages", [])
-        for purl in _spdx_purls(pkg)
+        purl for pkg in modelcar_sbom.get("packages", []) for purl in _spdx_purls(pkg)
     }
     root_id = next(
         (
