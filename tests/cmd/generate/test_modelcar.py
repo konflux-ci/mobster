@@ -172,9 +172,15 @@ async def test_generate_modelcar_from_syft() -> None:
             result = json.load(result_file)
 
     package_names = {pkg["name"] for pkg in result["packages"]}
-    assert {"modelcar", "base", "model", "bash", "coreutils-single", "duplicate-by-id"} <= (
-        package_names
-    )
+    expected_names = {
+        "modelcar",
+        "base",
+        "model",
+        "bash",
+        "coreutils-single",
+        "duplicate-by-id",
+    }
+    assert expected_names <= package_names
 
     root_id = next(
         rel["relatedSpdxElement"]
@@ -193,7 +199,10 @@ async def test_generate_modelcar_from_syft() -> None:
 
 @pytest.mark.asyncio
 async def test_generate_modelcar_from_syft_rejects_cyclonedx() -> None:
-    args = _modelcar_args(sbom_type="cyclonedx", from_syft=[pathlib.Path("unused.json")])
+    args = _modelcar_args(
+        sbom_type="cyclonedx",
+        from_syft=[pathlib.Path("unused.json")],
+    )
     command = GenerateModelcarCommand(args)
 
     with pytest.raises(ArgumentError, match="--from-syft is only supported"):
