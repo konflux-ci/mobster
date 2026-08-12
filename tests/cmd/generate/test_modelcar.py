@@ -13,7 +13,8 @@ from mobster.cmd.generate.modelcar import (
 from tests.conftest import assert_cdx_sbom, assert_spdx_sbom
 
 BASE_SPDX_ID = (
-    "SPDXRef-image-base-94ca2083f75d4e8d47afb9c3e61d2674e57bac4b09d9c4b9fa1df75bb0c8ecef"
+    "SPDXRef-image-base-"
+    "94ca2083f75d4e8d47afb9c3e61d2674e57bac4b09d9c4b9fa1df75bb0c8ecef"
 )
 BASE_CDX_REF = (
     "BomRef.base-94ca2083f75d4e8d47afb9c3e61d2674e57bac4b09d9c4b9fa1df75bb0c8ecef"
@@ -150,7 +151,9 @@ def test_merge_syft_packages_into_modelcar_spdx() -> None:
         ]
     }
 
-    merged = merge_syft_packages_into_modelcar_spdx(modelcar, syft, parent_id=BASE_SPDX_ID)
+    merged = merge_syft_packages_into_modelcar_spdx(
+        modelcar, syft, parent_id=BASE_SPDX_ID
+    )
     package_ids = {pkg["SPDXID"] for pkg in merged["packages"]}
     assert "SPDXRef-bash" in package_ids
     assert f"{BASE_SPDX_ID}-from-syft" in package_ids
@@ -316,7 +319,9 @@ async def test_generate_modelcar_scans_base_spdx() -> None:
         await command.save()
 
         mock_scan.assert_awaited_once()
-        assert "quay.io/example/base@sha256:" in mock_scan.await_args.args[0]
+        scan_call = mock_scan.await_args
+        assert scan_call is not None
+        assert "quay.io/example/base@sha256:" in scan_call.args[0]
 
         with open(args.output, encoding="utf8") as result_file:
             result = json.load(result_file)
@@ -335,7 +340,10 @@ async def test_generate_modelcar_scans_base_spdx() -> None:
     contains_targets = {
         rel["relatedSpdxElement"]
         for rel in result["relationships"]
-        if rel["relationshipType"] == "CONTAINS" and rel["spdxElementId"] == BASE_SPDX_ID
+        if (
+            rel["relationshipType"] == "CONTAINS"
+            and rel["spdxElementId"] == BASE_SPDX_ID
+        )
     }
     assert any("bash" in target for target in contains_targets)
     assert any(target.endswith("-from-syft") for target in contains_targets)
@@ -369,7 +377,9 @@ async def test_generate_modelcar_scans_base_cyclonedx() -> None:
         await command.save()
 
         mock_scan.assert_awaited_once()
-        assert mock_scan.await_args.kwargs["output_format"] == "cyclonedx-json"
+        scan_call = mock_scan.await_args
+        assert scan_call is not None
+        assert scan_call.kwargs["output_format"] == "cyclonedx-json"
 
         with open(args.output, encoding="utf8") as result_file:
             result = json.load(result_file)

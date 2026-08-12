@@ -48,9 +48,7 @@ def merge_syft_packages_into_modelcar_spdx(
 
     for pkg in syft_sbom.get("packages", []):
         if "SPDXID" not in pkg:
-            LOGGER.warning(
-                "Skipping Syft package without SPDXID: %s", pkg.get("name")
-            )
+            LOGGER.warning("Skipping Syft package without SPDXID: %s", pkg.get("name"))
             continue
         syft_pkg = SPDXPackage(pkg)
         purls = [str(purl) for purl in syft_pkg.all_purls()]
@@ -98,24 +96,13 @@ def merge_syft_components_into_modelcar_cdx(
     via ``dependencies[].dependsOn``. Duplicate purls are skipped.
     """
     components = list(modelcar_sbom.get("components") or [])
-    existing_refs = {
-        c.get("bom-ref") for c in components if c.get("bom-ref")
-    }
-    if meta_ref := (modelcar_sbom.get("metadata") or {}).get("component", {}).get(
-        "bom-ref"
-    ):
-        existing_refs.add(meta_ref)
-
-    existing_purls = {
-        str(purl)
-        for c in components
-        if (purl := CDXComponent(c).purl()) is not None
-    }
+    existing_refs, existing_purls = _cdx_existing_refs_and_purls(
+        modelcar_sbom, components
+    )
 
     added_refs: list[str] = []
     for component in syft_sbom.get("components") or []:
-        cdx = CDXComponent(component)
-        purl = cdx.purl()
+        purl = CDXComponent(component).purl()
         if purl is None:
             LOGGER.warning(
                 "Skipping Syft component %s: no purl for deduplication",
@@ -127,13 +114,9 @@ def merge_syft_components_into_modelcar_cdx(
             continue
 
         comp_copy = dict(component)
-        bom_ref = comp_copy.get("bom-ref") or f"syft-{purl_str}"
-        original_ref = bom_ref
-        counter = 0
-        while bom_ref in existing_refs:
-            suffix = "-from-syft" if counter == 0 else f"-from-syft-{counter}"
-            bom_ref = f"{original_ref}{suffix}"
-            counter += 1
+        bom_ref = _unique_cdx_bom_ref(
+            comp_copy.get("bom-ref") or f"syft-{purl_str}", existing_refs
+        )
         comp_copy["bom-ref"] = bom_ref
         components.append(comp_copy)
         existing_refs.add(bom_ref)
@@ -141,10 +124,43 @@ def merge_syft_components_into_modelcar_cdx(
         added_refs.append(bom_ref)
 
     modelcar_sbom["components"] = components
+    if added_refs:
+        _attach_cdx_depends_on(modelcar_sbom, parent_ref, added_refs)
+    return modelcar_sbom
 
-    if not added_refs:
-        return modelcar_sbom
 
+def _cdx_existing_refs_and_purls(
+    modelcar_sbom: dict[str, Any],
+    components: list[dict[str, Any]],
+) -> tuple[set[Any], set[str]]:
+    existing_refs = {c.get("bom-ref") for c in components if c.get("bom-ref")}
+    if (
+        meta_ref := (modelcar_sbom.get("metadata") or {})
+        .get("component", {})
+        .get("bom-ref")
+    ):
+        existing_refs.add(meta_ref)
+    existing_purls = {
+        str(purl) for c in components if (purl := CDXComponent(c).purl()) is not None
+    }
+    return existing_refs, existing_purls
+
+
+def _unique_cdx_bom_ref(original_ref: str, existing_refs: set[Any]) -> str:
+    bom_ref = original_ref
+    counter = 0
+    while bom_ref in existing_refs:
+        suffix = "-from-syft" if counter == 0 else f"-from-syft-{counter}"
+        bom_ref = f"{original_ref}{suffix}"
+        counter += 1
+    return bom_ref
+
+
+def _attach_cdx_depends_on(
+    modelcar_sbom: dict[str, Any],
+    parent_ref: str,
+    added_refs: list[str],
+) -> None:
     dependencies = list(modelcar_sbom.get("dependencies") or [])
     parent_dep = next((d for d in dependencies if d.get("ref") == parent_ref), None)
     if parent_dep is None:
@@ -156,7 +172,6 @@ def merge_syft_components_into_modelcar_cdx(
             depends_on.append(ref)
     parent_dep["dependsOn"] = depends_on
     modelcar_sbom["dependencies"] = dependencies
-    return modelcar_sbom
 
 
 class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
