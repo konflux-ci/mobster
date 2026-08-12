@@ -8,6 +8,7 @@ from cyclonedx.model.bom_ref import BomRef
 from cyclonedx.model.component import Component
 from cyclonedx.model.dependency import Dependency
 from spdx_tools.spdx.model.document import Document
+from spdx_tools.spdx.model.extracted_licensing_info import ExtractedLicensingInfo
 from spdx_tools.spdx.model.package import (
     ExternalPackageRefCategory,
     Package,
@@ -47,6 +48,9 @@ def merge_syft_packages_into_modelcar_spdx(
     purl matches an existing one, the whole package is skipped. Packages
     without a purl are skipped. New packages are linked to ``parent_id``
     (typically the base image) with CONTAINS relationships.
+
+    Also copies Syft ``extracted_licensing_info`` entries (by ``license_id``)
+    so LicenseRef-* expressions on merged packages remain valid.
     """
     packages = list(modelcar_sbom.packages or [])
     existing_ids = {pkg.spdx_id for pkg in packages}
@@ -86,7 +90,25 @@ def merge_syft_packages_into_modelcar_spdx(
 
     modelcar_sbom.packages = packages
     modelcar_sbom.relationships = relationships
+    modelcar_sbom.extracted_licensing_info = _merge_extracted_licensing_info(
+        modelcar_sbom, syft_sbom
+    )
     return modelcar_sbom
+
+
+def _merge_extracted_licensing_info(
+    modelcar_sbom: Document,
+    syft_sbom: Document,
+) -> list[ExtractedLicensingInfo]:
+    """Union Syft extracted license refs into the modelcar document by license_id."""
+    merged = list(modelcar_sbom.extracted_licensing_info or [])
+    existing_ids = {info.license_id for info in merged if info.license_id}
+    for info in syft_sbom.extracted_licensing_info or []:
+        if not info.license_id or info.license_id in existing_ids:
+            continue
+        merged.append(info)
+        existing_ids.add(info.license_id)
+    return merged
 
 
 def _cdx_component_ref(component: Component) -> str:

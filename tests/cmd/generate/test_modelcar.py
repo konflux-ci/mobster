@@ -10,8 +10,10 @@ from cyclonedx.model.bom_ref import BomRef
 from cyclonedx.model.component import Component, ComponentType
 from cyclonedx.model.dependency import Dependency
 from packageurl import PackageURL
+from spdx_tools.common.spdx_licensing import spdx_licensing
 from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.document import CreationInfo, Document
+from spdx_tools.spdx.model.extracted_licensing_info import ExtractedLicensingInfo
 from spdx_tools.spdx.model.package import (
     ExternalPackageRef,
     ExternalPackageRefCategory,
@@ -19,6 +21,7 @@ from spdx_tools.spdx.model.package import (
 )
 from spdx_tools.spdx.model.relationship import RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
+from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
 
 from mobster.cmd.generate.modelcar import (
     GenerateModelcarCommand,
@@ -180,6 +183,34 @@ def test_merge_syft_packages_into_modelcar_spdx() -> None:
         (BASE_SPDX_ID, "SPDXRef-bash"),
         (BASE_SPDX_ID, f"{BASE_SPDX_ID}-from-syft"),
     } == {(rel.spdx_element_id, rel.related_spdx_element_id) for rel in contains}
+
+
+def test_merge_syft_packages_copies_extracted_licensing_info() -> None:
+    """LicenseRef-* on Syft packages require hasExtractedLicensingInfos after merge."""
+    modelcar = _spdx_doc(_spdx_pkg(BASE_SPDX_ID, "base"))
+    syft_pkg = _spdx_pkg("SPDXRef-bash", "bash", "pkg:rpm/bash@1.0")
+    syft_pkg.license_declared = spdx_licensing.parse("LicenseRef-GPLv2")
+    syft = _spdx_doc(syft_pkg)
+    syft.extracted_licensing_info = [
+        ExtractedLicensingInfo(
+            license_id="LicenseRef-GPLv2",
+            extracted_text="GPL-2.0",
+            license_name="GPLv2",
+        )
+    ]
+
+    merged = merge_syft_packages_into_modelcar_spdx(
+        modelcar, syft, parent_id=BASE_SPDX_ID
+    )
+    assert {info.license_id for info in merged.extracted_licensing_info or []} == {
+        "LicenseRef-GPLv2"
+    }
+    license_msgs = [
+        msg
+        for msg in validate_full_spdx_document(merged)
+        if "Unrecognized license reference" in msg.validation_message
+    ]
+    assert license_msgs == []
 
 
 def test_merge_syft_packages_double_spdx_id_collision() -> None:
