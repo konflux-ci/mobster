@@ -31,14 +31,13 @@ def merge_syft_packages_into_modelcar_spdx(
     Merge packages from a Syft SPDX SBOM into a modelcar composition SBOM.
 
     Packages already present (matched by purl via ``SPDXPackage.all_purls``)
-    are skipped. Packages without an SPDXID or without a purl are skipped.
-    New packages are linked to ``parent_id`` (typically the base image) with
-    CONTAINS relationships.
+    are skipped — if any Syft purl matches an existing one, the whole package
+    is skipped (aliases of the same package). Packages without an SPDXID or
+    without a purl are skipped. New packages are linked to ``parent_id``
+    (typically the base image) with CONTAINS relationships.
     """
     existing_ids = {
-        SPDXPackage(pkg).id()
-        for pkg in modelcar_sbom.get("packages", [])
-        if "SPDXID" in pkg
+        pkg["SPDXID"] for pkg in modelcar_sbom.get("packages", []) if pkg.get("SPDXID")
     }
     existing_purls = {
         str(purl)
@@ -132,21 +131,22 @@ def merge_syft_components_into_modelcar_cdx(
 def _cdx_existing_refs_and_purls(
     modelcar_sbom: dict[str, Any],
     components: list[dict[str, Any]],
-) -> tuple[set[Any], set[str]]:
-    existing_refs = {c.get("bom-ref") for c in components if c.get("bom-ref")}
-    if (
-        meta_ref := (modelcar_sbom.get("metadata") or {})
-        .get("component", {})
-        .get("bom-ref")
-    ):
+) -> tuple[set[str], set[str]]:
+    existing_refs = {
+        ref for c in components if isinstance(ref := c.get("bom-ref"), str)
+    }
+    metadata_component = (modelcar_sbom.get("metadata") or {}).get("component") or {}
+    if isinstance(meta_ref := metadata_component.get("bom-ref"), str):
         existing_refs.add(meta_ref)
     existing_purls = {
         str(purl) for c in components if (purl := CDXComponent(c).purl()) is not None
     }
+    if (meta_purl := CDXComponent(metadata_component).purl()) is not None:
+        existing_purls.add(str(meta_purl))
     return existing_refs, existing_purls
 
 
-def _unique_cdx_bom_ref(original_ref: str, existing_refs: set[Any]) -> str:
+def _unique_cdx_bom_ref(original_ref: str, existing_refs: set[str]) -> str:
     bom_ref = original_ref
     counter = 0
     while bom_ref in existing_refs:

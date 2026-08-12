@@ -251,6 +251,116 @@ def test_merge_syft_packages_skips_missing_spdxid_and_purl(
     assert {pkg["SPDXID"] for pkg in merged["packages"]} == {"SPDXRef-bash"}
 
 
+def test_merge_syft_packages_purl_dedupe_cases() -> None:
+    modelcar = {
+        "packages": [
+            {
+                "SPDXID": "SPDXRef-existing",
+                "name": "bash",
+                "externalRefs": [
+                    {
+                        "referenceType": "purl",
+                        "referenceLocator": "pkg:rpm/bash@1.0",
+                    }
+                ],
+            }
+        ],
+        "relationships": [],
+    }
+    syft = {
+        "packages": [
+            {
+                "SPDXID": "SPDXRef-same-purl",
+                "name": "bash-again",
+                "externalRefs": [
+                    {
+                        "referenceType": "purl",
+                        "referenceLocator": "pkg:rpm/bash@1.0",
+                    }
+                ],
+            },
+            {
+                "SPDXID": "SPDXRef-multi-purl",
+                "name": "multi",
+                "externalRefs": [
+                    {
+                        "referenceType": "purl",
+                        "referenceLocator": "pkg:rpm/bash@1.0",
+                    },
+                    {
+                        "referenceType": "purl",
+                        "referenceLocator": "pkg:generic/other@1.0",
+                    },
+                ],
+            },
+            {
+                "SPDXID": "SPDXRef-same-name-diff-purl",
+                "name": "bash",
+                "externalRefs": [
+                    {
+                        "referenceType": "purl",
+                        "referenceLocator": "pkg:rpm/bash@2.0",
+                    }
+                ],
+            },
+            {
+                "SPDXID": "SPDXRef-new",
+                "name": "coreutils",
+                "externalRefs": [
+                    {
+                        "referenceType": "purl",
+                        "referenceLocator": "pkg:rpm/coreutils@1.0",
+                    }
+                ],
+            },
+        ]
+    }
+
+    merged = merge_syft_packages_into_modelcar_spdx(
+        modelcar, syft, parent_id=BASE_SPDX_ID
+    )
+    package_ids = {pkg["SPDXID"] for pkg in merged["packages"]}
+    assert "SPDXRef-same-purl" not in package_ids
+    assert "SPDXRef-multi-purl" not in package_ids
+    assert "SPDXRef-same-name-diff-purl" in package_ids
+    assert "SPDXRef-new" in package_ids
+
+
+def test_merge_syft_components_dedupes_metadata_purl() -> None:
+    modelcar = {
+        "components": [],
+        "dependencies": [],
+        "metadata": {
+            "component": {
+                "bom-ref": "root",
+                "name": "modelcar",
+                "purl": "pkg:oci/modelcar@1",
+            }
+        },
+    }
+    syft = {
+        "components": [
+            {
+                "bom-ref": "dup-root",
+                "name": "modelcar-dup",
+                "purl": "pkg:oci/modelcar@1",
+            },
+            {
+                "bom-ref": "pkg:rpm/bash@1.0",
+                "name": "bash",
+                "purl": "pkg:rpm/bash@1.0",
+            },
+        ]
+    }
+
+    merged = merge_syft_components_into_modelcar_cdx(
+        modelcar, syft, parent_ref=BASE_CDX_REF
+    )
+    refs = {c["bom-ref"] for c in merged["components"]}
+    assert "dup-root" not in refs
+    assert "pkg:rpm/bash@1.0" in refs
+
+
 def test_merge_syft_components_into_modelcar_cdx() -> None:
     modelcar = {
         "components": [
