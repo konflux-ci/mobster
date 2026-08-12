@@ -1,16 +1,23 @@
 import json
 import pathlib
 import tempfile
-from argparse import ArgumentError
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from mobster.cmd.generate.modelcar import (
     GenerateModelcarCommand,
+    merge_syft_components_into_modelcar_cdx,
     merge_syft_packages_into_modelcar_spdx,
 )
 from tests.conftest import assert_cdx_sbom, assert_spdx_sbom
+
+BASE_SPDX_ID = (
+    "SPDXRef-image-base-94ca2083f75d4e8d47afb9c3e61d2674e57bac4b09d9c4b9fa1df75bb0c8ecef"
+)
+BASE_CDX_REF = (
+    "BomRef.base-94ca2083f75d4e8d47afb9c3e61d2674e57bac4b09d9c4b9fa1df75bb0c8ecef"
+)
 
 
 def _modelcar_args(**overrides: object) -> MagicMock:
@@ -28,7 +35,6 @@ def _modelcar_args(**overrides: object) -> MagicMock:
         "087dc7896b97911a582702b45ff1d41ffa3e142d0b000b0fbb11058188293cfc"
     )
     args.sbom_type = "spdx"
-    args.from_syft = None
     args.skip_validation = True
     for key, value in overrides.items():
         setattr(args, key, value)
@@ -54,9 +60,7 @@ def _modelcar_args(**overrides: object) -> MagicMock:
 async def test_generate_modelcar_sbom(
     sbom_type: str, expected_result_file: str
 ) -> None:
-    """
-    This test verifies the generation of an OCI index SBOM end-to-end.
-    """
+    """Composition SBOM only; Syft inventory merge is skipped via mock."""
 
     args = _modelcar_args(sbom_type=sbom_type)
     current_dir = pathlib.Path(__file__).parent.resolve()
@@ -67,7 +71,15 @@ async def test_generate_modelcar_sbom(
 
     command = GenerateModelcarCommand(args)
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with (
+        tempfile.TemporaryDirectory() as temp_dir,
+        patch.object(
+            command,
+            "_merge_base_syft_inventory",
+            new_callable=AsyncMock,
+            side_effect=lambda sbom, _base: sbom,
+        ),
+    ):
         args.output = pathlib.Path(temp_dir) / "modelcar_sbom.json"
         await command.execute()
         await command.save()
@@ -94,15 +106,14 @@ def test_merge_syft_packages_into_modelcar_spdx() -> None:
                         "referenceLocator": "pkg:oci/modelcar@sha256:aaa",
                     }
                 ],
-            }
-        ],
-        "relationships": [
+            },
             {
-                "spdxElementId": "SPDXRef-DOCUMENT",
-                "relationshipType": "DESCRIBES",
-                "relatedSpdxElement": "SPDXRef-root",
-            }
+                "SPDXID": BASE_SPDX_ID,
+                "name": "base",
+                "externalRefs": [],
+            },
         ],
+        "relationships": [],
     }
     syft = {
         "packages": [
@@ -117,7 +128,7 @@ def test_merge_syft_packages_into_modelcar_spdx() -> None:
                 ],
             },
             {
-                "SPDXID": "SPDXRef-root",
+                "SPDXID": BASE_SPDX_ID,
                 "name": "collision",
                 "externalRefs": [
                     {
@@ -139,18 +150,18 @@ def test_merge_syft_packages_into_modelcar_spdx() -> None:
         ]
     }
 
-    merged = merge_syft_packages_into_modelcar_spdx(modelcar, [syft])
+    merged = merge_syft_packages_into_modelcar_spdx(modelcar, syft, parent_id=BASE_SPDX_ID)
     package_ids = {pkg["SPDXID"] for pkg in merged["packages"]}
     assert "SPDXRef-bash" in package_ids
-    assert "SPDXRef-root-from-syft" in package_ids
+    assert f"{BASE_SPDX_ID}-from-syft" in package_ids
     assert "SPDXRef-dup" not in package_ids
 
     contains = [
         rel for rel in merged["relationships"] if rel["relationshipType"] == "CONTAINS"
     ]
     assert {
-        ("SPDXRef-root", "SPDXRef-bash"),
-        ("SPDXRef-root", "SPDXRef-root-from-syft"),
+        (BASE_SPDX_ID, "SPDXRef-bash"),
+        (BASE_SPDX_ID, f"{BASE_SPDX_ID}-from-syft"),
     } == {(rel["spdxElementId"], rel["relatedSpdxElement"]) for rel in contains}
 
 
@@ -159,24 +170,19 @@ def test_merge_syft_packages_double_spdx_id_collision() -> None:
     modelcar = {
         "packages": [
             {"SPDXID": "SPDXRef-root", "name": "modelcar", "externalRefs": []},
+            {"SPDXID": BASE_SPDX_ID, "name": "base", "externalRefs": []},
             {
-                "SPDXID": "SPDXRef-root-from-syft",
+                "SPDXID": f"{BASE_SPDX_ID}-from-syft",
                 "name": "already-renamed",
                 "externalRefs": [],
             },
         ],
-        "relationships": [
-            {
-                "spdxElementId": "SPDXRef-DOCUMENT",
-                "relationshipType": "DESCRIBES",
-                "relatedSpdxElement": "SPDXRef-root",
-            }
-        ],
+        "relationships": [],
     }
     syft_sbom = {
         "packages": [
             {
-                "SPDXID": "SPDXRef-root",
+                "SPDXID": BASE_SPDX_ID,
                 "name": "collision",
                 "externalRefs": [
                     {
@@ -188,9 +194,11 @@ def test_merge_syft_packages_double_spdx_id_collision() -> None:
         ]
     }
 
-    merged = merge_syft_packages_into_modelcar_spdx(modelcar, [syft_sbom])
+    merged = merge_syft_packages_into_modelcar_spdx(
+        modelcar, syft_sbom, parent_id=BASE_SPDX_ID
+    )
     package_ids = {pkg["SPDXID"] for pkg in merged["packages"]}
-    assert "SPDXRef-root-from-syft-1" in package_ids
+    assert f"{BASE_SPDX_ID}-from-syft-1" in package_ids
     assert len(package_ids) == len(merged["packages"])
 
     contains = [
@@ -198,56 +206,17 @@ def test_merge_syft_packages_double_spdx_id_collision() -> None:
     ]
     assert contains == [
         {
-            "spdxElementId": "SPDXRef-root",
+            "spdxElementId": BASE_SPDX_ID,
             "relationshipType": "CONTAINS",
-            "relatedSpdxElement": "SPDXRef-root-from-syft-1",
+            "relatedSpdxElement": f"{BASE_SPDX_ID}-from-syft-1",
         }
     ]
-
-
-def test_merge_syft_packages_warns_without_describes(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    modelcar: dict[str, object] = {"packages": [], "relationships": []}
-    syft_sbom = {
-        "packages": [
-            {
-                "SPDXID": "SPDXRef-bash",
-                "name": "bash",
-                "externalRefs": [
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:rpm/bash@1.0",
-                    }
-                ],
-            }
-        ]
-    }
-
-    with caplog.at_level("WARNING"):
-        merged = merge_syft_packages_into_modelcar_spdx(modelcar, [syft_sbom])
-
-    assert "no DESCRIBES relationship" in caplog.text
-    assert {pkg["SPDXID"] for pkg in merged["packages"]} == {"SPDXRef-bash"}
-    assert not any(
-        rel.get("relationshipType") == "CONTAINS"
-        for rel in merged.get("relationships", [])
-    )
 
 
 def test_merge_syft_packages_skips_missing_spdxid_and_purl(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    modelcar: dict[str, object] = {
-        "packages": [],
-        "relationships": [
-            {
-                "spdxElementId": "SPDXRef-DOCUMENT",
-                "relationshipType": "DESCRIBES",
-                "relatedSpdxElement": "SPDXRef-root",
-            }
-        ],
-    }
+    modelcar: dict[str, object] = {"packages": [], "relationships": []}
     syft_sbom = {
         "packages": [
             {"name": "no-id", "externalRefs": []},
@@ -270,24 +239,84 @@ def test_merge_syft_packages_skips_missing_spdxid_and_purl(
     }
 
     with caplog.at_level("WARNING"):
-        merged = merge_syft_packages_into_modelcar_spdx(modelcar, [syft_sbom])
+        merged = merge_syft_packages_into_modelcar_spdx(
+            modelcar, syft_sbom, parent_id=BASE_SPDX_ID
+        )
 
     assert "without SPDXID" in caplog.text
     assert "no purl for deduplication" in caplog.text
     assert {pkg["SPDXID"] for pkg in merged["packages"]} == {"SPDXRef-bash"}
 
 
+def test_merge_syft_components_into_modelcar_cdx() -> None:
+    modelcar = {
+        "components": [
+            {"bom-ref": "root", "name": "modelcar", "purl": "pkg:oci/modelcar@1"},
+            {"bom-ref": BASE_CDX_REF, "name": "base", "purl": "pkg:oci/base@1"},
+        ],
+        "dependencies": [
+            {"ref": "root", "dependsOn": [BASE_CDX_REF]},
+            {"ref": BASE_CDX_REF},
+        ],
+        "metadata": {"component": {"bom-ref": "root"}},
+    }
+    syft = {
+        "components": [
+            {
+                "bom-ref": "pkg:rpm/bash@1.0",
+                "name": "bash",
+                "purl": "pkg:rpm/bash@1.0",
+            },
+            {
+                "bom-ref": BASE_CDX_REF,
+                "name": "collision",
+                "purl": "pkg:rpm/collision@1.0",
+            },
+            {
+                "bom-ref": "dup",
+                "name": "dup",
+                "purl": "pkg:oci/modelcar@1",
+            },
+        ]
+    }
+
+    merged = merge_syft_components_into_modelcar_cdx(
+        modelcar, syft, parent_ref=BASE_CDX_REF
+    )
+    refs = {c["bom-ref"] for c in merged["components"]}
+    assert "pkg:rpm/bash@1.0" in refs
+    assert f"{BASE_CDX_REF}-from-syft" in refs
+    assert "dup" not in refs
+
+    base_dep = next(d for d in merged["dependencies"] if d["ref"] == BASE_CDX_REF)
+    assert "pkg:rpm/bash@1.0" in base_dep["dependsOn"]
+    assert f"{BASE_CDX_REF}-from-syft" in base_dep["dependsOn"]
+
+
 @pytest.mark.asyncio
-async def test_generate_modelcar_from_syft() -> None:
+async def test_generate_modelcar_scans_base_spdx() -> None:
     current_dir = pathlib.Path(__file__).parent.resolve()
     syft_path = current_dir.parent.parent / "data" / "modelcar_from_syft.spdx.json"
-    args = _modelcar_args(from_syft=[syft_path])
+    with open(syft_path, encoding="utf8") as syft_file:
+        syft_sbom = json.load(syft_file)
+
+    args = _modelcar_args(sbom_type="spdx")
     command = GenerateModelcarCommand(args)
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with (
+        tempfile.TemporaryDirectory() as temp_dir,
+        patch(
+            "mobster.cmd.generate.modelcar.syft.scan_image",
+            new_callable=AsyncMock,
+            return_value=syft_sbom,
+        ) as mock_scan,
+    ):
         args.output = pathlib.Path(temp_dir) / "modelcar_sbom.json"
         await command.execute()
         await command.save()
+
+        mock_scan.assert_awaited_once()
+        assert "quay.io/example/base@sha256:" in mock_scan.await_args.args[0]
 
         with open(args.output, encoding="utf8") as result_file:
             result = json.load(result_file)
@@ -303,37 +332,61 @@ async def test_generate_modelcar_from_syft() -> None:
     }
     assert expected_names <= package_names
 
-    root_id = next(
-        rel["relatedSpdxElement"]
-        for rel in result["relationships"]
-        if rel["relationshipType"] == "DESCRIBES"
-    )
     contains_targets = {
         rel["relatedSpdxElement"]
         for rel in result["relationships"]
-        if rel["relationshipType"] == "CONTAINS" and rel["spdxElementId"] == root_id
+        if rel["relationshipType"] == "CONTAINS" and rel["spdxElementId"] == BASE_SPDX_ID
     }
     assert any("bash" in target for target in contains_targets)
-    # SPDX ID collision with modelcar root package is uniquified
     assert any(target.endswith("-from-syft") for target in contains_targets)
 
 
 @pytest.mark.asyncio
-async def test_generate_modelcar_from_syft_rejects_cyclonedx() -> None:
-    args = _modelcar_args(
-        sbom_type="cyclonedx",
-        from_syft=[pathlib.Path("unused.json")],
-    )
+async def test_generate_modelcar_scans_base_cyclonedx() -> None:
+    syft_sbom = {
+        "components": [
+            {
+                "bom-ref": "pkg:rpm/bash@1.0",
+                "name": "bash",
+                "purl": "pkg:rpm/bash@1.0",
+                "type": "library",
+            }
+        ]
+    }
+    args = _modelcar_args(sbom_type="cyclonedx")
     command = GenerateModelcarCommand(args)
 
-    with pytest.raises(ArgumentError, match="--from-syft is only supported"):
+    with (
+        tempfile.TemporaryDirectory() as temp_dir,
+        patch(
+            "mobster.cmd.generate.modelcar.syft.scan_image",
+            new_callable=AsyncMock,
+            return_value=syft_sbom,
+        ) as mock_scan,
+    ):
+        args.output = pathlib.Path(temp_dir) / "modelcar_sbom.json"
         await command.execute()
+        await command.save()
+
+        mock_scan.assert_awaited_once()
+        assert mock_scan.await_args.kwargs["output_format"] == "cyclonedx-json"
+
+        with open(args.output, encoding="utf8") as result_file:
+            result = json.load(result_file)
+
+    names = {c["name"] for c in result["components"]}
+    assert "bash" in names
+    base_dep = next(d for d in result["dependencies"] if d["ref"] == BASE_CDX_REF)
+    assert "pkg:rpm/bash@1.0" in base_dep["dependsOn"]
 
 
 @pytest.mark.asyncio
-async def test_merge_from_syft_rejects_non_document() -> None:
-    args = _modelcar_args(from_syft=[pathlib.Path("unused.json")])
+async def test_merge_base_syft_rejects_wrong_type() -> None:
+    args = _modelcar_args(sbom_type="spdx")
     command = GenerateModelcarCommand(args)
+    base = MagicMock()
+    base.propose_spdx_id.return_value = BASE_SPDX_ID
+    base.reference = "quay.io/example/base@sha256:abc"
 
-    with pytest.raises(TypeError, match="Expected SPDX Document.*got object"):
-        await command._merge_from_syft(object())
+    with pytest.raises(TypeError, match="Expected SPDX Document"):
+        await command._merge_base_syft_inventory(object(), base)

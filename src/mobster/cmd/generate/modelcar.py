@@ -1,38 +1,39 @@
-"""A module for generating SBOM documents for OCI index images."""
+"""A module for generating SBOM documents for OCI ModelCar images."""
 
+import json
 import logging
-from argparse import ArgumentError
-from pathlib import Path
 from typing import Any
 
 from cyclonedx.model.bom import Bom
 from cyclonedx.model.dependency import Dependency
+from cyclonedx.output.json import JsonV1Dot5
 from spdx_tools.spdx.jsonschema.document_converter import DocumentConverter
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.writer.write_utils import convert
 
+from mobster import syft
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.spdx_utils import normalize_and_load_sbom
 from mobster.image import Image
 from mobster.sbom import cyclonedx, spdx
-from mobster.sbom.merge import SPDXPackage
-from mobster.utils import load_sbom_from_json
+from mobster.sbom.merge import CDXComponent, SPDXPackage
 
 LOGGER = logging.getLogger(__name__)
 
 
 def merge_syft_packages_into_modelcar_spdx(
     modelcar_sbom: dict[str, Any],
-    syft_sboms: list[dict[str, Any]],
+    syft_sbom: dict[str, Any],
+    parent_id: str,
 ) -> dict[str, Any]:
     """
-    Merge packages from Syft SPDX SBOMs into a modelcar composition SBOM.
+    Merge packages from a Syft SPDX SBOM into a modelcar composition SBOM.
 
     Packages already present (matched by purl via ``SPDXPackage.all_purls``)
-    are skipped. Packages without an SPDXID or without a purl are skipped
-    (purl is required for deduplication). New packages are linked to the
-    modelcar root with CONTAINS relationships.
+    are skipped. Packages without an SPDXID or without a purl are skipped.
+    New packages are linked to ``parent_id`` (typically the base image) with
+    CONTAINS relationships.
     """
     existing_ids = {
         SPDXPackage(pkg).id()
@@ -44,59 +45,117 @@ def merge_syft_packages_into_modelcar_spdx(
         for pkg in modelcar_sbom.get("packages", [])
         for purl in SPDXPackage(pkg).all_purls()
     }
-    root_id = next(
-        (
-            rel["relatedSpdxElement"]
-            for rel in modelcar_sbom.get("relationships", [])
-            if rel.get("relationshipType") == "DESCRIBES"
-        ),
-        None,
-    )
-    if root_id is None:
-        LOGGER.warning(
-            "Modelcar SBOM has no DESCRIBES relationship; Syft packages will be "
-            "merged without CONTAINS links to a root package"
+
+    for pkg in syft_sbom.get("packages", []):
+        if "SPDXID" not in pkg:
+            LOGGER.warning(
+                "Skipping Syft package without SPDXID: %s", pkg.get("name")
+            )
+            continue
+        syft_pkg = SPDXPackage(pkg)
+        purls = [str(purl) for purl in syft_pkg.all_purls()]
+        if not purls:
+            LOGGER.warning(
+                "Skipping Syft package %s (%s): no purl for deduplication",
+                pkg.get("name"),
+                pkg["SPDXID"],
+            )
+            continue
+        if any(purl in existing_purls for purl in purls):
+            continue
+        pkg_copy = dict(pkg)
+        original_id = pkg_copy["SPDXID"]
+        spdx_id = original_id
+        counter = 0
+        while spdx_id in existing_ids:
+            suffix = "-from-syft" if counter == 0 else f"-from-syft-{counter}"
+            spdx_id = f"{original_id}{suffix}"
+            counter += 1
+        pkg_copy["SPDXID"] = spdx_id
+        modelcar_sbom.setdefault("packages", []).append(pkg_copy)
+        existing_ids.add(spdx_id)
+        existing_purls.update(purls)
+        modelcar_sbom.setdefault("relationships", []).append(
+            {
+                "spdxElementId": parent_id,
+                "relationshipType": "CONTAINS",
+                "relatedSpdxElement": spdx_id,
+            }
         )
 
-    for syft_sbom in syft_sboms:
-        for pkg in syft_sbom.get("packages", []):
-            if "SPDXID" not in pkg:
-                LOGGER.warning(
-                    "Skipping Syft package without SPDXID: %s", pkg.get("name")
-                )
-                continue
-            syft_pkg = SPDXPackage(pkg)
-            purls = [str(purl) for purl in syft_pkg.all_purls()]
-            if not purls:
-                LOGGER.warning(
-                    "Skipping Syft package %s (%s): no purl for deduplication",
-                    pkg.get("name"),
-                    pkg["SPDXID"],
-                )
-                continue
-            if any(purl in existing_purls for purl in purls):
-                continue
-            pkg_copy = dict(pkg)
-            original_id = pkg_copy["SPDXID"]
-            spdx_id = original_id
-            counter = 0
-            while spdx_id in existing_ids:
-                suffix = "-from-syft" if counter == 0 else f"-from-syft-{counter}"
-                spdx_id = f"{original_id}{suffix}"
-                counter += 1
-            pkg_copy["SPDXID"] = spdx_id
-            modelcar_sbom.setdefault("packages", []).append(pkg_copy)
-            existing_ids.add(spdx_id)
-            existing_purls.update(purls)
-            if root_id:
-                modelcar_sbom.setdefault("relationships", []).append(
-                    {
-                        "spdxElementId": root_id,
-                        "relationshipType": "CONTAINS",
-                        "relatedSpdxElement": spdx_id,
-                    }
-                )
+    return modelcar_sbom
 
+
+def merge_syft_components_into_modelcar_cdx(
+    modelcar_sbom: dict[str, Any],
+    syft_sbom: dict[str, Any],
+    parent_ref: str,
+) -> dict[str, Any]:
+    """
+    Merge components from a Syft CycloneDX SBOM into a modelcar composition SBOM.
+
+    New components are linked under ``parent_ref`` (typically the base image)
+    via ``dependencies[].dependsOn``. Duplicate purls are skipped.
+    """
+    components = list(modelcar_sbom.get("components") or [])
+    existing_refs = {
+        c.get("bom-ref") for c in components if c.get("bom-ref")
+    }
+    if meta_ref := (modelcar_sbom.get("metadata") or {}).get("component", {}).get(
+        "bom-ref"
+    ):
+        existing_refs.add(meta_ref)
+
+    existing_purls = {
+        str(purl)
+        for c in components
+        if (purl := CDXComponent(c).purl()) is not None
+    }
+
+    added_refs: list[str] = []
+    for component in syft_sbom.get("components") or []:
+        cdx = CDXComponent(component)
+        purl = cdx.purl()
+        if purl is None:
+            LOGGER.warning(
+                "Skipping Syft component %s: no purl for deduplication",
+                component.get("name"),
+            )
+            continue
+        purl_str = str(purl)
+        if purl_str in existing_purls:
+            continue
+
+        comp_copy = dict(component)
+        bom_ref = comp_copy.get("bom-ref") or f"syft-{purl_str}"
+        original_ref = bom_ref
+        counter = 0
+        while bom_ref in existing_refs:
+            suffix = "-from-syft" if counter == 0 else f"-from-syft-{counter}"
+            bom_ref = f"{original_ref}{suffix}"
+            counter += 1
+        comp_copy["bom-ref"] = bom_ref
+        components.append(comp_copy)
+        existing_refs.add(bom_ref)
+        existing_purls.add(purl_str)
+        added_refs.append(bom_ref)
+
+    modelcar_sbom["components"] = components
+
+    if not added_refs:
+        return modelcar_sbom
+
+    dependencies = list(modelcar_sbom.get("dependencies") or [])
+    parent_dep = next((d for d in dependencies if d.get("ref") == parent_ref), None)
+    if parent_dep is None:
+        parent_dep = {"ref": parent_ref, "dependsOn": []}
+        dependencies.append(parent_dep)
+    depends_on = list(parent_dep.get("dependsOn") or [])
+    for ref in added_refs:
+        if ref not in depends_on:
+            depends_on.append(ref)
+    parent_dep["dependsOn"] = depends_on
+    modelcar_sbom["dependencies"] = dependencies
     return modelcar_sbom
 
 
@@ -107,47 +166,65 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
 
     async def execute(self) -> Any:
         """
-        Generate an SBOM document for modelcar.
+        Generate an SBOM document for modelcar, then scan the base image with
+        Syft and merge its package inventory under the base image node.
         """
         modelcar = Image.from_oci_artifact_reference(self.cli_args.modelcar_image)
         base = Image.from_oci_artifact_reference(self.cli_args.base_image)
         model = Image.from_oci_artifact_reference(self.cli_args.model_image)
 
         sbom = await self.to_sbom(modelcar, base, model)
-        if self.cli_args.from_syft:
-            sbom = await self._merge_from_syft(sbom)
+        sbom = await self._merge_base_syft_inventory(sbom, base)
 
         self._content = sbom
         return self.content
 
-    async def _merge_from_syft(self, sbom: Any) -> Document:
+    async def save(self) -> None:
         """
-        Merge Syft SPDX package inventory into the modelcar composition SBOM.
+        Save the SBOM. CycloneDX may be a merged dict after Syft inventory merge.
+        """
+        if not self.cli_args.output or self._content is None:
+            return
+        if isinstance(self._content, dict):
+            LOGGER.info("Saving SBOM document to '%s'", self.cli_args.output)
+            with open(str(self.cli_args.output), "w", encoding="utf-8") as file:
+                json.dump(self._content, file, indent=2)
+            return
+        await super().save()
 
-        Raises:
-            ArgumentError: If `--from-syft` is used with a non-SPDX SBOM type.
-            TypeError: If `sbom` is not an SPDX `Document`.
+    async def _merge_base_syft_inventory(self, sbom: Any, base: Image) -> Any:
         """
-        if self.cli_args.sbom_type != "spdx":
-            raise ArgumentError(
-                None,
-                "--from-syft is only supported with --sbom-type spdx",
+        Scan the base image with Syft and merge packages under the base node.
+        """
+        LOGGER.info("Scanning base image with Syft: %s", base.reference)
+        if self.cli_args.sbom_type == "cyclonedx":
+            if not isinstance(sbom, Bom):
+                raise TypeError(
+                    "Expected CycloneDX Bom when merging Syft inventory, "
+                    f"got {type(sbom).__name__}"
+                )
+            syft_sbom = await syft.scan_image(
+                base.reference, output_format=syft.CYCLONEDX_JSON
             )
+            composition = json.loads(JsonV1Dot5(sbom).output_as_string())
+            return merge_syft_components_into_modelcar_cdx(
+                composition,
+                syft_sbom,
+                base.propose_cyclonedx_bom_ref(),
+            )
+
         if not isinstance(sbom, Document):
             raise TypeError(
-                "Expected SPDX Document when merging --from-syft, "
+                "Expected SPDX Document when merging Syft inventory, "
                 f"got {type(sbom).__name__}"
             )
-
+        syft_sbom = await syft.scan_image(base.reference, output_format=syft.SPDX_JSON)
         modelcar_dict = convert(sbom, DocumentConverter())  # type: ignore[no-untyped-call]
-        syft_sboms = [
-            await load_sbom_from_json(Path(path)) for path in self.cli_args.from_syft
-        ]
-        LOGGER.info(
-            "Merging packages from %d Syft SBOM(s) into modelcar SBOM",
-            len(syft_sboms),
+        merged = merge_syft_packages_into_modelcar_spdx(
+            modelcar_dict,
+            syft_sbom,
+            parent_id=base.propose_spdx_id(),
         )
-        merged = merge_syft_packages_into_modelcar_spdx(modelcar_dict, syft_sboms)
         return await normalize_and_load_sbom(merged)
 
     async def to_sbom(self, modelcar: Image, base: Image, model: Image) -> Any:
