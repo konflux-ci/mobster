@@ -212,12 +212,7 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
         Scan the base image with Syft and merge packages under the base node.
         """
         LOGGER.info("Scanning base image with Syft: %s", base.reference)
-        if self.cli_args.sbom_type == "cyclonedx":
-            if not isinstance(sbom, Bom):
-                raise TypeError(
-                    "Expected CycloneDX Bom when merging Syft inventory, "
-                    f"got {type(sbom).__name__}"
-                )
+        if isinstance(sbom, Bom):
             syft_sbom = await syft.scan_image(
                 base.reference, output_format=syft.CYCLONEDX_JSON
             )
@@ -228,19 +223,22 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
                 base.propose_cyclonedx_bom_ref(),
             )
 
-        if not isinstance(sbom, Document):
-            raise TypeError(
-                "Expected SPDX Document when merging Syft inventory, "
-                f"got {type(sbom).__name__}"
+        if isinstance(sbom, Document):
+            syft_sbom = await syft.scan_image(
+                base.reference, output_format=syft.SPDX_JSON
             )
-        syft_sbom = await syft.scan_image(base.reference, output_format=syft.SPDX_JSON)
-        modelcar_dict = convert(sbom, DocumentConverter())  # type: ignore[no-untyped-call]
-        merged = merge_syft_packages_into_modelcar_spdx(
-            modelcar_dict,
-            syft_sbom,
-            parent_id=base.propose_spdx_id(),
+            modelcar_dict = convert(sbom, DocumentConverter())  # type: ignore[no-untyped-call]
+            merged = merge_syft_packages_into_modelcar_spdx(
+                modelcar_dict,
+                syft_sbom,
+                parent_id=base.propose_spdx_id(),
+            )
+            return await normalize_and_load_sbom(merged)
+
+        raise TypeError(
+            "Expected CycloneDX Bom or SPDX Document when merging Syft "
+            f"inventory, got {type(sbom).__name__}"
         )
-        return await normalize_and_load_sbom(merged)
 
     async def to_sbom(self, modelcar: Image, base: Image, model: Image) -> Any:
         """

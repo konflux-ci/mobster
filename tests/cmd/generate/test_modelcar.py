@@ -502,13 +502,12 @@ async def test_generate_modelcar_scans_base_cyclonedx() -> None:
 
 @pytest.mark.asyncio
 async def test_merge_base_syft_rejects_wrong_type() -> None:
-    args = _modelcar_args(sbom_type="spdx")
+    args = _modelcar_args()
     command = GenerateModelcarCommand(args)
     base = MagicMock()
-    base.propose_spdx_id.return_value = BASE_SPDX_ID
     base.reference = "quay.io/example/base@sha256:abc"
 
-    with pytest.raises(TypeError, match="Expected SPDX Document"):
+    with pytest.raises(TypeError, match="Expected CycloneDX Bom or SPDX Document"):
         await command._merge_base_syft_inventory(object(), base)
 
 
@@ -557,15 +556,3 @@ async def test_save_noop_without_output_or_content() -> None:
     args.output = pathlib.Path("/tmp/unused.json")
     command._content = None
     await command.save()
-
-
-@pytest.mark.asyncio
-async def test_merge_base_syft_rejects_non_bom_for_cyclonedx() -> None:
-    args = _modelcar_args(sbom_type="cyclonedx")
-    command = GenerateModelcarCommand(args)
-    base = MagicMock()
-    base.propose_cyclonedx_bom_ref.return_value = BASE_CDX_REF
-    base.reference = "quay.io/example/base@sha256:abc"
-
-    with pytest.raises(TypeError, match="Expected CycloneDX Bom"):
-        await command._merge_base_syft_inventory(object(), base)
