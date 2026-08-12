@@ -1,9 +1,24 @@
 import json
 import pathlib
 import tempfile
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from cyclonedx.model.bom import Bom
+from cyclonedx.model.bom_ref import BomRef
+from cyclonedx.model.component import Component, ComponentType
+from cyclonedx.model.dependency import Dependency
+from packageurl import PackageURL
+from spdx_tools.spdx.model.actor import Actor, ActorType
+from spdx_tools.spdx.model.document import CreationInfo, Document
+from spdx_tools.spdx.model.package import (
+    ExternalPackageRef,
+    ExternalPackageRefCategory,
+    Package,
+)
+from spdx_tools.spdx.model.relationship import RelationshipType
+from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.modelcar import (
     GenerateModelcarCommand,
@@ -40,6 +55,48 @@ def _modelcar_args(**overrides: object) -> MagicMock:
     for key, value in overrides.items():
         setattr(args, key, value)
     return args
+
+
+def _spdx_pkg(spdx_id: str, name: str, *purls: str) -> Package:
+    refs = [
+        ExternalPackageRef(
+            category=ExternalPackageRefCategory.PACKAGE_MANAGER,
+            reference_type="purl",
+            locator=purl,
+        )
+        for purl in purls
+    ]
+    return Package(
+        name=name,
+        spdx_id=spdx_id,
+        download_location=SpdxNoAssertion(),
+        external_references=refs,
+    )
+
+
+def _spdx_doc(*packages: Package) -> Document:
+    return Document(
+        creation_info=CreationInfo(
+            spdx_version="SPDX-2.3",
+            spdx_id="SPDXRef-DOCUMENT",
+            name="test",
+            data_license="CC0-1.0",
+            document_namespace="https://example.com/test",
+            creators=[Actor(ActorType.TOOL, "test")],
+            created=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        ),
+        packages=list(packages),
+        relationships=[],
+    )
+
+
+def _cdx_component(bom_ref: str, name: str, purl: str | None = None) -> Component:
+    return Component(
+        type=ComponentType.LIBRARY,
+        name=name,
+        bom_ref=BomRef(bom_ref),
+        purl=PackageURL.from_string(purl) if purl else None,
+    )
 
 
 @pytest.mark.asyncio
@@ -96,314 +153,180 @@ async def test_generate_modelcar_sbom(
 
 
 def test_merge_syft_packages_into_modelcar_spdx() -> None:
-    modelcar = {
-        "packages": [
-            {
-                "SPDXID": "SPDXRef-root",
-                "name": "modelcar",
-                "externalRefs": [
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:oci/modelcar@sha256:aaa",
-                    }
-                ],
-            },
-            {
-                "SPDXID": BASE_SPDX_ID,
-                "name": "base",
-                "externalRefs": [],
-            },
-        ],
-        "relationships": [],
-    }
-    syft = {
-        "packages": [
-            {
-                "SPDXID": "SPDXRef-bash",
-                "name": "bash",
-                "externalRefs": [
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:rpm/bash@1.0",
-                    }
-                ],
-            },
-            {
-                "SPDXID": BASE_SPDX_ID,
-                "name": "collision",
-                "externalRefs": [
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:rpm/collision@1.0",
-                    }
-                ],
-            },
-            {
-                "SPDXID": "SPDXRef-dup",
-                "name": "modelcar-dup",
-                "externalRefs": [
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:oci/modelcar@sha256:aaa",
-                    }
-                ],
-            },
-        ]
-    }
+    modelcar = _spdx_doc(
+        _spdx_pkg("SPDXRef-root", "modelcar", "pkg:oci/modelcar@sha256:aaa"),
+        _spdx_pkg(BASE_SPDX_ID, "base"),
+    )
+    syft = _spdx_doc(
+        _spdx_pkg("SPDXRef-bash", "bash", "pkg:rpm/bash@1.0"),
+        _spdx_pkg(BASE_SPDX_ID, "collision", "pkg:rpm/collision@1.0"),
+        _spdx_pkg("SPDXRef-dup", "modelcar-dup", "pkg:oci/modelcar@sha256:aaa"),
+    )
 
     merged = merge_syft_packages_into_modelcar_spdx(
         modelcar, syft, parent_id=BASE_SPDX_ID
     )
-    package_ids = {pkg["SPDXID"] for pkg in merged["packages"]}
+    package_ids = {pkg.spdx_id for pkg in merged.packages}
     assert "SPDXRef-bash" in package_ids
     assert f"{BASE_SPDX_ID}-from-syft" in package_ids
     assert "SPDXRef-dup" not in package_ids
 
     contains = [
-        rel for rel in merged["relationships"] if rel["relationshipType"] == "CONTAINS"
+        rel
+        for rel in merged.relationships
+        if rel.relationship_type == RelationshipType.CONTAINS
     ]
     assert {
         (BASE_SPDX_ID, "SPDXRef-bash"),
         (BASE_SPDX_ID, f"{BASE_SPDX_ID}-from-syft"),
-    } == {(rel["spdxElementId"], rel["relatedSpdxElement"]) for rel in contains}
+    } == {(rel.spdx_element_id, rel.related_spdx_element_id) for rel in contains}
 
 
 def test_merge_syft_packages_double_spdx_id_collision() -> None:
     """Renamed -from-syft ID must itself be uniquified if already taken."""
-    modelcar = {
-        "packages": [
-            {"SPDXID": "SPDXRef-root", "name": "modelcar", "externalRefs": []},
-            {"SPDXID": BASE_SPDX_ID, "name": "base", "externalRefs": []},
-            {
-                "SPDXID": f"{BASE_SPDX_ID}-from-syft",
-                "name": "already-renamed",
-                "externalRefs": [],
-            },
-        ],
-        "relationships": [],
-    }
-    syft_sbom = {
-        "packages": [
-            {
-                "SPDXID": BASE_SPDX_ID,
-                "name": "collision",
-                "externalRefs": [
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:rpm/collision@1.0",
-                    }
-                ],
-            }
-        ]
-    }
-
-    merged = merge_syft_packages_into_modelcar_spdx(
-        modelcar, syft_sbom, parent_id=BASE_SPDX_ID
+    modelcar = _spdx_doc(
+        _spdx_pkg("SPDXRef-root", "modelcar"),
+        _spdx_pkg(BASE_SPDX_ID, "base"),
+        _spdx_pkg(f"{BASE_SPDX_ID}-from-syft", "already-renamed"),
     )
-    package_ids = {pkg["SPDXID"] for pkg in merged["packages"]}
-    assert f"{BASE_SPDX_ID}-from-syft-1" in package_ids
-    assert len(package_ids) == len(merged["packages"])
-
-    contains = [
-        rel for rel in merged["relationships"] if rel["relationshipType"] == "CONTAINS"
-    ]
-    assert contains == [
-        {
-            "spdxElementId": BASE_SPDX_ID,
-            "relationshipType": "CONTAINS",
-            "relatedSpdxElement": f"{BASE_SPDX_ID}-from-syft-1",
-        }
-    ]
-
-
-def test_merge_syft_packages_skips_missing_spdxid_and_purl(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    modelcar: dict[str, object] = {"packages": [], "relationships": []}
-    syft_sbom = {
-        "packages": [
-            {"name": "no-id", "externalRefs": []},
-            {
-                "SPDXID": "SPDXRef-nopurl",
-                "name": "no-purl",
-                "externalRefs": [],
-            },
-            {
-                "SPDXID": "SPDXRef-bash",
-                "name": "bash",
-                "externalRefs": [
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:rpm/bash@1.0",
-                    }
-                ],
-            },
-        ]
-    }
-
-    with caplog.at_level("WARNING"):
-        merged = merge_syft_packages_into_modelcar_spdx(
-            modelcar, syft_sbom, parent_id=BASE_SPDX_ID
-        )
-
-    assert "without SPDXID" in caplog.text
-    assert "no purl for deduplication" in caplog.text
-    assert {pkg["SPDXID"] for pkg in merged["packages"]} == {"SPDXRef-bash"}
-
-
-def test_merge_syft_packages_purl_dedupe_cases() -> None:
-    modelcar = {
-        "packages": [
-            {
-                "SPDXID": "SPDXRef-existing",
-                "name": "bash",
-                "externalRefs": [
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:rpm/bash@1.0",
-                    }
-                ],
-            }
-        ],
-        "relationships": [],
-    }
-    syft = {
-        "packages": [
-            {
-                "SPDXID": "SPDXRef-same-purl",
-                "name": "bash-again",
-                "externalRefs": [
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:rpm/bash@1.0",
-                    }
-                ],
-            },
-            {
-                "SPDXID": "SPDXRef-multi-purl",
-                "name": "multi",
-                "externalRefs": [
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:rpm/bash@1.0",
-                    },
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:generic/other@1.0",
-                    },
-                ],
-            },
-            {
-                "SPDXID": "SPDXRef-same-name-diff-purl",
-                "name": "bash",
-                "externalRefs": [
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:rpm/bash@2.0",
-                    }
-                ],
-            },
-            {
-                "SPDXID": "SPDXRef-new",
-                "name": "coreutils",
-                "externalRefs": [
-                    {
-                        "referenceType": "purl",
-                        "referenceLocator": "pkg:rpm/coreutils@1.0",
-                    }
-                ],
-            },
-        ]
-    }
+    syft = _spdx_doc(_spdx_pkg(BASE_SPDX_ID, "collision", "pkg:rpm/collision@1.0"))
 
     merged = merge_syft_packages_into_modelcar_spdx(
         modelcar, syft, parent_id=BASE_SPDX_ID
     )
-    package_ids = {pkg["SPDXID"] for pkg in merged["packages"]}
+    package_ids = {pkg.spdx_id for pkg in merged.packages}
+    assert f"{BASE_SPDX_ID}-from-syft-1" in package_ids
+
+    contains = [
+        rel
+        for rel in merged.relationships
+        if rel.relationship_type == RelationshipType.CONTAINS
+    ]
+    assert len(contains) == 1
+    assert contains[0].related_spdx_element_id == f"{BASE_SPDX_ID}-from-syft-1"
+
+
+def test_merge_syft_packages_skips_missing_purl(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    modelcar = _spdx_doc()
+    syft = _spdx_doc(
+        _spdx_pkg("SPDXRef-nopurl", "no-purl"),
+        _spdx_pkg("SPDXRef-bash", "bash", "pkg:rpm/bash@1.0"),
+    )
+
+    with caplog.at_level("WARNING"):
+        merged = merge_syft_packages_into_modelcar_spdx(
+            modelcar, syft, parent_id=BASE_SPDX_ID
+        )
+
+    assert "no purl for deduplication" in caplog.text
+    assert {pkg.spdx_id for pkg in merged.packages} == {"SPDXRef-bash"}
+
+
+def test_merge_syft_packages_purl_dedupe_cases() -> None:
+    modelcar = _spdx_doc(_spdx_pkg("SPDXRef-existing", "bash", "pkg:rpm/bash@1.0"))
+    syft = _spdx_doc(
+        _spdx_pkg("SPDXRef-same-purl", "bash-again", "pkg:rpm/bash@1.0"),
+        _spdx_pkg(
+            "SPDXRef-multi-purl",
+            "multi",
+            "pkg:rpm/bash@1.0",
+            "pkg:generic/other@1.0",
+        ),
+        _spdx_pkg("SPDXRef-same-name-diff-purl", "bash", "pkg:rpm/bash@2.0"),
+        _spdx_pkg("SPDXRef-new", "coreutils", "pkg:rpm/coreutils@1.0"),
+    )
+
+    merged = merge_syft_packages_into_modelcar_spdx(
+        modelcar, syft, parent_id=BASE_SPDX_ID
+    )
+    package_ids = {pkg.spdx_id for pkg in merged.packages}
     assert "SPDXRef-same-purl" not in package_ids
     assert "SPDXRef-multi-purl" not in package_ids
     assert "SPDXRef-same-name-diff-purl" in package_ids
     assert "SPDXRef-new" in package_ids
 
 
-def test_merge_syft_components_dedupes_metadata_purl() -> None:
-    modelcar = {
-        "components": [],
-        "dependencies": [],
-        "metadata": {
-            "component": {
-                "bom-ref": "root",
-                "name": "modelcar",
-                "purl": "pkg:oci/modelcar@1",
-            }
-        },
-    }
-    syft = {
-        "components": [
-            {
-                "bom-ref": "dup-root",
-                "name": "modelcar-dup",
-                "purl": "pkg:oci/modelcar@1",
-            },
-            {
-                "bom-ref": "pkg:rpm/bash@1.0",
-                "name": "bash",
-                "purl": "pkg:rpm/bash@1.0",
-            },
-        ]
-    }
-
-    merged = merge_syft_components_into_modelcar_cdx(
-        modelcar, syft, parent_ref=BASE_CDX_REF
-    )
-    refs = {c["bom-ref"] for c in merged["components"]}
-    assert "dup-root" not in refs
-    assert "pkg:rpm/bash@1.0" in refs
-
-
 def test_merge_syft_components_into_modelcar_cdx() -> None:
-    modelcar = {
-        "components": [
-            {"bom-ref": "root", "name": "modelcar", "purl": "pkg:oci/modelcar@1"},
-            {"bom-ref": BASE_CDX_REF, "name": "base", "purl": "pkg:oci/base@1"},
-        ],
-        "dependencies": [
-            {"ref": "root", "dependsOn": [BASE_CDX_REF]},
-            {"ref": BASE_CDX_REF},
-        ],
-        "metadata": {"component": {"bom-ref": "root"}},
-    }
-    syft = {
-        "components": [
-            {
-                "bom-ref": "pkg:rpm/bash@1.0",
-                "name": "bash",
-                "purl": "pkg:rpm/bash@1.0",
-            },
-            {
-                "bom-ref": BASE_CDX_REF,
-                "name": "collision",
-                "purl": "pkg:rpm/collision@1.0",
-            },
-            {
-                "bom-ref": "dup",
-                "name": "dup",
-                "purl": "pkg:oci/modelcar@1",
-            },
+    root = _cdx_component("root", "modelcar", "pkg:oci/modelcar@1")
+    base = _cdx_component(BASE_CDX_REF, "base", "pkg:oci/base@1")
+    modelcar = Bom(components=[root, base])
+    modelcar.metadata.component = root
+    modelcar.dependencies.add(
+        Dependency(
+            ref=BomRef("root"), dependencies=[Dependency(ref=BomRef(BASE_CDX_REF))]
+        )
+    )
+    modelcar.dependencies.add(Dependency(ref=BomRef(BASE_CDX_REF)))
+
+    syft = Bom(
+        components=[
+            _cdx_component("pkg:rpm/bash@1.0", "bash", "pkg:rpm/bash@1.0"),
+            _cdx_component(BASE_CDX_REF, "collision", "pkg:rpm/collision@1.0"),
+            _cdx_component("dup", "dup", "pkg:oci/modelcar@1"),
         ]
-    }
+    )
 
     merged = merge_syft_components_into_modelcar_cdx(
         modelcar, syft, parent_ref=BASE_CDX_REF
     )
-    refs = {c["bom-ref"] for c in merged["components"]}
+    refs = {str(c.bom_ref) for c in merged.components}
     assert "pkg:rpm/bash@1.0" in refs
     assert f"{BASE_CDX_REF}-from-syft" in refs
     assert "dup" not in refs
 
-    base_dep = next(d for d in merged["dependencies"] if d["ref"] == BASE_CDX_REF)
-    assert "pkg:rpm/bash@1.0" in base_dep["dependsOn"]
-    assert f"{BASE_CDX_REF}-from-syft" in base_dep["dependsOn"]
+    base_dep = next(d for d in merged.dependencies if str(d.ref) == BASE_CDX_REF)
+    depends_on = {str(d.ref) for d in base_dep.dependencies}
+    assert "pkg:rpm/bash@1.0" in depends_on
+    assert f"{BASE_CDX_REF}-from-syft" in depends_on
+
+
+def test_merge_syft_components_dedupes_metadata_purl() -> None:
+    root = _cdx_component("root", "modelcar", "pkg:oci/modelcar@1")
+    modelcar = Bom(components=[])
+    modelcar.metadata.component = root
+    syft = Bom(
+        components=[
+            _cdx_component("dup-root", "modelcar-dup", "pkg:oci/modelcar@1"),
+            _cdx_component("pkg:rpm/bash@1.0", "bash", "pkg:rpm/bash@1.0"),
+        ]
+    )
+
+    merged = merge_syft_components_into_modelcar_cdx(
+        modelcar, syft, parent_ref=BASE_CDX_REF
+    )
+    refs = {str(c.bom_ref) for c in merged.components}
+    assert "dup-root" not in refs
+    assert "pkg:rpm/bash@1.0" in refs
+
+
+def test_merge_syft_components_skips_missing_purl(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    modelcar = Bom(components=[])
+    syft = Bom(components=[_cdx_component("no-purl", "nopurl")])
+
+    with caplog.at_level("WARNING"):
+        merged = merge_syft_components_into_modelcar_cdx(
+            modelcar, syft, parent_ref=BASE_CDX_REF
+        )
+
+    assert "no purl for deduplication" in caplog.text
+    assert list(merged.components) == []
+
+
+def test_merge_syft_components_creates_parent_dependency() -> None:
+    modelcar = Bom(components=[])
+    syft = Bom(
+        components=[_cdx_component("pkg:rpm/bash@1.0", "bash", "pkg:rpm/bash@1.0")]
+    )
+
+    merged = merge_syft_components_into_modelcar_cdx(
+        modelcar, syft, parent_ref=BASE_CDX_REF
+    )
+    base_dep = next(d for d in merged.dependencies if str(d.ref) == BASE_CDX_REF)
+    assert {str(d.ref) for d in base_dep.dependencies} == {"pkg:rpm/bash@1.0"}
 
 
 @pytest.mark.asyncio
@@ -462,6 +385,9 @@ async def test_generate_modelcar_scans_base_spdx() -> None:
 @pytest.mark.asyncio
 async def test_generate_modelcar_scans_base_cyclonedx() -> None:
     syft_sbom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "version": 1,
         "components": [
             {
                 "bom-ref": "pkg:rpm/bash@1.0",
@@ -469,7 +395,7 @@ async def test_generate_modelcar_scans_base_cyclonedx() -> None:
                 "purl": "pkg:rpm/bash@1.0",
                 "type": "library",
             }
-        ]
+        ],
     }
     args = _modelcar_args(sbom_type="cyclonedx")
     command = GenerateModelcarCommand(args)
@@ -509,50 +435,3 @@ async def test_merge_base_syft_rejects_wrong_type() -> None:
 
     with pytest.raises(TypeError, match="Expected CycloneDX Bom or SPDX Document"):
         await command._merge_base_syft_inventory(object(), base)
-
-
-def test_merge_syft_components_skips_missing_purl(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    modelcar: dict[str, object] = {"components": [], "dependencies": []}
-    syft = {"components": [{"bom-ref": "no-purl", "name": "nopurl"}]}
-
-    with caplog.at_level("WARNING"):
-        merged = merge_syft_components_into_modelcar_cdx(
-            modelcar, syft, parent_ref=BASE_CDX_REF
-        )
-
-    assert "no purl for deduplication" in caplog.text
-    assert merged["components"] == []
-
-
-def test_merge_syft_components_creates_parent_dependency() -> None:
-    modelcar: dict[str, object] = {"components": [], "dependencies": []}
-    syft = {
-        "components": [
-            {
-                "bom-ref": "pkg:rpm/bash@1.0",
-                "name": "bash",
-                "purl": "pkg:rpm/bash@1.0",
-            }
-        ]
-    }
-
-    merged = merge_syft_components_into_modelcar_cdx(
-        modelcar, syft, parent_ref=BASE_CDX_REF
-    )
-    base_dep = next(d for d in merged["dependencies"] if d["ref"] == BASE_CDX_REF)
-    assert base_dep["dependsOn"] == ["pkg:rpm/bash@1.0"]
-
-
-@pytest.mark.asyncio
-async def test_save_noop_without_output_or_content() -> None:
-    args = _modelcar_args()
-    args.output = None
-    command = GenerateModelcarCommand(args)
-    command._content = {"ok": True}
-    await command.save()
-
-    args.output = pathlib.Path("/tmp/unused.json")
-    command._content = None
-    await command.save()

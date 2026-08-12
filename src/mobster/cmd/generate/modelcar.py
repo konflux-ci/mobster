@@ -1,177 +1,162 @@
 """A module for generating SBOM documents for OCI ModelCar images."""
 
-import json
 import logging
 from typing import Any
 
 from cyclonedx.model.bom import Bom
+from cyclonedx.model.bom_ref import BomRef
+from cyclonedx.model.component import Component
 from cyclonedx.model.dependency import Dependency
-from cyclonedx.output.json import JsonV1Dot5
-from spdx_tools.spdx.jsonschema.document_converter import DocumentConverter
 from spdx_tools.spdx.model.document import Document
+from spdx_tools.spdx.model.package import (
+    ExternalPackageRefCategory,
+    Package,
+)
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
-from spdx_tools.spdx.writer.write_utils import convert
 
 from mobster import syft
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.spdx_utils import normalize_and_load_sbom
 from mobster.image import Image
 from mobster.sbom import cyclonedx, spdx
-from mobster.sbom.merge import CDXComponent, SPDXPackage
 
 LOGGER = logging.getLogger(__name__)
 
 
-def merge_syft_packages_into_modelcar_spdx(
-    modelcar_sbom: dict[str, Any],
-    syft_sbom: dict[str, Any],
-    parent_id: str,
-) -> dict[str, Any]:
-    """
-    Merge packages from a Syft SPDX SBOM into a modelcar composition SBOM.
+def _spdx_package_purls(package: Package) -> list[str]:
+    return [
+        ref.locator
+        for ref in package.external_references
+        if (
+            ref.category == ExternalPackageRefCategory.PACKAGE_MANAGER
+            and ref.reference_type == "purl"
+            and ref.locator
+        )
+    ]
 
-    Packages already present (matched by purl via ``SPDXPackage.all_purls``)
-    are skipped — if any Syft purl matches an existing one, the whole package
-    is skipped (aliases of the same package). Packages without an SPDXID or
+
+def merge_syft_packages_into_modelcar_spdx(
+    modelcar_sbom: Document,
+    syft_sbom: Document,
+    parent_id: str,
+) -> Document:
+    """
+    Merge packages from a Syft SPDX Document into a modelcar composition Document.
+
+    Packages already present (matched by any purl) are skipped — if any Syft
+    purl matches an existing one, the whole package is skipped. Packages
     without a purl are skipped. New packages are linked to ``parent_id``
     (typically the base image) with CONTAINS relationships.
     """
-    existing_ids = {
-        pkg["SPDXID"] for pkg in modelcar_sbom.get("packages", []) if pkg.get("SPDXID")
-    }
-    existing_purls = {
-        str(purl)
-        for pkg in modelcar_sbom.get("packages", [])
-        for purl in SPDXPackage(pkg).all_purls()
-    }
+    packages = list(modelcar_sbom.packages or [])
+    existing_ids = {pkg.spdx_id for pkg in packages}
+    existing_purls = {purl for pkg in packages for purl in _spdx_package_purls(pkg)}
 
-    for pkg in syft_sbom.get("packages", []):
-        if "SPDXID" not in pkg:
-            LOGGER.warning("Skipping Syft package without SPDXID: %s", pkg.get("name"))
-            continue
-        syft_pkg = SPDXPackage(pkg)
-        purls = [str(purl) for purl in syft_pkg.all_purls()]
+    relationships = list(modelcar_sbom.relationships or [])
+    for pkg in syft_sbom.packages or []:
+        purls = _spdx_package_purls(pkg)
         if not purls:
             LOGGER.warning(
                 "Skipping Syft package %s (%s): no purl for deduplication",
-                pkg.get("name"),
-                pkg["SPDXID"],
+                pkg.name,
+                pkg.spdx_id,
             )
             continue
         if any(purl in existing_purls for purl in purls):
             continue
-        pkg_copy = dict(pkg)
-        original_id = pkg_copy["SPDXID"]
+
+        original_id = pkg.spdx_id
         spdx_id = original_id
         counter = 0
         while spdx_id in existing_ids:
             suffix = "-from-syft" if counter == 0 else f"-from-syft-{counter}"
             spdx_id = f"{original_id}{suffix}"
             counter += 1
-        pkg_copy["SPDXID"] = spdx_id
-        modelcar_sbom.setdefault("packages", []).append(pkg_copy)
+        pkg.spdx_id = spdx_id
+        packages.append(pkg)
         existing_ids.add(spdx_id)
         existing_purls.update(purls)
-        modelcar_sbom.setdefault("relationships", []).append(
-            {
-                "spdxElementId": parent_id,
-                "relationshipType": "CONTAINS",
-                "relatedSpdxElement": spdx_id,
-            }
+        relationships.append(
+            Relationship(
+                spdx_element_id=parent_id,
+                relationship_type=RelationshipType.CONTAINS,
+                related_spdx_element_id=spdx_id,
+            )
         )
 
+    modelcar_sbom.packages = packages
+    modelcar_sbom.relationships = relationships
     return modelcar_sbom
 
 
+def _cdx_component_ref(component: Component) -> str:
+    return str(component.bom_ref)
+
+
 def merge_syft_components_into_modelcar_cdx(
-    modelcar_sbom: dict[str, Any],
-    syft_sbom: dict[str, Any],
+    modelcar_sbom: Bom,
+    syft_sbom: Bom,
     parent_ref: str,
-) -> dict[str, Any]:
+) -> Bom:
     """
-    Merge components from a Syft CycloneDX SBOM into a modelcar composition SBOM.
+    Merge components from a Syft CycloneDX Bom into a modelcar composition Bom.
 
     New components are linked under ``parent_ref`` (typically the base image)
-    via ``dependencies[].dependsOn``. Duplicate purls are skipped.
+    via dependencies. Duplicate purls are skipped.
     """
-    components = list(modelcar_sbom.get("components") or [])
-    existing_refs, existing_purls = _cdx_existing_refs_and_purls(
-        modelcar_sbom, components
-    )
+    existing_refs = {_cdx_component_ref(c) for c in modelcar_sbom.components}
+    existing_purls = {str(c.purl) for c in modelcar_sbom.components if c.purl}
+    if meta := modelcar_sbom.metadata.component:
+        existing_refs.add(_cdx_component_ref(meta))
+        if meta.purl:
+            existing_purls.add(str(meta.purl))
 
-    added_refs: list[str] = []
-    for component in syft_sbom.get("components") or []:
-        purl = CDXComponent(component).purl()
-        if purl is None:
+    added_refs: list[BomRef] = []
+    for component in syft_sbom.components:
+        if component.purl is None:
             LOGGER.warning(
                 "Skipping Syft component %s: no purl for deduplication",
-                component.get("name"),
+                component.name,
             )
             continue
-        purl_str = str(purl)
+        purl_str = str(component.purl)
         if purl_str in existing_purls:
             continue
 
-        comp_copy = dict(component)
-        bom_ref = _unique_cdx_bom_ref(
-            comp_copy.get("bom-ref") or f"syft-{purl_str}", existing_refs
-        )
-        comp_copy["bom-ref"] = bom_ref
-        components.append(comp_copy)
+        original_ref = _cdx_component_ref(component) or f"syft-{purl_str}"
+        bom_ref = original_ref
+        counter = 0
+        while bom_ref in existing_refs:
+            suffix = "-from-syft" if counter == 0 else f"-from-syft-{counter}"
+            bom_ref = f"{original_ref}{suffix}"
+            counter += 1
+        if bom_ref != original_ref:
+            component.bom_ref.value = bom_ref
+
+        modelcar_sbom.components.add(component)
         existing_refs.add(bom_ref)
         existing_purls.add(purl_str)
-        added_refs.append(bom_ref)
+        added_refs.append(component.bom_ref)
 
-    modelcar_sbom["components"] = components
     if added_refs:
         _attach_cdx_depends_on(modelcar_sbom, parent_ref, added_refs)
     return modelcar_sbom
 
 
-def _cdx_existing_refs_and_purls(
-    modelcar_sbom: dict[str, Any],
-    components: list[dict[str, Any]],
-) -> tuple[set[str], set[str]]:
-    existing_refs = {
-        ref for c in components if isinstance(ref := c.get("bom-ref"), str)
-    }
-    metadata_component = (modelcar_sbom.get("metadata") or {}).get("component") or {}
-    if isinstance(meta_ref := metadata_component.get("bom-ref"), str):
-        existing_refs.add(meta_ref)
-    existing_purls = {
-        str(purl) for c in components if (purl := CDXComponent(c).purl()) is not None
-    }
-    if (meta_purl := CDXComponent(metadata_component).purl()) is not None:
-        existing_purls.add(str(meta_purl))
-    return existing_refs, existing_purls
-
-
-def _unique_cdx_bom_ref(original_ref: str, existing_refs: set[str]) -> str:
-    bom_ref = original_ref
-    counter = 0
-    while bom_ref in existing_refs:
-        suffix = "-from-syft" if counter == 0 else f"-from-syft-{counter}"
-        bom_ref = f"{original_ref}{suffix}"
-        counter += 1
-    return bom_ref
-
-
 def _attach_cdx_depends_on(
-    modelcar_sbom: dict[str, Any],
+    modelcar_sbom: Bom,
     parent_ref: str,
-    added_refs: list[str],
+    added_refs: list[BomRef],
 ) -> None:
-    dependencies = list(modelcar_sbom.get("dependencies") or [])
-    parent_dep = next((d for d in dependencies if d.get("ref") == parent_ref), None)
+    parent_dep = next(
+        (dep for dep in modelcar_sbom.dependencies if str(dep.ref) == parent_ref),
+        None,
+    )
     if parent_dep is None:
-        parent_dep = {"ref": parent_ref, "dependsOn": []}
-        dependencies.append(parent_dep)
-    depends_on = list(parent_dep.get("dependsOn") or [])
+        parent_dep = Dependency(ref=BomRef(parent_ref))
+        modelcar_sbom.dependencies.add(parent_dep)
     for ref in added_refs:
-        if ref not in depends_on:
-            depends_on.append(ref)
-    parent_dep["dependsOn"] = depends_on
-    modelcar_sbom["dependencies"] = dependencies
+        parent_dep.dependencies.add(Dependency(ref=ref))
 
 
 class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
@@ -194,46 +179,33 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
         self._content = sbom
         return self.content
 
-    async def save(self) -> None:
-        """
-        Save the SBOM. CycloneDX may be a merged dict after Syft inventory merge.
-        """
-        if not self.cli_args.output or self._content is None:
-            return
-        if isinstance(self._content, dict):
-            LOGGER.info("Saving SBOM document to '%s'", self.cli_args.output)
-            with open(str(self.cli_args.output), "w", encoding="utf-8") as file:
-                json.dump(self._content, file, indent=2)
-            return
-        await super().save()
-
     async def _merge_base_syft_inventory(self, sbom: Any, base: Image) -> Any:
         """
         Scan the base image with Syft and merge packages under the base node.
         """
         LOGGER.info("Scanning base image with Syft: %s", base.reference)
         if isinstance(sbom, Bom):
-            syft_sbom = await syft.scan_image(
+            syft_dict = await syft.scan_image(
                 base.reference, output_format=syft.CYCLONEDX_JSON
             )
-            composition = json.loads(JsonV1Dot5(sbom).output_as_string())
+            # pylint: disable=no-member
+            syft_bom = Bom.from_json(syft_dict)  # type: ignore[attr-defined]
             return merge_syft_components_into_modelcar_cdx(
-                composition,
-                syft_sbom,
+                sbom,
+                syft_bom,
                 base.propose_cyclonedx_bom_ref(),
             )
 
         if isinstance(sbom, Document):
-            syft_sbom = await syft.scan_image(
+            syft_dict = await syft.scan_image(
                 base.reference, output_format=syft.SPDX_JSON
             )
-            modelcar_dict = convert(sbom, DocumentConverter())  # type: ignore[no-untyped-call]
-            merged = merge_syft_packages_into_modelcar_spdx(
-                modelcar_dict,
-                syft_sbom,
+            syft_doc = await normalize_and_load_sbom(syft_dict, append_mobster=False)
+            return merge_syft_packages_into_modelcar_spdx(
+                sbom,
+                syft_doc,
                 parent_id=base.propose_spdx_id(),
             )
-            return await normalize_and_load_sbom(merged)
 
         raise TypeError(
             "Expected CycloneDX Bom or SPDX Document when merging Syft "
