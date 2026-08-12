@@ -24,6 +24,22 @@ async def test_scan_image(
     )
     assert result == {}
 
+    mock_run_async.return_value = (0, b'{"bomFormat":"CycloneDX"}', b"")
+    cdx = await syft.scan_image(
+        "example.com/repo:tag", output_format=syft.CYCLONEDX_JSON
+    )
+    mock_run_async.assert_awaited_with(
+        [
+            "syft",
+            "scan",
+            "example.com/repo:tag",
+            "-o",
+            "cyclonedx-json",
+        ],
+        retry_times=3,
+    )
+    assert cdx == {"bomFormat": "CycloneDX"}
+
     mock_run_async.return_value = (1, b"{}", b"")
     with pytest.raises(RuntimeError):
         await syft.scan_image("example.com/repo:tag")
