@@ -400,3 +400,62 @@ async def test_merge_base_syft_rejects_wrong_type() -> None:
 
     with pytest.raises(TypeError, match="Expected SPDX Document"):
         await command._merge_base_syft_inventory(object(), base)
+
+
+def test_merge_syft_components_skips_missing_purl(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    modelcar: dict[str, object] = {"components": [], "dependencies": []}
+    syft = {"components": [{"bom-ref": "no-purl", "name": "nopurl"}]}
+
+    with caplog.at_level("WARNING"):
+        merged = merge_syft_components_into_modelcar_cdx(
+            modelcar, syft, parent_ref=BASE_CDX_REF
+        )
+
+    assert "no purl for deduplication" in caplog.text
+    assert merged["components"] == []
+
+
+def test_merge_syft_components_creates_parent_dependency() -> None:
+    modelcar: dict[str, object] = {"components": [], "dependencies": []}
+    syft = {
+        "components": [
+            {
+                "bom-ref": "pkg:rpm/bash@1.0",
+                "name": "bash",
+                "purl": "pkg:rpm/bash@1.0",
+            }
+        ]
+    }
+
+    merged = merge_syft_components_into_modelcar_cdx(
+        modelcar, syft, parent_ref=BASE_CDX_REF
+    )
+    base_dep = next(d for d in merged["dependencies"] if d["ref"] == BASE_CDX_REF)
+    assert base_dep["dependsOn"] == ["pkg:rpm/bash@1.0"]
+
+
+@pytest.mark.asyncio
+async def test_save_noop_without_output_or_content() -> None:
+    args = _modelcar_args()
+    args.output = None
+    command = GenerateModelcarCommand(args)
+    command._content = {"ok": True}
+    await command.save()
+
+    args.output = pathlib.Path("/tmp/unused.json")
+    command._content = None
+    await command.save()
+
+
+@pytest.mark.asyncio
+async def test_merge_base_syft_rejects_non_bom_for_cyclonedx() -> None:
+    args = _modelcar_args(sbom_type="cyclonedx")
+    command = GenerateModelcarCommand(args)
+    base = MagicMock()
+    base.propose_cyclonedx_bom_ref.return_value = BASE_CDX_REF
+    base.reference = "quay.io/example/base@sha256:abc"
+
+    with pytest.raises(TypeError, match="Expected CycloneDX Bom"):
+        await command._merge_base_syft_inventory(object(), base)
