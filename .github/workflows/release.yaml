@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Download built artifact to dist/
-        uses: actions/download-artifact@ad191675b41f6a5b46da9a048cb6893812da158b
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: Packages
           path: dist
