@@ -1,5 +1,56 @@
 # Changelog
 
+## [2.2.0](https://github.com/konflux-ci/mobster/compare/v2.1.0...v2.2.0) (2026-08-13)
+
+
+### Features
+
+* auto-scan modelcar base image with Syft ([38608f5](https://github.com/konflux-ci/mobster/commit/38608f55d420cbd559c2c0162cfb2aea884ac986))
+* **ISV-6787:** add yq to Mobster image ([8b80196](https://github.com/konflux-ci/mobster/commit/8b801961c92ac8feae6744a6ccbbd64fef4d844a))
+* **ISV-6787:** add yq to Mobster image ([ef45d7d](https://github.com/konflux-ci/mobster/commit/ef45d7d34463144834ead7f82937d0ad35065ed5))
+* **ISV-7121:** cosign v3 is used ([1ae18be](https://github.com/konflux-ci/mobster/commit/1ae18be713a9fae9232f880bfc5d03b1c507d2bd))
+* **ISV-7121:** cosign v3 is used ([afecfa5](https://github.com/konflux-ci/mobster/commit/afecfa5bff7555dbd38078cecbeaa37882db601b))
+* **ISV-7121:** use pdc_dataclass naming ([d9d988a](https://github.com/konflux-ci/mobster/commit/d9d988a655d97943e2a229b5325ff34d67683f0d))
+* **ISV-7365:** re-implement backward compatibility with dockerfile-json ([75e532c](https://github.com/konflux-ci/mobster/commit/75e532cf571725840b832eca9088038bcf55b84b))
+* **ISV-7382:** re-implement backward compatibility with dockerfile-json ([7208c8c](https://github.com/konflux-ci/mobster/commit/7208c8cf29502fa1f706197a4b4c9d7ad1a48772))
+* **ISV-7533:** accept new buildprobe metadata structure ([5c7afee](https://github.com/konflux-ci/mobster/commit/5c7afee84ef29ab49b85eecdfd93eb7f3a05cf51))
+* **ISV-7533:** accept new buildprobe metadata structure ([17c3a6b](https://github.com/konflux-ci/mobster/commit/17c3a6b1e532e21b156567df07ab2b90c598d5e2))
+* **ISV-7542:** stream file in TPA upload_sbom ([c450e8f](https://github.com/konflux-ci/mobster/commit/c450e8fd8216e35ff5696dfb7f29ae73bbaaa1a3))
+* **ISV-7542:** stream file in TPA upload_sbom ([2189f42](https://github.com/konflux-ci/mobster/commit/2189f4278e9a6ca0b328ea8400d1c3d3f377db01))
+* scan modelcar base image with Syft automatically ([eb258de](https://github.com/konflux-ci/mobster/commit/eb258def4d4dd48356d0ed0f4cc35a9a0f92d609))
+* support --from-syft on generate modelcar ([a853d04](https://github.com/konflux-ci/mobster/commit/a853d0411dfc026ab2a25b57015a82576d4603fc))
+
+
+### Bug Fixes
+
+* address qodo/fullsend review findings ([a0b25ec](https://github.com/konflux-ci/mobster/commit/a0b25ec12330a18c16aea504e34b48821544ccda))
+* address review comments ([79f90ae](https://github.com/konflux-ci/mobster/commit/79f90ae2a284409cf54fc268baa8b238125ace93))
+* copy Syft extracted licensing info into modelcar SPDX ([e85a1e9](https://github.com/konflux-ci/mobster/commit/e85a1e9b302aa7c8b35de674db9455cb40168c56))
+* dep update ([131821b](https://github.com/konflux-ci/mobster/commit/131821bec4567645898568a6b92e6a8671515ca0))
+* harden modelcar --from-syft SPDX ID collision handling ([787f089](https://github.com/konflux-ci/mobster/commit/787f0894e5cf8b2a3a6ee154215e18752aa1b1c8))
+* harden modelcar Syft merge purl dedupe ([dbf6353](https://github.com/konflux-ci/mobster/commit/dbf6353ef4cc0ac3b611cf0a97727821888e714c))
+* Improve release strategy ([4004b81](https://github.com/konflux-ci/mobster/commit/4004b81de1f0018786739b2dee4d519ed9f0f1f2))
+* Improve release strategy ([229253f](https://github.com/konflux-ci/mobster/commit/229253f8afff67abd3a8ad25cc6f11fabf117e4e))
+* **ISV-7121:** add seek(0) to _attest_anything ([d382355](https://github.com/konflux-ci/mobster/commit/d382355d630c949b9cb24ca429621de472ec8c50))
+* **ISV-7121:** address bot's review ([aba211d](https://github.com/konflux-ci/mobster/commit/aba211de5998e725a7f64d939dc1f46792fa527b))
+* **ISV-7121:** context-manager available in older Python versions ([0f592d2](https://github.com/konflux-ci/mobster/commit/0f592d29d7325df906031c0b6ce33f814481ec97))
+* **ISV-7358:** properly handle contextualization for extra images in metadata yamls ([b955275](https://github.com/konflux-ci/mobster/commit/b955275f4a518be7ba80b75046d2a8101fec89e9))
+* **ISV-7526:** all-or-nothing contextual SBOM - no partial results ([400f041](https://github.com/konflux-ci/mobster/commit/400f04180ae5ebb58816f2a825564265d84a64d1))
+* **ISV-7526:** mobster resolves missing builder metadata file ([67db2de](https://github.com/konflux-ci/mobster/commit/67db2de2bf4bd6d37f783f2e200f829b24ada62a))
+* **ISV-7533:** reorganize test metadata files ([d034c82](https://github.com/konflux-ci/mobster/commit/d034c8258cafec66f1d5243979c13543a85190ab))
+* reuse SPDXPackage.all_purls in modelcar Syft merge ([e0443d4](https://github.com/konflux-ci/mobster/commit/e0443d47698590794abdb78279cfb105877195e7))
+* silencing pylint ([cc10bec](https://github.com/konflux-ci/mobster/commit/cc10becfaf4f40a008ba621f12fb91f6a4856810))
+* Translate the architecture string when filtering CycloneDx SBOMs ([facf080](https://github.com/konflux-ci/mobster/commit/facf0801befb8542ceab754f4c3836214f8977a3))
+* Translate the architecture string when filtering CycloneDx SBOMs ([4609465](https://github.com/konflux-ci/mobster/commit/460946573aa6489c3df44d818ab4754c69333e42))
+* updated comment for external image type in test ([afb9bef](https://github.com/konflux-ci/mobster/commit/afb9bef1819b582df9dd43c0813aa9279ba8ecc2))
+
+
+### Documentation
+
+* **ISV-7578:** update Contextual SBOM docs for builder content ([6dd09a1](https://github.com/konflux-ci/mobster/commit/6dd09a17692e2ccb1d53c2bb7f08200d1cca798a))
+* **ISV-7578:** update Contextual SBOM docs for builder content ([29e46a5](https://github.com/konflux-ci/mobster/commit/29e46a5be4d13d3b372380a671476da81871f934))
+* trim _load_metadata docstring ([961e8c1](https://github.com/konflux-ci/mobster/commit/961e8c13eb37ad0dc687773f5dc7937955fb36f2))
+
 ## [2.1.0](https://github.com/konflux-ci/mobster/compare/v2.0.0...v2.1.0) (2026-06-22)
 
 
