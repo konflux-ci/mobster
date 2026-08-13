@@ -96,30 +96,49 @@ class TPAClient(OIDCClientCredentialsClient):
         if labels_params := TPAClient._get_labels_params(labels):
             params.update(labels_params)
 
-        headers = {"content-type": "application/json"}
-        async with aiofiles.open(sbom_filepath, "rb") as sbom_file:
-            file_content = await sbom_file.read()
-            try:
-                response = await self.post(
-                    url,
-                    content=file_content,
-                    headers=headers,
-                    params=params,
-                    retries=retries,
-                )
-                urn: str = json.loads(response.content)["id"]
-                return urn
-            except RetryExhaustedException as err:
-                raise TPATransientError(
-                    "Retries exhausted for transient TPA errors"
-                ) from err
-            except httpx.HTTPStatusError as err:
-                raise TPAError(
-                    f"Failed to upload to TPA with code: {err.response.status_code} and"
-                    f" message: {err.response.content.decode()}"
-                ) from err
-            except httpx.HTTPError as err:
-                raise TPAError("HTTP request for upload failed") from err
+        headers = {
+            "content-type": "application/json",
+            "content-length": str(sbom_filepath.stat().st_size),
+        }
+        try:
+            response = await self.post(
+                url,
+                content=lambda: TPAClient._iter_sbom_file(sbom_filepath),
+                headers=headers,
+                params=params,
+                retries=retries,
+            )
+            urn: str = json.loads(response.content)["id"]
+            return urn
+        except RetryExhaustedException as err:
+            raise TPATransientError(
+                "Retries exhausted for transient TPA errors"
+            ) from err
+        except httpx.HTTPStatusError as err:
+            raise TPAError(
+                f"Failed to upload to TPA with code: {err.response.status_code} and"
+                f" message: {err.response.content.decode()}"
+            ) from err
+        except httpx.HTTPError as err:
+            raise TPAError("HTTP request for upload failed") from err
+
+    @staticmethod
+    async def _iter_sbom_file(
+        path: Path, chunk_size: int = 64 * 1024
+    ) -> AsyncGenerator[bytes, None]:
+        """
+        Yield the SBOM file in chunks for streaming upload.
+
+        Args:
+            path: Path to the SBOM file.
+            chunk_size: Size of each chunk in bytes. Defaults to 64 KiB.
+
+        Yields:
+            File content chunks.
+        """
+        async with aiofiles.open(path, "rb") as sbom_file:
+            while chunk := await sbom_file.read(chunk_size):
+                yield chunk
 
     async def list_sboms(
         self, query: str, sort: str, page_size: int = 50

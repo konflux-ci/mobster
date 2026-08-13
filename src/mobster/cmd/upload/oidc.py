@@ -3,6 +3,7 @@ OIDC client wrapped around httpx
 """
 
 import asyncio
+import inspect
 import logging
 import ssl
 import time
@@ -20,6 +21,19 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_TIMEOUT_SECONDS = 60
 DEFAULT_CONNECT_TIMEOUT_SECONDS = 5
 TOKEN_EXPIRY_BUFFER_SECONDS = 15
+
+
+async def _close_request_content(request_content: Any) -> None:
+    """Best-effort cleanup of per-attempt request body (e.g. async generators)."""
+    if request_content is None:
+        return
+    try:
+        if hasattr(request_content, "aclose"):
+            await request_content.aclose()
+        elif hasattr(request_content, "close"):
+            request_content.close()
+    except Exception:  # pylint: disable=broad-except
+        LOGGER.debug("Failed to close request content", exc_info=True)
 
 
 class OIDCAuthenticationError(Exception):
@@ -225,7 +239,7 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too
     # Mypy doesn't recognize that either a value is returned
     # or an exception is raised in all cases
     async def _request(  # type: ignore[return]
-        # pylint: disable=too-many-arguments
+        # pylint: disable=too-many-arguments, too-many-locals
         self,
         method: str,
         url: str,
@@ -246,7 +260,11 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too
             method: HTTP method (GET, POST, ...)
             url: Relative URL of the endpoint. Will be combined with the base URL.
             headers: headers to add to the request. Defaults to None.
-            content: data to send in the request. Defaults to None.
+            content: Request body, or a zero-arg callable that returns a fresh body
+                for each attempt (useful for streaming uploads that must be
+                re-opened on retry). Accepts any httpx-compatible body (bytes,
+                str, iterable, or async iterable). If the factory is async, its
+                return value is awaited. Defaults to None.
             params: Parameters to add to the request. Defaults to None.
             retries: Maximum number of retries. Default to 10.
             backoff_factor: A backoff factor to apply between attempts.
@@ -272,11 +290,16 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too
         self._assert_client()
         for attempt in range(retries):
             await self._ensure_valid_token()
+            request_content = None
             try:
+                # Resolve callables per attempt so streaming bodies can be recreated
+                request_content = content() if callable(content) else content
+                if inspect.isawaitable(request_content):
+                    request_content = await request_content
                 resp = await self.client.request(  # type:ignore[union-attr]
                     method,
                     effective_url,
-                    content=content,
+                    content=request_content,
                     params=params,
                     headers=headers,
                 )
@@ -326,6 +349,8 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too
                 # capture broad exception and raise it without retrying
                 LOGGER.exception("HTTP %s request failed: %s", method, exc)
                 raise
+            finally:
+                await _close_request_content(request_content)
 
     async def get(
         self,
@@ -370,7 +395,8 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too
 
         Args:
             url: endpoint to call
-            content: data to send in request body
+            content: Request body, or a zero-arg callable that returns a fresh
+                body for each attempt (see `_request`).
             headers: headers to add to the request.
                 Defaults to None.
             params: Parameters to add to the request.
@@ -401,7 +427,8 @@ class OIDCClientCredentialsClient:  # pylint: disable=too-few-public-methods,too
 
         Args:
             url: endpoint to call
-            content: data to send in request body
+            content: Request body, or a zero-arg callable that returns a fresh
+                body for each attempt (see `_request`).
             headers: headers to add to the request.
                 Defaults to None.
             params: Parameters to add to the request.
