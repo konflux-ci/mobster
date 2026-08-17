@@ -254,6 +254,8 @@ spec:
         value: $(params.rewrite-timestamp)
       - name: OMIT_HISTORY
         value: $(params.omit-history)
+      - name: CONTEXTUALIZE_SBOM
+        value: 'true'
       runAfter:
       - prefetch-dependencies
       taskRef:
