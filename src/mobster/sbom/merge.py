@@ -468,9 +468,49 @@ class CycloneDXMerger(SBOMMerger):  # pylint: disable=too-few-public-methods
         merged = self.merge_components_func(components_a, components_b)
 
         sbom_a["components"] = merged
+        self._prune_dependencies(sbom_a)
         self._merge_tools_metadata(sbom_a, sbom_b)
 
         return sbom_a
+
+    @staticmethod
+    def _prune_dependencies(sbom: dict[str, Any]) -> None:
+        """Drop dangling references from the CycloneDX dependency graph.
+
+        Deduplicating components (merge_by_prefering_hermeto / apparent
+        sameness) removes some bom-refs, but the ``.dependencies`` graph still
+        references them. The CycloneDX library refuses to build such a BOM
+        (``UnknownComponentDependencyException``), so any ``ref`` or
+        ``dependsOn`` entry pointing at a component that no longer exists must
+        be removed.
+
+        This mirrors what SPDXMerger._merge_relationships already does for the
+        SPDX relationship graph.
+
+        Args:
+            sbom: The merged CycloneDX SBOM, modified in place.
+        """
+        component_refs = {
+            ref
+            for component in sbom.get("components", [])
+            if (ref := component.get("bom-ref"))
+        }
+        root_ref = sbom.get("metadata", {}).get("component", {}).get("bom-ref")
+        valid = component_refs | ({root_ref} if root_ref else set())
+
+        pruned = []
+        for dep in sbom.get("dependencies", []):
+            if dep.get("ref") not in valid:
+                continue
+            if "dependsOn" in dep:
+                dep = {
+                    **dep,
+                    "dependsOn": [r for r in dep["dependsOn"] if r in valid],
+                }
+            pruned.append(dep)
+
+        if "dependencies" in sbom:
+            sbom["dependencies"] = pruned
 
     def _merge_tools_metadata(
         self, sbom_a: dict[Any, Any], sbom_b: dict[Any, Any]
