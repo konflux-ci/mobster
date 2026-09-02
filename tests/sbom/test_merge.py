@@ -759,6 +759,167 @@ async def test_merge_multiple_syft_sboms(
         }
 
 
+def test_cyclonedx_merge_prunes_dangling_dependency_refs() -> None:
+    """After merging SBOMs with overlapping purls but different bom-refs,
+    the dependencies array should only contain valid bom-refs."""
+    syft_sbom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "version": 1,
+        "metadata": {
+            "tools": [{"name": "syft", "vendor": "anchore", "version": "0.47.0"}],
+            "component": {"bom-ref": "root-ref", "name": "app", "type": "application"},
+        },
+        "components": [
+            {
+                "bom-ref": "syft-X",
+                "name": "github.com/foo/x",
+                "version": "v1.0.0",
+                "type": "library",
+                "purl": "pkg:golang/github.com/foo/x@v1.0.0",
+            },
+            {
+                "bom-ref": "syft-Y",
+                "name": "github.com/foo/y",
+                "version": "v2.0.0",
+                "type": "library",
+                "purl": "pkg:golang/github.com/foo/y@v2.0.0",
+            },
+        ],
+        "dependencies": [
+            {"ref": "root-ref", "dependsOn": ["syft-X", "syft-Y"]},
+            {"ref": "syft-X", "dependsOn": []},
+            {"ref": "syft-Y", "dependsOn": ["syft-X"]},
+        ],
+    }
+    hermeto_sbom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "version": 1,
+        "metadata": {"tools": [{"name": "hermeto", "vendor": "red hat"}]},
+        "components": [
+            {
+                "bom-ref": "hermeto-X",
+                "name": "github.com/foo/x",
+                "version": "v1.0.0",
+                "type": "library",
+                "purl": "pkg:golang/github.com/foo/x@v1.0.0",
+            },
+        ],
+        "dependencies": [{"ref": "hermeto-X", "dependsOn": []}],
+    }
+
+    merged = merge_sboms([syft_sbom], hermeto_sbom)
+
+    # Collect all bom-refs that exist in the merged SBOM
+    component_refs = {c["bom-ref"] for c in merged["components"]}
+    meta_ref = merged["metadata"]["component"]["bom-ref"]
+    valid_refs = component_refs | {meta_ref}
+
+    # Every ref and dependsOn entry must be valid
+    for dep in merged["dependencies"]:
+        assert dep["ref"] in valid_refs, f"dangling ref: {dep['ref']}"
+        for d in dep.get("dependsOn", []):
+            assert d in valid_refs, f"dangling dependsOn: {d}"
+
+    # syft-X should have been dropped (replaced by hermeto-X)
+    assert "syft-X" not in component_refs
+    assert "hermeto-X" in component_refs
+
+    # syft-Y should still be present (not duplicated)
+    assert "syft-Y" in component_refs
+
+    # root-ref dependsOn should no longer reference syft-X
+    root_dep = next(d for d in merged["dependencies"] if d["ref"] == "root-ref")
+    assert "syft-X" not in root_dep["dependsOn"]
+    # hermeto-X is valid but wasn't in the original root dependsOn, so it shouldn't appear
+    # syft-Y should still be there
+    assert "syft-Y" in root_dep["dependsOn"]
+
+
+def test_cyclonedx_merge_dependencies_no_dependencies_key() -> None:
+    """Merging SBOMs without dependencies should not add a dependencies key."""
+    syft_sbom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "version": 1,
+        "metadata": {
+            "tools": [{"name": "syft", "vendor": "anchore", "version": "0.47.0"}],
+            "component": {"bom-ref": "root-ref", "name": "app", "type": "application"},
+        },
+        "components": [
+            {
+                "bom-ref": "syft-A",
+                "name": "pkgA",
+                "version": "1.0.0",
+                "type": "library",
+                "purl": "pkg:pypi/pkgA@1.0.0",
+            },
+        ],
+    }
+    hermeto_sbom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "version": 1,
+        "metadata": {"tools": [{"name": "hermeto", "vendor": "red hat"}]},
+        "components": [],
+    }
+
+    merged = merge_sboms([syft_sbom], hermeto_sbom)
+    assert "dependencies" not in merged
+
+
+def test_cyclonedx_merge_dependencies_dedup_by_ref() -> None:
+    """When both SBOMs have a dependency entry for the same ref, only the first is kept."""
+    syft_sbom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "version": 1,
+        "metadata": {
+            "tools": [{"name": "syft", "vendor": "anchore", "version": "0.47.0"}],
+            "component": {"bom-ref": "root-ref", "name": "app", "type": "application"},
+        },
+        "components": [
+            {
+                "bom-ref": "comp-A",
+                "name": "pkgA",
+                "version": "1.0.0",
+                "type": "library",
+                "purl": "pkg:pypi/pkgA@1.0.0",
+            },
+        ],
+        "dependencies": [
+            {"ref": "root-ref", "dependsOn": ["comp-A"]},
+            {"ref": "comp-A", "dependsOn": []},
+        ],
+    }
+    hermeto_sbom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "version": 1,
+        "metadata": {"tools": [{"name": "hermeto", "vendor": "red hat"}]},
+        "components": [
+            {
+                "bom-ref": "comp-A",
+                "name": "pkgA",
+                "version": "1.0.0",
+                "type": "library",
+                "purl": "pkg:pypi/pkgA@1.0.0",
+            },
+        ],
+        "dependencies": [
+            {"ref": "comp-A", "dependsOn": ["root-ref"]},
+        ],
+    }
+
+    merged = merge_sboms([syft_sbom], hermeto_sbom)
+
+    # comp-A should appear once in dependencies (from sbom_a, the first occurrence)
+    comp_a_deps = [d for d in merged["dependencies"] if d["ref"] == "comp-A"]
+    assert len(comp_a_deps) == 1
+    assert comp_a_deps[0]["dependsOn"] == []
+
+
 @pytest.mark.parametrize(
     "syft_sboms, hermeto_sbom",
     [
