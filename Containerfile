@@ -51,10 +51,18 @@ COPY --from=builder /app /app
 
 USER 0
 
+# Requires shared libraries, cannot be copied from task-runner
+RUN dnf -y install jq bc && dnf clean all
+
 # Copy needed binaries for SBOM augmentation & metadata manipulation
 COPY --from=golang /usr/local/bin/oras /usr/bin/oras
 COPY --from=golang /usr/local/bin/cosign /usr/bin/cosign
 COPY --from=golang /usr/local/bin/syft /usr/bin/syft
+# Used in https://github.com/konflux-ci/container-build-catalog/blob/main/task/buildah/buildah.yaml
+COPY --from=golang /usr/local/bin/kubectl /usr/bin/kubectl
+COPY --from=golang /usr/local/bin/yq /usr/bin/yq
+COPY --from=golang /usr/local/bin/select-oci-auth /usr/bin/select-oci-auth
+COPY --from=golang /usr/local/bin/retry /usr/bin/retry
 # Copy license to the container
 COPY LICENSE /licenses/
 
