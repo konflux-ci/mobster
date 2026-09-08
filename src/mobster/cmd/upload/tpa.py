@@ -8,6 +8,7 @@ import json
 import logging
 import os
 from collections.abc import AsyncGenerator
+from enum import Enum
 from pathlib import Path
 
 import aiofiles
@@ -22,6 +23,15 @@ from mobster.cmd.upload.oidc import (
 from mobster.utils import get_tpa_ca
 
 LOGGER = logging.getLogger(__name__)
+
+
+class TPAAPIVersion(Enum):
+    """
+    Supported TPA API versions.
+    """
+
+    V2 = "v2"
+    V3 = "v3"
 
 
 class TPAError(Exception):
@@ -54,6 +64,16 @@ class TPAClient(OIDCClientCredentialsClient):
                 await client.download_sbom(sbom.id, local_path)
     """
 
+    def __init__(
+        self,
+        base_url: str,
+        auth: OIDCClientCredentials | None,
+        proxy: str | None = None,
+        ssl_verify_ca: str | None = None,
+    ):
+        self.api_version: TPAAPIVersion = TPAAPIVersion.V2
+        super().__init__(base_url, auth, proxy, ssl_verify_ca)
+
     async def __aenter__(self) -> "TPAClient":
         """
         Initialize the HTTP client for connection pooling.
@@ -62,7 +82,31 @@ class TPAClient(OIDCClientCredentialsClient):
             Self instance with initialized HTTP client
         """
         await super().__aenter__()
+        self.api_version = await self._get_api_version()
         return self
+
+    async def _get_api_version(self, retries: int = 3) -> TPAAPIVersion:
+        """
+        Gets the API version of the TPA instance.
+
+        Returns:
+            The found TPA version.
+        """
+        try:
+            response = await self.get("openapi.json", retries=retries)
+            paths = response.json().get("paths", [])
+        except (
+            httpx.HTTPError,
+            RetryExhaustedException,
+            TypeError,
+            ValueError,
+            AttributeError,
+        ) as err:
+            LOGGER.warning("Could not get API version! Defaulting to v2.", exc_info=err)
+            return TPAAPIVersion.V2
+        if any(path.startswith("/api/v3/") for path in paths):
+            return TPAAPIVersion.V3
+        return TPAAPIVersion.V2
 
     async def upload_sbom(
         self,
@@ -90,7 +134,7 @@ class TPAClient(OIDCClientCredentialsClient):
         if not labels:
             labels = {}
 
-        url = "api/v2/sbom"
+        url = f"api/{self.api_version.value}/sbom"
         params = {}
 
         if labels_params := TPAClient._get_labels_params(labels):
@@ -160,7 +204,7 @@ class TPAClient(OIDCClientCredentialsClient):
             AsyncGenerator[SbomSummary, None]: A generator yielding `SbomSummary`
             objects.
         """
-        url = "api/v2/sbom"
+        url = f"api/{self.api_version.value}/sbom"
         for page in itertools.count(start=0):
             params = {
                 "q": query,
@@ -190,7 +234,7 @@ class TPAClient(OIDCClientCredentialsClient):
         Returns:
             httpx.Response: response from API.
         """
-        url = f"api/v2/sbom/{sbom_id}"
+        url = f"api/{self.api_version.value}/sbom/{sbom_id}"
         try:
             response = await self.delete(url)
         except httpx.HTTPStatusError as err:
@@ -208,7 +252,7 @@ class TPAClient(OIDCClientCredentialsClient):
             sbom_id (str): A SBOM identifier to download.
             path (Path): A file path to save the downloaded SBOM.
         """
-        url = f"api/v2/sbom/{sbom_id}/download"
+        url = f"api/{self.api_version.value}/sbom/{sbom_id}/download"
         LOGGER.debug("Downloading SBOM %s to %s", sbom_id, path)
 
         async with aiofiles.open(path, "wb") as f:
