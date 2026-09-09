@@ -2,14 +2,14 @@ import json
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import httpx
 import pytest
 import pytest_asyncio
 
 from mobster.cmd.upload.oidc import OIDCClientCredentials, RetryExhaustedException
-from mobster.cmd.upload.tpa import TPAClient, TPAError, TPATransientError
+from mobster.cmd.upload.tpa import TPAAPIVersion, TPAClient, TPAError, TPATransientError
 
 BASE_URL = "https://api.example.com/v1/"
 
@@ -21,8 +21,65 @@ async def tpa_client() -> AsyncGenerator[TPAClient, None]:
     auth = OIDCClientCredentials(
         token_url=token_url, client_id="abc", client_secret="xyz"
     )
-    async with TPAClient(BASE_URL, auth, proxy=proxy) as client:
-        yield client
+    with patch(
+        "mobster.cmd.upload.tpa.TPAClient._get_api_version"
+    ) as mock_get_api_version:
+        mock_get_api_version.return_value = TPAAPIVersion.V2
+        async with TPAClient(BASE_URL, auth, proxy=proxy) as client:
+            yield client
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ["openapi_json", "expected_version", "in_logs"],
+    [
+        pytest.param(
+            {"paths": {"foo": "bar"}}, TPAAPIVersion.V2, None, id="fallback to v2"
+        ),
+        pytest.param(
+            {"paths": {"foo": "bar", "/api/v3/spam": "ham"}},
+            TPAAPIVersion.V3,
+            None,
+            id="v3",
+        ),
+        pytest.param(
+            {"paths": {"foo": "bar", "/api/v3/spam": "ham", "/api/v2/a": "b"}},
+            TPAAPIVersion.V3,
+            None,
+            id="both (v3 can contain deprecated v2 endpoints)",
+        ),
+        pytest.param(
+            {"paths": {"foo": "bar", "/api/v2/spam": "ham", "/api/v2/a": "b"}},
+            TPAAPIVersion.V2,
+            None,
+            id="v2",
+        ),
+        pytest.param(
+            RetryExhaustedException("I am exhausted and I need to go to sleep :("),
+            TPAAPIVersion.V2,
+            "Could not get API version! Defaulting to v2.",
+            id="exception",
+        ),
+    ],
+)
+async def test_get_api_version(
+    openapi_json: dict[str, Any] | Exception,
+    expected_version: TPAAPIVersion,
+    in_logs: str | None,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with patch("mobster.cmd.upload.tpa.TPAClient.get") as mock_client_get:
+        if isinstance(openapi_json, Exception):
+            mock_client_get.side_effect = openapi_json
+        else:
+            mock_get_json = MagicMock(return_value=openapi_json)
+            mock_client_get.return_value.json = mock_get_json
+        async with TPAClient(
+            BASE_URL, OIDCClientCredentials("foo", "bar", "baz")
+        ) as client:
+            assert client.api_version is expected_version
+        if in_logs:
+            assert in_logs in caplog.messages
 
 
 @pytest.mark.asyncio

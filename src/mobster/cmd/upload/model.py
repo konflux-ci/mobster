@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 class SbomSummary(BaseModel):
     """
-    Model representing an Sbom summary item from the GET /v2/sbom endpoint.
+    Model representing an Sbom summary item from the GET /v{}/sbom endpoint.
     """
 
     ingested: datetime = Field(
@@ -37,8 +37,7 @@ class SbomSummary(BaseModel):
 
 class PaginatedSbomSummaryResult(BaseModel):
     """
-    Model representing a response from the GET /v2/sbom endpoint.
+    Model representing a response from the GET /v{}/sbom endpoint.
     """
 
     items: list[SbomSummary]
-    total: Annotated[int, Field(ge=0)]
