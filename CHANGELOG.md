@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.3.0](https://github.com/konflux-ci/mobster/compare/v2.2.0...v2.3.0) (2026-09-09)
+
+
+### Features
+
+* **ISV-7640:** upload SBOM: new API ([7addce5](https://github.com/konflux-ci/mobster/commit/7addce550c5a458e6f9ca0272d768cd865104c09))
+* **ISV-7640:** upload SBOM: new API ([1edf723](https://github.com/konflux-ci/mobster/commit/1edf7233cf47beeeb4f6da67f022c85183066495))
+
+
+### Bug Fixes
+
+* pin download-artifact to the latest version ([b4af6b2](https://github.com/konflux-ci/mobster/commit/b4af6b2b9e83c84b6c84553c16e1e1e88f07521e))
+* pin download-artifact to the latest version ([ae1c14e](https://github.com/konflux-ci/mobster/commit/ae1c14ecb519c2f0257af8ca182dd60343fde33c))
+
+
+### Documentation
+
+* **ISV-7458:** add governance ([98b8b4d](https://github.com/konflux-ci/mobster/commit/98b8b4d78c95b50317fbb13ce438c12210ae9075))
+* **ISV-7458:** add governance ([bea2eb4](https://github.com/konflux-ci/mobster/commit/bea2eb4590b88ed00cb719dc9b21d84bccf62c7e))
+
 ## [2.2.0](https://github.com/konflux-ci/mobster/compare/v2.1.0...v2.2.0) (2026-08-13)
 
 
