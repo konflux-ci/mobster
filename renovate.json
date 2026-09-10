@@ -1,15 +1,21 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "schedule": [
-    "at any time"
-  ],
   "extends": [
-    "config:recommended"
+    "github>konflux-ci/mintmaker-presets:group-python-poetry"
   ],
-  "dependencyDashboard": false,
+  "schedule": [
+    "before 5am on monday"
+  ],
+  "prConcurrentLimit": 7,
+  "automerge": false,
+  "lockFileMaintenance": {
+    "schedule": [
+      "before 5am on monday"
+    ]
+  },
   "tekton": {
     "schedule": [
-      "at any time"
+      "before 5am on monday"
     ],
     "managerFilePatterns": [
       "/\\.yaml$/",
@@ -18,31 +24,80 @@
     "includePaths": [
       "tasks/**",
       ".tekton/**"
+    ],
+    "packageRules": [
+      {
+        "description": "Group Tekton task bundle updates in tasks/",
+        "groupName": "tekton tasks updates",
+        "matchFileNames": [
+          "tasks/**"
+        ],
+        "schedule": [
+          "at any time"
+        ]
+      },
+      {
+        "description": "Group Tekton pipeline updates in .tekton/",
+        "groupName": "tekton pipeline updates",
+        "matchFileNames": [
+          ".tekton/**"
+        ]
+      }
     ]
   },
   "packageRules": [
     {
+      "description": "Group Containerfile base image updates",
       "matchManagers": [
-        "lockFileMaintenance",
-        "dockerfile",
-        "poetry"
+        "dockerfile"
       ],
+      "groupName": "containerfile updates",
       "schedule": [
-        "* 0-5 * * 1"
+        "before 5am on monday"
       ]
     },
     {
+      "description": "Group Python dependency updates",
+      "matchManagers": [
+        "poetry"
+      ],
+      "groupName": "python updates",
       "schedule": [
-        "at any time"
+        "before 5am on monday"
+      ]
+    },
+    {
+      "description": "Group Python lock file maintenance",
+      "matchUpdateTypes": [
+        "lockFileMaintenance"
       ],
-      "groupName": "tekton-tasks",
-      "matchFileNames": [
-        "tasks/**"
+      "matchManagers": [
+        "poetry"
       ],
-      "matchPackageNames": [
-        "/^quay.io/konflux-ci/mobster/"
+      "groupName": "python lock file maintenance",
+      "schedule": [
+        "before 5am on monday"
+      ]
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": [
+        "github-actions"
       ],
-      "automerge": true
+      "groupName": "github actions updates",
+      "schedule": [
+        "before 5am on monday"
+      ]
+    },
+    {
+      "description": "Group pre-commit hook updates",
+      "matchManagers": [
+        "pre-commit"
+      ],
+      "groupName": "pre-commit updates",
+      "schedule": [
+        "before 5am on monday"
+      ]
     }
   ]
 }
