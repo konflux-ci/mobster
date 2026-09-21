@@ -27,7 +27,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 from mobster.sbom.spdx import get_package_purl
 
 if TYPE_CHECKING:
-    from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import ImageItem
+    from mobster.cmd.generate.oci_image.contextual_sbom.parent import ImageItem
 
 LOGGER = logging.getLogger(__name__)
 

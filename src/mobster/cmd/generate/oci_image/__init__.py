@@ -25,7 +25,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
     BuilderContextualizer,
     BuilderPkgMetadata,
 )
-from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
+from mobster.cmd.generate.oci_image.contextual_sbom.parent import (
     download_parent_image_sbom,
     get_parent_spdx_id_from_component,
     map_parent_to_component_and_update_component,
