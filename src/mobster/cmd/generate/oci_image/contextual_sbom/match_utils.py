@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import Generator
+from typing import TYPE_CHECKING
 
 from packageurl import PackageURL
 from spdx_tools.spdx.model.actor import ActorType
@@ -24,6 +25,9 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     get_normalized_purl,
 )
 from mobster.sbom.spdx import get_package_purl
+
+if TYPE_CHECKING:
+    from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import ImageItem
 
 LOGGER = logging.getLogger(__name__)
 
@@ -258,38 +262,29 @@ class ComponentRelationshipResolver:
                     # Record component package matched against parent
                     self.stats.record_component_package_match(match_info)
 
-    def supply_ancestors(
+    def supply_image_packages(
         self,
-        descendant_of_items_from_used_parent: list[
-            tuple[Package, Relationship, Annotation]
-        ],
+        image_packages: "list[ImageItem]",
     ) -> None:
         """
-        Supply all DESCENDANT_OF relationships (and related packages and annotations)
+        Supply all image packages, their annotations and relationships
         from parent SBOM to component SBOM.
 
-        This method adds ancestor packages (grandparents of the component) to the
-        component SBOM. It modifies annotation comments from "is_base_image" to
-        "is_ancestor_image" to ensure proper functioning when this component is used
-        as a base image for another component.
+        This method adds ancestor image packages to the component SBOM. Each
+        image package is supplied as one ``ImageItem`` containing its package,
+        relationship, and image annotation.
 
         Note: This method expects that component package relationships already point
         to the correct parent/grandparent packages (modified by
-        resolve_component_relationships).
+        ComponentRelationshipResolver.resolve_component_relationships).
 
         Args:
-            descendant_of_items_from_used_parent: All DESCENDANT_OF relationships,
-                associated packages and their annotations from parent SBOM
+            image_packages: Image items to be supplied to the component SBOM.
         """
-        for pkg, rel, annot in descendant_of_items_from_used_parent:
-            self.component_sbom_doc.relationships.append(rel)
-            self.component_sbom_doc.packages.append(pkg)
-            if annot:
-                if annot.annotation_comment:
-                    annot.annotation_comment = annot.annotation_comment.replace(
-                        "is_base_image", "is_ancestor_image"
-                    )
-                self.component_sbom_doc.annotations.append(annot)
+        for item in image_packages:
+            self.component_sbom_doc.relationships.append(item.relationship)
+            self.component_sbom_doc.packages.append(item.package)
+            self.component_sbom_doc.annotations.append(item.annotation)
 
     @staticmethod
     def _modify_relationship_in_component(

@@ -27,9 +27,8 @@ from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     download_parent_image_sbom,
-    get_descendant_of_items_from_used_parent,
     get_parent_spdx_id_from_component,
-    map_parent_to_component_and_modify_component,
+    map_parent_to_component_and_update_component,
 )
 from mobster.cmd.generate.oci_image.hermeto_sbom_filter import (
     filter_hermeto_sbom_by_arch,
@@ -215,14 +214,10 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         parent_spdx_id_from_component = get_parent_spdx_id_from_component(
             component_sbom_doc
         )
-        descendant_of_items_from_used_parent = get_descendant_of_items_from_used_parent(
-            parent_sbom_doc, parent_spdx_id_from_component
-        )
-        contextual_sbom = await map_parent_to_component_and_modify_component(
+        contextual_sbom = await map_parent_to_component_and_update_component(
             parent_sbom_doc,
             component_sbom_doc,
             parent_spdx_id_from_component,
-            descendant_of_items_from_used_parent,
         )
         LOGGER.debug("Parent content contextualization complete.")
         return contextual_sbom
