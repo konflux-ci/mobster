@@ -18,7 +18,7 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import MatchBy
 from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
-    map_parent_to_component_and_modify_component,
+    map_parent_to_component_and_update_component,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.logging import (
     MatchingStatistics,
@@ -204,8 +204,8 @@ async def test_skip_already_matched_component_package(
         match_by=MatchBy.CHECKSUM,
         identifier_value="test",
     )
-    await map_parent_to_component_and_modify_component(
-        parent_sbom_doc, component_sbom_doc, parent_spdx_id, []
+    await map_parent_to_component_and_update_component(
+        parent_sbom_doc, component_sbom_doc, parent_spdx_id
     )
 
     assert mock_package_matched.call_count == 1, (
