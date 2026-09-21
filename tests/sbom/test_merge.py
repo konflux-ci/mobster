@@ -19,6 +19,8 @@ from mobster.sbom.merge import (
     _detect_sbom_type,
     _get_syft_component_filter,
     _subpath_is_version,
+    _unique_key_hermeto,
+    _unique_key_syft,
     fallback_key,
     merge_by_apparent_sameness,
     merge_by_prefering_hermeto,
@@ -773,3 +775,44 @@ def test_merge_sboms_invalid(
     """Test the merge_sboms function."""
     with pytest.raises(ValueError):
         merge_sboms(syft_sboms, hermeto_sbom)
+
+
+def test_unique_key_syft_golang_incompatible_version_not_double_encoded() -> None:
+    """Ensure +incompatible Go versions produce matching keys for Syft and Hermeto."""
+    purl = "pkg:golang/github.com/golang-jwt/jwt@v3.2.2+incompatible"
+    syft_component = make_cdx_component(
+        name="github.com/golang-jwt/jwt",
+        version="v3.2.2+incompatible",
+        purl=purl,
+    )
+    hermeto_component = make_cdx_component(
+        name="github.com/golang-jwt/jwt",
+        version="v3.2.2+incompatible",
+        purl=purl,
+    )
+
+    syft_key = _unique_key_syft(syft_component)
+    hermeto_key = _unique_key_hermeto(hermeto_component)
+
+    assert syft_key == hermeto_key
+    assert "%252B" not in syft_key  # no double-encoding
+
+
+def test_unique_key_syft_golang_filters_incompatible_version() -> None:
+    """Ensure Syft golang components with +incompatible are filtered as duplicates."""
+    purl = "pkg:golang/github.com/golang-jwt/jwt@v3.2.2+incompatible"
+    hermeto_components = [
+        make_cdx_component(
+            name="github.com/golang-jwt/jwt",
+            version="v3.2.2+incompatible",
+            purl=purl,
+        ),
+    ]
+    syft_component = make_cdx_component(
+        name="github.com/golang-jwt/jwt",
+        version="v3.2.2+incompatible",
+        purl=purl,
+    )
+
+    is_duplicate = _get_syft_component_filter(hermeto_components)
+    assert is_duplicate(syft_component) is True
