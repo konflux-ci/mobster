@@ -16,7 +16,13 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     LEGACY_BASE_IMAGE,
     ContentKind,
 )
-from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
+from mobster.cmd.generate.oci_image.contextual_sbom.logging import (
+    MatchingStatistics,
+)
+from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
+    ComponentRelationshipResolver,
+)
+from mobster.cmd.generate.oci_image.contextual_sbom.parent import (
     ImageItem,
     collect_image_items,
     collect_package_items,
@@ -26,12 +32,6 @@ from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     get_parent_spdx_id_from_component,
     map_parent_to_component_and_update_component,
     process_grandparent_item,
-)
-from mobster.cmd.generate.oci_image.contextual_sbom.logging import (
-    MatchingStatistics,
-)
-from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
-    ComponentRelationshipResolver,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
     KONFLUX_JSON_ACTOR,
@@ -563,9 +563,7 @@ def test__modify_relationship_in_component(
         ("purl", False),
     ],
 )
-@patch(
-    "mobster.cmd.generate.oci_image.contextual_sbom.contextualize.MatchingStatistics"
-)
+@patch("mobster.cmd.generate.oci_image.contextual_sbom.parent.MatchingStatistics")
 async def test_map_parent_to_component_and_update_component(
     mock_stats_class: MagicMock,
     identifier_type: str,
