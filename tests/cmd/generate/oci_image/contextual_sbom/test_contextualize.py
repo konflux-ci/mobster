@@ -10,11 +10,13 @@ from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
-from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
-    LEGACY_GRANDPARENT_IMAGE,
-    PARENT_ANCESTOR_IMAGE,
-    PARENT_BASE_IMAGE,
+from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
+    ANCESTOR_IMAGE,
+    BASE_IMAGE,
+    LEGACY_BASE_IMAGE,
     ContentKind,
+)
+from mobster.cmd.generate.oci_image.contextual_sbom.contextualize import (
     ImageItem,
     collect_image_items,
     collect_package_items,
@@ -130,12 +132,12 @@ def test_collect_package_items_raises_on_duplicate_relationship(
     ("kind", "item"),
     [
         pytest.param(
-            PARENT_BASE_IMAGE,
+            BASE_IMAGE,
             _base_image_item("SPDXRef-parent", "SPDXRef-grandparent"),
             id="parent-base-image",
         ),
         pytest.param(
-            PARENT_ANCESTOR_IMAGE,
+            ANCESTOR_IMAGE,
             _ancestor_image_item("SPDXRef-grandparent", "SPDXRef-ancestor"),
             id="parent-ancestor-image",
         ),
@@ -160,7 +162,7 @@ def test_collect_image_items_legacy_grandparent(mock_doc: MagicMock) -> None:
     mock_doc.relationships = [rel]
     mock_doc.annotations = [annot]
 
-    assert collect_image_items(mock_doc, LEGACY_GRANDPARENT_IMAGE) == [
+    assert collect_image_items(mock_doc, LEGACY_BASE_IMAGE) == [
         ImageItem(pkg, rel, annot)
     ]
 
@@ -182,12 +184,12 @@ def test_collect_image_items_raises_on_duplicate_relationship(
     with pytest.raises(
         SBOMError,
         match=(
-            r"Multiple relationships found for content kind 'parent base image' "
+            r"Multiple relationships found for content kind 'base image' "
             r"\(DESCENDANT_OF, related_spdx_element_id\) and SPDX ID "
             r"'SPDXRef-grandparent'\."
         ),
     ):
-        collect_image_items(mock_doc, PARENT_BASE_IMAGE)
+        collect_image_items(mock_doc, BASE_IMAGE)
 
 
 def test_collect_image_items_skips_missing_annotation(mock_doc: MagicMock) -> None:
@@ -200,7 +202,7 @@ def test_collect_image_items_skips_missing_annotation(mock_doc: MagicMock) -> No
     mock_doc.relationships = [rel]
     mock_doc.annotations = []
 
-    assert collect_image_items(mock_doc, PARENT_BASE_IMAGE) == []
+    assert collect_image_items(mock_doc, BASE_IMAGE) == []
 
 
 def test_collect_image_items_skips_missing_relationship(mock_doc: MagicMock) -> None:
@@ -213,12 +215,12 @@ def test_collect_image_items_skips_missing_relationship(mock_doc: MagicMock) -> 
     mock_doc.relationships = []
     mock_doc.annotations = [annot]
 
-    assert collect_image_items(mock_doc, PARENT_BASE_IMAGE) == []
+    assert collect_image_items(mock_doc, BASE_IMAGE) == []
 
 
 def test_collect_image_items_skips_wrong_annotation_type(mock_doc: MagicMock) -> None:
     """
-    PARENT_BASE_IMAGE and PARENT_ANCESTOR_IMAGE share (DESCENDANT_OF, TARGET);
+    BASE_IMAGE and ANCESTOR_IMAGE share (DESCENDANT_OF, TARGET);
     the annotation type is the only disambiguator. An ancestor-annotated
     package must not be collected as a base image.
     """
@@ -227,7 +229,7 @@ def test_collect_image_items_skips_wrong_annotation_type(mock_doc: MagicMock) ->
     mock_doc.relationships = [rel]
     mock_doc.annotations = [annot]
 
-    assert collect_image_items(mock_doc, PARENT_BASE_IMAGE) == []
+    assert collect_image_items(mock_doc, BASE_IMAGE) == []
 
 
 def test_get_annotation_by_spdx_id_filter_by_type_match(mock_doc: MagicMock) -> None:

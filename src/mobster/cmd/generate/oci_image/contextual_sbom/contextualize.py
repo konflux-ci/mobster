@@ -12,7 +12,6 @@ item - image package, relevant relationship and image package annotation
 
 import logging
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any
 
 from spdx_tools.spdx.model.annotation import Annotation
@@ -20,6 +19,13 @@ from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
+from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
+    ANCESTOR_IMAGE,
+    BASE_IMAGE,
+    CONTENT_PACKAGE,
+    LEGACY_BASE_IMAGE,
+    ContentKind,
+)
 from mobster.cmd.generate.oci_image.contextual_sbom.logging import MatchingStatistics
 from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     ComponentRelationshipResolver,
@@ -37,70 +43,6 @@ from mobster.image import Image, IndexImage
 from mobster.oci import cosign
 
 LOGGER = logging.getLogger(__name__)
-
-
-class RelationshipEnd(str, Enum):
-    """
-    Which endpoint of a relationship holds the spdx_id of the collected image
-    package.
-    """
-
-    SUBJECT = "spdx_element_id"
-    TARGET = "related_spdx_element_id"
-
-
-@dataclass(frozen=True)
-class ContentKind:
-    """
-    Instance is eclarative description of one kind of content searched in SBOM.
-    Most kinds are describing image content inherited from the used parent
-    (base and ancestor images) for supplying it to the component, while the
-    plain content-package kind is collected from either the parent or the
-    component for package matching.
-
-    A kind is identified by
-     - a human-readable name,
-     - relationship type,
-     - relationship end that points to package of interest,
-     - annotation type that package must carry (None for plain content packages).
-
-    Instances drive collectors `collect_package_items` and `collect_image_items`
-    """
-
-    name: str
-    relationship_type: RelationshipType
-    relationship_end: RelationshipEnd
-    annotation_type: type[AnnotationBaseImage] | type[AnnotationAncestorImage] | None
-
-
-# parent DESCENDANT_OF grandparent (grandparent
-# annotated is_base_image in downloaded parent SBOM)
-PARENT_BASE_IMAGE = ContentKind(
-    "parent base image",
-    RelationshipType.DESCENDANT_OF,
-    RelationshipEnd.TARGET,
-    AnnotationBaseImage,
-)
-# grandparent DESCENDANT_OF grandgrandparent (deeper
-# ancestor present if parent is contextualized)
-PARENT_ANCESTOR_IMAGE = ContentKind(
-    "parent ancestor image",
-    RelationshipType.DESCENDANT_OF,
-    RelationshipEnd.TARGET,
-    AnnotationAncestorImage,
-)
-# legacy grandparent BUILD_TOOL_OF parent (grandparent
-# from pre-mobster era)
-LEGACY_GRANDPARENT_IMAGE = ContentKind(
-    "legacy grandparent image",
-    RelationshipType.BUILD_TOOL_OF,
-    RelationshipEnd.SUBJECT,
-    AnnotationBaseImage,
-)
-# component CONTAINS package (plain content package, no annotation type)
-CONTENT_PACKAGE = ContentKind(
-    "content package", RelationshipType.CONTAINS, RelationshipEnd.TARGET, None
-)
 
 
 @dataclass
@@ -348,7 +290,7 @@ def get_grandparent_and_ancestor_items_from_used_parent(
     # package annotated as is_base_image
     grandparent_item = collect_image_items(
         parent_sbom_doc,
-        PARENT_BASE_IMAGE,
+        BASE_IMAGE,
     )
     if len(grandparent_item) > 1:
         raise SBOMError(
@@ -374,7 +316,7 @@ def get_grandparent_and_ancestor_items_from_used_parent(
     if not grandparent_item:
         legacy_grandparent_item = collect_image_items(
             parent_sbom_doc,
-            LEGACY_GRANDPARENT_IMAGE,
+            LEGACY_BASE_IMAGE,
         )
 
         if len(legacy_grandparent_item) > 1:
@@ -408,7 +350,7 @@ def get_grandparent_and_ancestor_items_from_used_parent(
     # ancestors from previous contextualizations
     ancestor_image_items = collect_image_items(
         parent_sbom_doc,
-        PARENT_ANCESTOR_IMAGE,
+        ANCESTOR_IMAGE,
     )
     return [
         process_grandparent_item(
