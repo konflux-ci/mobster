@@ -3,6 +3,13 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from spdx_tools.spdx.model.relationship import RelationshipType
+
+from mobster.cmd.generate.oci_image.spdx_utils import (
+    AnnotationAncestorImage,
+    AnnotationBaseImage,
+)
+
 HERMETO_ANNOTATION_COMMENTS = [
     '{"name": "cachi2:found_by", "value": "cachi2"}',
     '{"name": "hermeto:found_by", "value": "hermeto"}',
@@ -49,6 +56,65 @@ class PackageMatchInfo:
     component_info: PackageInfo
     match_by: MatchBy
     identifier_value: str | None = None
+
+
+class RelationshipEnd(str, Enum):
+    """
+    Which endpoint of a relationship holds the SPDX ID of the collected item.
+    """
+
+    SUBJECT = "spdx_element_id"
+    TARGET = "related_spdx_element_id"
+
+
+@dataclass(frozen=True)
+class ContentKind:
+    """
+    Declarative description of one kind of content searched in an SBOM.
+
+    A kind is identified by a human-readable name, relationship type,
+    relationship endpoint that points to the item of interest, and the
+    annotation type that item must carry. Plain content packages have no
+    annotation type.
+    """
+
+    name: str
+    relationship_type: RelationshipType
+    relationship_end: RelationshipEnd
+    annotation_type: type[AnnotationBaseImage] | type[AnnotationAncestorImage] | None
+
+
+# Example in parent SBOM:
+# parent DESCENDANT_OF grandparent (grandparent is annotated is_base_image in
+# the downloaded parent SBOM - it is the parent's parent)
+BASE_IMAGE = ContentKind(
+    "base image",
+    RelationshipType.DESCENDANT_OF,
+    RelationshipEnd.TARGET,
+    AnnotationBaseImage,
+)
+# Example in parent SBOM:
+# grandparent DESCENDANT_OF grandgrandparent (deeper ancestor present if the
+# parent is contextualized)
+ANCESTOR_IMAGE = ContentKind(
+    "ancestor image",
+    RelationshipType.DESCENDANT_OF,
+    RelationshipEnd.TARGET,
+    AnnotationAncestorImage,
+)
+# Example in parent SBOM:
+# legacy grandparent BUILD_TOOL_OF parent (grandparent from pre-mobster era,
+# annotated also as is_base_image)
+LEGACY_BASE_IMAGE = ContentKind(
+    "legacy base image",
+    RelationshipType.BUILD_TOOL_OF,
+    RelationshipEnd.SUBJECT,
+    AnnotationBaseImage,
+)
+# component CONTAINS package (plain content package, no annotation type)
+CONTENT_PACKAGE = ContentKind(
+    "content package", RelationshipType.CONTAINS, RelationshipEnd.TARGET, None
+)
 
 
 # builder-specific constants
