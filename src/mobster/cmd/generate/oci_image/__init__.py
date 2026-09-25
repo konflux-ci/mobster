@@ -49,6 +49,7 @@ from mobster.error import (
     ContextualWorkflowError,
     ParentContextualizationError,
     SBOMError,
+    format_exception_messages,
 )
 from mobster.image import Image
 from mobster.log import log_elapsed
@@ -408,7 +409,10 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 LOGGER.info("Contextual SBOM workflow finished successfully.")
                 return contextual_sbom
             except Exception as exc:  # pylint: disable=broad-exception-caught
-                LOGGER.error("Contextual SBOM workflow failed: %s", exc)
+                LOGGER.error(
+                    "Contextual SBOM workflow failed: %s",
+                    format_exception_messages(exc),
+                )
                 return None
         LOGGER.info(
             "Could not create contextual SBOM. "
