@@ -80,6 +80,12 @@ class SPDXPackageBuilder:
         self._annotations.append(KonfluxAnnotationManager.builder_image("", stage))
         return self
 
+    def is_intermediate_image_for_stage_annotation(
+        self, stage: int
+    ) -> "SPDXPackageBuilder":
+        self._annotations.append(KonfluxAnnotationManager.intermediate_image("", stage))
+        return self
+
     def purl(self, purl: str) -> "SPDXPackageBuilder":
         self._external_references.append(
             ExternalPackageRef(
@@ -219,6 +225,19 @@ class SPDXSBOMBuilder:
 
         return self
 
+    def root_descendant_of(self, package: AnnotatedPackage) -> "SPDXSBOMBuilder":
+        """
+        Add the passed package to the SBOM and associate the root package to
+        it with a DESCENDANT_OF relationship (root DESCENDANT_OF package),
+        i.e. the passed package is the parent (base image) of the root.
+        """
+        self.__extend_packages([package])
+        self._relationships.append(
+            (None, RelationshipType.DESCENDANT_OF, package.spdx_id)
+        )
+
+        return self
+
     def contains(
         self, pkg1: AnnotatedPackage, pkg2: AnnotatedPackage
     ) -> "SPDXSBOMBuilder":
@@ -229,6 +248,19 @@ class SPDXSBOMBuilder:
         self.__extend_packages([pkg1, pkg2])
         self._relationships.append(
             (pkg1.spdx_id, RelationshipType.CONTAINS, pkg2.spdx_id)
+        )
+        return self
+
+    def descendant_of(
+        self, pkg1: AnnotatedPackage, pkg2: AnnotatedPackage
+    ) -> "SPDXSBOMBuilder":
+        """
+        Add the passed packages to the SBOM and create a DESCENDANT_OF
+        relationship between them (pkg1 DESCENDANT_OF pkg2).
+        """
+        self.__extend_packages([pkg1, pkg2])
+        self._relationships.append(
+            (pkg1.spdx_id, RelationshipType.DESCENDANT_OF, pkg2.spdx_id)
         )
         return self
 

@@ -8,6 +8,8 @@ from spdx_tools.spdx.model.relationship import RelationshipType
 from mobster.cmd.generate.oci_image.spdx_utils import (
     AnnotationAncestorImage,
     AnnotationBaseImage,
+    AnnotationBuilderImage,
+    AnnotationIntermediateImage,
 )
 
 HERMETO_ANNOTATION_COMMENTS = [
@@ -81,7 +83,13 @@ class ContentKind:
     name: str
     relationship_type: RelationshipType
     relationship_end: RelationshipEnd
-    annotation_type: type[AnnotationBaseImage] | type[AnnotationAncestorImage] | None
+    annotation_type: (
+        type[AnnotationBaseImage]
+        | type[AnnotationAncestorImage]
+        | type[AnnotationBuilderImage]
+        | type[AnnotationIntermediateImage]
+        | None
+    )
 
 
 # Example in parent SBOM:
@@ -110,6 +118,22 @@ LEGACY_BASE_IMAGE = ContentKind(
     RelationshipType.BUILD_TOOL_OF,
     RelationshipEnd.SUBJECT,
     AnnotationBaseImage,
+)
+# Example in parent SBOM:
+# builder BUILD_TOOL_OF parent (also includes builders of ancestors)
+BUILDER_IMAGE = ContentKind(
+    "builder image",
+    RelationshipType.BUILD_TOOL_OF,
+    RelationshipEnd.SUBJECT,
+    AnnotationBuilderImage,
+)
+# Example in parent SBOM:
+# intermediate DESCENDANT_OF builder (also includes intermediates of ancestors)
+INTERMEDIATE_IMAGE = ContentKind(
+    "intermediate image",
+    RelationshipType.DESCENDANT_OF,
+    RelationshipEnd.SUBJECT,
+    AnnotationIntermediateImage,
 )
 # component CONTAINS package (plain content package, no annotation type)
 CONTENT_PACKAGE = ContentKind(
