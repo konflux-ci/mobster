@@ -23,7 +23,9 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     ANCESTOR_IMAGE,
     BASE_IMAGE,
+    BUILDER_IMAGE,
     CONTENT_PACKAGE,
+    INTERMEDIATE_IMAGE,
     LEGACY_BASE_IMAGE,
     ContentKind,
 )
@@ -34,6 +36,8 @@ from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
 from mobster.cmd.generate.oci_image.spdx_utils import (
     AnnotationAncestorImage,
     AnnotationBaseImage,
+    AnnotationBuilderImage,
+    AnnotationIntermediateImage,
     AnnotationParseError,
     KonfluxAnnotationManager,
     find_spdx_root_packages_spdxid,
@@ -139,6 +143,8 @@ def get_parent_spdx_id_from_component(component_sbom_doc: Document) -> str:
     - modification of relationships inherited from parent to component:
         - `parent (name from parent) DESCENDANT_OF grandparent` ->
           `parent (name from component) DESCENDANT_OF grandparent`
+        - `builder BUILD_TOOL_OF parent (name from parent)` ->
+          `builder BUILD_TOOL_OF parent (name from component)`
         - `grandparent BUILD_TOOL_OF parent (name from parent)` ->
           `parent (name from component) DESCENDANT_OF grandparent`
 
@@ -260,6 +266,60 @@ def process_grandparent_item(
     )
 
 
+def process_builder_items(
+    builder_items: list[ImageItem],
+    parent_spdx_id_from_component: str,
+    parent_root_packages: list[str],
+) -> list[ImageItem]:
+    """
+    Aligns builder image items (the builder subtrees belonging to the component's
+    parent and all of the component's known ancestors) with the component's
+    relationships.
+
+    A builder is attached to the image it builds (used parent or ancestors) via
+    BUILD_TOOL_OF. Builders of the used parent itself point at the parent root
+    (`builder BUILD_TOOL_OF parent`); that target must be renamed to the parent
+    name as referenced by the component
+    (`builder BUILD_TOOL_OF parent (name from component)`). Builders of deeper
+    ancestors already reference a correctly named ancestor
+    (`builder BUILD_TOOL_OF ancestor`) and are passed through unchanged (those
+    will point on ancestors collected by
+    get_grandparent_and_ancestor_items_from_used_parent later also supplied to
+    final component SBOM)
+
+    Args:
+        builder_items: Builder image items collected across the whole
+            ancestor chain of the used parent.
+        parent_spdx_id_from_component: SPDX ID of the parent as referenced by
+            the component.
+        parent_root_packages: SPDX IDs of the used parent's root packages; a
+            BUILD_TOOL_OF target in this set marks a builder of the parent
+            itself and is renamed.
+
+    Returns:
+        The builder image items with parent-root `BUILD_TOOL_OF` targets
+        renamed to the component's parent name; all other items unchanged.
+    """
+    modified_builder_items: list[ImageItem] = []
+    for item in builder_items:
+        if item.relationship.related_spdx_element_id in parent_root_packages:
+            renamed_rel = Relationship(
+                spdx_element_id=item.relationship.spdx_element_id,
+                relationship_type=item.relationship.relationship_type,
+                related_spdx_element_id=parent_spdx_id_from_component,
+            )
+            modified_builder_items.append(
+                ImageItem(
+                    package=item.package,
+                    relationship=renamed_rel,
+                    annotation=item.annotation,
+                )
+            )
+        else:
+            modified_builder_items.append(item)
+    return modified_builder_items
+
+
 def get_grandparent_and_ancestor_items_from_used_parent(
     parent_sbom_doc: Document,
     parent_spdx_id_from_component: str,
@@ -367,7 +427,12 @@ def get_grandparent_and_ancestor_items_from_used_parent(
 def get_annotation_by_spdx_id_filter_by_type(
     parent_sbom_doc: Document,
     spdx_id: str,
-    annotation_type: (type[AnnotationBaseImage] | type[AnnotationAncestorImage]),
+    annotation_type: (
+        type[AnnotationBaseImage]
+        | type[AnnotationAncestorImage]
+        | type[AnnotationBuilderImage]
+        | type[AnnotationIntermediateImage]
+    ),
 ) -> Annotation | None:
     """
     Returns the annotation with the given Konflux annotation type for a package
@@ -588,10 +653,11 @@ async def map_parent_to_component_and_update_component(
        relationship so it points at the parent (name from component) or the
        grandparent that actually owns the package (inherit relationship).
        Matching statistics are collected for later logging.
-    2. Ancestor image subtree: supply the parent's grandparent and deeper
-       ancestor image packages, together with their relationships and
-       annotations, to the component. Relationships are aligned with the
-       component's parent name where needed.
+    2. Image subtree: supply the parent's image packages (with their
+       relationships and annotations) to the component - the grandparent and
+       any deeper ancestors, plus the builder and intermediate images of the
+       parent and its ancestors. Relationships are aligned with the component's
+       parent name where needed.
 
     Args:
         parent_sbom_doc: Downloaded used parent image SBOM
@@ -636,15 +702,31 @@ async def map_parent_to_component_and_update_component(
         parent_packages, parent_spdx_id_from_component, parent_root_packages
     )
 
-    # Step 2: resolve and supply grandparent and ancestor image packages
-    # from parent to component
+    # Step 2: resolve and supply image packages (grandparent, ancestors and builders
+    # and intermediates of parent and ancestors) from parent to component
     # TO DO: Validate the complete image graph, ensuring that the image chain
     # from the root image to the furthest ancestor is continuous and has no
     # missing links.
     grandparent_and_ancestors = get_grandparent_and_ancestor_items_from_used_parent(
         parent_sbom_doc, parent_spdx_id_from_component
     )
-    resolver.supply_image_packages(grandparent_and_ancestors)
+    parent_and_ancestors_builder_items = process_builder_items(
+        collect_image_items(
+            parent_sbom_doc,
+            BUILDER_IMAGE,
+        ),
+        parent_spdx_id_from_component,
+        parent_root_packages,
+    )
+    parent_and_ancestors_intermediate_items = collect_image_items(
+        parent_sbom_doc,
+        INTERMEDIATE_IMAGE,
+    )
+    resolver.supply_image_packages(
+        grandparent_and_ancestors
+        + parent_and_ancestors_builder_items
+        + parent_and_ancestors_intermediate_items
+    )
 
     stats.log_summary_debug()
 
