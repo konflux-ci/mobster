@@ -410,15 +410,27 @@ def _collect(
     Returns:
         List of (package, relationship) pairs matching the kind.
     """
-    # build relationship index based on targeted package (relationship_end)
+    package_spdx_ids = {pkg.spdx_id for pkg in sbom_doc.packages}
+    file_spdx_ids = {file.spdx_id for file in sbom_doc.files}
     rel_index: dict[str, Relationship] = {}
     for candidate_rel in sbom_doc.relationships:
         if candidate_rel.relationship_type != kind.relationship_type:
             continue
+        if not _relationship_has_package_endpoints(
+            candidate_rel,
+            package_spdx_ids,
+            file_spdx_ids,
+        ):
+            continue
         relationship_end_spdx_id = getattr(candidate_rel, kind.relationship_end.value)
         if isinstance(relationship_end_spdx_id, str):
-            # If the SBOM is valid this should never happen because
-            # relationship end SPDX ID is expected to be unique
+            # TO DO(ISV-7657): A package may legitimately participate in
+            # multiple distinct relationships of the same kind. Examples
+            # include one builder image BUILD_TOOL_OF both a parent and a
+            # grandparent (and their intermediate images DESCENDANT_OF that
+            # builder), the same base image targeted by both a parent and a
+            # deeper grandparent. Preserve all distinct relationship edges and
+            # reject only exact duplicates.
             if relationship_end_spdx_id in rel_index:
                 raise SBOMError(
                     "[Parent image content] Multiple"
@@ -437,6 +449,73 @@ def _collect(
         pkg_rel_pairs.append((pkg, rel))
 
     return pkg_rel_pairs
+
+
+def _relationship_has_package_endpoints(
+    relationship: Relationship,
+    package_spdx_ids: set[str],
+    file_spdx_ids: set[str],
+) -> bool:
+    """
+    Return whether both endpoints identify packages in the SBOM.
+
+    Contextualization collects package-to-package relationships only. A
+    `package CONTAINS file` relationship is normal Syft evidence and is
+    silently skipped. Other malformed `CONTAINS` relationships are skipped
+    with a warning. Invalid image relationships are rejected.
+
+    Args:
+        relationship: SPDX relationship to validate.
+        package_spdx_ids: SPDX IDs of packages present in the SBOM.
+        file_spdx_ids: SPDX IDs of files present in the SBOM.
+
+    Returns:
+        `True` when both relationship endpoints identify existing packages.
+        `False` when the relationship is `package CONTAINS file` or another
+        `CONTAINS` shape outside the contextual ownership model. Raises
+        `SBOMError` when a non-`CONTAINS` image relationship has a non-package
+        endpoint.
+    """
+    if (
+        relationship.spdx_element_id in package_spdx_ids
+        and relationship.related_spdx_element_id in package_spdx_ids
+    ):
+        return True
+
+    if relationship.relationship_type is RelationshipType.CONTAINS:
+        if (
+            relationship.spdx_element_id in package_spdx_ids
+            and relationship.related_spdx_element_id in file_spdx_ids
+        ):
+            # package CONTAINS file is a valid and prevalent SPDX relationship
+            # in Syft evidence, but it is outside the package-level
+            # contextualization scope.
+            return False
+        # Other CONTAINS relationship shapes are outside the ownership model used
+        # for contextualization. Skip them, but make them observable.
+        LOGGER.warning(
+            "[Parent image content] Skipping invalid CONTAINS relationship: "
+            "%s CONTAINS %s.",
+            relationship.spdx_element_id,
+            relationship.related_spdx_element_id,
+        )
+        return False
+    # Remaining ContentKind relationship types describe image packages and require
+    # both endpoints to identify packages.
+    invalid_endpoints = [
+        spdx_id
+        for spdx_id in (
+            relationship.spdx_element_id,
+            relationship.related_spdx_element_id,
+        )
+        if spdx_id not in package_spdx_ids
+    ]
+    raise SBOMError(
+        "[Parent image content] Invalid image relationship "
+        f"'{relationship.relationship_type.name}': both endpoints must "
+        "identify packages; invalid endpoint SPDX ID(s): "
+        f"{invalid_endpoints}."
+    )
 
 
 def collect_package_items(
@@ -552,6 +631,9 @@ async def map_parent_to_component_and_update_component(
 
     # Step 2: resolve and supply grandparent and ancestor image packages
     # from parent to component
+    # TO DO: Validate the complete image graph, ensuring that the image chain
+    # from the root image to the furthest ancestor is continuous and has no
+    # missing links.
     grandparent_and_ancestors = get_grandparent_and_ancestor_items_from_used_parent(
         parent_sbom_doc, parent_spdx_id_from_component
     )
