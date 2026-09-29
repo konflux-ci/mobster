@@ -6,6 +6,7 @@ import pytest
 from _pytest.logging import LogCaptureFixture
 from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
 from spdx_tools.spdx.model.document import Document
+from spdx_tools.spdx.model.file import File
 from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
@@ -89,7 +90,8 @@ def _legacy_grandparent_item(
 def test_collect_package_items(mock_doc: MagicMock) -> None:
     pkg1, rel1 = _content_item("SPDXRef-root", "SPDXRef-pkg1")
     pkg2, rel2 = _content_item("SPDXRef-root", "SPDXRef-pkg2")
-    mock_doc.packages = [pkg1, pkg2]
+    root = Package("SPDXRef-root", "root", SpdxNoAssertion())
+    mock_doc.packages = [root, pkg1, pkg2]
     mock_doc.relationships = [rel1, rel2]
 
     assert collect_package_items(mock_doc) == [(pkg1, rel1), (pkg2, rel2)]
@@ -99,8 +101,9 @@ def test_collect_package_items_skips_package_without_contains(
     mock_doc: MagicMock,
 ) -> None:
     pkg1, rel1 = _content_item("SPDXRef-root", "SPDXRef-pkg1")
+    root = Package("SPDXRef-root", "root", SpdxNoAssertion())
     orphan = Package("SPDXRef-orphan", "name", SpdxNoAssertion())
-    mock_doc.packages = [pkg1, orphan]
+    mock_doc.packages = [root, pkg1, orphan]
     mock_doc.relationships = [rel1]
 
     assert collect_package_items(mock_doc) == [(pkg1, rel1)]
@@ -114,7 +117,11 @@ def test_collect_package_items_raises_on_duplicate_relationship(
     duplicate_rel = Relationship(
         "SPDXRef-other-root", RelationshipType.CONTAINS, pkg.spdx_id
     )
-    mock_doc.packages = [pkg]
+    mock_doc.packages = [
+        Package("SPDXRef-root", "root", SpdxNoAssertion()),
+        Package("SPDXRef-other-root", "other-root", SpdxNoAssertion()),
+        pkg,
+    ]
     mock_doc.relationships = [rel, duplicate_rel]
 
     with pytest.raises(
@@ -126,6 +133,73 @@ def test_collect_package_items_raises_on_duplicate_relationship(
         ),
     ):
         collect_package_items(mock_doc)
+
+
+def test_collect_package_items_ignores_file_relationships(
+    mock_doc: MagicMock,
+) -> None:
+    """Package-to-file evidence must not affect package collection."""
+    package, package_rel = _content_item("SPDXRef-root", "SPDXRef-pkg")
+    file_rel = Relationship(
+        package.spdx_id,
+        RelationshipType.CONTAINS,
+        "SPDXRef-file",
+    )
+    mock_doc.packages = [
+        Package("SPDXRef-root", "root", SpdxNoAssertion()),
+        package,
+    ]
+    mock_doc.files = [File("file", "SPDXRef-file", [])]
+    mock_doc.relationships = [package_rel, file_rel]
+
+    assert collect_package_items(mock_doc) == [(package, package_rel)]
+
+
+@pytest.mark.parametrize(
+    ("subject", "target", "files"),
+    [
+        pytest.param(
+            "SPDXRef-file",
+            "SPDXRef-pkg",
+            [File("file", "SPDXRef-file", [])],
+            id="File CONTAINS package (invalid/unknown ownership model)",
+        ),
+        pytest.param(
+            "SPDXRef-pkg",
+            "SPDXRef-missing",
+            [],
+            id="Package CONTAINS missing package (invalid/unknown ownership model)",
+        ),
+    ],
+)
+def test_collect_package_items_warns_on_unsupported_contains_relationship(
+    mock_doc: MagicMock,
+    caplog: LogCaptureFixture,
+    subject: str,
+    target: str,
+    files: list[File],
+) -> None:
+    """CONTAINS relationships outside the ownership model warn and are skipped."""
+    package, package_rel = _content_item("SPDXRef-root", "SPDXRef-pkg")
+    unsupported_rel = Relationship(
+        subject,
+        RelationshipType.CONTAINS,
+        target,
+    )
+    mock_doc.packages = [
+        Package("SPDXRef-root", "root", SpdxNoAssertion()),
+        package,
+    ]
+    mock_doc.files = files
+    mock_doc.relationships = [package_rel, unsupported_rel]
+    caplog.set_level("WARNING")
+
+    assert collect_package_items(mock_doc) == [(package, package_rel)]
+    assert any(
+        "Skipping invalid CONTAINS relationship: "
+        f"{subject} CONTAINS {target}." in message
+        for message in caplog.messages
+    )
 
 
 @pytest.mark.parametrize(
@@ -149,7 +223,10 @@ def test_collect_image_items_by_content_kind(
     item: tuple[Package, Relationship, Annotation],
 ) -> None:
     pkg, rel, annot = item
-    mock_doc.packages = [pkg]
+    mock_doc.packages = [
+        pkg,
+        Package(rel.spdx_element_id, "parent", SpdxNoAssertion()),
+    ]
     mock_doc.relationships = [rel]
     mock_doc.annotations = [annot]
 
@@ -158,7 +235,10 @@ def test_collect_image_items_by_content_kind(
 
 def test_collect_image_items_legacy_grandparent(mock_doc: MagicMock) -> None:
     pkg, rel, annot = _legacy_grandparent_item("SPDXRef-grandparent", "SPDXRef-parent")
-    mock_doc.packages = [pkg]
+    mock_doc.packages = [
+        pkg,
+        Package("SPDXRef-parent", "parent", SpdxNoAssertion()),
+    ]
     mock_doc.relationships = [rel]
     mock_doc.annotations = [annot]
 
@@ -177,7 +257,11 @@ def test_collect_image_items_raises_on_duplicate_relationship(
         RelationshipType.DESCENDANT_OF,
         pkg.spdx_id,
     )
-    mock_doc.packages = [pkg]
+    mock_doc.packages = [
+        pkg,
+        Package(rel.spdx_element_id, "parent", SpdxNoAssertion()),
+        Package(duplicate_rel.spdx_element_id, "other-parent", SpdxNoAssertion()),
+    ]
     mock_doc.relationships = [rel, duplicate_rel]
     mock_doc.annotations = [annot]
 
@@ -198,7 +282,10 @@ def test_collect_image_items_skips_missing_annotation(mock_doc: MagicMock) -> No
     but no annotation to disambiguate the kind
     """
     pkg, rel, _ = _base_image_item("SPDXRef-parent", "SPDXRef-grandparent")
-    mock_doc.packages = [pkg]
+    mock_doc.packages = [
+        pkg,
+        Package(rel.spdx_element_id, "parent", SpdxNoAssertion()),
+    ]
     mock_doc.relationships = [rel]
     mock_doc.annotations = []
 
@@ -218,6 +305,39 @@ def test_collect_image_items_skips_missing_relationship(mock_doc: MagicMock) -> 
     assert collect_image_items(mock_doc, BASE_IMAGE) == []
 
 
+@pytest.mark.parametrize(
+    ("kind", "item"),
+    [
+        pytest.param(
+            BASE_IMAGE,
+            _base_image_item("SPDXRef-parent", "SPDXRef-grandparent"),
+            id="base-image",
+        ),
+        pytest.param(
+            ANCESTOR_IMAGE,
+            _ancestor_image_item("SPDXRef-grandparent", "SPDXRef-ancestor"),
+            id="ancestor-image",
+        ),
+    ],
+)
+def test_collect_image_items_rejects_dangling_relationship(
+    mock_doc: MagicMock,
+    kind: ContentKind,
+    item: tuple[Package, Relationship, Annotation],
+) -> None:
+    """Image relationships require both image package endpoints."""
+    pkg, rel, annot = item
+    # Keep the relationship subject present and omit its target package.
+    mock_doc.packages = [
+        Package(rel.spdx_element_id, "child", SpdxNoAssertion()),
+    ]
+    mock_doc.relationships = [rel]
+    mock_doc.annotations = [annot]
+
+    with pytest.raises(SBOMError, match="Invalid image relationship 'DESCENDANT_OF'"):
+        collect_image_items(mock_doc, kind)
+
+
 def test_collect_image_items_skips_wrong_annotation_type(mock_doc: MagicMock) -> None:
     """
     BASE_IMAGE and ANCESTOR_IMAGE share (DESCENDANT_OF, TARGET);
@@ -225,7 +345,10 @@ def test_collect_image_items_skips_wrong_annotation_type(mock_doc: MagicMock) ->
     package must not be collected as a base image.
     """
     pkg, rel, annot = _ancestor_image_item("SPDXRef-parent", "SPDXRef-grandparent")
-    mock_doc.packages = [pkg]
+    mock_doc.packages = [
+        pkg,
+        Package(rel.spdx_element_id, "parent", SpdxNoAssertion()),
+    ]
     mock_doc.relationships = [rel]
     mock_doc.annotations = [annot]
 
@@ -304,7 +427,10 @@ def test_get_grandparent_and_ancestor_legacy(
 ) -> None:
     caplog.set_level("INFO")
     pkg, rel, annot = _legacy_grandparent_item("SPDXRef-grandparent", "SPDXRef-parent")
-    mock_doc.packages = [pkg]
+    mock_doc.packages = [
+        pkg,
+        Package("SPDXRef-parent", "parent", SpdxNoAssertion()),
+    ]
     mock_doc.relationships = [rel]
     mock_doc.annotations = [annot]
     mock_doc.creation_info.name = "quay.io/foo@sha256:1"
@@ -331,7 +457,11 @@ def test_get_grandparent_modified_and_ancestor_passed(mock_doc: MagicMock) -> No
     anc_pkg, anc_rel, anc_annot = _ancestor_image_item(
         "SPDXRef-grandparent", "SPDXRef-ancestor"
     )
-    mock_doc.packages = [gp_pkg, anc_pkg]
+    mock_doc.packages = [
+        gp_pkg,
+        anc_pkg,
+        Package(gp_rel.spdx_element_id, "parent", SpdxNoAssertion()),
+    ]
     mock_doc.relationships = [gp_rel, anc_rel]
     mock_doc.annotations = [gp_annot, anc_annot]
     mock_doc.creation_info.name = "quay.io/foo@sha256:1"
@@ -359,7 +489,12 @@ def test_grandparent_has_multiple_base_images_failure(
 ) -> None:
     gp1 = _base_image_item("SPDXRef-parent", "SPDXRef-gp1")
     gp2 = _base_image_item("SPDXRef-parent-2", "SPDXRef-gp2")
-    mock_doc.packages = [gp1[0], gp2[0]]
+    mock_doc.packages = [
+        gp1[0],
+        gp2[0],
+        Package(gp1[1].spdx_element_id, "parent", SpdxNoAssertion()),
+        Package(gp2[1].spdx_element_id, "other-parent", SpdxNoAssertion()),
+    ]
     mock_doc.relationships = [gp1[1], gp2[1]]
     mock_doc.annotations = [gp1[2], gp2[2]]
     mock_doc.creation_info.name = "quay.io/foo@sha256:1"
@@ -373,7 +508,11 @@ def test_grandparent_has_multiple_legacy_base_images_failure(
 ) -> None:
     g1 = _legacy_grandparent_item("SPDXRef-gp1", "SPDXRef-parent")
     g2 = _legacy_grandparent_item("SPDXRef-gp2", "SPDXRef-parent")
-    mock_doc.packages = [g1[0], g2[0]]
+    mock_doc.packages = [
+        g1[0],
+        g2[0],
+        Package("SPDXRef-parent", "parent", SpdxNoAssertion()),
+    ]
     mock_doc.relationships = [g1[1], g2[1]]
     mock_doc.annotations = [g1[2], g2[2]]
     mock_doc.creation_info.name = "quay.io/foo@sha256:1"
@@ -610,13 +749,14 @@ async def test_map_parent_to_component_and_update_component(
     # SPDXRef-component DESCENDANT_OF SPDXRef-parent
     # SPDXRef-component CONTAINS SPDXRef-package-1
     component_sbom_doc = MagicMock(spec=Document)
+    component_root_pkg = Package("SPDXRef-component", "component", SpdxNoAssertion())
     component_test_pkg = create_package_with_identifier(
         "SPDXRef-package-1", identifier_type, matching_value=should_reparent
     )
     original_rel = Relationship(
         "SPDXRef-component", RelationshipType.CONTAINS, "SPDXRef-package-1"
     )
-    component_sbom_doc.packages = [component_test_pkg]
+    component_sbom_doc.packages = [component_root_pkg, component_test_pkg]
     component_sbom_doc.relationships = [original_rel]
     component_sbom_doc.annotations = []
 
