@@ -34,7 +34,7 @@ spec:
             description: Image reference
         steps:
           - name: parse-snapshot-clone-repo
-            image: registry.redhat.io/openshift4/ose-cli:latest
+            image: registry.redhat.io/openshift4/ose-cli:v4.15
             env:
               - name: SNAPSHOT
                 value: $(params.SNAPSHOT)
