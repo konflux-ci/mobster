@@ -172,7 +172,7 @@ def test_id(request: pytest.FixtureRequest) -> str:
 
 
 @pytest.fixture(scope="session")
-def cosign_keys() -> tuple[Path, Path]:  # type: ignore[misc]
+def cosign_keys() -> tuple[str, str]:  # type: ignore[misc]
     with tempfile.TemporaryDirectory() as temp_dir:
         with tempfile.NamedTemporaryFile() as password_tempfile:
             password_tempfile.write(b"")
@@ -190,16 +190,16 @@ def cosign_keys() -> tuple[Path, Path]:  # type: ignore[misc]
         assert pub_key.exists()
         priv_key = temp_dir_path / "cosign.key"
         assert priv_key.exists()
-        yield priv_key, pub_key
+        yield str(priv_key), str(pub_key)
 
 
 @pytest.fixture(scope="session")
-def cosign_sign_key(cosign_keys: tuple[Path, Path]) -> Path:
+def cosign_sign_key(cosign_keys: tuple[str, str]) -> str:
     return cosign_keys[0]
 
 
 @pytest.fixture(scope="session")
-def cosign_verify_key(cosign_keys: tuple[Path, Path]) -> Path:
+def cosign_verify_key(cosign_keys: tuple[str, str]) -> str:
     return cosign_keys[1]
 
 

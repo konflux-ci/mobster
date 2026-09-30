@@ -418,7 +418,7 @@ def generate_augment_oci_image_parser(subparsers: Any) -> None:
     )
     augment_oci_image_parser.add_argument(
         "--verification-key",
-        type=Path,
+        type=str,
         help="path to public key used to verify the image provenance",
     )
     augment_oci_image_parser.add_argument(

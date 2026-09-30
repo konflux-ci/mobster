@@ -18,7 +18,7 @@ from mobster.oci.artifact import SBOMFormat
 
 
 class TestStaticFetcher:
-    verification_key = Path("/verification-key")
+    verification_key = "/verification-key"
 
     @pytest.fixture()
     def provenance_path(self, provenances_path: Path) -> Path:
@@ -249,8 +249,8 @@ class TestStaticFetcher:
 
 
 class TestStaticSigner:
-    verification_key = Path("/verification-key")
-    signing_key = Path("/signing_key")
+    verification_key = "/verification-key"
+    signing_key = "/signing_key"
 
     @pytest.fixture
     def client(self) -> cosign.StaticKeySigner:
@@ -426,7 +426,7 @@ class TestGetCosign:
         ["config", "expected_type"],
         [
             (
-                cosign.VerifyConfig(static_verify_key=Path("A")),
+                cosign.VerifyConfig(static_verify_key="A"),
                 cosign.StaticKeyFetcher,
             ),
             (
@@ -526,3 +526,20 @@ class TestAnonymousFetcher:
             else:
                 with pytest.raises(SBOMError, match="Failed to fetch SBOM"):
                     await fetcher.fetch_sbom(mock_image)
+
+
+def test_verify_config_url_persistence() -> None:
+    """Test against regression. Pathlike converts k8s:// to k8s:/"""
+    # In case of a regression, the following line will raise a validation error
+    config = cosign.VerifyConfig(static_verify_key="k8s://foo/bar")
+    assert config.static_verify_key == "k8s://foo/bar"
+
+
+def test_sign_config_url_persistence() -> None:
+    config = cosign.SignConfig(
+        static_sign_config=cosign.StaticSignConfig(
+            sign_key="awskms:///arn:aws:kms:us-eu-1:signkey"
+        )
+    )
+    assert config.static_sign_config is not None
+    assert config.static_sign_config.sign_key == "awskms:///arn:aws:kms:us-eu-1:signkey"

@@ -1,6 +1,5 @@
 """Configuration for Cosign clients"""
 
-import os
 import re
 import tempfile
 from collections.abc import Generator
@@ -190,7 +189,7 @@ class StaticSignConfig:
             Password used for encrypting the signing key
     """
 
-    sign_key: os.PathLike[str]
+    sign_key: str
     sign_password: bytes = b""
 
 
@@ -242,5 +241,5 @@ class VerifyConfig:
 
     """
 
-    static_verify_key: os.PathLike[str] | None = Field(default=None)
+    static_verify_key: str | None = Field(default=None)
     keyless_verify_config: KeylessVerifyConfig | None = Field(default=None)

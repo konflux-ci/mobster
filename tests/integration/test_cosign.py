@@ -27,7 +27,7 @@ async def image_with_empty_sbom(oci_client: ReferrersTagOCIClient) -> Image:
 
 @pytest_asyncio.fixture()
 async def image_with_empty_attested_sbom(
-    cosign_sign_key: Path, oci_client: ReferrersTagOCIClient
+    cosign_sign_key: str, oci_client: ReferrersTagOCIClient
 ) -> Image:
     sbom = b"{}"
     image = await oci_client.create_image("empty-sbom-attestation", "tag")

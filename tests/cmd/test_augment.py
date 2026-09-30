@@ -36,7 +36,7 @@ TESTDATA_PATH = Path(__file__).parent.parent.joinpath("data/component")
 class AugmentArgs:
     snapshot: Path
     output: Path
-    verification_key: Path | None
+    verification_key: str | None
     reference: str | None
     concurrency: int = 1
     release_id: str | None = None
@@ -133,7 +133,7 @@ class TestAugmentCommand:
         args = AugmentArgs(
             snapshot=Path(""),
             output=Path("output"),
-            verification_key=Path("key"),
+            verification_key="key",
             reference="",
         )
         cmd = AugmentImageCommand(cli_args=args)
@@ -163,7 +163,7 @@ class TestAugmentCommand:
         args = AugmentArgs(
             snapshot=Path(""),
             output=Path("output"),
-            verification_key=Path("key"),
+            verification_key="key",
             reference=reference,
             release_id="release-id-1",
             cpes=["cpe:/a:redhat:discovery:1.0::el9"],
