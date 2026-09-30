@@ -195,11 +195,11 @@ async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> Non
         cosign_sign_config=cosign.SignConfig(
             url_config=expected_url_config,
             static_sign_config=cosign.StaticSignConfig(
-                sign_key="a",  # type: ignore
+                sign_key="a",
             ),
         ),
         cosign_verify_config=cosign.VerifyConfig(
-            static_verify_key="/tmp/public_key_cosign",  # type: ignore
+            static_verify_key="/tmp/public_key_cosign",
         ),
         release_data=Path("foo/spam"),
     )
