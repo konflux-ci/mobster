@@ -14,7 +14,7 @@ For the `mobster-test-*` tests, the pipelinerun spins up sidecars needed for
 integration testing:
   - Zot is used as an OCI registry
   - TPA to test SBOM manipulation
-  - MinIO to provide a testing S3 bucket
+  - Garage to provide a testing S3 bucket
 
 ### mobster-test
 This test runs on every commit pushed to the Mobster repository. It executes
@@ -74,7 +74,7 @@ the fields needed and use `oc apply -f modified_scenario.yml`.
 ## Used images
 
 Mobster image used is the exact image built within the CI/CD in the previous step.
-There are some other Sidecars with already pre-built images, like `minio` or `zot`,
+There are some other Sidecars with already pre-built images, like `garage` or `zot`,
 but Mobster integration also requires a TPA image (preferably with a built-in database).
 
 To do this, Mobster's GH CI/CD also builds a custom TPA image and publishes it as

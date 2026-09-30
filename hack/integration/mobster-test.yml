@@ -63,22 +63,34 @@ spec:
         volumes:
           - name: zot-data
             emptyDir: {}
+          - name: garage-meta
+            emptyDir: {}
+          - name: garage-data
+            emptyDir: {}
         sidecars:
-          - name: minio
-            image: quay.io/minio/minio:latest
+          - name: garage
+            image: dxflrs/garage:v2.3.0
             env:
-              - name: MINIO_ROOT_USER
-                value: minioAccessKey
-              - name: MINIO_ROOT_PASSWORD
-                value: minioSecretKey
+              - name: GARAGE_DEFAULT_ACCESS_KEY
+                value: GK0123456789abcdef01234567
+              - name: GARAGE_DEFAULT_SECRET_KEY
+                value: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+              - name: GARAGE_DEFAULT_BUCKET
+                value: sboms
+            volumeMounts:
+              - name: garage-meta
+                mountPath: /var/lib/garage/meta
+              - name: garage-data
+                mountPath: /var/lib/garage/data
+              - name: $(workspaces.relevant-data.volume)
+                mountPath: $(workspaces.relevant-data.path)
             command:
-              - "minio"
-              - "server"
-              - "--address"
-              - ":9900"
-              - "--console-address"
-              - ":9901"
-              - "/data"
+              - /garage
+              - -c
+              - $(workspaces.relevant-data.path)/SOURCE_CODE/hack/tests/garage.toml
+              - server
+              - --single-node
+              - --default-bucket
           - name: zot
             image: ghcr.io/project-zot/zot:latest
             volumeMounts:
@@ -99,17 +111,6 @@ spec:
               requests:
                 cpu: 1
                 memory: 4Gi
-
-          - name: createbuckets
-            image: quay.io/minio/mc:latest
-            command:
-              - "/bin/sh"
-              - "-c"
-              - >
-                  until mc alias set minio http://localhost:9900 minioAccessKey minioSecretKey; do sleep 1; done;
-                  until mc mb minio/sboms; do sleep 1; done;
-                  echo "Created buckets";
-                  exit 0;
         results:
           - name: TEST_OUTPUT
             description: Test output

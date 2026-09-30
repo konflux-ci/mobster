@@ -102,11 +102,14 @@ def tpa_auth_env(monkeysession: pytest.MonkeyPatch) -> dict[str, str]:
 def s3_auth_env(
     s3_endpoint_url: str, monkeysession: pytest.MonkeyPatch
 ) -> dict[str, str]:
-    # these are set in compose.yaml
+    # these are set in compose.yaml (Garage --default-bucket)
     vars = {
-        "AWS_ACCESS_KEY_ID": "minioAccessKey",
-        "AWS_SECRET_ACCESS_KEY": "minioSecretKey",
+        "AWS_ACCESS_KEY_ID": "GK0123456789abcdef01234567",
+        "AWS_SECRET_ACCESS_KEY": (
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        ),
         "AWS_ENDPOINT_URL": s3_endpoint_url,
+        "AWS_DEFAULT_REGION": "garage",
     }
 
     for key, val in vars.items():
