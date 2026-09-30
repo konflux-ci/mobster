@@ -1093,7 +1093,7 @@ Mobster.</p>
 integration testing:
   - Zot is used as an OCI registry
   - TPA to test SBOM manipulation
-  - MinIO to provide a testing S3 bucket</p>
+  - Garage to provide a testing S3 bucket</p>
 <h3 id="mobster-test">mobster-test</h3>
 <p>This test runs on every commit pushed to the Mobster repository. It executes
 all Mobster integration tests, with the exception of slow tests (tests marked
@@ -1137,7 +1137,7 @@ on the IntegrationTestScenario, so the Scenario should only be updated using
 the fields needed and use <code>oc apply -f modified_scenario.yml</code>.</p>
 <h2 id="used-images">Used images</h2>
 <p>Mobster image used is the exact image built within the CI/CD in the previous step.
-There are some other Sidecars with already pre-built images, like <code>minio</code> or <code>zot</code>,
+There are some other Sidecars with already pre-built images, like <code>garage</code> or <code>zot</code>,
 but Mobster integration also requires a TPA image (preferably with a built-in database).</p>
 <p>To do this, Mobster's GH CI/CD also builds a custom TPA image and publishes it as
 a Konflux component.</p>
