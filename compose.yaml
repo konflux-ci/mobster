@@ -15,25 +15,26 @@ services:
     ports:
       - "8080:8080"
 
-  minio:
-    image: "quay.io/minio/minio:latest"
+  garage:
+    image: dxflrs/garage:v2.3.0
     ports:
-      - "9900:9900"
-      - "9901:9901"  # Web UI
-    command: ["server", "--address", ":9900", "--console-address", ":9901", "/data"]
+      - "9900:9900"  # S3 API
+      - "9901:9901"  # Admin / health
+    volumes:
+      - ./hack/tests/garage.toml:/etc/garage.toml:ro,Z
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
     environment:
-      MINIO_ROOT_USER: minioAccessKey
-      MINIO_ROOT_PASSWORD: minioSecretKey
+      # Access key must be GK + 24 hex chars (26 total). Secret is 64 hex chars.
+      GARAGE_DEFAULT_ACCESS_KEY: GK0123456789abcdef01234567
+      GARAGE_DEFAULT_SECRET_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      GARAGE_DEFAULT_BUCKET: sboms
+    command:
+      - /garage
+      - server
+      - --single-node
+      - --default-bucket
 
-  createbuckets:
-    image: quay.io/minio/mc:latest
-    depends_on:
-      - minio
-    restart: on-failure
-    entrypoint: >
-      /bin/sh -c "
-      until mc alias set minio http://minio:9900 minioAccessKey minioSecretKey; do sleep 1; done;
-      until mc mb minio/sboms; do sleep 1; done;
-      echo "Created buckets";
-      exit 0;
-      "
+volumes:
+  garage-meta:
+  garage-data:

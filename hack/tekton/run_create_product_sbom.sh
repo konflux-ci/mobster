@@ -4,7 +4,7 @@
 #
 # Requirements:
 #   - TPA is running locally on port 8080.
-#   - MinIO is running locally on port 9900.
+#   - Garage is running locally on port 9900.
 #   - A "snapshot.json" file exists in the data_dir. The snapshot spec should
 #       then point to an image with SBOMs to be augmented.
 #   - A "data.json" merged release data file exists in the data_dir.
@@ -24,9 +24,10 @@ export MOBSTER_TPA_SSO_TOKEN="dummy"
 export MOBSTER_TPA_SSO_TOKEN_URL="dummy"
 export MOBSTER_TPA_AUTH_DISABLE="true"
 
-export AWS_ACCESS_KEY_ID="minioAccessKey"
-export AWS_SECRET_ACCESS_KEY="minioSecretKey"
+export AWS_ACCESS_KEY_ID="GK0123456789abcdef01234567"
+export AWS_SECRET_ACCESS_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 export AWS_ENDPOINT_URL="http://localhost:9900"
+export AWS_DEFAULT_REGION="garage"
 
 process_product_sbom \
     --data-dir "$data_dir" \
