@@ -161,12 +161,12 @@ def create_policy_file(policy_dir_path: Path) -> Path:
 
 async def verify_conforma(image: Image, public_key: str, tmp_path: Path) -> None:
     """
-    Validate a conforma rules agains a provided image.
+    Validate a conforma rules against a provided image.
 
     Args:
-        image (Image): An image to validate.
-        public_key (Path): A path to the public key for verifying the attestation.
-        tmp_path (Path): A temporary directory path to store the policy file.
+        image: An image to validate.
+        public_key: A path to the public key for verifying the attestation.
+        tmp_path: A temporary directory path to store the policy file.
 
     """
     policy_file_path = create_policy_file(tmp_path)
