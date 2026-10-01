@@ -12,7 +12,7 @@ from typing import Any, Literal
 from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
-from mobster.oci.artifact import SBOM, SBOMFormat, SLSAProvenance
+from mobster.oci.artifact import SBOM, SLSAProvenance
 from mobster.oci.cosign.attestation_utils import (
     get_cosign_attestation_type,
     get_sbom_from_attestation_bytes,
@@ -28,6 +28,7 @@ from mobster.oci.cosign.protocol import (
     SupportsProvenanceFetch,
     SupportsSign,
 )
+from mobster.sbom.load import SBOMFormat
 from mobster.utils import run_async_subprocess
 
 logger = logging.getLogger(__name__)

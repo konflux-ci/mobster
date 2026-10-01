@@ -1,13 +1,10 @@
 """A place for utility functions used across the application."""
 
 import asyncio
-import json
 import logging
 import os
 import platform
 import re
-from json import JSONDecodeError
-from pathlib import Path
 from typing import Any
 
 LOGGER = logging.getLogger(__name__)
@@ -114,28 +111,6 @@ def identify_arch() -> str:
     if result == arch and arch not in ARCH_TRANSLATION_MAP:
         LOGGER.warning("Unknown architecture '%s'. Using as-is.", arch)
     return result
-
-
-async def load_sbom_from_json(file_path: Path) -> dict[str, Any]:
-    """
-    A JSON loading utility that prints invalid file contents in
-    case of a failure. Propagates exceptions!
-    Args:
-        file_path: Path to the JSON SBOM file (SPDX 2.X or CycloneDX 1.5+)
-    Returns:
-        The SBOM dictionary from the file.
-    """
-    with open(file_path, encoding="utf-8") as in_stream:
-        try:
-            contents = in_stream.read()
-            return json.loads(contents)  # type: ignore[no-any-return]
-        except JSONDecodeError:
-            LOGGER.critical(
-                "Expected a JSON SBOM. Found different file contents! "
-                "Logging first 200 chars of the file."
-            )
-            LOGGER.critical(contents[:200])
-            raise
 
 
 def get_tpa_ca() -> str | None:

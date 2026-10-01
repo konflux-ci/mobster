@@ -6,7 +6,6 @@ import pytest_asyncio
 
 from mobster.error import SBOMError
 from mobster.image import Image
-from mobster.oci.artifact import SBOMFormat
 from mobster.oci.cosign import (
     AnonymousFetcher,
     SignConfig,
@@ -14,6 +13,7 @@ from mobster.oci.cosign import (
     VerifyConfig,
 )
 from mobster.oci.cosign.static import StaticKeyFetcher, StaticKeySigner
+from mobster.sbom.load import SBOMFormat
 from tests.integration.oci_client import ReferrersTagOCIClient
 
 

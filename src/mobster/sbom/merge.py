@@ -1,20 +1,42 @@
 """SBOM merging utilities"""
 
-import functools
-import itertools
+import uuid
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
+from collections.abc import Iterable
+from copy import copy, deepcopy
+from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
-from typing import Any, Literal, TypeVar
-from urllib.parse import quote_plus
+from typing import Any, Generic, Literal, TypeVar
 
+from cyclonedx.model.bom_ref import BomRef
+from cyclonedx.model.component import Component
+from cyclonedx.model.dependency import Dependency
+from cyclonedx.model.tool import Tool
 from packageurl import PackageURL
+from spdx_tools.spdx.model.actor import Actor
+from spdx_tools.spdx.model.annotation import Annotation
+from spdx_tools.spdx.model.document import Document
+from spdx_tools.spdx.model.package import Package
+from spdx_tools.spdx.model.relationship import Relationship
+
+from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.sbom.load import load_dict_to_sbom
+from mobster.sbom.spdx import deduplicate_relationships
 
 T = TypeVar("T")
 
 
-def try_parse_purl(s: str) -> PackageURL | None:
+class SBOMSource(Enum):
+    """
+    The source tool of the SBOM.
+    """
+
+    SYFT = "syft"
+    HERMETO = "hermeto"
+
+
+def try_parse_purl(s: str | None) -> PackageURL | None:
     """
     Try to parse a Package URL from a string.
 
@@ -23,18 +45,24 @@ def try_parse_purl(s: str) -> PackageURL | None:
     Returns:
         PackageURL: The parsed Package URL, or None if parsing failed
     """
+    if s is None:
+        return None
     try:
         return PackageURL.from_string(s)
     except ValueError:
         return None
 
 
-class SBOMItem(ABC):
+@dataclass
+class SBOMItem(ABC, Generic[T]):
     """
     Base class for SBOM items.
 
     Methods are defined to be overridden by subclasses.
     """
+
+    source: SBOMSource
+    data: T
 
     @abstractmethod
     def id(self) -> str:
@@ -53,11 +81,54 @@ class SBOMItem(ABC):
         """Get the Package URL of the SBOM item."""
 
     @abstractmethod
-    def unwrap(self) -> dict[str, Any]:
-        """Unwrap the SBOM item into a dictionary."""
+    def unwrap(self) -> T:
+        """Unwrap the SBOM item into an object."""
+
+    def normalized_purl(self) -> str | None:
+        """
+        The PURL format unified between Syft and Hermeto SBOMs.
+        Returns:
+            The normalized PURL string if PURL is present. None otherwise.
+        """
+        if not (purl := self.purl()):
+            return None
+        name = purl.name
+        if purl.type == "pypi":
+            name = name.lower()
+        subpath = purl.subpath
+        if purl.type == "golang":
+            if subpath and _subpath_is_version(subpath):
+                # put the module version where it belongs (in the module name)
+                name = f"{name}/{subpath}"
+                subpath = None
+
+        qualifiers = purl.qualifiers
+        if not isinstance(qualifiers, dict):
+            return None
+
+        # clear redundant qualifiers
+        identity_qualifiers = {"arch", "os", "classifier", "type", "epoch"}
+        meaningful_quals: dict[str, Any] = {}
+        for k, v in qualifiers.items():
+            if k not in identity_qualifiers:
+                continue
+            if k == "arch" and v == "noarch":
+                continue
+            if purl.type == "golang" and k == "type" and v == "module":
+                continue
+            meaningful_quals[k] = v
+
+        return PackageURL(
+            type=purl.type,
+            namespace=purl.namespace,
+            name=name,
+            version=purl.version,
+            qualifiers=meaningful_quals,
+            subpath=subpath,
+        ).to_string()
 
 
-def fallback_key(package: SBOMItem) -> str:
+def fallback_key(package: SBOMItem[T]) -> str:
     """
     Get the "fallback key" for a package that doesn't have a purl.
     This is used to identify the package in the merged SBOM.
@@ -77,54 +148,50 @@ def fallback_key(package: SBOMItem) -> str:
 
 
 @dataclass
-class CDXComponent(SBOMItem):
+class CDXComponent(SBOMItem[Component]):
     """
     Class representing a CycloneDX component.
     """
 
-    data: dict[str, Any]
+    custom_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
     def id(self) -> str:
-        return self.data.get("bom-ref", "")  # type: ignore
+        return self.data.bom_ref.value or self.custom_id
 
     def name(self) -> str:
-        return self.data["name"]  # type: ignore
+        return self.data.name
 
     def version(self) -> str:
-        return self.data.get("version") or ""
+        return self.data.version or ""
 
     def purl(self) -> PackageURL | None:
-        if purl_str := self.data.get("purl"):
-            return try_parse_purl(purl_str)
-        return None
+        return self.data.purl
 
-    def unwrap(self) -> dict[str, Any]:
+    def unwrap(self) -> Component:
         return self.data
 
 
-def wrap_as_cdx(items: Iterable[dict[str, Any]]) -> list[CDXComponent]:
+def wrap_as_cdx(items: Iterable[Component], source: SBOMSource) -> list[CDXComponent]:
     """
     Wrap a list of CycloneDX components into CDXComponent objects.
     """
-    return list(map(CDXComponent, items))
+    return [CDXComponent(data=item, source=source) for item in items]
 
 
 @dataclass
-class SPDXPackage(SBOMItem):
+class SPDXPackage(SBOMItem[Package]):
     """
     Class representing an SPDX package.
     """
 
-    data: dict[str, Any]
-
     def id(self) -> str:
-        return self.data["SPDXID"]  # type: ignore
+        return self.data.spdx_id
 
     def name(self) -> str:
-        return self.data["name"]  # type: ignore
+        return self.data.name
 
     def version(self) -> str:
-        return self.data.get("versionInfo") or ""
+        return self.data.version or ""
 
     def purl(self) -> PackageURL | None:
         purls = self.all_purls()
@@ -137,142 +204,126 @@ class SPDXPackage(SBOMItem):
     def all_purls(self) -> list[PackageURL]:
         """Get all Package URLs for the SPDX package."""
         purls = [
-            ref["referenceLocator"]
-            for ref in self.data.get("externalRefs", [])
-            if ref["referenceType"] == "purl"
+            ref.locator
+            for ref in self.data.external_references
+            if ref.reference_type == "purl"
         ]
         return list(filter(None, map(try_parse_purl, purls)))
 
-    def unwrap(self) -> dict[str, Any]:
+    def unwrap(self) -> Package:
+        """
+        Transform back into an SPDX package.
+        Returns:
+            The abstracted SPDX package.
+        """
         return self.data
 
 
-def wrap_as_spdx(items: list[dict[str, Any]]) -> list[SPDXPackage]:
+@dataclass
+class MergeIndex(Generic[T]):
+    """
+    Class for tracking unique SBOM Items, keeps track
+    of merged SBOMs and helps to add new packages with
+    deduplication.
+
+    Attributes:
+        hermeto_involved:
+            True if this index contains Hermeto content
+        hermeto_non_registry_items:
+            Hermeto items not pushed to a registry.
+            These are matched against Syft items by
+            name.
+        items_by_path:
+            If 2 records share the same path, they
+            are equivalent and can be deduplicated.
+        items_by_unique_key:
+            Contains all deduplicated packages and
+            their unique keys.
+        id_mapping:
+            Mapping of any SBOM Item id present in
+            inputs mapped to an SBOM ID present in
+            output.
+    """
+
+    hermeto_involved: bool = field(default=False)
+    hermeto_non_registry_items: dict[str, SBOMItem[T]] = field(default_factory=dict)
+    items_by_path: dict[Path, SBOMItem[T]] = field(default_factory=dict)
+    items_by_unique_key: dict[str, SBOMItem[T]] = field(default_factory=dict)
+    id_mapping: dict[str, str] = field(default_factory=dict)
+
+    def add(self, item: SBOMItem[T]) -> bool:
+        """Add an item to the index.
+
+        Returns True if the item was kept in the merged set, False if it was
+        dropped as a duplicate or filtered Syft-local Golang component.
+
+        Users should add Hermeto component first.
+
+        Args:
+            item: SBOM Item to add.
+        """
+        purl = item.purl()
+        if item.source is SBOMSource.HERMETO:
+            self.hermeto_involved = True
+            if _is_hermeto_non_registry_dependency(item):
+                self.hermeto_non_registry_items[item.name()] = item
+            if purl and purl.subpath:
+                self.items_by_path[Path(purl.subpath)] = item
+            self.items_by_unique_key[_unique_key(item)] = item
+            self.id_mapping[item.id()] = item.id()
+            return True
+
+        # If item is sourced from Syft:
+
+        # Local Golang replacements are only filtered when Hermeto is present
+        if self.hermeto_involved and _is_syft_local_golang_component(item):
+            return False
+        if item.name() in self.hermeto_non_registry_items:
+            self.id_mapping[item.id()] = self.hermeto_non_registry_items[
+                item.name()
+            ].id()
+            return False
+        if purl and purl.type == "npm":
+            # Syft reports path deps as pkg:npm/<subpath>@version; Hermeto uses
+            # pkg:npm/name@version#<subpath>. Match on the full path key.
+            path_key = Path(purl.namespace or "", purl.name)
+            if path_key in self.items_by_path:
+                self.id_mapping[item.id()] = self.items_by_path[path_key].id()
+                return False
+        syft_key = _unique_key(item)
+        if syft_key in self.items_by_unique_key:
+            self.id_mapping[item.id()] = self.items_by_unique_key[syft_key].id()
+            return False
+        self.items_by_unique_key[syft_key] = item
+        self.id_mapping[item.id()] = item.id()
+        return True
+
+    def add_sbom(self, items: Iterable[SBOMItem[T]]) -> None:
+        """
+        Add all items from the SBOM to the index.
+        Args:
+            items: The SBOM Items to add.
+
+        Returns:
+            Nothing, mutates the index.
+        """
+        for item in items:
+            self.add(item)
+
+    def get_items(self) -> list[SBOMItem[T]]:
+        """
+        Get all unique items back from the index.
+        Returns:
+            The unique merged deduplicated items.
+        """
+        return list(self.items_by_unique_key.values())
+
+
+def wrap_as_spdx(items: list[Package], source: SBOMSource) -> list[SPDXPackage]:
     """
     Wrap a list of SPDX packages into SPDXPackage objects.
     """
-    return list(map(SPDXPackage, items))
-
-
-def _clean_identity_qualifiers(
-    qualifiers: dict[str, str], purl_type: str
-) -> dict[str, Any] | None:
-    """
-    Drop non-identity PURL qualifiers; keep only fields that distinguish packages.
-    """
-    if not qualifiers:
-        return None
-
-    identity_qualifiers = {"arch", "os", "classifier", "type", "epoch"}
-    meaningful_quals: dict[str, Any] = {}
-    for k, v in qualifiers.items():
-        if k not in identity_qualifiers:
-            continue
-        if k == "arch" and v == "noarch":
-            continue
-        if purl_type == "golang" and k == "type" and v == "module":
-            continue
-        meaningful_quals[k] = v
-
-    return meaningful_quals if meaningful_quals else None
-
-
-def merge_by_apparent_sameness(
-    components_a: Sequence[SBOMItem], components_b: Sequence[SBOMItem]
-) -> list[dict[str, Any]]:
-    """
-    Merge components based on apparent sameness.
-    """
-
-    def key(component: SBOMItem) -> str:
-        purl = component.purl()
-        if purl:
-            return purl.to_string()
-        return fallback_key(component)
-
-    return [c.unwrap() for c in get_merged_components(components_a, components_b, key)]
-
-
-def merge_by_prefering_hermeto(
-    syft_components: Sequence[SBOMItem], hermeto_components: Sequence[SBOMItem]
-) -> list[dict[str, Any]]:
-    """
-    Merge components by preferring hermeto components over syft components.
-    """
-    is_duplicate_component = _get_syft_component_filter(hermeto_components)
-    merged = [c for c in syft_components if not is_duplicate_component(c)]
-    merged += hermeto_components
-    return [c.unwrap() for c in merged]
-
-
-def _get_syft_component_filter(
-    hermeto_sbom_components: Sequence[SBOMItem],
-) -> Callable[[SBOMItem], bool]:
-    """
-    Get a function that filters out Syft components for the merged SBOM.
-
-    This function currently considers a Syft component as a duplicate/removable if:
-    - it has the same key as a hermeto component
-    - it is a local Golang replacement
-    - is a non-registry component also reported by hermeto
-
-    Note that for the last bullet, we can only rely on the Pip dependency's name
-    to find a duplicate. This is because hermeto does not report a non-PyPI
-    Pip dependency's version.
-
-    Even though multiple versions of a same dependency can be available in the
-    same project, we are removing all Syft instances by name only because hermeto
-    will report them correctly, given that it scans all the source code properly
-    and the image is built hermetically.
-    """
-    hermeto_non_registry_components = [
-        component.name()
-        for component in hermeto_sbom_components
-        if _is_hermeto_non_registry_dependency(component)
-    ]
-    hermeto_local_paths = {
-        Path(subpath)
-        for component in hermeto_sbom_components
-        if (purl := component.purl()) and (subpath := purl.subpath)
-    }
-
-    hermeto_indexed_components = {
-        _unique_key_hermeto(component): component
-        for component in hermeto_sbom_components
-    }
-
-    def is_duplicate_non_registry_component(component: SBOMItem) -> bool:
-        return component.name() in hermeto_non_registry_components
-
-    def is_duplicate_npm_localpath_component(component: SBOMItem) -> bool:
-        purl = component.purl()
-        if not purl or purl.type != "npm":
-            return False
-        # instead of reporting path dependencies as pkg:npm/name@version?..#subpath,
-        # syft reports them as pkg:npm/subpath@version
-        return Path(purl.namespace or "", purl.name) in hermeto_local_paths
-
-    def component_is_duplicated(component: SBOMItem) -> bool:
-        """
-        Determine if a component from Syft is duplicated in hermeto.
-
-        Args:
-            component: The Syft component to check
-
-        Returns:
-           bool: True if the component should be considered a duplicate, False
-           otherwise
-        """
-        key = _unique_key_syft(component)
-
-        return (
-            _is_syft_local_golang_component(component)
-            or is_duplicate_non_registry_component(component)
-            or is_duplicate_npm_localpath_component(component)
-            or key in hermeto_indexed_components.keys()
-        )
-
-    return component_is_duplicated
+    return [SPDXPackage(source=source, data=item) for item in items]
 
 
 def _subpath_is_version(subpath: str) -> bool:
@@ -296,7 +347,7 @@ def _subpath_is_version(subpath: str) -> bool:
     return subpath.startswith("v") and subpath.removeprefix("v").isdecimal()
 
 
-def _is_syft_local_golang_component(component: SBOMItem) -> bool:
+def _is_syft_local_golang_component(component: SBOMItem[T]) -> bool:
     """
     Check if a Syft Golang reported component is a local replacement.
 
@@ -317,7 +368,7 @@ def _is_syft_local_golang_component(component: SBOMItem) -> bool:
     return component.name().startswith(".") or component.version() == "(devel)"
 
 
-def _is_hermeto_non_registry_dependency(component: SBOMItem) -> bool:
+def _is_hermeto_non_registry_dependency(component: SBOMItem[T]) -> bool:
     """
     Check if hermeto component was fetched from a VCS or a direct file location.
 
@@ -348,306 +399,238 @@ def _is_hermeto_non_registry_dependency(component: SBOMItem) -> bool:
     )
 
 
-def _unique_key_hermeto(component: SBOMItem) -> str:
-    """
-    Create a unique key from hermeto reported components.
-
-    This is done by taking a purl and removing subpaths and non-identity qualifiers.
-    """
-    purl = component.purl()
-    if not purl:
-        return fallback_key(component)
-
-    cleaned = _clean_identity_qualifiers(purl.qualifiers, purl.type)  # type:ignore[arg-type]
-    return purl._replace(qualifiers=cleaned, subpath=None).to_string()
-
-
-def _unique_key_syft(component: SBOMItem) -> str:
+def _unique_key(component: SBOMItem[T]) -> str:
     """
     Create a unique key for Syft reported components.
 
     This is done by taking a lowercase namespace/name, URL encoding the version,
     removing subpaths and non-identity qualifiers.
     """
-    purl = component.purl()
+    purl = component.normalized_purl()
     if not purl:
         return fallback_key(component)
-
-    name = purl.name
-    version = purl.version
-    subpath = purl.subpath
-
-    if purl.type == "pypi":
-        name = name.lower()
-
-    if purl.type == "golang":
-        if version:
-            version = quote_plus(version)
-        if subpath and _subpath_is_version(subpath):
-            # put the module version where it belongs (in the module name)
-            name = f"{name}/{subpath}"
-            subpath = None
-
-    cleaned = _clean_identity_qualifiers(purl.qualifiers, purl.type)  # type:ignore[arg-type]
-    return purl._replace(
-        name=name,
-        version=version,
-        qualifiers=cleaned,
-        subpath=None,
-    ).to_string()
+    return purl
 
 
-def get_merged_components(
-    items_a: Iterable[T],
-    items_b: Iterable[T],
-    by_key: Callable[[T], Any],
-) -> list[T]:
-    """
-    Merge two collections of items based on a key function.
-    """
-    return _dedupe(itertools.chain(items_a, items_b), by_key)
-
-
-def _dedupe(items: Iterable[T], by_key: Callable[[T], Any]) -> list[T]:
-    """
-    Removes duplicates from a collection of items based on a key function.
-    """
-    item_by_key: dict[Any, T] = {}
-    for item in items:
-        item_by_key.setdefault(by_key(item), item)
-    return list(item_by_key.values())
-
-
-class SBOMMerger(ABC):  # pylint: disable=too-few-public-methods
+class SBOMMerger(ABC, Generic[T]):  # pylint: disable=too-few-public-methods
     """Base class for merging SBOMs."""
 
     @abstractmethod
     def merge(
         self,
-        sbom_a: dict[str, Any],
-        sbom_b: dict[str, Any],
-    ) -> dict[str, Any]:  # pragma: no cover
+        syft_sboms: list[T],
+        hermeto_sbom: T | None = None,
+    ) -> T:  # pragma: no cover
         """
         Merge two SBOMs.
         This method should be implemented by subclasses.
         Args:
-            sbom_a: The first SBOM to merge
-            sbom_b: The second SBOM to merge
+            hermeto_sbom: The Hermeto SBOM if available
+            syft_sboms: The Syft SBOMs to be merged
         Returns:
-            dict[str, Any]: The merged SBOM
+            The merged SBOM
         """
         raise NotImplementedError("Merge method logic is implemented in subclasses.")
 
 
-class CycloneDXMerger(SBOMMerger):  # pylint: disable=too-few-public-methods
+class CycloneDXMerger(SBOMMerger[CycloneDX1BomWrapper]):  # pylint: disable=too-few-public-methods
     """
     Merger class for CycloneDX SBOMs.
     """
 
-    def __init__(
-        self,
-        merge_components_func: Callable[
-            [Sequence[CDXComponent], Sequence[CDXComponent]], list[dict[str, Any]]
-        ],
-    ) -> None:
-        self.merge_components_func = merge_components_func
+    def __init__(self) -> None:
+        self.mapping_index = MergeIndex[Component]()
 
-    def merge(self, sbom_a: dict[str, Any], sbom_b: dict[str, Any]) -> dict[str, Any]:
+    def merge(
+        self,
+        syft_sboms: list[CycloneDX1BomWrapper],
+        hermeto_sbom: CycloneDX1BomWrapper | None = None,
+    ) -> CycloneDX1BomWrapper:
         """
         Merge two CycloneDX SBOMs.
 
         Args:
-            sbom_a: The first SBOM to merge
-            sbom_b: The second SBOM to merge
+            hermeto_sbom: Hermeto SBOM if available
+            syft_sboms: The Syft SBOMs to be merged
 
         Returns:
-            dict[str, Any]: The merged SBOM
+            The merged SBOM
         """
-        components_a = wrap_as_cdx(sbom_a.get("components", []))
-        components_b = wrap_as_cdx(sbom_b.get("components", []))
-        merged = self.merge_components_func(components_a, components_b)
+        assert syft_sboms, "Cannot merge SBOMs, none were provided."
 
-        sbom_a["components"] = merged
-        self._merge_tools_metadata(sbom_a, sbom_b)
-
-        return sbom_a
-
-    def _merge_tools_metadata(
-        self, sbom_a: dict[Any, Any], sbom_b: dict[Any, Any]
-    ) -> None:
-        """Merge the .metadata.tools of the right SBOM into the left SBOM.
-
-        Handle both the 1.4 style and the 1.5 style of .metadata.tools.
-        If the SBOMs don't use the same style, conform to the left SBOM.
-
-        https://cyclonedx.org/docs/1.4/json/#metadata_tools
-        vs.
-        https://cyclonedx.org/docs/1.5/json/#metadata_tools
-        """
-        shared_keys = ["name", "version", "hashes", "externalReferences"]
-
-        def tool_to_component(tool: dict[str, Any]) -> dict[str, Any]:
-            component = {key: tool[key] for key in shared_keys if key in tool}
-            if vendor := tool.get("vendor"):
-                component["author"] = vendor
-            component["type"] = "application"
-            return component
-
-        def component_to_tool(component: dict[str, Any]) -> dict[str, Any]:
-            tool = {key: component[key] for key in shared_keys if key in component}
-            if author := component.get("author"):
-                tool["vendor"] = author
-            return tool
-
-        tools_a = sbom_a["metadata"]["tools"]
-        tools_b = sbom_b["metadata"]["tools"]
-
-        if isinstance(tools_a, dict):
-            components_a = tools_a["components"]
-            if isinstance(tools_b, dict):
-                components_b = tools_b["components"]
-            else:
-                components_b = map(tool_to_component, tools_b)
-
-            merged_components = merge_by_apparent_sameness(
-                wrap_as_cdx(components_a), wrap_as_cdx(components_b)
+        if hermeto_sbom is not None:
+            self.mapping_index.add_sbom(
+                wrap_as_cdx(hermeto_sbom.sbom.components, SBOMSource.HERMETO)
             )
-            sbom_a["metadata"]["tools"]["components"] = merged_components
-        elif isinstance(tools_a, list):
-            if isinstance(tools_b, dict):
-                tools_b = map(component_to_tool, tools_b["components"])
-
-            sbom_a["metadata"]["tools"] = get_merged_components(
-                tools_a, tools_b, lambda t: (t["name"], t.get("version"))
-            )
-        else:
-            raise RuntimeError(
-                "The .metadata.tools JSON key is in an unexpected format. "
-                f"Expected dict or list, got {type(tools_a)}."
+        for syft_sbom in syft_sboms:
+            self.mapping_index.add_sbom(
+                wrap_as_cdx(syft_sbom.sbom.components, SBOMSource.SYFT)
             )
 
+        result = deepcopy(syft_sboms[0])
+        result.sbom.components = [
+            item.unwrap() for item in self.mapping_index.get_items()
+        ]
 
-class SPDXMerger(SBOMMerger):  # pylint: disable=too-few-public-methods
-    """Merger class for SPDX SBOMs."""
+        available_sboms = list(syft_sboms)
+        if hermeto_sbom is not None:
+            available_sboms.append(hermeto_sbom)
+        result.sbom.metadata.tools.tools = self._merge_tools_metadata(available_sboms)
+        result.sbom.dependencies = self._merge_dependencies(available_sboms)
+
+        return result
+
+    def _merge_tools_metadata(self, sboms: list[CycloneDX1BomWrapper]) -> list[Tool]:
+        """Merge the .metadata.tools of the right SBOM into the left SBOM."""
+        unique_tools: set[Tool] = set()
+        for sbom in sboms:
+            for tool in sbom.sbom.metadata.tools.tools:
+                if tool not in unique_tools:
+                    unique_tools.add(copy(tool))
+        return list(unique_tools)
+
+    def _merge_dependencies(
+        self, sboms: list[CycloneDX1BomWrapper]
+    ) -> list[Dependency]:
+        """Remap dependency refs via id_mapping and merge edges for the same ref."""
+        deps_by_ref: dict[str, set[str]] = {}
+        for sbom in sboms:
+            for dependency_mapping in sbom.sbom.dependencies:
+                new_ref = self.mapping_index.id_mapping.get(
+                    dependency_mapping.ref.value
+                )
+                if new_ref is None:
+                    continue
+                child_refs = deps_by_ref.setdefault(new_ref, set())
+                for dep in dependency_mapping.dependencies:
+                    mapped_child = self.mapping_index.id_mapping.get(dep.ref.value)
+                    if mapped_child is not None:
+                        child_refs.add(mapped_child)
+        return [
+            Dependency(
+                BomRef(ref),
+                [Dependency(BomRef(child)) for child in sorted(children)],
+            )
+            for ref, children in deps_by_ref.items()
+        ]
+
+
+class SPDXMerger(SBOMMerger[Document]):  # pylint: disable=too-few-public-methods
+    """
+    Merger class for SPDX SBOMs.
+    Attributes:
+        mapping_index: Index for mapping the merged SBOMs.
+    """
 
     def __init__(
         self,
-        merge_components_func: Callable[
-            [Sequence[SPDXPackage], Sequence[SPDXPackage]], list[dict[str, Any]]
-        ],
-    ):
-        self.merge_components_func = merge_components_func
+    ) -> None:
+        self.mapping_index = MergeIndex[Package]()
 
-    def merge(self, sbom_a: dict[str, Any], sbom_b: dict[str, Any]) -> dict[str, Any]:
+    def _resolve_relationship_id(
+        self,
+        spdx_id: str,
+        base_doc_id: str,
+        other_doc_ids: set[str],
+    ) -> str | None:
+        """
+        Map an SPDX element id into the merged document's id space.
+
+        In case of document refs, keeps base  doc id, but remaps other
+        doc id to it.
+        """
+        if spdx_id == base_doc_id or spdx_id in other_doc_ids:
+            return base_doc_id
+        return self.mapping_index.id_mapping.get(spdx_id)
+
+    def _merge_relationships(self, sboms: list[Document]) -> list[Relationship]:
+        """Merge relationships from all SBOMs, dropping file/unknown refs."""
+        base_doc_id = sboms[0].creation_info.spdx_id
+        other_doc_ids = {sbom.creation_info.spdx_id for sbom in sboms[1:]}
+        merged: list[Relationship] = []
+        for sbom in sboms:
+            for relationship in sbom.relationships:
+                related_id = relationship.related_spdx_element_id
+                if not isinstance(related_id, str):
+                    continue
+                element = self._resolve_relationship_id(
+                    relationship.spdx_element_id, base_doc_id, other_doc_ids
+                )
+                related = self._resolve_relationship_id(
+                    related_id, base_doc_id, other_doc_ids
+                )
+                if element and related:
+                    merged.append(
+                        Relationship(
+                            spdx_element_id=element,
+                            relationship_type=relationship.relationship_type,
+                            related_spdx_element_id=related,
+                            comment=relationship.comment
+                            or None,  # Remove empty comments
+                        )
+                    )
+        return deduplicate_relationships(merged)
+
+    def _merge_annotations(self, sboms: list[Document]) -> list[Annotation]:
+        resulting_annotations = []
+        for sbom in sboms:
+            for annotation in sbom.annotations:
+                if new_id := self.mapping_index.id_mapping.get(annotation.spdx_id):
+                    copied_annotation = copy(annotation)
+                    copied_annotation.spdx_id = new_id
+                    resulting_annotations.append(copied_annotation)
+        return resulting_annotations
+
+    def _merge_creators(self, sboms: list[Document]) -> list[Actor]:
+        assert sboms, "No SBOMs provided!"
+        result = []
+        visited_actors_serialized = set()
+        for sbom in sboms:
+            for actor in sbom.creation_info.creators:
+                if (serialized_actor := str(actor)) not in visited_actors_serialized:
+                    visited_actors_serialized.add(serialized_actor)
+                    result.append(actor)
+        return result
+
+    def merge(
+        self,
+        syft_sboms: list[Document],
+        hermeto_sbom: Document | None = None,
+    ) -> Document:
         """
         Merge two SPDX SBOMs.
 
         Args:
-            sbom_a: The first SBOM to merge
-            sbom_b: The second SBOM to merge
+            syft_sboms: The Syft SBOMs to be merged
+            hermeto_sbom: Hermeto SBOM if available
 
         Returns:
-            dict[str, Any]: The merged SBOM
+            The merged SBOM document
         """
-        packages_a = wrap_as_spdx(sbom_a.get("packages", []))
-        packages_b = wrap_as_spdx(sbom_b.get("packages", []))
+        if hermeto_sbom is not None:
+            self.mapping_index.add_sbom(
+                wrap_as_spdx(hermeto_sbom.packages, SBOMSource.HERMETO)
+            )
+        for syft_sbom in syft_sboms:
+            self.mapping_index.add_sbom(
+                wrap_as_spdx(syft_sbom.packages, SBOMSource.SYFT)
+            )
 
-        merged_packages = self.merge_components_func(packages_a, packages_b)
-        merged_packages_ids = {p["SPDXID"] for p in merged_packages}
+        result = deepcopy(syft_sboms[0])
+        meta_sboms = list(syft_sboms)
+        if hermeto_sbom is not None:
+            meta_sboms.append(hermeto_sbom)
 
-        def replace_spdxid(spdxid: str) -> str | None:
-            if spdxid == sbom_b["SPDXID"]:
-                # The merged document can only have one SPDXID, keep the left one
-                return sbom_a["SPDXID"]  # type: ignore
-            if spdxid == sbom_a["SPDXID"] or spdxid in merged_packages_ids:
-                # Unchanged
-                return spdxid
-            # Drop
-            return None
+        result.relationships = self._merge_relationships(meta_sboms)
+        result.creation_info.creators = self._merge_creators(meta_sboms)
+        result.packages = [item.unwrap() for item in self.mapping_index.get_items()]
+        result.annotations = self._merge_annotations(meta_sboms)
 
-        merged_relationships = self._merge_relationships(
-            sbom_a.get("relationships", []),
-            sbom_b.get("relationships", []),
-            replace_spdxid=replace_spdxid,
-        )
-        merged_creation_info = self._merge_creation_info(
-            sbom_a["creationInfo"],
-            sbom_b["creationInfo"],
-        )
-
-        merged_sbom = sbom_a | {
-            "packages": merged_packages,
-            "relationships": merged_relationships,
-            "creationInfo": merged_creation_info,
-        }
         # we have no handling for .files
         # we don't really care about them, so drop them altogether
-        merged_sbom.pop("files", None)
+        result.files = []
 
-        return merged_sbom
-
-    def _merge_creation_info(
-        self, creation_info_a: dict[str, Any], creation_info_b: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Merge SPDX creation info."""
-
-        def identity(creator: str) -> str:
-            return creator
-
-        creators = get_merged_components(
-            creation_info_a["creators"], creation_info_b["creators"], by_key=identity
-        )
-        return creation_info_a | {"creators": creators}
-
-    def _merge_relationships(
-        self,
-        relationships_a: list[dict[str, Any]],
-        relationships_b: list[dict[str, Any]],
-        replace_spdxid: Callable[[str], str | None],
-    ) -> list[dict[str, Any]]:
-        """Merge two lists of SPDX relationships."""
-        merged_relationships = []
-
-        for relationship in itertools.chain(relationships_a, relationships_b):
-            element = replace_spdxid(relationship["spdxElementId"])
-            related_element = replace_spdxid(relationship["relatedSpdxElement"])
-
-            if element and related_element:
-                merged_relationships.append(
-                    relationship
-                    | {"spdxElementId": element, "relatedSpdxElement": related_element}
-                )
-
-        return _dedupe(
-            merged_relationships,
-            lambda r: (
-                r["spdxElementId"],
-                r["relationshipType"],
-                r["relatedSpdxElement"],
-            ),
-        )
-
-
-def _create_merger(
-    sbom_a: dict[str, Any],
-    sbom_b: dict[str, Any],
-    merge_components_func: Callable[
-        [Sequence[SBOMItem], Sequence[SBOMItem]], list[dict[str, Any]]
-    ],
-) -> SBOMMerger:
-    """
-    Creates a merger for the given SBOMs.
-    """
-    sbom_type = _detect_sbom_type(sbom_a)
-    sbom_type2 = _detect_sbom_type(sbom_b)
-
-    if sbom_type != sbom_type2:
-        raise ValueError(f"Mismatched SBOM formats: {sbom_type} X {sbom_type2}")
-
-    if sbom_type == "cyclonedx":
-        return CycloneDXMerger(merge_components_func)
-
-    return SPDXMerger(merge_components_func)
+        return result
 
 
 def _detect_sbom_type(sbom: dict[str, Any]) -> Literal["cyclonedx", "spdx"]:
@@ -663,46 +646,10 @@ def _detect_sbom_type(sbom: dict[str, Any]) -> Literal["cyclonedx", "spdx"]:
     raise ValueError("Unknown SBOM format")
 
 
-def _merge_sboms(
-    sbom_a: dict[str, Any],
-    sbom_b: dict[str, Any],
-    merge_components_func: Callable[
-        [Sequence[SBOMItem], Sequence[SBOMItem]], list[dict[str, Any]]
-    ],
-) -> dict[str, Any]:
-    """
-    Merge two SBOMs using the specified component merging method.
-    """
-    merger = _create_merger(sbom_a, sbom_b, merge_components_func)
-    return merger.merge(sbom_a, sbom_b)
-
-
-def merge_syft_and_hermeto_sboms(
-    syft_sboms: list[dict[str, Any]], hermeto_sbom: dict[str, Any]
-) -> dict[str, Any]:
-    """
-    Merge multiple Syft and 1 hermeto SBOMs.
-    """
-    syft_sbom = merge_multiple_syft_sboms(syft_sboms)
-
-    return _merge_sboms(syft_sbom, hermeto_sbom, merge_by_prefering_hermeto)
-
-
-def merge_multiple_syft_sboms(syft_sboms: list[dict[str, Any]]) -> dict[str, Any]:
-    """
-    Merge multiple Syft SBOMs.
-    """
-    merge = functools.partial(
-        _merge_sboms,
-        merge_components_func=merge_by_apparent_sameness,
-    )
-    merged_sbom: dict[str, Any] = functools.reduce(merge, syft_sboms)
-    return merged_sbom
-
-
 def merge_sboms(
-    syft_sboms: list[dict[str, Any]], hermeto_sbom: dict[str, Any] | None = None
-) -> dict[str, Any]:
+    syft_sboms: list[dict[str, Any]],
+    hermeto_sbom: dict[str, Any] | None = None,
+) -> Document | CycloneDX1BomWrapper:
     """
     Merge multiple SBOMs.
 
@@ -729,5 +676,24 @@ def merge_sboms(
             raise ValueError(
                 "At least two Syft SBOMs are required when no Hermeto SBOM is provided"
             )
-        return merge_multiple_syft_sboms(syft_sboms)
-    return merge_syft_and_hermeto_sboms(syft_sboms, hermeto_sbom)
+    loaded_syft_sboms = [
+        load_dict_to_sbom(sbom, append_mobster=True) for sbom in syft_sboms
+    ]
+    loaded_hermeto_sbom = load_dict_to_sbom(hermeto_sbom) if hermeto_sbom else None
+    merger: SPDXMerger | CycloneDXMerger
+    if all(isinstance(syft_sbom, Document) for syft_sbom in loaded_syft_sboms) and (
+        isinstance(loaded_hermeto_sbom, Document) or loaded_hermeto_sbom is None
+    ):
+        merger = SPDXMerger()
+    elif all(
+        isinstance(syft_sbom, CycloneDX1BomWrapper) for syft_sbom in loaded_syft_sboms
+    ) and (
+        isinstance(loaded_hermeto_sbom, CycloneDX1BomWrapper)
+        or loaded_hermeto_sbom is None
+    ):
+        merger = CycloneDXMerger()
+    else:
+        raise ValueError(
+            "All input SBOMs must use the same SBOM format (SPDX 2.x or CycloneDX 1.4+)"
+        )
+    return merger.merge(loaded_syft_sboms, loaded_hermeto_sbom)  # type: ignore[arg-type]

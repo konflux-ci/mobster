@@ -5,7 +5,8 @@ import json
 from base64 import b64decode
 from typing import Literal
 
-from mobster.oci.artifact import SBOM, SBOMFormat, get_payload_from_attestation_bytes
+from mobster.oci.artifact import SBOM, get_payload_from_attestation_bytes
+from mobster.sbom.load import SBOMFormat
 
 
 def get_sbom_from_attestation_bytes(

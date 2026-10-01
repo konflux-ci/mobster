@@ -1,0 +1,56 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "spdxVersion": "SPDX-2.3",
+  "name": "hermeto-example",
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://example.com/hermeto-remap",
+  "creationInfo": {
+    "created": "2024-01-01T00:00:00Z",
+    "creators": ["Tool: hermeto"]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-hermeto-foo",
+      "name": "foo",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/foo@1.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-sqlparse-rpm-found-by-hermeto",
+      "name": "sqlparse",
+      "versionInfo": "0.0.1",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:rpm/redhat/python3-sqlparse@0.0.1"
+        },
+        {
+            "referenceCategory": "SECURITY",
+            "referenceLocator": "cpe:2.3:a:redhat:sqlparse:0.0.1:*:*:*:*:*:*:*",
+            "referenceType": "cpe23Type"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-hermeto-foo"
+    },
+    {
+      "spdxElementId": "SPDXRef-hermeto-foo",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-sqlparse-rpm-found-by-hermeto"
+    }
+  ]
+}
