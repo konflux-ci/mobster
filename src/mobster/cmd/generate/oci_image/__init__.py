@@ -191,7 +191,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 await self._load_and_filter_hermeto_sbom(), append_mobster=True
             )
 
-        return load_dict_to_sbom(await syft.scan_image(pullspec))
+        return load_dict_to_sbom(await syft.scan_image(pullspec), append_mobster=True)
 
     @staticmethod
     async def execute_parent_contextualization(

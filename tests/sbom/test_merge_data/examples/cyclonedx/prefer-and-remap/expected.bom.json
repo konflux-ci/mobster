@@ -2,6 +2,23 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
   "version": 1,
+  "metadata": {
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "syft",
+          "author": "anchore",
+          "version": "1.4.1"
+        },
+        {
+          "type": "application",
+          "name": "hermeto",
+          "author": "red hat"
+        }
+      ]
+    }
+  },
   "components": [
     {
       "bom-ref": "hermeto-foo",

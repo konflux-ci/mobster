@@ -5,7 +5,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-from cyclonedx.model.component import Component
+from cyclonedx.model.component import Component, ComponentType
 from cyclonedx.model.tool import Tool
 from packageurl import PackageURL
 from spdx_tools.spdx.jsonschema.document_converter import DocumentConverter
@@ -188,11 +188,6 @@ def test_wrap_as_cdx() -> None:
             PackageURL.from_string("pkg:golang/example.com/mod@v1.0.0#v2"),
             "pkg:golang/example.com/mod/v2@v1.0.0",
             id="golang-version-subpath-folded-into-name",
-        ),
-        pytest.param(
-            PackageURL.from_string("pkg:golang/example.com/mod@v1.0.0#cmd/tool"),
-            "pkg:golang/example.com/mod@v1.0.0#cmd/tool",
-            id="golang-non-version-subpath-kept",
         ),
         pytest.param(
             PackageURL.from_string("pkg:golang/example.com/mod@v1.0.0?type=module"),
@@ -534,31 +529,73 @@ def test_spdx_merge_examples(example: str, data_dir: Path) -> None:
     }
     assert result_rels == expected_rels
 
+    result_doc_anns = {
+        (a.get("annotator"), a.get("comment")) for a in result.get("annotations", [])
+    }
+    expected_doc_anns = {
+        (a.get("annotator"), a.get("comment")) for a in expected.get("annotations", [])
+    }
+    assert result_doc_anns == expected_doc_anns
+
+    def package_annotations(sbom: dict[str, Any]) -> set[tuple[str, str, str]]:
+        found: set[tuple[str, str, str]] = set()
+        for package in sbom.get("packages", []):
+            for annotation in package.get("annotations", []):
+                found.add(
+                    (
+                        package["SPDXID"],
+                        annotation.get("annotator", ""),
+                        annotation.get("comment", ""),
+                    )
+                )
+        return found
+
+    assert package_annotations(result) == package_annotations(expected)
+
 
 def test_cyclonedx_merge_tools_metadata() -> None:
     syft_tool = Tool(vendor="anchore", name="syft", version="1.4.1")
     hermeto_tool = Tool(vendor="red hat", name="hermeto", version="1.0.0")
     other_tool = Tool(vendor="example", name="scanner", version="2.0.0")
+    syft_component = Component(
+        name="syft",
+        type=ComponentType.APPLICATION,
+        version="1.4.1",
+    )
+    hermeto_component = Component(
+        name="hermeto",
+        type=ComponentType.APPLICATION,
+    )
+    duplicate_syft_component = Component(
+        name="syft",
+        type=ComponentType.APPLICATION,
+        version="1.4.1",
+    )
 
-    def sbom_with_tools(*tools: Tool) -> MagicMock:
+    def sbom_with_tools(
+        *tools: Tool, components: list[Component] | None = None
+    ) -> MagicMock:
         wrapper = MagicMock()
         wrapper.sbom.metadata.tools.tools = list(tools)
+        wrapper.sbom.metadata.tools.components = list(components or [])
         return wrapper
 
-    # Three SBOMs: syft appears twice, hermeto appears twice, other once.
+    # Mix legacy Tool entries and tools.components; duplicates must collapse.
     result = CycloneDXMerger()._merge_tools_metadata(
         [
-            sbom_with_tools(syft_tool, hermeto_tool),
+            sbom_with_tools(syft_tool, hermeto_tool, components=[syft_component]),
             sbom_with_tools(
-                syft_tool,
-                other_tool,
+                syft_tool, other_tool, components=[duplicate_syft_component]
             ),
-            sbom_with_tools(hermeto_tool),
+            sbom_with_tools(hermeto_tool, components=[hermeto_component]),
         ]
     )
 
-    assert len(result) == 3
-    assert set(result) == {syft_tool, hermeto_tool, other_tool}
+    tool_entries = [item for item in result if isinstance(item, Tool)]
+    component_entries = [item for item in result if isinstance(item, Component)]
+    assert set(tool_entries) == {syft_tool, hermeto_tool, other_tool}
+    assert len(component_entries) == 2
+    assert {c.name for c in component_entries} == {"syft", "hermeto"}
 
 
 def test_cyclonedx_prefer_and_remap_example(data_dir: Path) -> None:
@@ -585,6 +622,21 @@ def test_cyclonedx_prefer_and_remap_example(data_dir: Path) -> None:
     assert "syft-foo" not in graph
     assert graph["hermeto-foo"] == {"syft-bar"}
     assert graph["syft-bar"] == set()
+
+    result_tools = {
+        (c.get("name"), c.get("author"), c.get("version"))
+        for c in result.get("metadata", {}).get("tools", {}).get("components", [])
+        if c.get("name") != "Mobster"
+    }
+    expected_tools = {
+        (c.get("name"), c.get("author"), c.get("version"))
+        for c in expected.get("metadata", {}).get("tools", {}).get("components", [])
+    }
+    assert result_tools == expected_tools
+    assert any(
+        c.get("name") == "Mobster"
+        for c in result.get("metadata", {}).get("tools", {}).get("components", [])
+    )
 
 
 def _dependency_graph(

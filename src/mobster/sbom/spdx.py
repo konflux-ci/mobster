@@ -48,10 +48,10 @@ def get_namespace(sbom_name: str) -> str:
     Create a namespace for the SBOM using its name
     and a Konflux URL.
     Args:
-        sbom_name (str): Name of the SBOM
+        sbom_name: Name of the SBOM
 
     Returns:
-        str: The generated documentNamespace
+        The generated documentNamespace
     """
     return f"https://konflux-ci.dev/spdxdocs/{sbom_name}-{uuid4()}"
 
@@ -63,7 +63,7 @@ def get_creation_info(sbom_name: str) -> CreationInfo:
         sbom_name: The name for the SBOM document.
 
     Returns:
-        CreationInfo: A creation information object for the SPDX document.
+        A creation information object for the SPDX document.
     """
     return CreationInfo(
         spdx_version="SPDX-2.3",
@@ -92,7 +92,7 @@ def get_image_package(
             will be used if not provided.
 
     Returns:
-        Package: A package object representing the OCI image.
+        A package object representing the OCI image.
     """
     if not package_name:
         package_name = image.name if not image.arch else f"{image.name}_{image.arch}"
@@ -124,7 +124,7 @@ def get_package_from_artifact(artifact: Artifact) -> Package:
         artifact: A parsed artifact object.
 
     Returns:
-        Package: A package object representing the artifact.
+        A package object representing the artifact.
     """
     return get_package(
         spdx_id=artifact.propose_spdx_id(),
@@ -167,7 +167,7 @@ def get_package(
             SpdxNoAssertion is used.
 
     Returns:
-        Package: An SPDX package object.
+        An SPDX package object.
     """
     if download_location is None:
         download_location = SpdxNoAssertion()
@@ -252,7 +252,7 @@ def normalize_actor(actor: str) -> str:
     validation issues.
     Defaults to `TOOL`.
     Args:
-        actor (str): The input actor.
+        actor: The input actor.
     Returns:
         str: The normalized actor.
     """
@@ -273,7 +273,7 @@ def normalize_red_hat_creator(creators: list[str]) -> list[str]:
         creators: The list of SPDX creator strings to normalize.
 
     Returns:
-        list[str]: Updated creators list with the canonical Red Hat entry.
+        Updated creators list with the canonical Red Hat entry.
     """
     red_hat_org = get_red_hat_org_string()
     result = [c for c in creators if c.lower() != red_hat_org.lower()]
@@ -286,10 +286,10 @@ def normalize_package(package: dict[str, Any]) -> None:
     Adds necessary fields to an SPDX Package to be loaded by the
     SPDX library without validation issues.
     Args:
-        package (dict[str, Any]): The package to be normalized.
+        package: The package to be normalized.
 
     Returns:
-        None: Nothing, changes are performed in-place.
+        Nothing, changes are performed in-place.
     """
     if "downloadLocation" not in package:
         package["downloadLocation"] = "NOASSERTION"
@@ -308,7 +308,7 @@ def get_normalized_purl(purl: str) -> str:
         purl: purl string to normalize
 
     Returns
-        str: the normalized purl string
+        the normalized purl string
     """
 
     purl_obj = PackageURL.from_string(purl)
