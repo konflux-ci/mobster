@@ -379,6 +379,37 @@ def test_merge_index_drops_duplicate_by_key() -> None:
     assert index.id_mapping[hermeto.id()] == hermeto.id()
 
 
+def test_merge_index_not_double_encoded() -> None:
+    """Regression for #512: +incompatible must encode once so Syft matches Hermeto."""
+    purl = "pkg:golang/github.com/golang-jwt/jwt@v3.2.2+incompatible"
+    hermeto = make_cdx_component(
+        "github.com/golang-jwt/jwt",
+        "v3.2.2+incompatible",
+        f"{purl}?type=module",
+        bom_ref="hermeto-jwt",
+        source=SBOMSource.HERMETO,
+    )
+    syft = make_cdx_component(
+        "github.com/golang-jwt/jwt",
+        "v3.2.2+incompatible",
+        f"{purl}?package-id=a1c2c43e1b014a94",
+        bom_ref="syft-jwt",
+        source=SBOMSource.SYFT,
+    )
+
+    key = hermeto.normalized_purl()
+    assert key is not None
+    assert key == syft.normalized_purl()
+    assert "%252B" not in key
+    assert "%2B" in key
+
+    index = MergeIndex[Component]()
+    assert index.add(hermeto) is True
+    assert index.add(syft) is False
+    assert [item.id() for item in index.get_items()] == [hermeto.id()]
+    assert index.id_mapping[syft.id()] == hermeto.id()
+
+
 def test_merge_index_drops_syft_duplicate_of_hermeto_non_registry() -> None:
     index = MergeIndex[Package]()
     hermeto = make_spdx_package(
