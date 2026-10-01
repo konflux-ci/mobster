@@ -11,9 +11,9 @@ from packageurl import PackageURL
 from mobster import get_mobster_version
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
-from mobster.oci.artifact import SBOMFormat
 from mobster.release import ReleaseId, ReleaseRepository
 from mobster.sbom import cyclonedx
+from mobster.sbom.load import SBOMFormat
 from mobster.sbom.spdx import get_mobster_tool_string
 
 logger = logging.getLogger(__name__)

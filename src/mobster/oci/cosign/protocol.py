@@ -4,7 +4,8 @@ import typing
 from pathlib import Path
 
 from mobster.image import Image
-from mobster.oci.artifact import SBOM, SBOMFormat, SLSAProvenance
+from mobster.oci.artifact import SBOM, SLSAProvenance
+from mobster.sbom.load import SBOMFormat
 
 
 @typing.runtime_checkable

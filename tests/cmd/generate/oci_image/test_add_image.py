@@ -6,12 +6,12 @@ import pytest
 from cyclonedx.model.bom import Bom
 from spdx_tools.spdx.model.document import CreationInfo, Document
 
-from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.generate.oci_image.add_image import (
     extend_sbom_with_image_reference,
     update_component_in_cyclonedx_sbom,
 )
 from mobster.image import Image
+from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
 from tests.conftest import assert_cdx_sbom
 
 
