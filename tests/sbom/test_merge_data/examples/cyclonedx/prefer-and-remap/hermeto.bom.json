@@ -1,0 +1,31 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "hermeto",
+          "author": "red hat"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "hermeto-foo",
+      "name": "foo",
+      "version": "1.0.0",
+      "purl": "pkg:pypi/foo@1.0.0"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "hermeto-foo",
+      "dependsOn": []
+    }
+  ]
+}

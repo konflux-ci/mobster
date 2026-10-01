@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 
-from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.enrich import EnrichCommand
+from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
 
 
 @pytest.fixture

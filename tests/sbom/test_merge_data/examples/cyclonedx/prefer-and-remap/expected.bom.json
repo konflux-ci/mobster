@@ -1,0 +1,48 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "syft",
+          "author": "anchore",
+          "version": "1.4.1"
+        },
+        {
+          "type": "application",
+          "name": "hermeto",
+          "author": "red hat"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "hermeto-foo",
+      "type": "library",
+      "name": "foo",
+      "version": "1.0.0",
+      "purl": "pkg:pypi/foo@1.0.0"
+    },
+    {
+      "bom-ref": "syft-bar",
+      "type": "library",
+      "name": "bar",
+      "version": "2.0.0",
+      "purl": "pkg:pypi/bar@2.0.0"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "hermeto-foo",
+      "dependsOn": ["syft-bar"]
+    },
+    {
+      "ref": "syft-bar",
+      "dependsOn": []
+    }
+  ]
+}

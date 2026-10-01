@@ -1,0 +1,51 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "spdxVersion": "SPDX-2.3",
+  "name": "hermeto-prefer-match",
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://example.com/hermeto-prefer-match",
+  "creationInfo": {
+    "created": "2024-01-01T00:00:00Z",
+    "creators": ["Tool: hermeto"]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-hermeto-bar",
+      "name": "bar",
+      "versionInfo": "2.0.0",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/bar@2.0.0?vcs_url=https://github.com/example/bar"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-hermeto-local",
+      "name": "workspace-pkg",
+      "versionInfo": "3.0.0",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/workspace-pkg@3.0.0#foo/eggs"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-hermeto-bar"
+    },
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-hermeto-local"
+    }
+  ]
+}

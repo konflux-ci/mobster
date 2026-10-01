@@ -16,7 +16,7 @@ from mobster.cmd.base import Command
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
 from mobster.oci import cosign
-from mobster.oci.artifact import SBOM, SBOMFormat
+from mobster.oci.artifact import SBOM
 from mobster.release import (
     Component,
     ReleaseId,
@@ -24,6 +24,7 @@ from mobster.release import (
     Snapshot,
     make_snapshot,
 )
+from mobster.sbom.load import SBOMFormat
 
 LOGGER = logging.getLogger(__name__)
 

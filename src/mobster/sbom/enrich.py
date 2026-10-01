@@ -9,8 +9,6 @@ from typing import Any
 from cyclonedx.model.component import Component
 from packageurl import PackageURL
 
-from mobster import utils
-from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.enrich.merge_utils import (
     _merge_dicts,
     _merge_union,
@@ -18,6 +16,8 @@ from mobster.cmd.enrich.merge_utils import (
     _prefer_a,
 )
 from mobster.sbom.cyclonedx import is_cyclonedx
+from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.sbom.load import load_file_to_dict
 
 logger = logging.getLogger(__name__)
 
@@ -373,8 +373,8 @@ async def enrich_sbom(target_sbom: Path, incoming_sbom: Path) -> CycloneDX1BomWr
         raise ValueError("""A target SBOM path and an incoming
                          SBOM is required to enrich an SBOM.""")
 
-    target_sbom_loaded = await utils.load_sbom_from_json(target_sbom)
-    incoming_sbom_loaded = await utils.load_sbom_from_json(incoming_sbom)
+    target_sbom_loaded = load_file_to_dict(target_sbom)
+    incoming_sbom_loaded = load_file_to_dict(incoming_sbom)
     # we only need the type of the target SBOM to create the enricher
     enricher = _create_enricher(target_sbom_loaded)
 

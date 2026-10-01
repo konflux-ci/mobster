@@ -1,0 +1,33 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "spdxVersion": "SPDX-2.3",
+  "name": "hermeto-golang",
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://example.com/hermeto-golang",
+  "creationInfo": {
+    "created": "2024-01-01T00:00:00Z",
+    "creators": ["Tool: hermeto"]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-hermeto-mod",
+      "name": "mod",
+      "versionInfo": "v1.0.0",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:golang/example.com/mod/v2@v1.0.0"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-hermeto-mod"
+    }
+  ]
+}

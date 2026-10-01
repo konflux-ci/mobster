@@ -1,56 +1,40 @@
 # ruff: noqa: E501
 import json
-from collections import Counter
-from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock
 
 import pytest
+from cyclonedx.model.component import Component, ComponentType
+from cyclonedx.model.tool import Tool
 from packageurl import PackageURL
+from spdx_tools.spdx.jsonschema.document_converter import DocumentConverter
+from spdx_tools.spdx.model.document import Document
+from spdx_tools.spdx.model.package import (
+    ExternalPackageRef,
+    ExternalPackageRefCategory,
+    Package,
+)
+from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
+from spdx_tools.spdx.writer.write_utils import convert
 
+from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.sbom.load import load_file_to_dict
 from mobster.sbom.merge import (
     CDXComponent,
     CycloneDXMerger,
+    MergeIndex,
     SBOMItem,
-    SPDXMerger,
+    SBOMSource,
     SPDXPackage,
-    _create_merger,
     _detect_sbom_type,
-    _get_syft_component_filter,
     _subpath_is_version,
     fallback_key,
-    merge_by_apparent_sameness,
-    merge_by_prefering_hermeto,
     merge_sboms,
     try_parse_purl,
     wrap_as_cdx,
     wrap_as_spdx,
 )
-from mobster.utils import load_sbom_from_json
-
-TOOLS_METADATA = {
-    "syft-cyclonedx-1.4": {
-        "name": "syft",
-        "vendor": "anchore",
-        "version": "0.47.0",
-    },
-    "syft-cyclonedx-1.5": {
-        "type": "application",
-        "author": "anchore",
-        "name": "syft",
-        "version": "0.100.0",
-    },
-    "hermeto-cyclonedx-1.4": {
-        "name": "hermeto",
-        "vendor": "red hat",
-    },
-    "hermeto-cyclonedx-1.5": {
-        "type": "application",
-        "author": "red hat",
-        "name": "hermeto",
-    },
-}
 
 INDIVIDUAL_SYFT_SBOMS = [
     Path("syft-sboms/gomod-pandemonium.bom.json"),
@@ -66,198 +50,242 @@ def data_dir() -> Path:
     return Path(__file__).parent / "test_merge_data"
 
 
-def count_components(sbom: dict[str, Any]) -> Counter[str]:
-    def key(component: SBOMItem) -> str:
-        purl = component.purl()
-        if purl:
-            return purl.to_string()
-        return fallback_key(component)
-
-    components: Sequence[CDXComponent | SPDXPackage]
-
-    if _detect_sbom_type(sbom) == "cyclonedx":
-        components = wrap_as_cdx(sbom["components"])
-    else:
-        components = wrap_as_spdx(sbom["packages"])
-
-    return Counter(map(key, components))
+def sbom_to_dict(sbom: Document | CycloneDX1BomWrapper) -> dict[str, Any]:
+    """Serialize a merged SBOM object back to a JSON-compatible dict."""
+    if isinstance(sbom, Document):
+        return convert(sbom, DocumentConverter())  # type: ignore[no-untyped-call]
+    return sbom.to_dict()
 
 
-def count_relationships(spdx_sbom: dict[str, Any]) -> Counter[str]:
-    package_spdxids = {p["SPDXID"] for p in spdx_sbom["packages"]}
-
-    def relationship_key(r: dict[str, Any]) -> str | None:
-        element = r["spdxElementId"]
-        relationship = r["relationshipType"]
-        related_element = r["relatedSpdxElement"]
-
-        if related_element not in package_spdxids:
-            # The Syft SBOM also contains relationships referencing elements
-            # of the .files array, for which we have no handling. As well
-            # as relationships referencing non-existent SPDXIDs.
-            # Exclude those from the comparison, keep only those we care about.
-            return None
-
-        if relationship == "DESCRIBES":
-            return f"{element} {relationship} {related_element}"
-        else:
-            return f"{element} {relationship} *"
-
-    return Counter(filter(None, map(relationship_key, spdx_sbom["relationships"])))
+def make_cdx_component(
+    name: str,
+    version: str = "1.0.0",
+    purl: str | None = None,
+    bom_ref: str | None = None,
+    source: SBOMSource = SBOMSource.SYFT,
+) -> CDXComponent:
+    return CDXComponent(
+        source=source,
+        data=Component(
+            name=name,
+            version=version,
+            bom_ref=bom_ref or f"{name}-{version}",
+            purl=PackageURL.from_string(purl) if purl else None,
+        ),
+    )
 
 
-def diff_counts(a: Counter[str], b: Counter[str]) -> dict[str, int]:
-    a = a.copy()
-    a.subtract(b)
-    return {key: count for key, count in a.items() if count != 0}
+def make_spdx_package(
+    name: str,
+    version: str = "1.0.0",
+    purl: str | None = None,
+    source: SBOMSource = SBOMSource.SYFT,
+    spdx_id: str | None = None,
+) -> SPDXPackage:
+    external_refs = []
+    if purl:
+        external_refs.append(
+            ExternalPackageRef(
+                category=ExternalPackageRefCategory.PACKAGE_MANAGER,
+                reference_type="purl",
+                locator=purl,
+            )
+        )
+    return SPDXPackage(
+        source=source,
+        data=Package(
+            spdx_id=spdx_id or f"SPDXRef-{name}-{version}",
+            name=name,
+            version=version,
+            download_location=SpdxNoAssertion(),
+            external_references=external_refs,
+        ),
+    )
 
 
 def test_try_parse_purl() -> None:
-    # Test with a valid PURL
-    purl_str = "pkg:valid/package_name@1.1.1"
-    purl = try_parse_purl(purl_str)
+    purl = try_parse_purl("pkg:valid/package_name@1.1.1")
     assert isinstance(purl, PackageURL)
     assert purl.type == "valid"
     assert purl.name == "package_name"
     assert purl.version == "1.1.1"
 
-    # Test with an invalid PURL
-    invalid_purl_str = "invalid_purl"
-    purl = try_parse_purl(invalid_purl_str)
-    assert purl is None
+    assert try_parse_purl("invalid_purl") is None
+    assert try_parse_purl(None) is None
 
 
 def test_fallback_key() -> None:
-    cdx_component = CDXComponent(
-        {"bom-ref": "cdxID", "name": "cdx_package", "version": "1.0.0"}
-    )
-    spdx_component = SPDXPackage(
-        {"SPDXID": "spdxID", "name": "spdx_package", "versionInfo": "2.0.0"}
-    )
+    cdx = make_cdx_component("cdx_package", "1.0.0", bom_ref="cdxID")
+    spdx = make_spdx_package("spdx_package", "2.0.0")
+    assert fallback_key(cdx) == "cdx_package@1.0.0"
+    assert fallback_key(spdx) == "spdx_package@2.0.0"
 
-    assert fallback_key(cdx_component) == "cdx_package@1.0.0"
-    assert fallback_key(spdx_component) == "spdx_package@2.0.0"
-
-    # Test with a local package
-    cdx_local_package = CDXComponent(
-        {"bom-ref": "cdxID", "name": "./local_package", "version": "1.0.0"}
-    )
-    spdx_local_package = SPDXPackage(
-        {"SPDXID": "spdxID", "name": "./local_package", "versionInfo": "2.0.0"}
-    )
-
-    assert fallback_key(cdx_local_package) == "cdxID"
-    assert fallback_key(spdx_local_package) == "spdxID"
+    cdx_local = make_cdx_component("./local_package", "1.0.0", bom_ref="cdxID")
+    spdx_local = make_spdx_package("./local_package", "2.0.0")
+    assert fallback_key(cdx_local) == "cdxID"
+    assert fallback_key(spdx_local) == "SPDXRef-./local_package-2.0.0"
 
 
 def test_CDXComponent() -> None:
-    component_data = {
-        "bom-ref": "cdxID",
-        "name": "cdx_package",
-        "version": "1.0.0",
-        "purl": "pkg:valid/package_name@1.1.1",
-    }
-    cdx_component = CDXComponent(component_data)
-    assert cdx_component.id() == "cdxID"
-    assert cdx_component.name() == "cdx_package"
-    assert cdx_component.version() == "1.0.0"
-    assert cdx_component.purl() == PackageURL.from_string(
-        "pkg:valid/package_name@1.1.1"
+    component = make_cdx_component(
+        "cdx_package",
+        "1.0.0",
+        purl="pkg:valid/package_name@1.1.1",
+        bom_ref="cdxID",
     )
+    assert component.id() == "cdxID"
+    assert component.name() == "cdx_package"
+    assert component.version() == "1.0.0"
+    assert component.purl() == PackageURL.from_string("pkg:valid/package_name@1.1.1")
+    assert component.unwrap() is component.data
 
-    component_data_no_purl = {
-        "bom-ref": "cdxID",
-        "name": "cdx_package",
-        "version": "1.0.0",
-    }
-    cdx_component_no_purl = CDXComponent(component_data_no_purl)
-    assert cdx_component_no_purl.purl() is None
+    assert make_cdx_component("cdx_package", "1.0.0", bom_ref="cdxID").purl() is None
 
 
 def test_wrap_as_cdx() -> None:
-    data = [
-        {
-            "bom-ref": "cdxID",
-            "name": "cdx_package",
-            "version": "1.0.0",
-            "purl": "pkg:valid/package_name@1.1.1",
-        },
-        {
-            "bom-ref": "cdxID2",
-            "name": "cdx_package2",
-            "version": "2.0.0",
-            "purl": "pkg:valid/package_name2@2.0.0",
-        },
+    components = [
+        Component(
+            name="cdx_package",
+            version="1.0.0",
+            bom_ref="cdxID",
+            purl=PackageURL.from_string("pkg:valid/package_name@1.1.1"),
+        ),
+        Component(
+            name="cdx_package2",
+            version="2.0.0",
+            bom_ref="cdxID2",
+            purl=PackageURL.from_string("pkg:valid/package_name2@2.0.0"),
+        ),
     ]
-
-    wrapped_data = wrap_as_cdx(data)
-    assert len(wrapped_data) == 2
-
-    for item in wrapped_data:
-        assert isinstance(item, CDXComponent)
+    wrapped = wrap_as_cdx(components, SBOMSource.SYFT)
+    assert len(wrapped) == 2
+    assert all(isinstance(item, CDXComponent) for item in wrapped)
+    assert all(item.source is SBOMSource.SYFT for item in wrapped)
 
 
-def test_SPDXPackage() -> None:
-    package_data = {
-        "SPDXID": "spdxID",
-        "name": "spdx_package",
-        "versionInfo": "2.0.0",
-        "externalRefs": [
-            {
-                "referenceCategory": "PACKAGE-MANAGER",
-                "referenceLocator": "pkg:valid/package_name@1.1.1",
-                "referenceType": "purl",
-            }
-        ],
-    }
-    spdx_package = SPDXPackage(package_data)
-    assert spdx_package.id() == "spdxID"
-    assert spdx_package.name() == "spdx_package"
-    assert spdx_package.version() == "2.0.0"
-    assert spdx_package.purl() == PackageURL.from_string("pkg:valid/package_name@1.1.1")
+@pytest.mark.parametrize(
+    ["purl", "expected"],
+    [
+        pytest.param(None, None, id="no-purl"),
+        pytest.param(
+            PackageURL.from_string("pkg:pypi/FooBar@1.0.0"),
+            "pkg:pypi/foobar@1.0.0",
+            id="pypi-name-lowercased",
+        ),
+        pytest.param(
+            PackageURL.from_string(
+                "pkg:pypi/Foo@1.0.0?arch=noarch&vcs_url=http://example.com"
+            ),
+            "pkg:pypi/foo@1.0.0",
+            id="drop-noarch-and-non-identity-quals",
+        ),
+        pytest.param(
+            PackageURL.from_string("pkg:pypi/Foo@1.0.0?arch=x86_64"),
+            "pkg:pypi/foo@1.0.0?arch=x86_64",
+            id="keep-meaningful-arch",
+        ),
+        pytest.param(
+            PackageURL.from_string("pkg:golang/example.com/mod@v1.0.0#v2"),
+            "pkg:golang/example.com/mod/v2@v1.0.0",
+            id="golang-version-subpath-folded-into-name",
+        ),
+        pytest.param(
+            PackageURL.from_string("pkg:golang/example.com/mod@v1.0.0?type=module"),
+            "pkg:golang/example.com/mod@v1.0.0",
+            id="golang-drop-type-module",
+        ),
+        pytest.param(
+            PackageURL.from_string("pkg:golang/example.com/mod@v1.0.0?type=package"),
+            "pkg:golang/example.com/mod@v1.0.0?type=package",
+            id="golang-keep-type-package",
+        ),
+        pytest.param(
+            PackageURL.from_string(
+                "pkg:rpm/foo@1.0.0?arch=x86_64&os=linux&epoch=1&classifier=c"
+                "&type=t&extra=drop"
+            ),
+            "pkg:rpm/foo@1.0.0?arch=x86_64&classifier=c&epoch=1&os=linux&type=t",
+            id="keep-identity-quals-drop-others",
+        ),
+        pytest.param(
+            PackageURL.from_string("pkg:npm/foo@1.0.0"),
+            "pkg:npm/foo@1.0.0",
+            id="passthrough-other-ecosystem",
+        ),
+        pytest.param(
+            MagicMock(
+                type="pypi",
+                name="Foo",
+                namespace=None,
+                version="1.0.0",
+                subpath=None,
+                qualifiers="not-a-dict",
+            ),
+            None,
+            id="non-dict-qualifiers",
+        ),
+    ],
+)
+def test_sbom_item_normalized_purl(
+    purl: PackageURL | MagicMock | None, expected: str | None
+) -> None:
+    item = MagicMock()
+    item.purl.return_value = purl
+    assert SBOMItem.normalized_purl(item) == expected
 
-    package_data_multiple_refs = {
-        "SPDXID": "spdxID",
-        "name": "spdx_package",
-        "versionInfo": "2.0.0",
-        "externalRefs": [
-            {
-                "referenceCategory": "PACKAGE-MANAGER",
-                "referenceLocator": "pkg:valid/package_name@1.1.1",
-                "referenceType": "purl",
-            },
-            {
-                "referenceCategory": "PACKAGE-MANAGER",
-                "referenceLocator": "pkg:valid/package_name2@2.0.0",
-                "referenceType": "purl",
-            },
-        ],
-    }
+    package = make_spdx_package(
+        "spdx_package", "2.0.0", purl="pkg:valid/package_name@1.1.1"
+    )
+    assert package.id() == "SPDXRef-spdx_package-2.0.0"
+    assert package.name() == "spdx_package"
+    assert package.version() == "2.0.0"
+    assert package.purl() == PackageURL.from_string("pkg:valid/package_name@1.1.1")
+    assert package.unwrap() is package.data
 
-    spdx_package_multiple_refs = SPDXPackage(package_data_multiple_refs)
-    with pytest.raises(ValueError):
-        spdx_package_multiple_refs.purl()
+    multi_purl = SPDXPackage(
+        source=SBOMSource.SYFT,
+        data=Package(
+            spdx_id="SPDXRef-multi",
+            name="spdx_package",
+            version="2.0.0",
+            download_location=SpdxNoAssertion(),
+            external_references=[
+                ExternalPackageRef(
+                    category=ExternalPackageRefCategory.PACKAGE_MANAGER,
+                    reference_type="purl",
+                    locator="pkg:valid/package_name@1.1.1",
+                ),
+                ExternalPackageRef(
+                    category=ExternalPackageRefCategory.PACKAGE_MANAGER,
+                    reference_type="purl",
+                    locator="pkg:valid/package_name2@2.0.0",
+                ),
+            ],
+        ),
+    )
+    with pytest.raises(ValueError, match="multiple purls"):
+        multi_purl.purl()
 
 
 def test_wrap_as_spdx() -> None:
-    data = [
-        {
-            "SPDXID": "spdxID",
-            "name": "spdx_package",
-            "versionInfo": "2.0.0",
-        },
-        {
-            "SPDXID": "spdxID2",
-            "name": "spdx_package2",
-            "versionInfo": "3.0.0",
-        },
+    packages = [
+        Package(
+            spdx_id="SPDXRef-spdxID",
+            name="spdx_package",
+            version="2.0.0",
+            download_location=SpdxNoAssertion(),
+        ),
+        Package(
+            spdx_id="SPDXRef-spdxID2",
+            name="spdx_package2",
+            version="3.0.0",
+            download_location=SpdxNoAssertion(),
+        ),
     ]
-
-    wrapped_data = wrap_as_spdx(data)
-    assert len(wrapped_data) == 2
-
-    for item in wrapped_data:
-        assert isinstance(item, SPDXPackage)
+    wrapped = wrap_as_spdx(packages, SBOMSource.HERMETO)
+    assert len(wrapped) == 2
+    assert all(isinstance(item, SPDXPackage) for item in wrapped)
+    assert all(item.source is SBOMSource.HERMETO for item in wrapped)
 
 
 def test__subpath_is_version() -> None:
@@ -266,251 +294,26 @@ def test__subpath_is_version() -> None:
     assert _subpath_is_version("noversion") is False
 
 
-@pytest.mark.parametrize(
-    "syft_tools_metadata, hermeto_tools_metadata, expected_result",
-    [
-        (
-            [TOOLS_METADATA["syft-cyclonedx-1.4"]],
-            [TOOLS_METADATA["hermeto-cyclonedx-1.4"]],
-            [
-                TOOLS_METADATA["syft-cyclonedx-1.4"],
-                TOOLS_METADATA["hermeto-cyclonedx-1.4"],
-            ],
-        ),
-        (
-            [TOOLS_METADATA["syft-cyclonedx-1.4"]],
-            {
-                "components": [TOOLS_METADATA["hermeto-cyclonedx-1.5"]],
-            },
-            [
-                TOOLS_METADATA["syft-cyclonedx-1.4"],
-                TOOLS_METADATA["hermeto-cyclonedx-1.4"],
-            ],
-        ),
-        (
-            {
-                "components": [TOOLS_METADATA["syft-cyclonedx-1.5"]],
-            },
-            {
-                "components": [TOOLS_METADATA["hermeto-cyclonedx-1.5"]],
-            },
-            {
-                "components": [
-                    TOOLS_METADATA["syft-cyclonedx-1.5"],
-                    TOOLS_METADATA["hermeto-cyclonedx-1.5"],
-                ],
-            },
-        ),
-        (
-            {
-                "components": [TOOLS_METADATA["syft-cyclonedx-1.5"]],
-            },
-            [TOOLS_METADATA["hermeto-cyclonedx-1.4"]],
-            {
-                "components": [
-                    TOOLS_METADATA["syft-cyclonedx-1.5"],
-                    TOOLS_METADATA["hermeto-cyclonedx-1.5"],
-                ],
-            },
-        ),
-    ],
-)
-def test__merge_tools_metadata(
-    syft_tools_metadata: Any, hermeto_tools_metadata: Any, expected_result: Any
-) -> None:
-    syft_sbom = {
-        "bomFormat": "CycloneDX",
-        "specVersion": "1.5",
-        "metadata": {
-            "tools": syft_tools_metadata,
-        },
-        "components": [],
-    }
-
-    hermeto_sbom = {
-        "bomFormat": "CycloneDX",
-        "specVersion": "1.4",
-        "metadata": {
-            "tools": hermeto_tools_metadata,
-        },
-        "components": [],
-    }
-
-    merger = CycloneDXMerger(merge_by_apparent_sameness)
-    merger2 = CycloneDXMerger(merge_by_prefering_hermeto)
-    result = merger.merge(syft_sbom, hermeto_sbom)
-    result2 = merger2.merge(syft_sbom, hermeto_sbom)
-
-    assert result["metadata"]["tools"] == expected_result
-    assert result2["metadata"]["tools"] == expected_result
-
-
-def test__merge_tools_metadata_invalid() -> None:
-    syft_sbom = {
-        "bomFormat": "CycloneDX",
-        "specVersion": "1.5",
-        "metadata": {
-            "tools": "invalid_metadata",
-        },
-        "components": [],
-    }
-
-    hermeto_sbom = {
-        "bomFormat": "CycloneDX",
-        "specVersion": "1.4",
-        "metadata": {
-            "tools": [TOOLS_METADATA["hermeto-cyclonedx-1.4"]],
-        },
-        "components": [],
-    }
-
-    merger = CycloneDXMerger(merge_by_apparent_sameness)
-    with pytest.raises(RuntimeError):
-        merger.merge(syft_sbom, hermeto_sbom)
-
-
-def make_spdx_package(
-    name: str,
-    version: str = "1.0.0",
-    purl: str | None = None,
-    externalRefs: list[dict[str, Any]] | None = None,
-) -> SPDXPackage:
-    data: dict[str, Any] = {
-        "SPDXID": f"SPDXRef-{name}-{version}",
-        "name": name,
-        "versionInfo": version,
-    }
-    if purl:
-        data["externalRefs"] = [
-            {
-                "referenceCategory": "PACKAGE_MANAGER",
-                "referenceLocator": purl,
-                "referenceType": "purl",
-            }
-        ]
-    if externalRefs:
-        data["externalRefs"] = externalRefs
-    return SPDXPackage(data)
-
-
-def make_cdx_component(
-    name: str,
-    version: str = "1.0.0",
-    purl: str | None = None,
-    bom_ref: str | None = None,
-) -> CDXComponent:
-    data = {
-        "bom-ref": bom_ref or f"{name}-{version}",
-        "name": name,
-        "version": version,
-    }
-    if purl:
-        data["purl"] = purl
-    return CDXComponent(data)
-
-
-def test__get_syft_component_filter_duplicate_by_key() -> None:
-    hermeto_spdx = [make_spdx_package("foo", "1.0.0", "pkg:pypi/foo@1.0.0")]
-    syft_spdx = [make_spdx_package("foo", "1.0.0", "pkg:pypi/foo@1.0.0")]
-    component_is_removable_spdx = _get_syft_component_filter(hermeto_spdx)
-
-    assert component_is_removable_spdx(syft_spdx[0]) is True
-
-    hermeto_cdx = [make_cdx_component("foo", "1.0.0", "pkg:pypi/foo@1.0.0")]
-    syft_cdx = [make_cdx_component("foo", "1.0.0", "pkg:pypi/foo@1.0.0")]
-    component_is_removable_cdx = _get_syft_component_filter(hermeto_cdx)
-    assert component_is_removable_cdx(syft_cdx[0]) is True
-
-
-def test__get_syft_component_filter_duplicate_non_registry() -> None:
-    hermeto_spdx = [
-        make_spdx_package(
-            "bar", "2.0.0", "pkg:pypi/bar@2.0.0?vcs_url=https://github.com/example/bar"
-        )
-    ]
-    syft_spdx = [make_spdx_package("bar", "2.0.0", "pkg:pypi/bar@2.0.0")]
-    component_is_removable_spdx = _get_syft_component_filter(hermeto_spdx)
-    assert component_is_removable_spdx(syft_spdx[0]) is True
-
-    hermeto_cdx = [
-        make_cdx_component(
-            "bar", "2.0.0", "pkg:pypi/bar@2.0.0?vcs_url=https://github.com/example/bar"
-        )
-    ]
-    syft_cdx = [make_cdx_component("bar", "2.0.0", "pkg:pypi/bar@2.0.0")]
-    component_is_removable_cdx = _get_syft_component_filter(hermeto_cdx)
-    assert component_is_removable_cdx(syft_cdx[0]) is True
-
-
-def test__get_syft_component_filter_duplicate_npm_localpath() -> None:
-    hermeto_spdx = [make_spdx_package("baz", "3.0.0", "pkg:npm/baz@3.0.0#subdir")]
-    syft_spdx = [make_spdx_package("subdir", "3.0.0", "pkg:npm/subdir@3.0.0")]
-    component_is_removable_spdx = _get_syft_component_filter(hermeto_spdx)
-
-    assert component_is_removable_spdx(syft_spdx[0]) is True
-
-    hermeto_cdx = [make_cdx_component("baz", "3.0.0", "pkg:npm/baz@3.0.0#subdir")]
-
-    syft_cdx = [make_cdx_component("subdir", "3.0.0", "pkg:npm/subdir@3.0.0")]
-    component_is_removable_cdx = _get_syft_component_filter(hermeto_cdx)
-    assert component_is_removable_cdx(syft_cdx[0]) is True
-
-
-def test__get_syft_component_filter_local_golang_replacement() -> None:
-    hermeto: list[Any] = []
-    syft = [
-        make_spdx_package(".localmod", "(devel)", "pkg:golang/.localmod@(devel)"),
-        make_spdx_package(".local", "(devel)", "pkg:golang/.local@@(devel)#subdir"),
-    ]
-    component_is_removable = _get_syft_component_filter(hermeto)
-    assert component_is_removable(syft[0]) is True
-    assert component_is_removable(syft[1]) is True
-
-
-def test__get_syft_component_filter_not_duplicate() -> None:
-    hermeto = [make_cdx_component("foo", "1.0.0", "pkg:pypi/foo@1.0.0")]
-    syft = [make_cdx_component("bar", "2.0.0", "pkg:pypi/bar@2.0.0")]
-    component_is_removable = _get_syft_component_filter(hermeto)
-    assert component_is_removable(syft[0]) is False
-
-
-MockFunction = Callable[[Sequence[SBOMItem], Sequence[SBOMItem]], list[dict[str, Any]]]
-
-
-@patch("mobster.sbom.merge._detect_sbom_type")
-def test__create_merger(mock_detect_sbom_type: Mock) -> None:
-    mock_detect_sbom_type.return_value = "cyclonedx"
-
-    mock_function: MockFunction = Mock(spec=MockFunction)
-
-    merger = _create_merger({}, {}, mock_function)
-    assert isinstance(merger, CycloneDXMerger)
-
-    mock_detect_sbom_type.return_value = "spdx"
-    merger = _create_merger({}, {}, mock_function)
-    assert isinstance(merger, SPDXMerger)
-
-
-def test__create_merger_invalid() -> None:
-    cycloneDX_sbom = {
-        "bomFormat": "CycloneDX",
-        "specVersion": "1.4",
-        "components": [],
-    }
-    spdx_sbom = {
-        "SPDXID": "DocumentRef-SPDXRef-DOCUMENT",
-        "name": "example",
-        "spdxVersion": "SPDX-2.4",
-        "versionInfo": "1.0.0",
-        "dataLicense": "CC0-1.0",
-        "documentNamespace": "http://spdx.org/spdxdocs/example-1.0.0",
-        "creationInfo": {},
-    }
-
-    mock_function: MockFunction = Mock(spec=MockFunction)
-
-    with pytest.raises(ValueError):
-        _create_merger(spdx_sbom, cycloneDX_sbom, mock_function)
+def test_merge_index_matches_golang_version_subpath() -> None:
+    index = MergeIndex[Component]()
+    hermeto = make_cdx_component(
+        "mod",
+        "v1.0.0",
+        "pkg:golang/example.com/mod/v2@v1.0.0",
+        bom_ref="hermeto-mod",
+        source=SBOMSource.HERMETO,
+    )
+    syft = make_cdx_component(
+        "mod",
+        "v1.0.0",
+        "pkg:golang/example.com/mod@v1.0.0#v2",
+        bom_ref="syft-mod",
+        source=SBOMSource.SYFT,
+    )
+    assert index.add(hermeto) is True
+    assert index.add(syft) is False
+    assert [item.id() for item in index.get_items()] == [hermeto.id()]
+    assert index.id_mapping[syft.id()] == hermeto.id()
 
 
 @pytest.mark.parametrize(
@@ -543,220 +346,309 @@ def test__detect_sbom_type(sbom: dict[str, Any], expected_type: str) -> None:
 
 
 def test__detect_sbom_type_invalid() -> None:
-    invalid_sbom = {
-        "no_format_mentioned": "fail",
-    }
-
     with pytest.raises(ValueError):
-        _detect_sbom_type(invalid_sbom)
+        _detect_sbom_type({"no_format_mentioned": "fail"})
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "syft_sboms, hermeto_sbom",
-    [
-        ([Path("syft.merged-by-us.bom.json")], Path("cachi2.bom.json")),
-        (
-            INDIVIDUAL_SYFT_SBOMS,
-            # merging these 4 should result in syft.merged-by-us.bom.json
-            Path("cachi2.bom.json"),
-            # merging the result with the cachi2.bom.json should be the same as the cases above
-        ),
-    ],
-)
-@pytest.mark.parametrize(
-    "sbom_type, should_take_from_syft",
-    [
-        (
-            "cyclonedx",
-            {
-                # The operating system component appears only in CycloneDX Syft SBOMs, not SPDX
-                "rhel@9.5": 1,
-                # vvv Identical between CycloneDX and SPDX
-                "pkg:golang/github.com/release-engineering/retrodep@v2.1.0#v2": 1,
-                "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&distro=rhel-9.5&upstream=basesystem-11-13.el9.src.rpm": 1,
-                "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&distro=rhel-9.5&upstream=coreutils-8.32-36.el9.src.rpm": 1,
-                "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&distro=rhel-9.5&upstream=filesystem-3.16-5.el9.src.rpm": 1,
-                "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
-                "pkg:rpm/rhel/glibc-common@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
-                "pkg:rpm/rhel/glibc-minimal-langpack@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
-                "pkg:rpm/rhel/gpg-pubkey@5a6340b3-6229229e?distro=rhel-9.5": 1,
-                "pkg:rpm/rhel/gpg-pubkey@fd431d51-4ae0493b?distro=rhel-9.5": 1,
-                "pkg:rpm/rhel/libacl@2.3.1-4.el9?arch=x86_64&distro=rhel-9.5&upstream=acl-2.3.1-4.el9.src.rpm": 1,
-                "pkg:rpm/rhel/libattr@2.5.1-3.el9?arch=x86_64&distro=rhel-9.5&upstream=attr-2.5.1-3.el9.src.rpm": 1,
-                "pkg:rpm/rhel/libcap@2.48-9.el9_2?arch=x86_64&distro=rhel-9.5&upstream=libcap-2.48-9.el9_2.src.rpm": 1,
-                "pkg:rpm/rhel/libgcc@11.5.0-2.el9?arch=x86_64&distro=rhel-9.5&upstream=gcc-11.5.0-2.el9.src.rpm": 1,
-                "pkg:rpm/rhel/libselinux@3.6-1.el9?arch=x86_64&distro=rhel-9.5&upstream=libselinux-3.6-1.el9.src.rpm": 1,
-                "pkg:rpm/rhel/libsepol@3.6-1.el9?arch=x86_64&distro=rhel-9.5&upstream=libsepol-3.6-1.el9.src.rpm": 1,
-                "pkg:rpm/rhel/ncurses-base@6.2-10.20210508.el9?arch=noarch&distro=rhel-9.5&upstream=ncurses-6.2-10.20210508.el9.src.rpm": 1,
-                "pkg:rpm/rhel/ncurses-libs@6.2-10.20210508.el9?arch=x86_64&distro=rhel-9.5&upstream=ncurses-6.2-10.20210508.el9.src.rpm": 1,
-                "pkg:rpm/rhel/pcre2@10.40-6.el9?arch=x86_64&distro=rhel-9.5&upstream=pcre2-10.40-6.el9.src.rpm": 1,
-                "pkg:rpm/rhel/pcre2-syntax@10.40-6.el9?arch=noarch&distro=rhel-9.5&upstream=pcre2-10.40-6.el9.src.rpm": 1,
-                "pkg:rpm/rhel/redhat-release@9.5-0.6.el9?arch=x86_64&distro=rhel-9.5&upstream=redhat-release-9.5-0.6.el9.src.rpm": 1,
-                "pkg:rpm/rhel/setup@2.13.7-10.el9?arch=noarch&distro=rhel-9.5&upstream=setup-2.13.7-10.el9.src.rpm": 1,
-                "pkg:rpm/rhel/tzdata@2024b-2.el9?arch=noarch&distro=rhel-9.5&upstream=tzdata-2024b-2.el9.src.rpm": 1,
-            },
-        ),
-        (
-            "spdx",
-            {
-                # These root packages appear only in SPDX Syft SBOMs, not CycloneDX
-                "SPDXRef-DocumentRoot-Directory-.": 1,
-                "pkg:oci/registry.access.redhat.com/ubi9/ubi-micro@sha256:71c7ec827876417693bd3feb615a5c70753b78667cb27c17cb3a5346a6955da5?arch=amd64&tag=9.5": 1,
-                # vvv Identical between CycloneDX and SPDX
-                "pkg:golang/github.com/release-engineering/retrodep@v2.1.0#v2": 1,
-                "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&distro=rhel-9.5&upstream=basesystem-11-13.el9.src.rpm": 1,
-                "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&distro=rhel-9.5&upstream=coreutils-8.32-36.el9.src.rpm": 1,
-                "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&distro=rhel-9.5&upstream=filesystem-3.16-5.el9.src.rpm": 1,
-                "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
-                "pkg:rpm/rhel/glibc-common@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
-                "pkg:rpm/rhel/glibc-minimal-langpack@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
-                "pkg:rpm/rhel/gpg-pubkey@5a6340b3-6229229e?distro=rhel-9.5": 1,
-                "pkg:rpm/rhel/gpg-pubkey@fd431d51-4ae0493b?distro=rhel-9.5": 1,
-                "pkg:rpm/rhel/libacl@2.3.1-4.el9?arch=x86_64&distro=rhel-9.5&upstream=acl-2.3.1-4.el9.src.rpm": 1,
-                "pkg:rpm/rhel/libattr@2.5.1-3.el9?arch=x86_64&distro=rhel-9.5&upstream=attr-2.5.1-3.el9.src.rpm": 1,
-                "pkg:rpm/rhel/libcap@2.48-9.el9_2?arch=x86_64&distro=rhel-9.5&upstream=libcap-2.48-9.el9_2.src.rpm": 1,
-                "pkg:rpm/rhel/libgcc@11.5.0-2.el9?arch=x86_64&distro=rhel-9.5&upstream=gcc-11.5.0-2.el9.src.rpm": 1,
-                "pkg:rpm/rhel/libselinux@3.6-1.el9?arch=x86_64&distro=rhel-9.5&upstream=libselinux-3.6-1.el9.src.rpm": 1,
-                "pkg:rpm/rhel/libsepol@3.6-1.el9?arch=x86_64&distro=rhel-9.5&upstream=libsepol-3.6-1.el9.src.rpm": 1,
-                "pkg:rpm/rhel/ncurses-base@6.2-10.20210508.el9?arch=noarch&distro=rhel-9.5&upstream=ncurses-6.2-10.20210508.el9.src.rpm": 1,
-                "pkg:rpm/rhel/ncurses-libs@6.2-10.20210508.el9?arch=x86_64&distro=rhel-9.5&upstream=ncurses-6.2-10.20210508.el9.src.rpm": 1,
-                "pkg:rpm/rhel/pcre2@10.40-6.el9?arch=x86_64&distro=rhel-9.5&upstream=pcre2-10.40-6.el9.src.rpm": 1,
-                "pkg:rpm/rhel/pcre2-syntax@10.40-6.el9?arch=noarch&distro=rhel-9.5&upstream=pcre2-10.40-6.el9.src.rpm": 1,
-                "pkg:rpm/rhel/redhat-release@9.5-0.6.el9?arch=x86_64&distro=rhel-9.5&upstream=redhat-release-9.5-0.6.el9.src.rpm": 1,
-                "pkg:rpm/rhel/setup@2.13.7-10.el9?arch=noarch&distro=rhel-9.5&upstream=setup-2.13.7-10.el9.src.rpm": 1,
-                "pkg:rpm/rhel/tzdata@2024b-2.el9?arch=noarch&distro=rhel-9.5&upstream=tzdata-2024b-2.el9.src.rpm": 1,
-            },
-        ),
-    ],
-)
-async def test_merge_syft_and_hermeto_sboms(
-    syft_sboms: list[Path],
-    hermeto_sbom: Path,
-    sbom_type: str,
-    should_take_from_syft: dict[str, int],
-    data_dir: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.chdir(data_dir / sbom_type)
-
-    # Load all Syft SBOMs
-    loaded_syft_sboms = []
-    for syft_path in syft_sboms:
-        loaded_syft_sboms.append(await load_sbom_from_json(syft_path))
-
-    # Load Hermeto SBOM
-    loaded_hermeto_sbom = await load_sbom_from_json(hermeto_sbom)
-
-    result = merge_sboms(loaded_syft_sboms, loaded_hermeto_sbom)
-
-    with open("merged.bom.json", encoding="utf-8") as file:
-        expected_sbom = json.load(file)
-
-    assert result == expected_sbom
-
-    with open("cachi2.bom.json", encoding="utf-8") as f:
-        cachi2_sbom = json.load(f)
-
-    taken_from_syft = diff_counts(
-        count_components(expected_sbom), count_components(cachi2_sbom)
+def test_merge_index_drops_duplicate_by_key() -> None:
+    index = MergeIndex[Component]()
+    hermeto = make_cdx_component(
+        "foo",
+        "1.0.0",
+        "pkg:pypi/foo@1.0.0",
+        bom_ref="hermeto-foo",
+        source=SBOMSource.HERMETO,
     )
-    assert taken_from_syft == should_take_from_syft
+    syft = make_cdx_component(
+        "foo",
+        "1.0.0",
+        "pkg:pypi/foo@1.0.0",
+        bom_ref="syft-foo",
+        source=SBOMSource.SYFT,
+    )
 
-    if sbom_type == "spdx":
-        relationships_from_syft = diff_counts(
-            count_relationships(expected_sbom), count_relationships(cachi2_sbom)
-        )
-        assert relationships_from_syft == {
-            "SPDXRef-DOCUMENT DESCRIBES SPDXRef-DocumentRoot-Directory-.": 1,
-            "SPDXRef-DOCUMENT DESCRIBES SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro": 1,
-            # The one pkg:golang package
-            "SPDXRef-DocumentRoot-Directory-. CONTAINS *": 1,
-            # All the pkg:rpm packages
-            "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro CONTAINS *": 21,
-        }
+    assert index.add(hermeto) is True
+    assert index.add(syft) is False
+    assert [item.id() for item in index.get_items()] == [hermeto.id()]
+    assert index.id_mapping[syft.id()] == hermeto.id()
+    assert index.id_mapping[hermeto.id()] == hermeto.id()
 
 
-@pytest.mark.asyncio
+def test_merge_index_not_double_encoded() -> None:
+    """Regression for #512: +incompatible must encode once so Syft matches Hermeto."""
+    purl = "pkg:golang/github.com/golang-jwt/jwt@v3.2.2+incompatible"
+    hermeto = make_cdx_component(
+        "github.com/golang-jwt/jwt",
+        "v3.2.2+incompatible",
+        f"{purl}?type=module",
+        bom_ref="hermeto-jwt",
+        source=SBOMSource.HERMETO,
+    )
+    syft = make_cdx_component(
+        "github.com/golang-jwt/jwt",
+        "v3.2.2+incompatible",
+        f"{purl}?package-id=a1c2c43e1b014a94",
+        bom_ref="syft-jwt",
+        source=SBOMSource.SYFT,
+    )
+
+    key = hermeto.normalized_purl()
+    assert key is not None
+    assert key == syft.normalized_purl()
+    assert "%252B" not in key
+    assert "%2B" in key
+
+    index = MergeIndex[Component]()
+    assert index.add(hermeto) is True
+    assert index.add(syft) is False
+    assert [item.id() for item in index.get_items()] == [hermeto.id()]
+    assert index.id_mapping[syft.id()] == hermeto.id()
+
+
+def test_merge_index_drops_syft_duplicate_of_hermeto_non_registry() -> None:
+    index = MergeIndex[Package]()
+    hermeto = make_spdx_package(
+        "bar",
+        "2.0.0",
+        "pkg:pypi/bar@2.0.0?vcs_url=https://github.com/example/bar",
+        source=SBOMSource.HERMETO,
+        spdx_id="SPDXRef-hermeto-bar",
+    )
+    syft = make_spdx_package(
+        "bar",
+        "2.0.0",
+        "pkg:pypi/bar@2.0.0",
+        source=SBOMSource.SYFT,
+        spdx_id="SPDXRef-syft-bar",
+    )
+
+    assert index.add(hermeto) is True
+    assert index.add(syft) is False
+    assert [item.id() for item in index.get_items()] == [hermeto.id()]
+    assert index.id_mapping[syft.id()] == hermeto.id()
+
+
+def test_merge_index_drops_syft_npm_matching_hermeto_subpath() -> None:
+    index = MergeIndex[Component]()
+    # Hermeto reports a local path via purl subpath; Syft reports the same
+    # dependency as a namespaced npm package whose namespace/name equals that path.
+    hermeto = make_cdx_component(
+        "baz",
+        "3.0.0",
+        "pkg:npm/baz@3.0.0#foo/eggs",
+        bom_ref="hermeto-baz",
+        source=SBOMSource.HERMETO,
+    )
+    syft = make_cdx_component(
+        "eggs",
+        "3.0.0",
+        "pkg:npm/foo/eggs@3.0.0",
+        bom_ref="syft-eggs",
+        source=SBOMSource.SYFT,
+    )
+
+    assert index.add(hermeto) is True
+    assert index.add(syft) is False
+    assert [item.id() for item in index.get_items()] == [hermeto.id()]
+    assert index.id_mapping[syft.id()] == hermeto.id()
+
+
+def test_merge_index_drops_syft_local_golang_replacement() -> None:
+    # Without Hermeto, Syft-only merges keep local Golang replacements.
+    syft_only_index = MergeIndex[Package]()
+    local_mod = make_spdx_package(
+        ".localmod", "(devel)", "pkg:golang/.localmod@(devel)"
+    )
+    local_subpath = make_spdx_package(
+        ".local", "(devel)", "pkg:golang/.local@(devel)#subdir"
+    )
+    assert syft_only_index.add(local_mod) is True
+    assert syft_only_index.add(local_subpath) is True
+    assert len(syft_only_index.get_items()) == 2
+
+    # With Hermeto present, those same Syft reports are filtered out.
+    index = MergeIndex[Package]()
+    hermeto = make_spdx_package(
+        "real", "1.0.0", "pkg:golang/example@v1.0.0", source=SBOMSource.HERMETO
+    )
+    assert index.add(hermeto) is True
+    assert index.add(local_mod) is False
+    assert index.add(local_subpath) is False
+    assert [item.id() for item in index.get_items()] == [hermeto.id()]
+
+
+def test_merge_index_keeps_distinct_syft_component() -> None:
+    index = MergeIndex[Component]()
+    hermeto = make_cdx_component(
+        "foo", "1.0.0", "pkg:pypi/foo@1.0.0", source=SBOMSource.HERMETO
+    )
+    syft = make_cdx_component(
+        "bar", "2.0.0", "pkg:pypi/bar@2.0.0", source=SBOMSource.SYFT
+    )
+
+    assert index.add(hermeto) is True
+    assert index.add(syft) is True
+    assert {item.id() for item in index.get_items()} == {hermeto.id(), syft.id()}
+
+
 @pytest.mark.parametrize(
-    "sbom_type, expect_diff",
+    "example",
     [
-        (
-            "cyclonedx",
-            {
-                # All of these golang purls appear twice in the SBOM merged by syft
-                # (they already appear twice in the individual gomod SBOM).
-                # They only appear once in the SBOM merged by us, which seems better.
-                "pkg:golang/github.com/Azure/go-ansiterm@v0.0.0-20210617225240-d185dfc1b5a1": -1,
-                "pkg:golang/github.com/moby/term@v0.0.0-20221205130635-1aeaba878587": -1,
-                "pkg:golang/golang.org/x/sys@v0.6.0": -1,
-                # The rhel@9.5 component doesn't have a purl. Syft drops it when merging, we keep it.
-                "rhel@9.5": 1,
-            },
-        ),
-        (
-            "spdx",
-            {
-                # This is the "made-up root" that Syft uses for the merged SBOM
-                "SPDXRef-DocumentRoot-Directory-.-syft-sboms": -1,
-                # We instead keep the original "made-up root", as well as the root of the
-                # ubi-micro.bom.json document (which has an actual root, not a made-up one,
-                # because it comes from scanning a container image, not a directory).
-                "SPDXRef-DocumentRoot-Directory-.": 1,
-                "pkg:oci/registry.access.redhat.com/ubi9/ubi-micro@sha256:71c7ec827876417693bd3feb615a5c70753b78667cb27c17cb3a5346a6955da5?arch=amd64&tag=9.5": 1,
-                # For some reason, Syft lowercases the purls when merging. We do not.
-                "pkg:golang/github.com/masterminds/semver@v1.4.2": -1,
-                "pkg:golang/github.com/Masterminds/semver@v1.4.2": 1,
-                "pkg:golang/github.com/microsoft/go-winio@v0.6.0": -1,
-                "pkg:golang/github.com/Microsoft/go-winio@v0.6.0": 1,
-                "pkg:golang/github.com/azure/go-ansiterm@v0.0.0-20210617225240-d185dfc1b5a1": -1,
-                "pkg:golang/github.com/Azure/go-ansiterm@v0.0.0-20210617225240-d185dfc1b5a1": 1,
-            },
-        ),
+        "remap-relationships",
+        "multi-syft",
+        "alt-purl-match",
+        "golang",
     ],
 )
-async def test_merge_multiple_syft_sboms(
-    sbom_type: str,
-    expect_diff: dict[str, int],
-    data_dir: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.chdir(data_dir / sbom_type)
+def test_spdx_merge_examples(example: str, data_dir: Path) -> None:
+    """Small SPDX fixtures under examples/spdx/<case>/ with fully visible data."""
+    case_dir = data_dir / "examples" / "spdx" / example
+    expected = json.loads((case_dir / "expected.bom.json").read_text(encoding="utf-8"))
 
-    # Load all Syft SBOMs
-    loaded_syft_sboms = []
-    for syft_path in INDIVIDUAL_SYFT_SBOMS:
-        loaded_syft_sboms.append(await load_sbom_from_json(syft_path))
+    if example == "multi-syft":
+        syft_paths = [case_dir / "syft-a.bom.json", case_dir / "syft-b.bom.json"]
+        hermeto_path = None
+    else:
+        syft_paths = [case_dir / "syft.bom.json"]
+        hermeto_path = case_dir / "hermeto.bom.json"
 
-    result = merge_sboms(loaded_syft_sboms)
+    syft_sboms = [load_file_to_dict(path) for path in syft_paths]
+    hermeto_sbom = load_file_to_dict(hermeto_path) if hermeto_path else None
+    result = sbom_to_dict(merge_sboms(syft_sboms, hermeto_sbom))
 
-    with open("syft.merged-by-us.bom.json", encoding="utf-8") as f:
-        merged_by_us = json.load(f)
+    assert {p["SPDXID"] for p in result["packages"]} == {
+        p["SPDXID"] for p in expected["packages"]
+    }
+    result_rels = {
+        (r["spdxElementId"], r["relationshipType"], r["relatedSpdxElement"])
+        for r in result["relationships"]
+    }
+    expected_rels = {
+        (r["spdxElementId"], r["relationshipType"], r["relatedSpdxElement"])
+        for r in expected["relationships"]
+    }
+    assert result_rels == expected_rels
 
-    assert result == merged_by_us
+    result_doc_anns = {
+        (a.get("annotator"), a.get("comment")) for a in result.get("annotations", [])
+    }
+    expected_doc_anns = {
+        (a.get("annotator"), a.get("comment")) for a in expected.get("annotations", [])
+    }
+    assert result_doc_anns == expected_doc_anns
 
-    with open("syft.merged-by-syft.bom.json", encoding="utf-8") as f:
-        merged_by_syft = json.load(f)
+    def package_annotations(sbom: dict[str, Any]) -> set[tuple[str, str, str]]:
+        found: set[tuple[str, str, str]] = set()
+        for package in sbom.get("packages", []):
+            for annotation in package.get("annotations", []):
+                found.add(
+                    (
+                        package["SPDXID"],
+                        annotation.get("annotator", ""),
+                        annotation.get("comment", ""),
+                    )
+                )
+        return found
 
-    compared_to_syft = diff_counts(
-        count_components(merged_by_us), count_components(merged_by_syft)
+    assert package_annotations(result) == package_annotations(expected)
+
+
+def test_cyclonedx_merge_tools_metadata() -> None:
+    syft_tool = Tool(vendor="anchore", name="syft", version="1.4.1")
+    hermeto_tool = Tool(vendor="red hat", name="hermeto", version="1.0.0")
+    other_tool = Tool(vendor="example", name="scanner", version="2.0.0")
+    syft_component = Component(
+        name="syft",
+        type=ComponentType.APPLICATION,
+        version="1.4.1",
     )
-    assert compared_to_syft == expect_diff
+    hermeto_component = Component(
+        name="hermeto",
+        type=ComponentType.APPLICATION,
+    )
+    duplicate_syft_component = Component(
+        name="syft",
+        type=ComponentType.APPLICATION,
+        version="1.4.1",
+    )
 
-    if sbom_type == "spdx":
-        relationships_diff = diff_counts(
-            count_relationships(merged_by_us), count_relationships(merged_by_syft)
-        )
-        assert relationships_diff == {
-            "SPDXRef-DOCUMENT DESCRIBES SPDXRef-DocumentRoot-Directory-.-syft-sboms": -1,
-            "SPDXRef-DOCUMENT DESCRIBES SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro": 1,
-            "SPDXRef-DOCUMENT DESCRIBES SPDXRef-DocumentRoot-Directory-.": 1,
-            # In the Syft-merged SBOM, the ./syft-sboms element contains everything
-            # In our merged SBOM, the same set of packages is split between two roots
-            "SPDXRef-DocumentRoot-Directory-.-syft-sboms CONTAINS *": -139,
-            "SPDXRef-DocumentRoot-Directory-. CONTAINS *": 117,
-            "SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro CONTAINS *": 22,
+    def sbom_with_tools(
+        *tools: Tool, components: list[Component] | None = None
+    ) -> MagicMock:
+        wrapper = MagicMock()
+        wrapper.sbom.metadata.tools.tools = list(tools)
+        wrapper.sbom.metadata.tools.components = list(components or [])
+        return wrapper
+
+    # Mix legacy Tool entries and tools.components; duplicates must collapse.
+    result = CycloneDXMerger()._merge_tools_metadata(
+        [
+            sbom_with_tools(syft_tool, hermeto_tool, components=[syft_component]),
+            sbom_with_tools(
+                syft_tool, other_tool, components=[duplicate_syft_component]
+            ),
+            sbom_with_tools(hermeto_tool, components=[hermeto_component]),
+        ]
+    )
+
+    tool_entries = [item for item in result if isinstance(item, Tool)]
+    component_entries = [item for item in result if isinstance(item, Component)]
+    assert set(tool_entries) == {syft_tool, hermeto_tool, other_tool}
+    assert len(component_entries) == 2
+    assert {c.name for c in component_entries} == {"syft", "hermeto"}
+
+
+def test_cyclonedx_prefer_and_remap_example(data_dir: Path) -> None:
+    """Hermeto wins on shared foo; Syft-only bar kept; deps remapped to hermeto-foo."""
+    case_dir = data_dir / "examples" / "cyclonedx" / "prefer-and-remap"
+    expected = json.loads((case_dir / "expected.bom.json").read_text(encoding="utf-8"))
+
+    merged = merge_sboms(
+        [load_file_to_dict(case_dir / "syft.bom.json")],
+        load_file_to_dict(case_dir / "hermeto.bom.json"),
+    )
+    assert isinstance(merged, CycloneDX1BomWrapper)
+    result = sbom_to_dict(merged)
+
+    result_purls = {c.get("purl") for c in result["components"]}
+    expected_purls = {c.get("purl") for c in expected["components"]}
+    assert result_purls == expected_purls
+    foo = next(c for c in result["components"] if c.get("purl") == "pkg:pypi/foo@1.0.0")
+    assert foo["bom-ref"] == "hermeto-foo"
+
+    graph = _dependency_graph(merged)
+    assert None not in graph
+    assert all(None not in deps for deps in graph.values())
+    assert "syft-foo" not in graph
+    assert graph["hermeto-foo"] == {"syft-bar"}
+    assert graph["syft-bar"] == set()
+
+    result_tools = {
+        (c.get("name"), c.get("author"), c.get("version"))
+        for c in result.get("metadata", {}).get("tools", {}).get("components", [])
+        if c.get("name") != "Mobster"
+    }
+    expected_tools = {
+        (c.get("name"), c.get("author"), c.get("version"))
+        for c in expected.get("metadata", {}).get("tools", {}).get("components", [])
+    }
+    assert result_tools == expected_tools
+    assert any(
+        c.get("name") == "Mobster"
+        for c in result.get("metadata", {}).get("tools", {}).get("components", [])
+    )
+
+
+def _dependency_graph(
+    sbom: CycloneDX1BomWrapper,
+) -> dict[str | None, set[str | None]]:
+    """Map each dependency ref value to the set of dependsOn ref values."""
+    graph: dict[str | None, set[str | None]] = {}
+    for dependency in sbom.sbom.dependencies:
+        graph[dependency.ref.value] = {
+            child.ref.value for child in dependency.dependencies
         }
+    return graph
 
 
 @pytest.mark.parametrize(
@@ -770,6 +662,27 @@ def test_merge_sboms_invalid(
     syft_sboms: list[dict[str, Any]],
     hermeto_sbom: dict[str, Any] | None,
 ) -> None:
-    """Test the merge_sboms function."""
     with pytest.raises(ValueError):
         merge_sboms(syft_sboms, hermeto_sbom)
+
+
+def test_merge_sboms_mismatched_formats() -> None:
+    syft = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "components": [],
+    }
+    hermeto = {
+        "SPDXID": "SPDXRef-DOCUMENT",
+        "name": "example",
+        "spdxVersion": "SPDX-2.3",
+        "dataLicense": "CC0-1.0",
+        "documentNamespace": "http://spdx.org/spdxdocs/example",
+        "creationInfo": {
+            "created": "2024-01-01T00:00:00Z",
+            "creators": ["Tool: test"],
+        },
+        "packages": [],
+    }
+    with pytest.raises(ValueError, match="same SBOM format"):
+        merge_sboms([syft, syft], hermeto)

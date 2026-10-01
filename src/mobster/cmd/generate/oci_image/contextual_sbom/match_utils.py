@@ -21,9 +21,8 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
 from mobster.cmd.generate.oci_image.contextual_sbom.logging import MatchingStatistics
 from mobster.cmd.generate.oci_image.spdx_utils import (
     get_annotations_by_spdx_id,
-    get_normalized_purl,
 )
-from mobster.sbom.spdx import get_package_purl
+from mobster.sbom.spdx import get_normalized_purl, get_package_purl
 
 LOGGER = logging.getLogger(__name__)
 

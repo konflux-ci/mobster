@@ -1,0 +1,120 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "spdxVersion": "SPDX-2.3",
+  "name": "syft-example",
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://example.com/syft-remap",
+  "creationInfo": {
+    "created": "2024-01-01T00:00:00Z",
+    "creators": ["Tool: syft"]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-syft-root",
+      "name": "app-root",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-syft-foo",
+      "name": "foo",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/foo@1.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-syft-only",
+      "name": "bar",
+      "versionInfo": "2.0.0",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/bar@2.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-sqlparse-rpm",
+      "name": "sqlparse",
+      "versionInfo": "0.0.1",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:rpm/redhat/python3-sqlparse@0.0.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-qlparse-pypi",
+      "name": "sqlparse",
+      "versionInfo": "0.0.1",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/redhat/python3-sqlparse@0.0.1"
+        }
+      ]
+    }
+  ],
+  "annotations": [
+    {
+      "SPDXID": "SPDXRef-DOCUMENT",
+      "annotationDate": "2024-01-01T00:00:00Z",
+      "annotationType": "OTHER",
+      "annotator": "Tool: mobster",
+      "comment": "release_id=11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "SPDXID": "SPDXRef-syft-foo",
+      "annotationDate": "2024-01-01T00:00:00Z",
+      "annotationType": "OTHER",
+      "annotator": "Tool: syft",
+      "comment": "syft-package-note"
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-syft-root"
+    },
+    {
+      "spdxElementId": "SPDXRef-syft-root",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-syft-foo"
+    },
+    {
+      "spdxElementId": "SPDXRef-syft-root",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-syft-only"
+    },
+    {
+      "spdxElementId": "SPDXRef-syft-root",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-sqlparse-rpm"
+    },
+    {
+      "spdxElementId": "SPDXRef-syft-root",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-qlparse-pypi"
+    },
+    {
+      "spdxElementId": "SPDXRef-sqlparse-rpm",
+      "relatedSpdxElement": "SPDXRef-qlparse-pypi",
+      "relationshipType": "OTHER",
+      "comment": "ownership-by-file-overlap: indicates that the parent package claims ownership of a child package since the parent metadata indicates overlap with a location that a cataloger found the child package by"
+    }
+  ]
+}
