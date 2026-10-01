@@ -100,7 +100,7 @@ class SBOMItem(ABC, Generic[T]):
             if subpath and _subpath_is_version(subpath):
                 # put the module version where it belongs (in the module name)
                 name = f"{name}/{subpath}"
-                subpath = None
+        subpath = None
 
         qualifiers = purl.qualifiers
         if not isinstance(qualifiers, dict):
@@ -151,12 +151,13 @@ def fallback_key(package: SBOMItem[T]) -> str:
 class CDXComponent(SBOMItem[Component]):
     """
     Class representing a CycloneDX component.
+    Creates a bom-ref for this object if not present.
     """
 
-    custom_id: str = field(default_factory=lambda: uuid.uuid4().hex)
-
     def id(self) -> str:
-        return self.data.bom_ref.value or self.custom_id
+        if self.data.bom_ref.value is None:
+            self.data.bom_ref.value = uuid.uuid4().hex
+        return self.data.bom_ref.value
 
     def name(self) -> str:
         return self.data.name
@@ -468,6 +469,13 @@ class CycloneDXMerger(SBOMMerger[CycloneDX1BomWrapper]):  # pylint: disable=too-
             )
 
         result = deepcopy(syft_sboms[0])
+        if result.sbom.metadata.component is not None:
+            self.mapping_index.add(
+                CDXComponent(
+                    data=result.sbom.metadata.component, source=SBOMSource.SYFT
+                )
+            )
+
         result.sbom.components = [
             item.unwrap() for item in self.mapping_index.get_items()
         ]
@@ -475,18 +483,30 @@ class CycloneDXMerger(SBOMMerger[CycloneDX1BomWrapper]):  # pylint: disable=too-
         available_sboms = list(syft_sboms)
         if hermeto_sbom is not None:
             available_sboms.append(hermeto_sbom)
-        result.sbom.metadata.tools.tools = self._merge_tools_metadata(available_sboms)
+        all_tools = self._merge_tools_metadata(available_sboms)
+        result.sbom.metadata.tools.tools = [
+            tool for tool in all_tools if isinstance(tool, Tool)
+        ]
+        result.sbom.metadata.tools.components = [
+            tool for tool in all_tools if isinstance(tool, Component)
+        ]
         result.sbom.dependencies = self._merge_dependencies(available_sboms)
+        for bom in available_sboms[1:]:
+            result.model_cards.update(bom.model_cards)
 
         return result
 
-    def _merge_tools_metadata(self, sboms: list[CycloneDX1BomWrapper]) -> list[Tool]:
+    def _merge_tools_metadata(
+        self, sboms: list[CycloneDX1BomWrapper]
+    ) -> list[Tool | Component]:
         """Merge the .metadata.tools of the right SBOM into the left SBOM."""
         unique_tools: set[Tool] = set()
         for sbom in sboms:
             for tool in sbom.sbom.metadata.tools.tools:
                 if tool not in unique_tools:
                     unique_tools.add(copy(tool))
+            for tool_component in sbom.sbom.metadata.tools.components:
+                unique_tools.add(tool_component)
         return list(unique_tools)
 
     def _merge_dependencies(
@@ -607,16 +627,25 @@ class SPDXMerger(SBOMMerger[Document]):  # pylint: disable=too-few-public-method
         Returns:
             The merged SBOM document
         """
+        result = deepcopy(syft_sboms[0])
+
+        # The annotations to document root need to be preserved
+        document_id = result.creation_info.spdx_id
+        self.mapping_index.id_mapping[document_id] = document_id
+
         if hermeto_sbom is not None:
             self.mapping_index.add_sbom(
                 wrap_as_spdx(hermeto_sbom.packages, SBOMSource.HERMETO)
+            )
+            self.mapping_index.id_mapping[hermeto_sbom.creation_info.spdx_id] = (
+                document_id
             )
         for syft_sbom in syft_sboms:
             self.mapping_index.add_sbom(
                 wrap_as_spdx(syft_sbom.packages, SBOMSource.SYFT)
             )
+            self.mapping_index.id_mapping[syft_sbom.creation_info.spdx_id] = document_id
 
-        result = deepcopy(syft_sboms[0])
         meta_sboms = list(syft_sboms)
         if hermeto_sbom is not None:
             meta_sboms.append(hermeto_sbom)

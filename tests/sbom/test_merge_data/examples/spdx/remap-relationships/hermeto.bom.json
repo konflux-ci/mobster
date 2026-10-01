@@ -41,6 +41,15 @@
       ]
     }
   ],
+  "annotations": [
+    {
+      "SPDXID": "SPDXRef-DOCUMENT",
+      "annotationDate": "2024-01-01T00:00:00Z",
+      "annotationType": "OTHER",
+      "annotator": "Tool: hermeto",
+      "comment": "hermeto-doc-note"
+    }
+  ],
   "relationships": [
     {
       "spdxElementId": "SPDXRef-DOCUMENT",
