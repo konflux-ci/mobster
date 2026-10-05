@@ -1,5 +1,7 @@
 """SPDX-2.X utilities for the generate oci-image target"""
 
+# pylint: disable=too-many-lines
+
 import json
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -16,6 +18,7 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
 from mobster.cmd.generate.oci_image.constants import BUILDER_IMAGE_PROPERTY
+from mobster.error import BuilderContextualizationError
 from mobster.image import IMAGE_PKG_SPDX_PREFIX, Image
 from mobster.sbom.spdx import (
     DOC_ELEMENT_ID,
@@ -737,6 +740,7 @@ class DocumentIndexOCI:
         self._spdx_id_to_ctx: dict[str, PackageContext] = {}
         self._purl_to_ctxs: dict[str, list[PackageContext]] = defaultdict(list)
         self._image_ctxs: list[PackageContext] = []
+        self._initial_intermediate_ids: set[str] = set()
 
         for pkg in self.doc.packages:
             pkg_ctx = PackageContext(
@@ -763,6 +767,12 @@ class DocumentIndexOCI:
         for ann in self.doc.annotations:
             pkg_ctx = self._spdx_id_to_ctx[ann.spdx_id]
             pkg_ctx.annotations.append(ann)
+
+        self._initial_intermediate_ids = {
+            pkg_ctx.pkg.spdx_id
+            for pkg_ctx in self._image_ctxs
+            if pkg_ctx.intermediate_image_annotation is not None
+        }
 
     def try_package_by_spdx_id(self, spdx_id: str) -> PackageContext | None:
         """
@@ -840,10 +850,20 @@ class DocumentIndexOCI:
         self, builder_package_context: PackageContext
     ) -> PackageContext:
         """
-        Returns an intermediate package context equivalent for the passed
-        builder package context if it already exists in the SBOM.
+        Returns the intermediate package context associated with the passed
+        builder package context.
 
-        If it doesn't exist, a new package is created and added to the SBOM.
+        An intermediate already present when the index was created is treated
+        as inherited from an ancestor and cannot be reused for the current
+        build stage. Reuse would make intermediate-owned content ambiguous:
+        one identity would represent content from multiple concrete stages in
+        the ancestor chain. This is a temporary safeguard until builder
+        contextualization can assign distinct intermediate SPDX IDs to
+        colliding stages while preserving their image identity.
+
+        If no matching intermediate exists, a new one is created for the
+        current image and can be reused by subsequent calls in the same
+        document.
 
         Args:
             builder_package_context: Builder package context to create
@@ -855,8 +875,10 @@ class DocumentIndexOCI:
         Raises:
             MissingBuilderAnnotation: if the builder package context lacks a
                 builder annotation
+            BuilderContextualizationError: if a matching intermediate was
+                inherited from an ancestor and would be reused for the current
+                builder
         """
-
         # determine whether the intermediate package already exists
         for img_pkg_ctx in self._image_ctxs:
             if img_pkg_ctx.intermediate_image_annotation is None:
@@ -865,8 +887,17 @@ class DocumentIndexOCI:
             for rel in img_pkg_ctx.filter_parent_relationships(
                 RelationshipType.DESCENDANT_OF
             ):
-                if rel.related_spdx_element_id == builder_package_context.pkg.spdx_id:
-                    return img_pkg_ctx
+                if rel.related_spdx_element_id != builder_package_context.pkg.spdx_id:
+                    continue
+                if img_pkg_ctx.pkg.spdx_id in self._initial_intermediate_ids:
+                    raise BuilderContextualizationError(
+                        "Cannot reuse inherited intermediate image package "
+                        f"{img_pkg_ctx.pkg.spdx_id} for builder "
+                        f"{builder_package_context.pkg.spdx_id}. The intermediate "
+                        "belongs to an "
+                        "ancestor and cannot represent the current build stage."
+                    )
+                return img_pkg_ctx
 
         # it doesn't exist, create a new intermediate image package and its
         # associated relationships and annotation
