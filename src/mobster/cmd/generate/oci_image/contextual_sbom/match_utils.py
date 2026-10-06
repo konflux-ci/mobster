@@ -270,8 +270,8 @@ class ComponentRelationshipResolver:
         Supply all image packages, their annotations and relationships
         from parent SBOM to component SBOM.
 
-        This method supplies grandparent, ancestor, builder, and intermediate
-        image packages from the parent SBOM to the component SBOM.
+        This method supplies grandparent, ancestor, builder, additional, and
+        intermediate image packages from the parent SBOM to the component SBOM.
 
         Each `ImageItem` contains one image package, one relationship, and all
         matching annotations for that package. An image package may occur in multiple
@@ -282,9 +282,13 @@ class ComponentRelationshipResolver:
         - the same builder image is already present in the component and is also
           inherited from the parent (this relies on the same image PURL producing
           the same deterministic SPDX ID in Mobster)
+        - the same image is a builder and an additional image in separate images
+          (component/ancestor(s) or between multiple ancestors) - the builder base
+          and an additional image reference resolve to the same image
 
         If a package is already present, it is not added again. Missing distinct
-        relationships and annotations are still added to the component SBOM.
+        relationships and annotations are still added to the component SBOM. An
+        identical relationship triplet is not added again.
 
         Note: This method expects that component package relationships already point
         to the correct parent/grandparent packages (modified by

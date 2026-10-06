@@ -24,6 +24,7 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.model.spdx_none import SpdxNone
 
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
+    ADDITIONAL_IMAGE,
     ANCESTOR_IMAGE,
     BASE_IMAGE,
     BUILDER_IMAGE,
@@ -37,6 +38,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     ComponentRelationshipResolver,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
+    AnnotationAdditionalImage,
     AnnotationAncestorImage,
     AnnotationBaseImage,
     AnnotationBuilderImage,
@@ -274,24 +276,26 @@ def process_builder_items(
     parent_root_packages: list[str],
 ) -> list[ImageItem]:
     """
-    Aligns builder image items (the builder subtrees belonging to the component's
-    parent and all of the component's known ancestors) with the component's
-    relationships.
+    Aligns builder image items (additional images and builders belonging to
+    the component's parent and all of the preceding known ancestors) with
+    the component's relationships.
 
-    A builder is attached to the image it builds (used parent or ancestors) via
-    BUILD_TOOL_OF. Builders of the used parent itself point at the parent root
-    (`builder BUILD_TOOL_OF parent`); that target must be renamed to the parent
-    name as referenced by the component
-    (`builder BUILD_TOOL_OF parent (name from component)`). Builders of deeper
-    ancestors already reference a correctly named ancestor
-    (`builder BUILD_TOOL_OF ancestor`) and are passed through unchanged (those
-    will point on ancestors collected by
-    get_grandparent_and_ancestor_items_from_used_parent later also supplied to
+    A builders and additional images are attached to the image that build (used
+    parent or ancestors) via BUILD_TOOL_OF. Builders and additional images of
+    the used parent itself point at the parent root
+    (`builder/additional_image BUILD_TOOL_OF parent_root`); this target must
+    be renamed to the parent name as referenced by the component
+    (`builder/additional_image BUILD_TOOL_OF parent (name from component)`).
+    Builders and additional images of deeper ancestors already reference a
+    correctly named ancestor
+    (`builder/additional_image BUILD_TOOL_OF ancestor`) and are passed through
+    unchanged (those will point on ancestors collected by
+    get_grandparent_and_ancestor_items_from_used_parent, later also supplied to
     final component SBOM)
 
     Args:
-        builder_items: Builder image items collected across the whole
-            ancestor chain of the used parent.
+        builder_items: Builder and additional image items collected across
+            the whole ancestor chain of the used parent.
         parent_spdx_id_from_component: SPDX ID of the parent as referenced by
             the component.
         parent_root_packages: SPDX IDs of the used parent's root packages; a
@@ -433,6 +437,7 @@ def get_annotations_by_spdx_id_filter_by_type(
         type[AnnotationBaseImage]
         | type[AnnotationAncestorImage]
         | type[AnnotationBuilderImage]
+        | type[AnnotationAdditionalImage]
         | type[AnnotationIntermediateImage]
     ),
 ) -> list[Annotation]:
@@ -848,8 +853,9 @@ async def map_parent_to_component_and_update_component(
         parent_packages, parent_spdx_id_from_component, parent_root_packages
     )
 
-    # Step 2: resolve and supply image packages (grandparent, ancestors and builders
-    # and intermediates of parent and ancestors) from parent to component
+    # Step 2: resolve and supply image packages (grandparent, ancestors,
+    # additional images, builders and intermediates of parent and ancestors)
+    # from parent to component
     # TO DO: Validate the complete image graph, ensuring that the image chain
     # from the root image to the furthest ancestor is continuous and has no
     # missing links.
@@ -857,10 +863,8 @@ async def map_parent_to_component_and_update_component(
         parent_sbom_doc, parent_spdx_id_from_component
     )
     parent_and_ancestors_builder_items = process_builder_items(
-        collect_image_items(
-            parent_sbom_doc,
-            BUILDER_IMAGE,
-        ),
+        collect_image_items(parent_sbom_doc, BUILDER_IMAGE)
+        + collect_image_items(parent_sbom_doc, ADDITIONAL_IMAGE),
         parent_spdx_id_from_component,
         parent_root_packages,
     )

@@ -6,6 +6,7 @@ from enum import Enum
 from spdx_tools.spdx.model.relationship import RelationshipType
 
 from mobster.cmd.generate.oci_image.spdx_utils import (
+    AnnotationAdditionalImage,
     AnnotationAncestorImage,
     AnnotationBaseImage,
     AnnotationBuilderImage,
@@ -92,6 +93,7 @@ class ContentKind:
         type[AnnotationBaseImage]
         | type[AnnotationAncestorImage]
         | type[AnnotationBuilderImage]
+        | type[AnnotationAdditionalImage]
         | type[AnnotationIntermediateImage]
         | None
     )
@@ -140,8 +142,8 @@ LEGACY_BASE_IMAGE = ContentKind(
     allows_multiple_relationships_per_endpoint=False,
 )
 
-# allows_multiple_relationships_per_endpoint for BUILDER_IMAGE and
-# INTERMEDIATE_IMAGE explanation:
+# allows_multiple_relationships_per_endpoint for BUILDER_IMAGE, ADDITIONAL_IMAGE
+# and INTERMEDIATE_IMAGE explanation:
 # SPDX IDs of image packages are generated deterministically by Mobster. This
 # complicates inheritance of builders and their intermediates from parent SBOM
 # to component SBOM in specific edge-cases.
@@ -184,6 +186,11 @@ LEGACY_BASE_IMAGE = ContentKind(
 # this collision in a normally constructed contextualization chain, but the
 # collector can still detect it in malformed or externally produced parent SBOMs.
 #
+# The same collision can occur when an additional image is reused across the
+# ancestor chain or when a builder and an additional image resolve to the same
+# image. Therefore ADDITIONAL_IMAGE also allows multiple relationships per
+# endpoint.
+#
 # The restriction is needed because intermediate content is part of a concrete
 # built stage (component, parent, or grandparent in the examples), not part of
 # the builder image. I.e., if the same `builder-intermediate` identity represents
@@ -193,9 +200,9 @@ LEGACY_BASE_IMAGE = ContentKind(
 # `builder BUILD_TOOL_OF parent` plus `builder BUILD_TOOL_OF component`
 # cannot identify the concrete source stage of the vulnerable package.
 #
-# TO DO: Intermediate packages, and ideally also builder packages, need unique SPDX
-# IDs within the ancestor chain while preserving their image identity. The
-# copied content must remain correctly attributed to them.
+# TO DO: Intermediate packages, and ideally also builder/additional packages,
+# need unique SPDX IDs within the ancestor chain while preserving their image
+# identity. The copied content must remain correctly attributed to them.
 #
 # Note: Reusing the same builder image in multiple stages of one image does not
 # create duplicate builder packages or `BUILD_TOOL_OF` relationships before
@@ -211,6 +218,16 @@ BUILDER_IMAGE = ContentKind(
     RelationshipType.BUILD_TOOL_OF,
     RelationshipEnd.SUBJECT,
     AnnotationBuilderImage,
+    allows_multiple_relationships_per_endpoint=True,
+)
+
+# Example in parent SBOM:
+# `additional image BUILD_TOOL_OF parent` (additional image used by COPY --from)
+ADDITIONAL_IMAGE = ContentKind(
+    "additional image",
+    RelationshipType.BUILD_TOOL_OF,
+    RelationshipEnd.SUBJECT,
+    AnnotationAdditionalImage,
     allows_multiple_relationships_per_endpoint=True,
 )
 
