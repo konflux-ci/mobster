@@ -12,6 +12,7 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
+    ADDITIONAL_IMAGE,
     ANCESTOR_IMAGE,
     BASE_IMAGE,
     BUILDER_IMAGE,
@@ -93,10 +94,24 @@ def _legacy_grandparent_item(
 def _builder_image_item(
     builder_id: str, built_image_id: str, stage_index: int = 0
 ) -> tuple[Package, Relationship, Annotation]:
-    """`builder BUILD_TOOL_OF built`, annotated is_builder_image."""
+    """`builder BUILD_TOOL_OF built image`, annotated is_builder_image."""
     pkg = Package(builder_id, "name", SpdxNoAssertion())
     rel = Relationship(builder_id, RelationshipType.BUILD_TOOL_OF, built_image_id)
     annot = KonfluxAnnotationManager.builder_image(builder_id, stage_index)
+    return pkg, rel, annot
+
+
+def _additional_image_item(
+    additional_image_id: str, built_image_id: str
+) -> tuple[Package, Relationship, Annotation]:
+    """`additional image BUILD_TOOL_OF built image`, annotated as additional."""
+    pkg = Package(additional_image_id, "name", SpdxNoAssertion())
+    rel = Relationship(
+        additional_image_id,
+        RelationshipType.BUILD_TOOL_OF,
+        built_image_id,
+    )
+    annot = KonfluxAnnotationManager.additional_image(additional_image_id)
     return pkg, rel, annot
 
 
@@ -340,6 +355,11 @@ def test_collect_package_items_warns_on_unsupported_contains_relationship(
             BUILDER_IMAGE,
             _builder_image_item("SPDXRef-builder", "SPDXRef-parent"),
             id="parent-builder-image",
+        ),
+        pytest.param(
+            ADDITIONAL_IMAGE,
+            _additional_image_item("SPDXRef-additional", "SPDXRef-parent"),
+            id="parent-additional-image",
         ),
         pytest.param(
             INTERMEDIATE_IMAGE,
@@ -885,14 +905,16 @@ def test_process_grandparent_item_normalizes_input(
     assert annot.annotation_comment == original_annotation_comment
 
 
-def test_process_builder_items_rename_parent_builder_pass_ancestor_builder() -> None:
-    pkg1, rel1, annot1 = _builder_image_item("SPDXRef-builder", "SPDXRef-parent")
+def test_process_builder_items_rename_parent_target() -> None:
+    pkg1, rel1, annot1 = _additional_image_item("SPDXRef-additional", "SPDXRef-parent")
     pkg2, rel2, annot2 = _builder_image_item("SPDXRef-builder", "SPDXRef-grandparent")
+    pkg3, rel3, annot3 = _builder_image_item("SPDXRef-parent-builder", "SPDXRef-parent")
 
     result = process_builder_items(
         builder_items=[
             ImageItem(pkg1, rel1, [annot1]),
             ImageItem(pkg2, rel2, [annot2]),
+            ImageItem(pkg3, rel3, [annot3]),
         ],
         parent_spdx_id_from_component="SPDXRef-parent-name-from-component",
         parent_root_packages=["SPDXRef-parent"],
@@ -902,13 +924,22 @@ def test_process_builder_items_rename_parent_builder_pass_ancestor_builder() -> 
         ImageItem(
             pkg1,
             Relationship(
-                "SPDXRef-builder",
+                "SPDXRef-additional",
                 RelationshipType.BUILD_TOOL_OF,
                 "SPDXRef-parent-name-from-component",
             ),
             [annot1],
         ),
         ImageItem(pkg2, rel2, [annot2]),
+        ImageItem(
+            pkg3,
+            Relationship(
+                "SPDXRef-parent-builder",
+                RelationshipType.BUILD_TOOL_OF,
+                "SPDXRef-parent-name-from-component",
+            ),
+            [annot3],
+        ),
     ]
 
 
@@ -1024,6 +1055,48 @@ def test_supply_image_packages_merges_reused_builder_across_images() -> None:
         parent_annot,
         grandparent_annot,
     ]
+
+
+def test_supply_image_packages_preserves_builder_and_additional_roles() -> None:
+    """Supply a shared image package with builder and additional roles."""
+    shared_image_id = "SPDXRef-shared-image"
+    shared_image_pkg = Package(shared_image_id, "shared-image", SpdxNoAssertion())
+    parent_pkg = Package("SPDXRef-parent", "parent", SpdxNoAssertion())
+    grandparent_pkg = Package("SPDXRef-grandparent", "grandparent", SpdxNoAssertion())
+    builder_rel = Relationship(
+        shared_image_id,
+        RelationshipType.BUILD_TOOL_OF,
+        grandparent_pkg.spdx_id,
+    )
+    additional_rel = Relationship(
+        shared_image_id,
+        RelationshipType.BUILD_TOOL_OF,
+        parent_pkg.spdx_id,
+    )
+    builder_annot = KonfluxAnnotationManager.builder_image(shared_image_id, 0)
+    additional_annot = KonfluxAnnotationManager.additional_image(shared_image_id)
+
+    parent_sbom_doc = MagicMock(spec=Document)
+    parent_sbom_doc.packages = [shared_image_pkg, parent_pkg, grandparent_pkg]
+    parent_sbom_doc.relationships = [builder_rel, additional_rel]
+    parent_sbom_doc.annotations = [builder_annot, additional_annot]
+
+    component_sbom_doc = MagicMock(spec=Document)
+    component_sbom_doc.packages = []
+    component_sbom_doc.relationships = []
+    component_sbom_doc.annotations = []
+
+    resolver = ComponentRelationshipResolver(
+        [], parent_sbom_doc, component_sbom_doc, MatchingStatistics()
+    )
+    resolver.supply_image_packages(
+        collect_image_items(parent_sbom_doc, BUILDER_IMAGE)
+        + collect_image_items(parent_sbom_doc, ADDITIONAL_IMAGE)
+    )
+
+    assert component_sbom_doc.packages == [shared_image_pkg]
+    assert component_sbom_doc.relationships == [builder_rel, additional_rel]
+    assert component_sbom_doc.annotations == [builder_annot, additional_annot]
 
 
 @pytest.mark.parametrize(
@@ -1397,6 +1470,90 @@ async def test_map_parent_to_component_supplies_builder_and_intermediate_subtree
     assert intermediate_rel in component_result.relationships
     assert builder_annot in component_result.annotations
     assert intermediate_annot in component_result.annotations
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.generate.oci_image.contextual_sbom.parent.MatchingStatistics")
+async def test_map_parent_to_component_supplies_additional_image_content(
+    mock_stats_class: MagicMock,
+) -> None:
+    """Inherit an additional image, its content, and its relationship."""
+    parent_spdx_id = "SPDXRef-parent-name-from-component"
+    parent_root_pkg, parent_root_rel = get_root_package_items("SPDXRef-parent")
+    additional_pkg, additional_rel, additional_annot = _additional_image_item(
+        "SPDXRef-additional-image", "SPDXRef-parent"
+    )
+    parent_content_pkg = create_package_with_identifier(
+        "SPDXRef-parent-additional-content", "checksum"
+    )
+    parent_content_rel = Relationship(
+        additional_pkg.spdx_id,
+        RelationshipType.CONTAINS,
+        parent_content_pkg.spdx_id,
+    )
+    parent_sbom_doc = MagicMock(spec=Document)
+    parent_sbom_doc.packages = [
+        parent_root_pkg,
+        additional_pkg,
+        parent_content_pkg,
+    ]
+    parent_sbom_doc.relationships = [
+        parent_root_rel,
+        additional_rel,
+        parent_content_rel,
+    ]
+    parent_sbom_doc.annotations = [additional_annot]
+
+    component_content_pkg = create_package_with_identifier(
+        "SPDXRef-component-additional-content", "checksum"
+    )
+    component_sbom_doc = MagicMock(spec=Document)
+    component_sbom_doc.packages = [
+        Package("SPDXRef-component", "component", SpdxNoAssertion()),
+        component_content_pkg,
+    ]
+    component_sbom_doc.relationships = [
+        Relationship(
+            "SPDXRef-component",
+            RelationshipType.CONTAINS,
+            component_content_pkg.spdx_id,
+        )
+    ]
+    component_sbom_doc.annotations = []
+    mock_stats_class.return_value = MagicMock()
+
+    result = await map_parent_to_component_and_update_component(
+        parent_sbom_doc,
+        component_sbom_doc,
+        parent_spdx_id,
+    )
+
+    assert additional_pkg in result.packages
+    assert additional_annot in result.annotations
+    assert (
+        Relationship(
+            additional_pkg.spdx_id,
+            RelationshipType.BUILD_TOOL_OF,
+            parent_spdx_id,
+        )
+        in result.relationships
+    )
+    assert (
+        Relationship(
+            additional_pkg.spdx_id,
+            RelationshipType.CONTAINS,
+            component_content_pkg.spdx_id,
+        )
+        in result.relationships
+    )
+    assert (
+        Relationship(
+            "SPDXRef-component",
+            RelationshipType.CONTAINS,
+            component_content_pkg.spdx_id,
+        )
+        not in result.relationships
+    )
 
 
 @pytest.mark.asyncio
