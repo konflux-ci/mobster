@@ -19,7 +19,6 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from spdx_tools.spdx.writer.write_utils import convert
 
 from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
-from mobster.sbom.load import load_file_to_dict
 from mobster.sbom.merge import (
     CDXComponent,
     CycloneDXMerger,
@@ -35,6 +34,7 @@ from mobster.sbom.merge import (
     wrap_as_cdx,
     wrap_as_spdx,
 )
+from mobster.utils import load_file_to_dict
 
 INDIVIDUAL_SYFT_SBOMS = [
     Path("syft-sboms/gomod-pandemonium.bom.json"),

@@ -1,10 +1,12 @@
 """A place for utility functions used across the application."""
 
 import asyncio
+import json
 import logging
 import os
 import platform
 import re
+from pathlib import Path
 from typing import Any
 
 LOGGER = logging.getLogger(__name__)
@@ -122,3 +124,25 @@ def get_tpa_ca() -> str | None:
     """
 
     return os.environ.get("MOBSTER_TPA_CA_INFO")
+
+
+def load_file_to_dict(json_file: Path) -> dict[str, Any]:
+    """
+    Loads a file into a dictionary object.
+    Args:
+        json_file: The path to the dictionary file.
+
+    Returns:
+        The loaded dictionary.
+    """
+    with open(json_file, encoding="utf-8") as in_stream:
+        try:
+            contents = in_stream.read()
+            return json.loads(contents)  # type: ignore[no-any-return]
+        except json.JSONDecodeError:
+            LOGGER.critical(
+                "Expected a JSON dictionary. Found different file contents! "
+                "Logging first 200 chars of the file."
+            )
+            LOGGER.critical(contents[:200])
+            raise

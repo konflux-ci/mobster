@@ -5,7 +5,7 @@ from pathlib import Path
 
 from mobster.image import Image
 from mobster.oci.artifact import SBOM, SLSAProvenance
-from mobster.sbom.load import SBOMFormat
+from mobster.sbom.detect import SBOMFormat
 
 
 @typing.runtime_checkable

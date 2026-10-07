@@ -13,7 +13,7 @@ from mobster.oci.cosign import (
     VerifyConfig,
 )
 from mobster.oci.cosign.static import StaticKeyFetcher, StaticKeySigner
-from mobster.sbom.load import SBOMFormat
+from mobster.sbom.detect import SBOMFormat
 from tests.integration.oci_client import ReferrersTagOCIClient
 
 

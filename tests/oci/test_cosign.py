@@ -14,7 +14,7 @@ from pytest import LogCaptureFixture
 from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import cosign
-from mobster.sbom.load import SBOMFormat
+from mobster.sbom.detect import SBOMFormat
 
 
 class TestStaticFetcher:

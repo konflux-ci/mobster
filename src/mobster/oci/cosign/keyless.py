@@ -17,7 +17,7 @@ from mobster.oci.cosign.config import (
     VerifyConfig,
 )
 from mobster.oci.cosign.protocol import SupportsFetch, SupportsSign
-from mobster.sbom.load import SBOMFormat
+from mobster.sbom.detect import SBOMFormat
 from mobster.utils import run_async_subprocess
 
 logger = logging.getLogger(__name__)

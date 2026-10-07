@@ -52,7 +52,7 @@ from mobster.error import (
 from mobster.image import Image
 from mobster.log import log_elapsed
 from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
-from mobster.sbom.load import load_dict_to_sbom, load_file_to_dict, load_file_to_sbom
+from mobster.sbom.load import load_dict_to_sbom, load_file_to_sbom
 from mobster.sbom.merge import merge_sboms
 from mobster.sbom.spdx import normalize_and_load_sbom
 
@@ -100,7 +100,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 LOGGER.warning("\n".join(e.args))
 
     async def _load_and_filter_hermeto_sbom(self) -> dict[str, Any]:
-        hermeto_sbom = load_file_to_dict(self.cli_args.from_hermeto)
+        hermeto_sbom = mobster.utils.load_file_to_dict(self.cli_args.from_hermeto)
 
         arch = self.cli_args.arch or mobster.utils.identify_arch()
         return filter_hermeto_sbom_by_arch(hermeto_sbom, arch)
@@ -178,7 +178,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 syft_sboms = []
 
                 for path in self.cli_args.from_syft:
-                    syft_sboms.append(load_file_to_dict(path))
+                    syft_sboms.append(mobster.utils.load_file_to_dict(path))
 
                 hermeto_sbom = None
                 if self.cli_args.from_hermeto:

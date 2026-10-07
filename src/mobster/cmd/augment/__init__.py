@@ -24,7 +24,7 @@ from mobster.release import (
     Snapshot,
     make_snapshot,
 )
-from mobster.sbom.load import SBOMFormat
+from mobster.sbom.detect import SBOMFormat
 
 LOGGER = logging.getLogger(__name__)
 

@@ -287,7 +287,7 @@ async def test_GenerateOciImageCommand__soft_validate_content_cdx(
 )
 @patch("mobster.cmd.generate.oci_image.load_dict_to_sbom")
 @patch("mobster.cmd.generate.oci_image.load_file_to_sbom")
-@patch("mobster.cmd.generate.oci_image.load_file_to_dict")
+@patch("mobster.utils.load_file_to_dict")
 @patch("mobster.cmd.generate.oci_image.merge_sboms")
 async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_merge: MagicMock,

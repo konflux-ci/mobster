@@ -17,7 +17,7 @@ from mobster.cmd.enrich.merge_utils import (
 )
 from mobster.sbom.cyclonedx import is_cyclonedx
 from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
-from mobster.sbom.load import load_file_to_dict
+from mobster.utils import load_file_to_dict
 
 logger = logging.getLogger(__name__)
 

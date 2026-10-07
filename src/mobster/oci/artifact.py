@@ -14,7 +14,7 @@ import dateutil.parser
 
 from mobster.error import SBOMError
 from mobster.image import parse_image_reference
-from mobster.sbom.load import SBOMFormat, detect_sbom_format
+from mobster.sbom.detect import SBOMFormat, detect_sbom_format
 
 logger = logging.getLogger(__name__)
 

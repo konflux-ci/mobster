@@ -29,7 +29,7 @@ from mobster.image import Image
 from mobster.oci.cosign import SignConfig, StaticSignConfig, VerifyConfig
 from mobster.oci.cosign.static import StaticKeyFetcher, StaticKeySigner
 from mobster.release import ReleaseId
-from mobster.sbom.load import SBOMFormat
+from mobster.sbom.detect import SBOMFormat
 from mobster.tekton.artifact import (
     COMPONENT_ARTIFACT_NAME,
     PRODUCT_ARTIFACT_NAME,
