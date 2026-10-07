@@ -11,6 +11,7 @@ item - image package, relevant relationship and image package annotation
 """
 
 import logging
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -71,7 +72,10 @@ async def download_parent_image_sbom(
         The found SBOM or `None` if the SBOM is in CycloneDX format or not found.
     """
     if not parent_image:
-        LOGGER.info("Contextual mechanism won't be used, there is no parent image.")
+        LOGGER.info(
+            "[Parent image content] Contextual mechanism "
+            "won't be used, there is no parent image."
+        )
         return None
     image_or_index = await Image.from_repository_digest_manifest(
         parent_image.repository, parent_image.digest
@@ -156,7 +160,7 @@ def get_parent_spdx_id_from_component(component_sbom_doc: Document) -> str:
 
     Raises:
         SBOMError: If the passed SBOM does not contain DESCENDANT_OF
-        relationship or contains multiple DESCENDANT_OF relationships.
+            relationship or contains multiple DESCENDANT_OF relationships.
     """
     parent_name = []
     for relationship in component_sbom_doc.relationships:
@@ -228,8 +232,8 @@ def process_grandparent_item(
         a new `DESCENDANT_OF` relationship connecting the component's parent
         to the grandparent.
     """
-    grandparent_package = grandparent_item.package
-    grandparent_annotation = grandparent_item.annotation
+    grandparent_package = deepcopy(grandparent_item.package)
+    grandparent_annotation = deepcopy(grandparent_item.annotation)
 
     # package modification
     grandparent_package.files_analyzed = False
@@ -331,7 +335,7 @@ def get_grandparent_and_ancestor_items_from_used_parent(
                 "[Parent image content] Cannot determine parent of the "
                 "downloaded parent image SBOM. It either does "
                 "not exist (it was an oci-archive or the image is built from "
-                "scratch), it is malformed or the downloaded SBOM"
+                "scratch), it is malformed or the downloaded SBOM "
                 "is not sourced from konflux."
             )
             return []
@@ -386,8 +390,11 @@ def get_annotation_by_spdx_id_filter_by_type(
             parsed = KonfluxAnnotationManager.parse(annotation)
         except AnnotationParseError:
             LOGGER.warning(
-                "[Parent image content] Annotation comment '%s' could not be "
-                "parsed as a Konflux annotation.",
+                "[Parent image content] Annotation '%s' from parent SBOM '%s' "
+                "has a comment that could not be parsed as a Konflux annotation: "
+                "'%s'.",
+                annotation.spdx_id,
+                parent_sbom_doc.creation_info.name,
                 annotation.annotation_comment,
             )
             continue

@@ -392,6 +392,7 @@ def test_get_annotation_by_spdx_id_filter_by_type_parse_fail(
         "unexpected comment",  # non-JSON comment causing parse failure
     )
     mock_doc.annotations = [bad]
+    mock_doc.creation_info.name = "quay.io/example/parent@sha256:1"
 
     assert (
         get_annotation_by_spdx_id_filter_by_type(
@@ -399,9 +400,10 @@ def test_get_annotation_by_spdx_id_filter_by_type_parse_fail(
         )
         is None
     )
-    assert any(
-        "could not be parsed as a Konflux annotation" in message
-        for message in caplog.messages
+    assert (
+        "[Parent image content] Annotation 'SPDXRef-x' from parent SBOM "
+        "'quay.io/example/parent@sha256:1' has a comment that could not be "
+        "parsed as a Konflux annotation: 'unexpected comment'." in caplog.messages
     )
 
 
@@ -538,6 +540,8 @@ def test_process_grandparent_item_normalizes_input(
     item: tuple[Package, Relationship, Annotation],
 ) -> None:
     pkg, rel, annot = item
+    pkg.files_analyzed = True
+    original_annotation_comment = annot.annotation_comment
 
     result = process_grandparent_item(
         ImageItem(pkg, rel, annot), "SPDXRef-parent-name-from-component"
@@ -553,6 +557,10 @@ def test_process_grandparent_item_normalizes_input(
     )
     assert "is_ancestor_image" in res_annot.annotation_comment
     assert "is_base_image" not in res_annot.annotation_comment
+    assert result.package is not pkg
+    assert res_annot is not annot
+    assert pkg.files_analyzed is True
+    assert annot.annotation_comment == original_annotation_comment
 
 
 def test_get_parent_spdx_id_from_component(mock_doc: MagicMock) -> None:
@@ -785,7 +793,13 @@ async def test_map_parent_to_component_and_update_component(
         )
 
     # Verify grandparent supplied to component as an ancestor
-    assert grandparent_pkg in result.packages
+    supplied_grandparent = next(
+        package
+        for package in result.packages
+        if package.spdx_id == grandparent_pkg.spdx_id
+    )
+    assert supplied_grandparent is not grandparent_pkg
+    assert supplied_grandparent.files_analyzed is False
     assert (
         Relationship(
             parent_spdx_id,
@@ -893,8 +907,8 @@ async def test_download_parent_image_sbom_no_image(caplog: LogCaptureFixture) ->
     caplog.set_level("INFO")
     assert await download_parent_image_sbom(None, "") is None
     assert (
-        "Contextual mechanism won't be used, there is no parent image."
-        in caplog.messages
+        "[Parent image content] Contextual mechanism won't be used, there is no "
+        "parent image." in caplog.messages
     )
 
 
@@ -932,6 +946,7 @@ async def test_download_parent_image_sbom_no_sbom(
     mock_fetch_sbom: AsyncMock,
     caplog: LogCaptureFixture,
 ) -> None:
+    caplog.set_level("INFO")
     mock_fetch_sbom.side_effect = SBOMError("No SBOM :(")
     assert (
         await download_parent_image_sbom(
@@ -939,7 +954,10 @@ async def test_download_parent_image_sbom_no_sbom(
         )
         is None
     )
-    assert "Contextual mechanism won't be used, there is no parent image SBOM."
+    assert (
+        "[Parent image content] Contextual mechanism won't be used, there is no "
+        "parent image SBOM." in caplog.messages
+    )
 
 
 @pytest.mark.asyncio
