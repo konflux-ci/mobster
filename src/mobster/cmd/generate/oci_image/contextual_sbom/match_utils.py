@@ -270,9 +270,25 @@ class ComponentRelationshipResolver:
         Supply all image packages, their annotations and relationships
         from parent SBOM to component SBOM.
 
-        This method adds ancestor image packages to the component SBOM. Each
-        image package is supplied as one ``ImageItem`` containing its package,
-        relationship, and image annotation.
+        This method supplies grandparent, ancestor, builder, additional, and
+        intermediate image packages from the parent SBOM to the component SBOM.
+
+        Each `ImageItem` contains one image package, one relationship, and all
+        matching annotations for that package. An image package may occur in multiple
+        items when it participates in distinct relationships, for example:
+
+        - the same image package is both a parent and a builder in one image
+        - the same builder image is used for the parent and for an ancestor
+        - the same builder image is already present in the component and is also
+          inherited from the parent (this relies on the same image PURL producing
+          the same deterministic SPDX ID in Mobster)
+        - the same image is a builder and an additional image in separate images
+          (component/ancestor(s) or between multiple ancestors) - the builder base
+          and an additional image reference resolve to the same image
+
+        If a package is already present, it is not added again. Missing distinct
+        relationships and annotations are still added to the component SBOM. An
+        identical relationship triplet is not added again.
 
         Note: This method expects that component package relationships already point
         to the correct parent/grandparent packages (modified by
@@ -281,10 +297,36 @@ class ComponentRelationshipResolver:
         Args:
             image_packages: Image items to be supplied to the component SBOM.
         """
+        package_spdx_ids = {
+            package.spdx_id for package in self.component_sbom_doc.packages
+        }
+        relationship_keys = {
+            (
+                relationship.spdx_element_id,
+                relationship.relationship_type,
+                relationship.related_spdx_element_id,
+            )
+            for relationship in self.component_sbom_doc.relationships
+        }
+
         for item in image_packages:
-            self.component_sbom_doc.relationships.append(item.relationship)
-            self.component_sbom_doc.packages.append(item.package)
-            self.component_sbom_doc.annotations.append(item.annotation)
+            relationship = item.relationship
+            relationship_key = (
+                relationship.spdx_element_id,
+                relationship.relationship_type,
+                relationship.related_spdx_element_id,
+            )
+            if relationship_key not in relationship_keys:
+                self.component_sbom_doc.relationships.append(relationship)
+                relationship_keys.add(relationship_key)
+
+            if item.package.spdx_id not in package_spdx_ids:
+                self.component_sbom_doc.packages.append(item.package)
+                package_spdx_ids.add(item.package.spdx_id)
+
+            for annotation in item.annotations:
+                if annotation not in self.component_sbom_doc.annotations:
+                    self.component_sbom_doc.annotations.append(annotation)
 
     @staticmethod
     def _modify_relationship_in_component(

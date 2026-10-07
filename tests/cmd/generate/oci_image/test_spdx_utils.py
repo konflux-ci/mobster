@@ -32,6 +32,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     redirect_spdx_virtual_root_to_new_root,
     update_package_in_spdx_sbom,
 )
+from mobster.error import BuilderContextualizationError
 from mobster.image import Image
 from mobster.sbom.spdx import (
     get_mobster_tool_string,
@@ -1246,6 +1247,42 @@ def test_document_index_ensure_intermediate_image(
     # return the same package
     intermediate_ctx2 = index.ensure_intermediate_image_package(builder_ctx)
     assert intermediate_ctx.pkg.spdx_id == intermediate_ctx2.pkg.spdx_id
+
+
+def test_document_index_rejects_reusing_inherited_intermediate(
+    builder_image_document: Document,
+) -> None:
+    """Reject an ancestor intermediate when contextualizing the current image."""
+    inherited_intermediate_id = "SPDXRef-image-builder-intermediate"
+    builder_image_document.packages.append(
+        Package(
+            spdx_id=inherited_intermediate_id,
+            name="inherited-intermediate",
+            download_location=SpdxNoAssertion(),
+            files_analyzed=False,
+        )
+    )
+    builder_image_document.relationships.append(
+        Relationship(
+            spdx_element_id=inherited_intermediate_id,
+            relationship_type=RelationshipType.DESCENDANT_OF,
+            related_spdx_element_id="SPDXRef-image-builder",
+        )
+    )
+    builder_image_document.annotations.append(
+        KonfluxAnnotationManager.intermediate_image(
+            inherited_intermediate_id, stage_index=1
+        )
+    )
+
+    index = DocumentIndexOCI(builder_image_document)
+    builder_ctx = index.package_by_spdx_id("SPDXRef-image-builder")
+
+    with pytest.raises(
+        BuilderContextualizationError,
+        match="Cannot reuse inherited intermediate image package",
+    ):
+        index.ensure_intermediate_image_package(builder_ctx)
 
 
 def test_document_index_reparent_relationship(

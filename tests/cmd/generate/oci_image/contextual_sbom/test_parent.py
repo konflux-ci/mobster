@@ -12,8 +12,11 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
+    ADDITIONAL_IMAGE,
     ANCESTOR_IMAGE,
     BASE_IMAGE,
+    BUILDER_IMAGE,
+    INTERMEDIATE_IMAGE,
     LEGACY_BASE_IMAGE,
     ContentKind,
 )
@@ -28,10 +31,11 @@ from mobster.cmd.generate.oci_image.contextual_sbom.parent import (
     collect_image_items,
     collect_package_items,
     download_parent_image_sbom,
-    get_annotation_by_spdx_id_filter_by_type,
+    get_annotations_by_spdx_id_filter_by_type,
     get_grandparent_and_ancestor_items_from_used_parent,
     get_parent_spdx_id_from_component,
     map_parent_to_component_and_update_component,
+    process_builder_items,
     process_grandparent_item,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
@@ -87,6 +91,40 @@ def _legacy_grandparent_item(
     return pkg, rel, annot
 
 
+def _builder_image_item(
+    builder_id: str, built_image_id: str, stage_index: int = 0
+) -> tuple[Package, Relationship, Annotation]:
+    """`builder BUILD_TOOL_OF built image`, annotated is_builder_image."""
+    pkg = Package(builder_id, "name", SpdxNoAssertion())
+    rel = Relationship(builder_id, RelationshipType.BUILD_TOOL_OF, built_image_id)
+    annot = KonfluxAnnotationManager.builder_image(builder_id, stage_index)
+    return pkg, rel, annot
+
+
+def _additional_image_item(
+    additional_image_id: str, built_image_id: str
+) -> tuple[Package, Relationship, Annotation]:
+    """`additional image BUILD_TOOL_OF built image`, annotated as additional."""
+    pkg = Package(additional_image_id, "name", SpdxNoAssertion())
+    rel = Relationship(
+        additional_image_id,
+        RelationshipType.BUILD_TOOL_OF,
+        built_image_id,
+    )
+    annot = KonfluxAnnotationManager.additional_image(additional_image_id)
+    return pkg, rel, annot
+
+
+def _intermediate_image_item(
+    intermediate_id: str, builder_id: str, stage_index: int = 0
+) -> tuple[Package, Relationship, Annotation]:
+    """`intermediate DESCENDANT_OF builder`, annotated is_intermediate_image."""
+    pkg = Package(intermediate_id, "name", SpdxNoAssertion())
+    rel = Relationship(intermediate_id, RelationshipType.DESCENDANT_OF, builder_id)
+    annot = KonfluxAnnotationManager.intermediate_image(intermediate_id, stage_index)
+    return pkg, rel, annot
+
+
 def test_collect_package_items(mock_doc: MagicMock) -> None:
     pkg1, rel1 = _content_item("SPDXRef-root", "SPDXRef-pkg1")
     pkg2, rel2 = _content_item("SPDXRef-root", "SPDXRef-pkg2")
@@ -123,16 +161,114 @@ def test_collect_package_items_raises_on_duplicate_relationship(
         pkg,
     ]
     mock_doc.relationships = [rel, duplicate_rel]
+    mock_doc.creation_info.document_namespace = "https://example.test/sbom"
 
-    with pytest.raises(
-        SBOMError,
-        match=(
-            r"Multiple relationships found for content kind 'content package' "
-            r"\(CONTAINS, related_spdx_element_id\) and SPDX ID "
-            r"'SPDXRef-pkg'\."
-        ),
-    ):
+    with pytest.raises(SBOMError) as error:
         collect_package_items(mock_doc)
+
+    assert str(error.value) == (
+        "[Parent image content] Multiple CONTAINS relationships found for "
+        "content packages: SPDXRef-pkg: SPDXRef-root CONTAINS SPDXRef-pkg, "
+        "SPDXRef-other-root CONTAINS SPDXRef-pkg. Document: "
+        "https://example.test/sbom."
+    )
+
+
+def test_collect_package_items_warns_on_identical_relationship_triplet(
+    mock_doc: MagicMock,
+    caplog: LogCaptureFixture,
+) -> None:
+    """An identical CONTAINS triplet is one logical ownership relationship."""
+    pkg, rel = _content_item("SPDXRef-root", "SPDXRef-pkg")
+    duplicate_rel = Relationship("SPDXRef-root", RelationshipType.CONTAINS, pkg.spdx_id)
+    mock_doc.packages = [
+        Package("SPDXRef-root", "root", SpdxNoAssertion()),
+        pkg,
+    ]
+    mock_doc.relationships = [rel, duplicate_rel]
+    caplog.set_level("WARNING")
+
+    assert collect_package_items(mock_doc) == [(pkg, rel), (pkg, duplicate_rel)]
+    assert any(
+        "content kind 'content package'" in message
+        and "SPDXRef-root CONTAINS SPDXRef-pkg (2 occurrences)" in message
+        for message in caplog.messages
+    )
+
+
+def test_collect_package_items_warns_on_identical_triplet_and_rejects_distinct_owner(
+    mock_doc: MagicMock,
+    caplog: LogCaptureFixture,
+) -> None:
+    """A repeated edge must not hide a distinct, ambiguous package owner."""
+    pkg, relationship = _content_item("SPDXRef-root-a", "SPDXRef-pkg")
+    duplicate_relationship = Relationship(
+        "SPDXRef-root-a", RelationshipType.CONTAINS, pkg.spdx_id
+    )
+    distinct_relationship = Relationship(
+        "SPDXRef-root-b", RelationshipType.CONTAINS, pkg.spdx_id
+    )
+    mock_doc.packages = [
+        Package("SPDXRef-root-a", "root-a", SpdxNoAssertion()),
+        Package("SPDXRef-root-b", "root-b", SpdxNoAssertion()),
+        pkg,
+    ]
+    mock_doc.relationships = [
+        relationship,
+        duplicate_relationship,
+        distinct_relationship,
+    ]
+    caplog.set_level("WARNING")
+
+    with pytest.raises(SBOMError, match="Multiple CONTAINS relationships"):
+        collect_package_items(mock_doc)
+
+    assert any(
+        "SPDXRef-root-a CONTAINS SPDXRef-pkg (2 occurrences)" in message
+        for message in caplog.messages
+    )
+
+
+def test_collect_package_items_reports_all_duplicate_relationships(
+    mock_doc: MagicMock,
+) -> None:
+    """
+    collect_package_items is used for collecting
+    content packages from component and parent SBOM
+    All packages with ambiguous CONTAINS ownership
+    from single document are reported together.
+    """
+    package1, relationship1 = _content_item("SPDXRef-root-1", "SPDXRef-pkg-1")
+    package2, relationship2 = _content_item("SPDXRef-root-1", "SPDXRef-pkg-2")
+    # invalid state: package is owned by two origins
+    duplicate_relationship1 = Relationship(
+        "SPDXRef-root-2", RelationshipType.CONTAINS, package1.spdx_id
+    )
+    duplicate_relationship2 = Relationship(
+        "SPDXRef-root-3", RelationshipType.CONTAINS, package2.spdx_id
+    )
+    mock_doc.packages = [
+        package1,
+        package2,
+        Package("SPDXRef-root-1", "root-1", SpdxNoAssertion()),
+        Package("SPDXRef-root-2", "root-2", SpdxNoAssertion()),
+        Package("SPDXRef-root-3", "root-3", SpdxNoAssertion()),
+    ]
+    mock_doc.relationships = [
+        relationship1,
+        relationship2,
+        duplicate_relationship1,
+        duplicate_relationship2,
+    ]
+
+    with pytest.raises(SBOMError) as error:
+        collect_package_items(mock_doc)
+
+    message = str(error.value)
+    assert "SPDXRef-pkg-1:" in message
+    assert "SPDXRef-root-2 CONTAINS SPDXRef-pkg-1" in message
+    assert "SPDXRef-pkg-2:" in message
+    assert "SPDXRef-root-3 CONTAINS SPDXRef-pkg-2" in message
 
 
 def test_collect_package_items_ignores_file_relationships(
@@ -215,6 +351,26 @@ def test_collect_package_items_warns_on_unsupported_contains_relationship(
             _ancestor_image_item("SPDXRef-grandparent", "SPDXRef-ancestor"),
             id="parent-ancestor-image",
         ),
+        pytest.param(
+            BUILDER_IMAGE,
+            _builder_image_item("SPDXRef-builder", "SPDXRef-parent"),
+            id="parent-builder-image",
+        ),
+        pytest.param(
+            ADDITIONAL_IMAGE,
+            _additional_image_item("SPDXRef-additional", "SPDXRef-parent"),
+            id="parent-additional-image",
+        ),
+        pytest.param(
+            INTERMEDIATE_IMAGE,
+            _intermediate_image_item("SPDXRef-intermediate", "SPDXRef-builder"),
+            id="builder-intermediate-image",
+        ),
+        pytest.param(
+            LEGACY_BASE_IMAGE,
+            _legacy_grandparent_item("SPDXRef-grandparent", "SPDXRef-parent"),
+            id="legacy-grandparent-image",
+        ),
     ],
 )
 def test_collect_image_items_by_content_kind(
@@ -223,14 +379,64 @@ def test_collect_image_items_by_content_kind(
     item: tuple[Package, Relationship, Annotation],
 ) -> None:
     pkg, rel, annot = item
+    endpoint_ids = {
+        endpoint_id
+        for endpoint_id in (rel.spdx_element_id, rel.related_spdx_element_id)
+        if isinstance(endpoint_id, str) and endpoint_id != pkg.spdx_id
+    }
     mock_doc.packages = [
         pkg,
-        Package(rel.spdx_element_id, "parent", SpdxNoAssertion()),
+        *[
+            Package(endpoint_id, "related-image", SpdxNoAssertion())
+            for endpoint_id in endpoint_ids
+        ],
     ]
     mock_doc.relationships = [rel]
     mock_doc.annotations = [annot]
 
-    assert collect_image_items(mock_doc, kind) == [ImageItem(pkg, rel, annot)]
+    assert collect_image_items(mock_doc, kind) == [ImageItem(pkg, rel, [annot])]
+
+
+def test_collect_image_items_preserves_multiple_annotations(
+    mock_doc: MagicMock,
+) -> None:
+    """
+    Preserve annotations for an image used in two build stages and as a base.
+
+    The same image package has two builder annotations and one base-image
+    annotation. Each collector preserves only annotations matching its kind.
+    """
+    builder_pkg = Package("SPDXRef-builder", "builder", SpdxNoAssertion())
+    parent_pkg = Package("SPDXRef-parent", "parent", SpdxNoAssertion())
+    component_pkg = Package("SPDXRef-component", "component", SpdxNoAssertion())
+
+    builder_parent_rel = Relationship(
+        builder_pkg.spdx_id,
+        RelationshipType.BUILD_TOOL_OF,
+        parent_pkg.spdx_id,
+    )
+    component_parent_rel = Relationship(
+        "SPDXRef-component",
+        RelationshipType.DESCENDANT_OF,
+        builder_pkg.spdx_id,
+    )
+    annotations = [
+        KonfluxAnnotationManager.builder_image(builder_pkg.spdx_id, 0),
+        KonfluxAnnotationManager.builder_image(builder_pkg.spdx_id, 1),
+    ]
+    base_annotation = KonfluxAnnotationManager.base_image(builder_pkg.spdx_id)
+
+    mock_doc.packages = [builder_pkg, parent_pkg, component_pkg]
+    mock_doc.relationships = [builder_parent_rel, component_parent_rel]
+    mock_doc.annotations = [*annotations, base_annotation]
+
+    # every collector preserves annotations of its kinds
+    assert collect_image_items(mock_doc, BUILDER_IMAGE) == [
+        ImageItem(builder_pkg, builder_parent_rel, annotations),
+    ]
+    assert collect_image_items(mock_doc, BASE_IMAGE) == [
+        ImageItem(builder_pkg, component_parent_rel, [base_annotation]),
+    ]
 
 
 def test_collect_image_items_legacy_grandparent(mock_doc: MagicMock) -> None:
@@ -243,37 +449,174 @@ def test_collect_image_items_legacy_grandparent(mock_doc: MagicMock) -> None:
     mock_doc.annotations = [annot]
 
     assert collect_image_items(mock_doc, LEGACY_BASE_IMAGE) == [
-        ImageItem(pkg, rel, annot)
+        ImageItem(pkg, rel, [annot])
     ]
 
 
-def test_collect_image_items_raises_on_duplicate_relationship(
+def test_collect_image_items_collects_reused_builder_across_ancestors(
     mock_doc: MagicMock,
 ) -> None:
-    """A base image package must not have multiple relevant relationships."""
-    pkg, rel, annot = _base_image_item("SPDXRef-parent", "SPDXRef-grandparent")
-    duplicate_rel = Relationship(
-        "SPDXRef-other-parent",
-        RelationshipType.DESCENDANT_OF,
-        pkg.spdx_id,
-    )
-    mock_doc.packages = [
-        pkg,
-        Package(rel.spdx_element_id, "parent", SpdxNoAssertion()),
-        Package(duplicate_rel.spdx_element_id, "other-parent", SpdxNoAssertion()),
-    ]
-    mock_doc.relationships = [rel, duplicate_rel]
-    mock_doc.annotations = [annot]
+    """
+    Collect one builder reused by the parent and
+    grandparent images from parent contextual SBOM.
+    """
+    parent_doc = mock_doc
+    builder_id = "SPDXRef-builder"
+    parent_id = "SPDXRef-parent"
+    grandparent_id = "SPDXRef-grandparent"
 
-    with pytest.raises(
-        SBOMError,
-        match=(
-            r"Multiple relationships found for content kind 'base image' "
-            r"\(DESCENDANT_OF, related_spdx_element_id\) and SPDX ID "
-            r"'SPDXRef-grandparent'\."
+    builder_pkg = Package(builder_id, "builder", SpdxNoAssertion())
+    parent_pkg = Package(parent_id, "parent", SpdxNoAssertion())
+    grandparent_pkg = Package(grandparent_id, "grandparent", SpdxNoAssertion())
+
+    parent_ancestor_rel = Relationship(
+        parent_id,
+        RelationshipType.DESCENDANT_OF,
+        grandparent_id,
+    )
+    # identical builder builds parent and grandparent
+    builder_parent_rel = Relationship(
+        builder_id,
+        RelationshipType.BUILD_TOOL_OF,
+        parent_id,
+    )
+    builder_grandparent_rel = Relationship(
+        builder_id,
+        RelationshipType.BUILD_TOOL_OF,
+        grandparent_id,
+    )
+    builder_annotation = KonfluxAnnotationManager.builder_image(builder_id, 0)
+
+    parent_doc.packages = [builder_pkg, parent_pkg, grandparent_pkg]
+    parent_doc.relationships = [
+        parent_ancestor_rel,
+        builder_parent_rel,
+        builder_grandparent_rel,
+    ]
+    parent_doc.annotations = [builder_annotation]
+
+    # The collector returns both relationships.
+    assert collect_image_items(parent_doc, BUILDER_IMAGE) == [
+        ImageItem(builder_pkg, builder_parent_rel, [builder_annotation]),
+        ImageItem(builder_pkg, builder_grandparent_rel, [builder_annotation]),
+    ]
+
+
+def test_collect_image_items_warns_on_identical_builder_relationship_triplet(
+    mock_doc: MagicMock,
+    caplog: LogCaptureFixture,
+) -> None:
+    """A repeated builder relationship is warning-only for this content kind."""
+    builder_pkg, builder_rel, builder_annotation = _builder_image_item(
+        "SPDXRef-builder", "SPDXRef-parent"
+    )
+    duplicate_rel = Relationship(
+        builder_pkg.spdx_id,
+        RelationshipType.BUILD_TOOL_OF,
+        "SPDXRef-parent",
+    )
+    parent_pkg = Package("SPDXRef-parent", "parent", SpdxNoAssertion())
+    mock_doc.packages = [builder_pkg, parent_pkg]
+    mock_doc.relationships = [builder_rel, duplicate_rel]
+    mock_doc.annotations = [builder_annotation]
+    caplog.set_level("WARNING")
+
+    assert collect_image_items(mock_doc, BUILDER_IMAGE) == [
+        ImageItem(builder_pkg, builder_rel, [builder_annotation]),
+        ImageItem(builder_pkg, duplicate_rel, [builder_annotation]),
+    ]
+    assert any(
+        "content kind 'builder image'" in message
+        and "SPDXRef-builder BUILD_TOOL_OF SPDXRef-parent (2 occurrences)" in message
+        for message in caplog.messages
+    )
+
+
+@pytest.mark.parametrize(
+    ("kind", "item", "additional_rel", "supporting_packages"),
+    [
+        pytest.param(
+            BASE_IMAGE,
+            _base_image_item("SPDXRef-parent", "SPDXRef-grandparent"),
+            Relationship(
+                "SPDXRef-other-parent",
+                RelationshipType.DESCENDANT_OF,
+                "SPDXRef-grandparent",
+            ),
+            [
+                Package("SPDXRef-parent", "parent", SpdxNoAssertion()),
+                Package("SPDXRef-other-parent", "other-parent", SpdxNoAssertion()),
+            ],
+            id="A base image (of the parent) cannot have multiple descendants",
         ),
-    ):
-        collect_image_items(mock_doc, BASE_IMAGE)
+        pytest.param(
+            ANCESTOR_IMAGE,
+            _ancestor_image_item("SPDXRef-grandparent", "SPDXRef-ancestor"),
+            Relationship(
+                "SPDXRef-other-grandparent",
+                RelationshipType.DESCENDANT_OF,
+                "SPDXRef-ancestor",
+            ),
+            [
+                Package("SPDXRef-grandparent", "grandparent", SpdxNoAssertion()),
+                Package(
+                    "SPDXRef-other-grandparent",
+                    "other-grandparent",
+                    SpdxNoAssertion(),
+                ),
+            ],
+            id="An ancestor image cannot have multiple descendants",
+        ),
+        pytest.param(
+            LEGACY_BASE_IMAGE,
+            _legacy_grandparent_item("SPDXRef-grandparent", "SPDXRef-parent"),
+            Relationship(
+                "SPDXRef-grandparent",
+                RelationshipType.BUILD_TOOL_OF,
+                "SPDXRef-other-parent",
+            ),
+            [
+                Package("SPDXRef-parent", "parent", SpdxNoAssertion()),
+                Package("SPDXRef-other-parent", "other-parent", SpdxNoAssertion()),
+            ],
+            id="A legacy base image (of the parent) cannot have multiple descendants",
+        ),
+        pytest.param(
+            INTERMEDIATE_IMAGE,
+            _intermediate_image_item("SPDXRef-builder-intermediate", "SPDXRef-builder"),
+            Relationship(
+                "SPDXRef-builder-intermediate",
+                RelationshipType.DESCENDANT_OF,
+                "SPDXRef-other-builder",
+            ),
+            [
+                Package("SPDXRef-builder", "builder", SpdxNoAssertion()),
+                Package("SPDXRef-other-builder", "other-builder", SpdxNoAssertion()),
+            ],
+            id=(
+                "Intermediates from different ancestors must not reuse one "
+                "SPDX ID because they represent different source images; "
+                "TO DO: contextualization must prevent this collision"
+            ),
+        ),
+    ],
+)
+def test_collect_image_items_rejects_multiple_relationships_for_restricted_kinds(
+    mock_doc: MagicMock,
+    kind: ContentKind,
+    item: tuple[Package, Relationship, Annotation],
+    additional_rel: Relationship,
+    supporting_packages: list[Package],
+) -> None:
+    """Restricted image content kinds allow only one matching relationship."""
+    parent_doc = mock_doc
+    pkg, rel, annot = item
+    parent_doc.packages = [pkg, *supporting_packages]
+    parent_doc.relationships = [rel, additional_rel]
+    parent_doc.annotations = [annot]
+
+    with pytest.raises(SBOMError):
+        collect_image_items(parent_doc, kind)
 
 
 def test_collect_image_items_skips_missing_annotation(mock_doc: MagicMock) -> None:
@@ -355,31 +698,30 @@ def test_collect_image_items_skips_wrong_annotation_type(mock_doc: MagicMock) ->
     assert collect_image_items(mock_doc, BASE_IMAGE) == []
 
 
-def test_get_annotation_by_spdx_id_filter_by_type_match(mock_doc: MagicMock) -> None:
+def test_get_annotations_by_spdx_id_filter_by_type_match(mock_doc: MagicMock) -> None:
+    annot = KonfluxAnnotationManager.base_image("SPDXRef-x")
+    mock_doc.annotations = [annot]
+
+    assert get_annotations_by_spdx_id_filter_by_type(
+        mock_doc, "SPDXRef-x", AnnotationBaseImage
+    ) == [annot]
+
+
+def test_get_annotations_by_spdx_id_filter_by_type_no_match(
+    mock_doc: MagicMock,
+) -> None:
     annot = KonfluxAnnotationManager.base_image("SPDXRef-x")
     mock_doc.annotations = [annot]
 
     assert (
-        get_annotation_by_spdx_id_filter_by_type(
-            mock_doc, "SPDXRef-x", AnnotationBaseImage
-        )
-        == annot
-    )
-
-
-def test_get_annotation_by_spdx_id_filter_by_type_no_match(mock_doc: MagicMock) -> None:
-    annot = KonfluxAnnotationManager.base_image("SPDXRef-x")
-    mock_doc.annotations = [annot]
-
-    assert (
-        get_annotation_by_spdx_id_filter_by_type(
+        get_annotations_by_spdx_id_filter_by_type(
             mock_doc, "SPDXRef-x", AnnotationAncestorImage
         )
-        is None
+        == []
     )
 
 
-def test_get_annotation_by_spdx_id_filter_by_type_parse_fail(
+def test_get_annotations_by_spdx_id_filter_by_type_parse_fail(
     mock_doc: MagicMock,
     caplog: LogCaptureFixture,
 ) -> None:
@@ -395,10 +737,10 @@ def test_get_annotation_by_spdx_id_filter_by_type_parse_fail(
     mock_doc.creation_info.name = "quay.io/example/parent@sha256:1"
 
     assert (
-        get_annotation_by_spdx_id_filter_by_type(
+        get_annotations_by_spdx_id_filter_by_type(
             mock_doc, "SPDXRef-x", AnnotationBaseImage
         )
-        is None
+        == []
     )
     assert (
         "[Parent image content] Annotation 'SPDXRef-x' from parent SBOM "
@@ -442,7 +784,7 @@ def test_get_grandparent_and_ancestor_legacy(
     )
 
     res_rel = result[0].relationship
-    res_annot = result[0].annotation
+    res_annot = result[0].annotations[0]
     # legacy BUILD_TOOL_OF is converted to DESCENDANT_OF using the parent name
     # as referenced by the component
     assert res_rel == Relationship(
@@ -475,7 +817,7 @@ def test_get_grandparent_modified_and_ancestor_passed(mock_doc: MagicMock) -> No
     assert len(result) == 2
     # grandparent is converted to an ancestor item
     gp_result_rel = result[0].relationship
-    gp_result_annot = result[0].annotation
+    gp_result_annot = result[0].annotations[0]
     assert gp_result_rel == Relationship(
         "SPDXRef-parent-name-from-component",
         RelationshipType.DESCENDANT_OF,
@@ -483,7 +825,7 @@ def test_get_grandparent_modified_and_ancestor_passed(mock_doc: MagicMock) -> No
     )
     assert "is_ancestor_image" in gp_result_annot.annotation_comment
     # deeper ancestors are passed through unchanged
-    assert result[1] == ImageItem(anc_pkg, anc_rel, anc_annot)
+    assert result[1] == ImageItem(anc_pkg, anc_rel, [anc_annot])
 
 
 def test_grandparent_has_multiple_base_images_failure(
@@ -544,11 +886,11 @@ def test_process_grandparent_item_normalizes_input(
     original_annotation_comment = annot.annotation_comment
 
     result = process_grandparent_item(
-        ImageItem(pkg, rel, annot), "SPDXRef-parent-name-from-component"
+        ImageItem(pkg, rel, [annot]), "SPDXRef-parent-name-from-component"
     )
 
     res_rel = result.relationship
-    res_annot = result.annotation
+    res_annot = result.annotations[0]
     assert result.package.files_analyzed is False
     assert res_rel == Relationship(
         "SPDXRef-parent-name-from-component",
@@ -561,6 +903,44 @@ def test_process_grandparent_item_normalizes_input(
     assert res_annot is not annot
     assert pkg.files_analyzed is True
     assert annot.annotation_comment == original_annotation_comment
+
+
+def test_process_builder_items_rename_parent_target() -> None:
+    pkg1, rel1, annot1 = _additional_image_item("SPDXRef-additional", "SPDXRef-parent")
+    pkg2, rel2, annot2 = _builder_image_item("SPDXRef-builder", "SPDXRef-grandparent")
+    pkg3, rel3, annot3 = _builder_image_item("SPDXRef-parent-builder", "SPDXRef-parent")
+
+    result = process_builder_items(
+        builder_items=[
+            ImageItem(pkg1, rel1, [annot1]),
+            ImageItem(pkg2, rel2, [annot2]),
+            ImageItem(pkg3, rel3, [annot3]),
+        ],
+        parent_spdx_id_from_component="SPDXRef-parent-name-from-component",
+        parent_root_packages=["SPDXRef-parent"],
+    )
+
+    assert result == [
+        ImageItem(
+            pkg1,
+            Relationship(
+                "SPDXRef-additional",
+                RelationshipType.BUILD_TOOL_OF,
+                "SPDXRef-parent-name-from-component",
+            ),
+            [annot1],
+        ),
+        ImageItem(pkg2, rel2, [annot2]),
+        ImageItem(
+            pkg3,
+            Relationship(
+                "SPDXRef-parent-builder",
+                RelationshipType.BUILD_TOOL_OF,
+                "SPDXRef-parent-name-from-component",
+            ),
+            [annot3],
+        ),
+    ]
 
 
 def test_get_parent_spdx_id_from_component(mock_doc: MagicMock) -> None:
@@ -618,32 +998,105 @@ def test_get_parent_spdx_id_from_component_invalid_relationships(
         get_parent_spdx_id_from_component(mock_doc)
 
 
-def test_supply_image_packages() -> None:
+def test_supply_image_packages_merges_reused_builder_across_images() -> None:
+    """Supply one identical builder reused across component, parent, and ancestor."""
+    builder_id = "SPDXRef-shared-builder"
+    builder_pkg = Package(builder_id, "builder", SpdxNoAssertion())
+    component_rel = Relationship(
+        builder_id,
+        RelationshipType.BUILD_TOOL_OF,
+        "SPDXRef-component",
+    )
+    parent_rel = Relationship(
+        builder_id,
+        RelationshipType.BUILD_TOOL_OF,
+        "SPDXRef-parent",
+    )
+    grandparent_rel = Relationship(
+        builder_id,
+        RelationshipType.BUILD_TOOL_OF,
+        "SPDXRef-grandparent",
+    )
+    component_annot = KonfluxAnnotationManager.builder_image(builder_id, 0)
+    parent_annot = KonfluxAnnotationManager.builder_image(builder_id, 0)
+    grandparent_annot = KonfluxAnnotationManager.builder_image(builder_id, 0)
+
+    parent_builder_pkg = Package(builder_id, "builder", SpdxNoAssertion())
+    parent_pkg = Package("SPDXRef-parent", "parent", SpdxNoAssertion())
+    grandparent_pkg = Package("SPDXRef-grandparent", "grandparent", SpdxNoAssertion())
+
     component_sbom_doc = MagicMock(spec=Document)
-    component_sbom_doc.packages = []
-    component_sbom_doc.annotations = []
-    component_sbom_doc.relationships = []
+    component_sbom_doc.packages = [builder_pkg]
+    component_sbom_doc.relationships = [component_rel]
+    component_sbom_doc.annotations = [component_annot]
 
     parent_sbom_doc = MagicMock(spec=Document)
-    parent_sbom_doc.packages = []
-    parent_sbom_doc.annotations = []
+    parent_sbom_doc.packages = [parent_builder_pkg, parent_pkg, grandparent_pkg]
+    parent_sbom_doc.relationships = [parent_rel, grandparent_rel]
+    parent_sbom_doc.annotations = [parent_annot, grandparent_annot]
 
-    stats = MatchingStatistics()
-
-    ancestor_pkg, ancestor_rel, ancestor_annot = _ancestor_image_item(
-        "SPDXRef-parent", "SPDXRef-grandparent"
-    )
-    image_packages = [ImageItem(ancestor_pkg, ancestor_rel, ancestor_annot)]
+    parent_image_items = collect_image_items(parent_sbom_doc, BUILDER_IMAGE)
 
     resolver = ComponentRelationshipResolver(
-        [], parent_sbom_doc, component_sbom_doc, stats
+        [], parent_sbom_doc, component_sbom_doc, MatchingStatistics()
     )
-    resolver.supply_image_packages(image_packages)
+    resolver.supply_image_packages(parent_image_items)
 
-    assert ancestor_pkg in component_sbom_doc.packages
-    assert ancestor_rel in component_sbom_doc.relationships
-    assert ancestor_annot in component_sbom_doc.annotations
-    assert "is_ancestor_image" in component_sbom_doc.annotations[0].annotation_comment
+    # package is deduplicated
+    assert component_sbom_doc.packages == [builder_pkg]
+    # All relationships and annotations must be preserved.
+    assert component_sbom_doc.relationships == [
+        component_rel,
+        parent_rel,
+        grandparent_rel,
+    ]
+    assert component_sbom_doc.annotations == [
+        component_annot,
+        parent_annot,
+        grandparent_annot,
+    ]
+
+
+def test_supply_image_packages_preserves_builder_and_additional_roles() -> None:
+    """Supply a shared image package with builder and additional roles."""
+    shared_image_id = "SPDXRef-shared-image"
+    shared_image_pkg = Package(shared_image_id, "shared-image", SpdxNoAssertion())
+    parent_pkg = Package("SPDXRef-parent", "parent", SpdxNoAssertion())
+    grandparent_pkg = Package("SPDXRef-grandparent", "grandparent", SpdxNoAssertion())
+    builder_rel = Relationship(
+        shared_image_id,
+        RelationshipType.BUILD_TOOL_OF,
+        grandparent_pkg.spdx_id,
+    )
+    additional_rel = Relationship(
+        shared_image_id,
+        RelationshipType.BUILD_TOOL_OF,
+        parent_pkg.spdx_id,
+    )
+    builder_annot = KonfluxAnnotationManager.builder_image(shared_image_id, 0)
+    additional_annot = KonfluxAnnotationManager.additional_image(shared_image_id)
+
+    parent_sbom_doc = MagicMock(spec=Document)
+    parent_sbom_doc.packages = [shared_image_pkg, parent_pkg, grandparent_pkg]
+    parent_sbom_doc.relationships = [builder_rel, additional_rel]
+    parent_sbom_doc.annotations = [builder_annot, additional_annot]
+
+    component_sbom_doc = MagicMock(spec=Document)
+    component_sbom_doc.packages = []
+    component_sbom_doc.relationships = []
+    component_sbom_doc.annotations = []
+
+    resolver = ComponentRelationshipResolver(
+        [], parent_sbom_doc, component_sbom_doc, MatchingStatistics()
+    )
+    resolver.supply_image_packages(
+        collect_image_items(parent_sbom_doc, BUILDER_IMAGE)
+        + collect_image_items(parent_sbom_doc, ADDITIONAL_IMAGE)
+    )
+
+    assert component_sbom_doc.packages == [shared_image_pkg]
+    assert component_sbom_doc.relationships == [builder_rel, additional_rel]
+    assert component_sbom_doc.annotations == [builder_annot, additional_annot]
 
 
 @pytest.mark.parametrize(
@@ -829,6 +1282,281 @@ async def test_map_parent_to_component_and_update_component(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    (
+        "builder_id",
+        "builder_target_id",
+        "intermediate_id",
+        "builder_content_id",
+        "intermediate_content_id",
+        "expected_builder_target_parent",
+    ),
+    [
+        pytest.param(
+            "SPDXRef-parent-builder",
+            "SPDXRef-parent",
+            "SPDXRef-parent-intermediate",
+            "SPDXRef-parent-builder-content",
+            "SPDXRef-parent-intermediate-content",
+            "SPDXRef-parent-name-from-component",
+            id="Parent builder subtree",
+        ),
+        pytest.param(
+            "SPDXRef-grandparent-builder",
+            "SPDXRef-grandparent",
+            "SPDXRef-grandparent-intermediate",
+            "SPDXRef-grandparent-builder-content",
+            "SPDXRef-grandparent-intermediate-content",
+            "SPDXRef-grandparent",
+            id="Ancestor builder subtree",
+        ),
+    ],
+)
+@patch("mobster.cmd.generate.oci_image.contextual_sbom.parent.MatchingStatistics")
+async def test_map_parent_to_component_supplies_builder_and_intermediate_subtree(
+    mock_stats_class: MagicMock,
+    builder_id: str,
+    builder_target_id: str,
+    intermediate_id: str,
+    builder_content_id: str,
+    intermediate_content_id: str,
+    expected_builder_target_parent: str,
+) -> None:
+    """
+    Supply parent and ancestor builder subtrees and preserve their
+    contextualized package ownership.
+
+    A builder of the used parent is aligned with the component's parent SPDX ID.
+    A builder of an ancestor remains attached to that ancestor. Content packages
+    retain their builder or intermediate image owners.
+    """
+    parent_spdx_id = "SPDXRef-parent-name-from-component"
+
+    parent_sbom_doc = MagicMock(spec=Document)
+    # parent image has one builder with intermediate image
+    grandparent_pkg, grandparent_rel, grandparent_annot = _base_image_item(
+        "SPDXRef-parent", "SPDXRef-grandparent"
+    )
+    builder_pkg, builder_rel, builder_annot = _builder_image_item(
+        builder_id, builder_target_id
+    )
+    intermediate_pkg, intermediate_rel, intermediate_annot = _intermediate_image_item(
+        intermediate_id, builder_id
+    )
+    # builder and intermediate content package
+    builder_content_pkg = create_package_with_identifier(builder_content_id, "checksum")
+    builder_content_rel = Relationship(
+        builder_id,
+        RelationshipType.CONTAINS,
+        builder_content_id,
+    )
+    intermediate_content_pkg = create_package_with_identifier(
+        intermediate_content_id, "verification_code"
+    )
+    intermediate_content_rel = Relationship(
+        intermediate_id,
+        RelationshipType.CONTAINS,
+        intermediate_content_id,
+    )
+    root_pkg, root_rel = get_root_package_items("SPDXRef-parent")
+    parent_sbom_doc.packages = [
+        grandparent_pkg,
+        root_pkg,
+        builder_pkg,
+        intermediate_pkg,
+        builder_content_pkg,
+        intermediate_content_pkg,
+    ]
+    parent_sbom_doc.relationships = [
+        grandparent_rel,
+        root_rel,
+        builder_rel,
+        intermediate_rel,
+        builder_content_rel,
+        intermediate_content_rel,
+    ]
+    parent_sbom_doc.annotations = [
+        grandparent_annot,
+        builder_annot,
+        intermediate_annot,
+    ]
+
+    component_sbom_doc = MagicMock(spec=Document)
+    # builder and intermediate content package in component before contextualization
+    component_root_pkg = Package("SPDXRef-component", "component", SpdxNoAssertion())
+    component_builder_content_pkg = create_package_with_identifier(
+        "SPDXRef-component-builder-content", "checksum"
+    )
+    component_intermediate_content_pkg = create_package_with_identifier(
+        "SPDXRef-component-intermediate-content", "verification_code"
+    )
+    component_sbom_doc.packages = [
+        component_root_pkg,
+        component_builder_content_pkg,
+        component_intermediate_content_pkg,
+    ]
+    component_sbom_doc.relationships = [
+        Relationship(
+            "SPDXRef-component",
+            RelationshipType.CONTAINS,
+            "SPDXRef-component-builder-content",
+        ),
+        Relationship(
+            "SPDXRef-component",
+            RelationshipType.CONTAINS,
+            "SPDXRef-component-intermediate-content",
+        ),
+    ]
+    component_sbom_doc.annotations = []
+
+    mock_stats_class.return_value = MagicMock()
+
+    component_result = await map_parent_to_component_and_update_component(
+        parent_sbom_doc,
+        component_sbom_doc,
+        parent_spdx_id,
+    )
+
+    # Verify that builder and intermediate image packages are inherited from the parent.
+    assert builder_pkg in component_result.packages
+    assert intermediate_pkg in component_result.packages
+    # After matching, verify that builder and intermediate content packages are
+    # reparented correctly.
+    assert (
+        Relationship(
+            builder_id,
+            RelationshipType.CONTAINS,
+            "SPDXRef-component-builder-content",
+        )
+        in component_result.relationships
+    )
+    assert (
+        Relationship(
+            intermediate_id,
+            RelationshipType.CONTAINS,
+            "SPDXRef-component-intermediate-content",
+        )
+        in component_result.relationships
+    )
+    # component does not indicate that contains builder \
+    # intermediate originated packages anymore
+    assert (
+        Relationship(
+            "SPDXRef-component",
+            RelationshipType.CONTAINS,
+            "SPDXRef-component-builder-content",
+        )
+        not in component_result.relationships
+    )
+    assert (
+        Relationship(
+            "SPDXRef-component",
+            RelationshipType.CONTAINS,
+            "SPDXRef-component-intermediate-content",
+        )
+        not in component_result.relationships
+    )
+    # Verify that the inherited builder is bound to the correct parent or
+    # ancestor image.
+    assert (
+        Relationship(
+            builder_id,
+            RelationshipType.BUILD_TOOL_OF,
+            expected_builder_target_parent,
+        )
+        in component_result.relationships
+    )
+    # All other relationships and annotations must be inherited
+    assert intermediate_rel in component_result.relationships
+    assert builder_annot in component_result.annotations
+    assert intermediate_annot in component_result.annotations
+
+
+@pytest.mark.asyncio
+@patch("mobster.cmd.generate.oci_image.contextual_sbom.parent.MatchingStatistics")
+async def test_map_parent_to_component_supplies_additional_image_content(
+    mock_stats_class: MagicMock,
+) -> None:
+    """Inherit an additional image, its content, and its relationship."""
+    parent_spdx_id = "SPDXRef-parent-name-from-component"
+    parent_root_pkg, parent_root_rel = get_root_package_items("SPDXRef-parent")
+    additional_pkg, additional_rel, additional_annot = _additional_image_item(
+        "SPDXRef-additional-image", "SPDXRef-parent"
+    )
+    parent_content_pkg = create_package_with_identifier(
+        "SPDXRef-parent-additional-content", "checksum"
+    )
+    parent_content_rel = Relationship(
+        additional_pkg.spdx_id,
+        RelationshipType.CONTAINS,
+        parent_content_pkg.spdx_id,
+    )
+    parent_sbom_doc = MagicMock(spec=Document)
+    parent_sbom_doc.packages = [
+        parent_root_pkg,
+        additional_pkg,
+        parent_content_pkg,
+    ]
+    parent_sbom_doc.relationships = [
+        parent_root_rel,
+        additional_rel,
+        parent_content_rel,
+    ]
+    parent_sbom_doc.annotations = [additional_annot]
+
+    component_content_pkg = create_package_with_identifier(
+        "SPDXRef-component-additional-content", "checksum"
+    )
+    component_sbom_doc = MagicMock(spec=Document)
+    component_sbom_doc.packages = [
+        Package("SPDXRef-component", "component", SpdxNoAssertion()),
+        component_content_pkg,
+    ]
+    component_sbom_doc.relationships = [
+        Relationship(
+            "SPDXRef-component",
+            RelationshipType.CONTAINS,
+            component_content_pkg.spdx_id,
+        )
+    ]
+    component_sbom_doc.annotations = []
+    mock_stats_class.return_value = MagicMock()
+
+    result = await map_parent_to_component_and_update_component(
+        parent_sbom_doc,
+        component_sbom_doc,
+        parent_spdx_id,
+    )
+
+    assert additional_pkg in result.packages
+    assert additional_annot in result.annotations
+    assert (
+        Relationship(
+            additional_pkg.spdx_id,
+            RelationshipType.BUILD_TOOL_OF,
+            parent_spdx_id,
+        )
+        in result.relationships
+    )
+    assert (
+        Relationship(
+            additional_pkg.spdx_id,
+            RelationshipType.CONTAINS,
+            component_content_pkg.spdx_id,
+        )
+        in result.relationships
+    )
+    assert (
+        Relationship(
+            "SPDXRef-component",
+            RelationshipType.CONTAINS,
+            component_content_pkg.spdx_id,
+        )
+        not in result.relationships
+    )
+
+
+@pytest.mark.asyncio
 async def test_map_parent_to_component_raises_when_parent_root_is_missing(
     mock_doc: MagicMock,
 ) -> None:
@@ -856,6 +1584,47 @@ async def test_map_parent_to_component_raises_when_parent_root_is_missing(
             component_sbom_doc,
             "SPDXRef-parent",
         )
+
+
+@pytest.mark.asyncio
+async def test_map_parent_to_component_allows_parent_built_from_scratch(
+    mock_doc: MagicMock,
+) -> None:
+    """Allow a scratch-based parent with a builder but no grandparent."""
+    root_pkg, root_rel = get_root_package_items("SPDXRef-parent")
+    builder_pkg, builder_rel, builder_annot = _builder_image_item(
+        "SPDXRef-builder", "SPDXRef-parent"
+    )
+    mock_doc.packages = [root_pkg, builder_pkg]
+    mock_doc.relationships = [root_rel, builder_rel]
+    mock_doc.annotations = [builder_annot]
+    mock_doc.creation_info.name = "quay.io/example/scratch-parent@sha256:1"
+    mock_doc.creation_info.document_namespace = "https://test/scratch-parent"
+
+    component_sbom_doc = MagicMock(spec=Document)
+    component_sbom_doc.packages = []
+    component_sbom_doc.relationships = []
+    component_sbom_doc.annotations = []
+    component_sbom_doc.creation_info.document_namespace = "https://test/component"
+
+    parent_name_from_component = "SPDXRef-parent-from-component"
+    result = await map_parent_to_component_and_update_component(
+        mock_doc,
+        component_sbom_doc,
+        parent_name_from_component,
+    )
+
+    assert result is component_sbom_doc
+    assert builder_pkg in result.packages
+    assert (
+        Relationship(
+            "SPDXRef-builder",
+            RelationshipType.BUILD_TOOL_OF,
+            parent_name_from_component,
+        )
+        in result.relationships
+    )
+    assert builder_annot in result.annotations
 
 
 @pytest.mark.asyncio
