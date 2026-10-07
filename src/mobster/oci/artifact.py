@@ -223,9 +223,19 @@ class SLSAProvenance:
 class SBOM:
     """
     Object representing an SBOM for an image.
+
+    Attributes:
+        signature_verified: True only when a trusted static key verified the
+            image's SBOM attestation. This value is not read from the SBOM doc.
     """
 
-    def __init__(self, doc: dict[Any, Any], digest: str, reference: str) -> None:
+    def __init__(
+        self,
+        doc: dict[Any, Any],
+        digest: str,
+        reference: str,
+        signature_verified: bool = False,
+    ) -> None:
         """
         An SBOM downloaded using cosign.
 
@@ -233,10 +243,13 @@ class SBOM:
             doc: The parsed SBOM dictionary
             digest: SHA256 digest of the raw SBOM data
             reference: Reference of the image the SBOM was attached to
+            signature_verified: Set only by a fetcher after a trusted static key
+                verified the SBOM attestation. Never inferred from the SBOM doc.
         """
         self.doc = doc
         self.digest = digest
         self.reference = reference
+        self.signature_verified = signature_verified
 
     @property
     def format(self) -> SBOMFormat:

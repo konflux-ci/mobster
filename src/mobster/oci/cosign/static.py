@@ -13,6 +13,7 @@ from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, SLSAProvenance
+from mobster.oci.cosign.anonymous_fetcher import AnonymousFetcher
 from mobster.oci.cosign.attestation_utils import (
     get_cosign_attestation_type,
     get_sbom_from_attestation_bytes,
@@ -155,18 +156,33 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
                 is SPDX or CDX, specific version does not matter
 
         Returns:
-            The initialized SBOM object
+            The initialized SBOM object, marked verified after Cosign validates
+            the attestation with the configured public key.
+
+        Raises:
+            SBOMError: If no verification key is configured or the attestation
+                cannot be verified.
         """
+        if self.config.static_verify_key is None:
+            raise SBOMError(
+                "Cannot verify SBOM attestation without a static verification key."
+            )
+
         attestation_type = get_cosign_attestation_type(sbom_format)
         attestations = await self._verify_attestation(image, attestation_type)
         if attestations:
-            last_attestation = attestations[-1]
-            return get_sbom_from_attestation_bytes(last_attestation, image.reference)
+            return get_sbom_from_attestation_bytes(
+                attestations[-1], image.reference, signature_verified=True
+            )
         return None
 
     async def fetch_sbom(self, image: Image) -> SBOM:
         """
-        Fetch and parse the SBOM for the supplied image.
+        Fetch the legacy SBOM attachment, or a signed SBOM attestation if absent.
+
+        The SPDX attestation is verified with the configured static public key.
+        If that verification fails, the unverified attestation is returned instead,
+        so the caller can report the SBOM as not attested.
 
         Args:
             image: Image to fetch the SBOM of
@@ -179,9 +195,45 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
             )
 
         if code != 0:
-            raise SBOMError(f"Failed to fetch SBOM {image}: {stderr.decode()}")
+            error = stderr.decode()
+            if not self._is_missing_sbom_attachment(error):
+                raise SBOMError(f"Failed to fetch SBOM {image}: {error}")
+
+            try:
+                if sbom := await self.fetch_attested_sbom(image, SBOMFormat.SPDX_2_3):
+                    return sbom
+            except SBOMError:
+                # Like a failed provenance check for a legacy attachment, a failed
+                # attestation verification is not fatal here. The unverified SBOM
+                # is returned with signature_verified=False, so load_sbom reports
+                # it as not attested.
+                logger.exception(
+                    "Verifying the SBOM attestation of %s failed, "
+                    "falling back to the unverified attestation.",
+                    image,
+                )
+                return await AnonymousFetcher().fetch_sbom(image)
+
+            raise SBOMError(
+                f"Failed to fetch SBOM {image}: no attached or attested SBOM found."
+            )
 
         return SBOM.from_cosign_output(stdout, image.reference)
+
+    @staticmethod
+    def _is_missing_sbom_attachment(error: str) -> bool:
+        """Return whether Cosign reports that the image has no SBOM attachment."""
+        error = error.lower()
+        return any(
+            marker in error
+            for marker in (
+                "manifest unknown",
+                "manifest_unknown",
+                "no matching referrers found",
+                "no sbom attached to reference",
+                "no sbom found attached to image index",
+            )
+        )
 
 
 class StaticKeySigner(SupportsSign):

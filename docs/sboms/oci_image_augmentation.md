@@ -9,6 +9,7 @@ Examples include OCI image tags or the image's release repository.
 You can perform the augmentation via the mobster command: `augment oci-image`.
 
 ## Augment oci-image
+
 You can either augment a specific OCI image by providing the optional
 `--reference` argument, or augment SBOMs for all images in the supplied
 snapshot:
@@ -16,10 +17,42 @@ snapshot:
 $ mobster augment --output sboms/ oci-image \
     --reference quay.io/repo/image@sha256:<digest> \
     --snapshot snapshot.json
+```
 
+```bash
 $ mobster augment --output sboms/ oci-image \
     --snapshot snapshot.json
 ```
+
+### SBOM sources and verification
+
+Augmentation checks for the existing `.sbom` attachment first. When that
+attachment is absent, Mobster reads the SBOM from an SPDX `.att` attestation.
+In both cases, `--verification-key` is used to verify trust, but each source is
+verified differently:
+
+- `.sbom` attachment: the SBOM is unsigned. The signature of the image
+  provenance is checked against the supplied public key, and the digest of the
+  SBOM is compared to the SBOM digest recorded in that provenance.
+- `.att` attestation: the supplied public key is used to verify the signature of
+  the attestation, which contains the SBOM, using `cosign verify-attestation`
+  under the hood. Cosign also binds the attestation to the image, so no
+  provenance is needed.
+
+```bash
+$ mobster augment --output sboms/ oci-image \
+    --snapshot snapshot.json \
+    --verification-key cosign.pub
+```
+
+If the verification fails, the SBOM is still augmented, but it is reported as
+not attested, so the released images created from it are not attested with a
+release-time SBOM. This applies to both sources. A missing `.sbom` attachment
+triggers the `.att` fallback; other errors, such as authentication or network
+failures, fail the run.
+
+Without `--verification-key`, Mobster logs a warning and reads the `.sbom`
+attachment or the `.att` attestation without verifying either.
 
 ## Augmentation examples
 Here is an example of what gets updated by `mobster augment oci-image`. The

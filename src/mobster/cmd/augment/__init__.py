@@ -93,10 +93,19 @@ class AugmentImageCommand(Command):
         semaphore = asyncio.Semaphore(self.cli_args.concurrency)
         snapshot = await make_snapshot(self.cli_args.snapshot, digest, semaphore)
 
-        config = AugmentConfig(
-            cosign=cosign.StaticKeyFetcher(
+        if self.cli_args.verification_key is None:
+            LOGGER.warning(
+                "No verification key provided; SBOMs will be fetched "
+                "without signature verification."
+            )
+            cosign_client: cosign.SupportsFetch = cosign.AnonymousFetcher()
+        else:
+            cosign_client = cosign.StaticKeyFetcher(
                 cosign.VerifyConfig(static_verify_key=self.cli_args.verification_key)
-            ),
+            )
+
+        config = AugmentConfig(
+            cosign=cosign_client,
             verify=self.cli_args.verification_key is not None,
             semaphore=semaphore,
             output_dir=self.cli_args.output,
@@ -190,8 +199,9 @@ async def load_sbom(
     Args:
         image: Image to load the sbom for
         cosign_client: Implementation of the fetch protocol
-        verify: True if the SBOM's digest should be verified via the
-            provenance of the image
+        verify: True if the SBOM should be verified. Raw attachments are checked
+            against image provenance; signed SBOM attestations are already bound
+            to the image by Cosign verification.
 
     Returns:
         SBOM and True if its attestation was validated successfully,
@@ -199,7 +209,11 @@ async def load_sbom(
     """
     sbom = await cosign_client.fetch_sbom(image)
     attestation_valid = True
-    if verify and isinstance(cosign_client, cosign.SupportsProvenanceFetch):
+    if (
+        verify
+        and not sbom.signature_verified
+        and isinstance(cosign_client, cosign.SupportsProvenanceFetch)
+    ):
         # Only clients that support provenance fetch shall
         # use it for SBOM verification
         try:
