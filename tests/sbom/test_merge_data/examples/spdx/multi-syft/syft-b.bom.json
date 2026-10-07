@@ -1,0 +1,62 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "spdxVersion": "SPDX-2.3",
+  "name": "syft-b",
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://example.com/syft-b",
+  "creationInfo": {
+    "created": "2024-01-01T00:00:00Z",
+    "creators": ["Tool: syft-b"]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-root-b",
+      "name": "root-b",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-shared-b",
+      "name": "shared",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/shared@1.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-only-b",
+      "name": "only-b",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/only-b@1.0.0"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-root-b"
+    },
+    {
+      "spdxElementId": "SPDXRef-root-b",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-shared-b"
+    },
+    {
+      "spdxElementId": "SPDXRef-root-b",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-only-b"
+    }
+  ]
+}

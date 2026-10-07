@@ -1,0 +1,76 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "spdxVersion": "SPDX-2.3",
+  "name": "syft-prefer-match",
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://example.com/syft-prefer-match",
+  "creationInfo": {
+    "created": "2024-01-01T00:00:00Z",
+    "creators": [
+      "Tool: syft",
+      "Organization: Red Hat",
+      "Tool: hermeto"
+    ]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-hermeto-bar",
+      "name": "bar",
+      "versionInfo": "2.0.0",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:pypi/bar@2.0.0?vcs_url=https://github.com/example/bar",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-hermeto-local",
+      "name": "workspace-pkg",
+      "versionInfo": "3.0.0",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceLocator": "pkg:npm/workspace-pkg@3.0.0#foo/eggs",
+          "referenceType": "purl"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-syft-root",
+      "name": "root",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "NOASSERTION"
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-syft-root"
+    },
+    {
+      "spdxElementId": "SPDXRef-syft-root",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-hermeto-bar"
+    },
+    {
+      "spdxElementId": "SPDXRef-syft-root",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-hermeto-local"
+    },
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-hermeto-bar"
+    },
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-hermeto-local"
+    }
+  ]
+}

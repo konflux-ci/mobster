@@ -6,7 +6,6 @@ import logging
 import os
 import platform
 import re
-from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
@@ -116,28 +115,6 @@ def identify_arch() -> str:
     return result
 
 
-async def load_sbom_from_json(file_path: Path) -> dict[str, Any]:
-    """
-    A JSON loading utility that prints invalid file contents in
-    case of a failure. Propagates exceptions!
-    Args:
-        file_path: Path to the JSON SBOM file (SPDX 2.X or CycloneDX 1.5+)
-    Returns:
-        The SBOM dictionary from the file.
-    """
-    with open(file_path, encoding="utf-8") as in_stream:
-        try:
-            contents = in_stream.read()
-            return json.loads(contents)  # type: ignore[no-any-return]
-        except JSONDecodeError:
-            LOGGER.critical(
-                "Expected a JSON SBOM. Found different file contents! "
-                "Logging first 200 chars of the file."
-            )
-            LOGGER.critical(contents[:200])
-            raise
-
-
 def get_tpa_ca() -> str | None:
     """
     Helper function to know if MOBSTER_TPA_CA_INFO env var is defined
@@ -147,3 +124,25 @@ def get_tpa_ca() -> str | None:
     """
 
     return os.environ.get("MOBSTER_TPA_CA_INFO")
+
+
+def load_file_to_dict(json_file: Path) -> dict[str, Any]:
+    """
+    Loads a file into a dictionary object.
+    Args:
+        json_file: The path to the dictionary file.
+
+    Returns:
+        The loaded dictionary.
+    """
+    with open(json_file, encoding="utf-8") as in_stream:
+        try:
+            contents = in_stream.read()
+            return json.loads(contents)  # type: ignore[no-any-return]
+        except json.JSONDecodeError:
+            LOGGER.critical(
+                "Expected a JSON dictionary. Found different file contents! "
+                "Logging first 200 chars of the file."
+            )
+            LOGGER.critical(contents[:200])
+            raise

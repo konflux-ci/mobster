@@ -16,12 +16,12 @@ from pytest_lazy_fixtures import lf
 from spdx_tools.spdx.model.document import CreationInfo, Document
 from spdx_tools.spdx.model.package import Package
 
-from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.enrich import EnrichCommand
 from mobster.cmd.generate.oci_image import GenerateOciImageCommand
 from mobster.cmd.generate.oci_image.metadata import SBOMMetadata
-from mobster.error import ContextualWorkflowError
+from mobster.error import ContextualWorkflowError, SBOMError
 from mobster.image import Image
+from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
 from tests.conftest import (
     EnrichTestCase,
     GenerateOciImageTestCase,
@@ -116,9 +116,9 @@ async def test_GenerateOciImageCommand_execute_cannot_contextualize_cyclonedx(
 @patch("mobster.cmd.generate.oci_image.LOGGER")
 @patch("mobster.cmd.generate.oci_image.extend_sbom_with_image_reference")
 @patch("mobster.cmd.generate.oci_image.get_digest_for_image_ref")
-@patch("mobster.cmd.generate.oci_image.load_sbom_from_json")
+@patch("mobster.cmd.generate.oci_image.load_file_to_sbom")
 async def test_GenerateOciImageCommand_execute_handle_pullspec(
-    mock_load_sbom: AsyncMock,
+    mock_load_sbom: MagicMock,
     mock_get_digest: AsyncMock,
     mock_extend_sbom: AsyncMock,
     mock_logger: MagicMock,
@@ -158,9 +158,9 @@ async def test_GenerateOciImageCommand_execute_handle_pullspec(
 
 
 @pytest.mark.asyncio
-@patch("mobster.cmd.generate.oci_image.load_sbom_from_json")
+@patch("mobster.sbom.load.load_file_to_dict")
 async def test_GenerateOciImageCommand_execute_unknown_sbom(
-    mock_load_sbom: AsyncMock,
+    mock_load_sbom: MagicMock,
 ) -> None:
     args = MagicMock()
     mock_load_sbom.return_value = {"foo": "bar"}
@@ -171,7 +171,7 @@ async def test_GenerateOciImageCommand_execute_unknown_sbom(
     args.metadata_path = None
     args.parsed_dockerfile_path = None
     command = GenerateOciImageCommand(args)
-    with pytest.raises(ValueError):
+    with pytest.raises(SBOMError):
         await command.execute()
 
 
@@ -285,11 +285,15 @@ async def test_GenerateOciImageCommand__soft_validate_content_cdx(
 @patch(
     "mobster.cmd.generate.oci_image.GenerateOciImageCommand._load_and_filter_hermeto_sbom"
 )
-@patch("mobster.cmd.generate.oci_image.load_sbom_from_json")
+@patch("mobster.cmd.generate.oci_image.load_dict_to_sbom")
+@patch("mobster.cmd.generate.oci_image.load_file_to_sbom")
+@patch("mobster.utils.load_file_to_dict")
 @patch("mobster.cmd.generate.oci_image.merge_sboms")
 async def test_GenerateOciImageCommand__handle_bom_inputs(
     mock_merge: MagicMock,
-    mock_load_sbom: AsyncMock,
+    mock_load_file_to_dict: MagicMock,
+    mock_load_file_to_sbom: MagicMock,
+    mock_load_dict_to_sbom: MagicMock,
     mock_load_hermeto_sbom: AsyncMock,
     mock_syft_scan: AsyncMock,
     mock_load_metadata: MagicMock,
@@ -305,11 +309,13 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
     command.cli_args.image_pullspec = image_pullspec
     command.cli_args.metadata_path = metadata_path
 
-    mock_syft_data = {"name": "syft_data"}
-    mock_hermeto_data = {"name": "hermeto_data"}
-    mock_merged_data = {"name": "merged_data"}
+    mock_syft_data = MagicMock(name="syft_data")
+    mock_hermeto_data = MagicMock(name="hermeto_data")
+    mock_merged_data = MagicMock(name="merged_data")
 
-    mock_load_sbom.return_value = mock_syft_data
+    mock_load_file_to_dict.return_value = mock_syft_data
+    mock_load_file_to_sbom.return_value = mock_syft_data
+    mock_load_dict_to_sbom.side_effect = lambda sbom, append_mobster=False: sbom
     mock_load_hermeto_sbom.return_value = mock_hermeto_data
     mock_merge.return_value = mock_merged_data
 
@@ -336,7 +342,7 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
         if expected_action == "load_syft":
             assert syft_boms is not None
             assert hermeto_bom is None
-            mock_load_sbom.assert_awaited_once()
+            mock_load_file_to_sbom.assert_called_once()
             assert result == mock_syft_data
             mock_merge.assert_not_called()
 
@@ -344,6 +350,7 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
             assert hermeto_bom is not None
             assert syft_boms is None
             mock_load_hermeto_sbom.assert_awaited_once()
+            mock_load_dict_to_sbom.assert_called_once()
             assert result == mock_hermeto_data
             mock_merge.assert_not_called()
 
@@ -353,18 +360,20 @@ async def test_GenerateOciImageCommand__handle_bom_inputs(
 
             mock_merge.assert_called_once_with(syft_boms_dict, hermeto_bom_dict)
             assert result == mock_merged_data
-            mock_load_sbom.assert_awaited()
+            mock_load_file_to_dict.assert_called()
             if hermeto_bom:
                 mock_load_hermeto_sbom.assert_awaited_once()
 
         elif expected_action == "scan_syft":
             mock_syft_scan.assert_awaited_once_with(image_pullspec)
-            mock_load_sbom.assert_not_awaited()
+            mock_load_file_to_sbom.assert_not_called()
+            mock_load_file_to_dict.assert_not_called()
             mock_merge.assert_not_called()
 
         elif expected_action == "scan_syft_metadata":
             mock_syft_scan.assert_awaited_once_with(command._metadata.image.pullspec)
-            mock_load_sbom.assert_not_awaited()
+            mock_load_file_to_sbom.assert_not_called()
+            mock_load_file_to_dict.assert_not_called()
             mock_merge.assert_not_called()
 
 
@@ -575,9 +584,9 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_
 )
 @patch("mobster.cmd.generate.oci_image.extend_sbom_with_base_images")
 @patch("mobster.cmd.generate.oci_image.get_base_images_refs_from_dockerfile")
-@patch("mobster.cmd.generate.oci_image.load_sbom_from_json")
+@patch("mobster.cmd.generate.oci_image.load_file_to_sbom")
 async def test_execute_deprecated_path_no_attribute_error(
-    mock_load_sbom: AsyncMock,
+    mock_load_sbom: MagicMock,
     mock_get_base_refs: AsyncMock,
     mock_extend_base: AsyncMock,
     mock_assess_dispatch: AsyncMock,

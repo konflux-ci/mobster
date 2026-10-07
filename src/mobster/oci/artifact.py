@@ -8,13 +8,13 @@ import datetime
 import hashlib
 import json
 import logging
-from enum import Enum
 from typing import Any
 
 import dateutil.parser
 
 from mobster.error import SBOMError
 from mobster.image import parse_image_reference
+from mobster.sbom.detect import SBOMFormat, detect_sbom_format
 
 logger = logging.getLogger(__name__)
 
@@ -220,31 +220,6 @@ class SLSAProvenance:
         return self._sbom_digests.get(image_digest)
 
 
-class SBOMFormat(Enum):
-    """
-    Enumeration of all SBOM formats supported for updates.
-    """
-
-    SPDX_2_0 = "SPDX-2.0"
-    SPDX_2_1 = "SPDX-2.1"
-    SPDX_2_2 = "SPDX-2.2"
-    SPDX_2_2_1 = "SPDX-2.2.1"
-    SPDX_2_2_2 = "SPDX-2.2.2"
-    SPDX_2_3 = "SPDX-2.3"
-    CDX_V1_4 = "1.4"
-    CDX_V1_5 = "1.5"
-    CDX_V1_6 = "1.6"
-
-    def is_spdx2(self) -> bool:
-        """
-        Is this format SPDX of version 2.X?
-
-        Returns:
-            True if this is SPDX 2.X, False otherwise
-        """
-        return self.value.startswith("SPDX-2")
-
-
 class SBOM:
     """
     Object representing an SBOM for an image.
@@ -268,28 +243,7 @@ class SBOM:
         """
         Return the format of the SBOM document.
         """
-        if "bomFormat" in self.doc:
-            raw = self.doc.get("specVersion")
-            if raw is None:
-                raise SBOMError("SBOM is missing specVersion field.")
-
-            try:
-                spec = SBOMFormat(raw)
-            except ValueError:
-                raise SBOMError(f"CDX spec {raw} not recognized.") from None
-
-            return spec
-
-        raw = self.doc.get("spdxVersion")
-        if raw is None:
-            raise SBOMError("SBOM is missing spdxVersion field.")
-
-        try:
-            spec = SBOMFormat(raw)
-        except ValueError:
-            raise SBOMError(f"SPDX spec {raw} not recognized.") from None
-
-        return spec
+        return detect_sbom_format(self.doc)
 
     @staticmethod
     def from_cosign_output(raw: bytes, reference: str) -> "SBOM":
