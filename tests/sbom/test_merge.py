@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 import json
 from pathlib import Path
 from typing import Any
@@ -429,9 +428,12 @@ def test_merge_index_drops_syft_duplicate_of_hermeto_non_registry() -> None:
 
 
 def test_merge_index_drops_syft_npm_matching_hermeto_subpath() -> None:
+    """
+    Ensure MergeIndex drops Syft equivalents to Hermeto npm packages.
+    (Syft and Hermeto provide different purls for npm packages despite referring
+    to the same package.)
+    """
     index = MergeIndex[Component]()
-    # Hermeto reports a local path via purl subpath; Syft reports the same
-    # dependency as a namespaced npm package whose namespace/name equals that path.
     hermeto = make_cdx_component(
         "baz",
         "3.0.0",
@@ -501,7 +503,7 @@ def test_merge_index_keeps_distinct_syft_component() -> None:
     ],
 )
 def test_spdx_merge_examples(example: str, data_dir: Path) -> None:
-    """Small SPDX fixtures under examples/spdx/<case>/ with fully visible data."""
+    """The test data is stored in examples/spdx/<case>/."""
     case_dir = data_dir / "examples" / "spdx" / example
     expected = json.loads((case_dir / "expected.bom.json").read_text(encoding="utf-8"))
 
@@ -599,7 +601,11 @@ def test_cyclonedx_merge_tools_metadata() -> None:
 
 
 def test_cyclonedx_prefer_and_remap_example(data_dir: Path) -> None:
-    """Hermeto wins on shared foo; Syft-only bar kept; deps remapped to hermeto-foo."""
+    """
+    Ensure Hermeto is preferred when remapping CycloneDX components,
+    while keeping Syft-only components & ensuring their dependencies are
+    remapped to Hermeto equivalents.
+    """
     case_dir = data_dir / "examples" / "cyclonedx" / "prefer-and-remap"
     expected = json.loads((case_dir / "expected.bom.json").read_text(encoding="utf-8"))
 
