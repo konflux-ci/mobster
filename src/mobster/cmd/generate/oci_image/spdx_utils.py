@@ -477,6 +477,15 @@ class AnnotationBaseImage:
     name = "konflux:container:is_base_image"
 
 
+class AnnotationAncestorImage:
+    """
+    Parsed Konflux ancestor image (grandparent
+    of the component and more recent) annotation.
+    """
+
+    name = "konflux:container:is_ancestor_image"
+
+
 class AnnotationAdditionalImage:
     """Parsed Konflux annotation for additional builder images."""
 
@@ -555,6 +564,24 @@ class KonfluxAnnotationManager:
         return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
 
     @staticmethod
+    def ancestor_image(spdx_id: str) -> Annotation:
+        """
+        Create an SPDX Annotation object for an ancestor image package.
+
+        Args:
+            spdx_id: SPDX ID of the package to annotate
+
+        Returns:
+            Annotation object marking the package as an ancestor image
+        """
+        comment = {
+            "name": AnnotationAncestorImage.name,
+            "value": "true",
+        }
+
+        return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
+
+    @staticmethod
     def additional_image(spdx_id: str) -> Annotation:
         """
         Create an SPDX Annotation object for an additional image package.
@@ -581,6 +608,7 @@ class KonfluxAnnotationManager:
         | AnnotationBuilderImage
         | AnnotationBaseImage
         | AnnotationAdditionalImage
+        | AnnotationAncestorImage
     ):
         """
         Parse an SPDX annotation document and return the internal
@@ -595,8 +623,8 @@ class KonfluxAnnotationManager:
         if ann.annotator != KONFLUX_JSON_ACTOR:
             return None
 
-        decoded = json.loads(ann.annotation_comment)
         try:
+            decoded = json.loads(ann.annotation_comment)
             if decoded["name"] == AnnotationIntermediateImage.name:
                 stage_index = int(decoded["value"])
                 return AnnotationIntermediateImage(stage_index)
@@ -611,7 +639,10 @@ class KonfluxAnnotationManager:
             if decoded["name"] == AnnotationAdditionalImage.name:
                 return AnnotationAdditionalImage()
 
-        except (KeyError, ValueError) as exc:
+            if decoded["name"] == AnnotationAncestorImage.name:
+                return AnnotationAncestorImage()
+
+        except (KeyError, ValueError, TypeError, json.JSONDecodeError) as exc:
             raise AnnotationParseError(
                 "Could not decode a Konflux annotation."
             ) from exc
