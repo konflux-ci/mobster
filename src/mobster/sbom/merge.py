@@ -7,7 +7,6 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, TypeVar
-from urllib.parse import quote_plus
 
 from packageurl import PackageURL
 
@@ -381,8 +380,6 @@ def _unique_key_syft(component: SBOMItem) -> str:
         name = name.lower()
 
     if purl.type == "golang":
-        if version:
-            version = quote_plus(version)
         if subpath and _subpath_is_version(subpath):
             # put the module version where it belongs (in the module name)
             name = f"{name}/{subpath}"
