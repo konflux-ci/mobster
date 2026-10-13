@@ -87,6 +87,7 @@ class SBOMItem(ABC, Generic[T]):
     def normalized_purl(self) -> str | None:
         """
         The PURL format unified between Syft and Hermeto SBOMs.
+        This format is lossy (not all information is preserved).
         Returns:
             The normalized PURL string if PURL is present. None otherwise.
         """
@@ -95,12 +96,13 @@ class SBOMItem(ABC, Generic[T]):
         name = purl.name
         if purl.type == "pypi":
             name = name.lower()
-        subpath = purl.subpath
-        if purl.type == "golang":
-            if subpath and _subpath_is_version(subpath):
-                # put the module version where it belongs (in the module name)
-                name = f"{name}/{subpath}"
-        subpath = None
+        if (
+            (subpath := purl.subpath)
+            and purl.type == "golang"
+            and _subpath_is_version(subpath)
+        ):
+            # put the module version where it belongs (in the module name)
+            name = f"{name}/{subpath}"
 
         qualifiers = purl.qualifiers
         if not isinstance(qualifiers, dict):
@@ -108,7 +110,7 @@ class SBOMItem(ABC, Generic[T]):
 
         # clear redundant qualifiers
         identity_qualifiers = {"arch", "os", "classifier", "type", "epoch"}
-        meaningful_quals: dict[str, Any] = {}
+        merge_key_qualifiers: dict[str, Any] = {}
         for k, v in qualifiers.items():
             if k not in identity_qualifiers:
                 continue
@@ -116,15 +118,15 @@ class SBOMItem(ABC, Generic[T]):
                 continue
             if purl.type == "golang" and k == "type" and v == "module":
                 continue
-            meaningful_quals[k] = v
+            merge_key_qualifiers[k] = v
 
         return PackageURL(
             type=purl.type,
             namespace=purl.namespace,
             name=name,
             version=purl.version,
-            qualifiers=meaningful_quals,
-            subpath=subpath,
+            qualifiers=merge_key_qualifiers,
+            subpath=None,
         ).to_string()
 
 
@@ -602,7 +604,6 @@ class SPDXMerger(SBOMMerger[Document]):  # pylint: disable=too-few-public-method
         return resulting_annotations
 
     def _merge_creators(self, sboms: list[Document]) -> list[Actor]:
-        assert sboms, "No SBOMs provided!"
         result = []
         visited_actors_serialized = set()
         for sbom in sboms:
