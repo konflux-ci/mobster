@@ -1,0 +1,62 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "spdxVersion": "SPDX-2.3",
+  "name": "syft-prefer-match",
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://example.com/syft-prefer-match",
+  "creationInfo": {
+    "created": "2024-01-01T00:00:00Z",
+    "creators": ["Tool: syft"]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-syft-root",
+      "name": "root",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "NOASSERTION"
+    },
+    {
+      "SPDXID": "SPDXRef-syft-bar",
+      "name": "bar",
+      "versionInfo": "2.0.0",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/bar@2.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-syft-eggs",
+      "name": "eggs",
+      "versionInfo": "3.0.0",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/foo/eggs@3.0.0"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-syft-root"
+    },
+    {
+      "spdxElementId": "SPDXRef-syft-root",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-syft-bar"
+    },
+    {
+      "spdxElementId": "SPDXRef-syft-root",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-syft-eggs"
+    }
+  ]
+}

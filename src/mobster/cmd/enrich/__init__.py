@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from mobster.cmd.base import Command
-from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.sbom.enrich import enrich_sbom
 
 logging.captureWarnings(True)  # CDX validation uses `warn()`

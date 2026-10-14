@@ -7,7 +7,7 @@ from pathlib import Path
 from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
-from mobster.oci.artifact import SBOM, SBOMFormat
+from mobster.oci.artifact import SBOM
 from mobster.oci.cosign.attestation_utils import (
     get_cosign_attestation_type,
     get_sbom_from_attestation_bytes,
@@ -17,6 +17,7 @@ from mobster.oci.cosign.config import (
     VerifyConfig,
 )
 from mobster.oci.cosign.protocol import SupportsFetch, SupportsSign
+from mobster.sbom.detect import SBOMFormat
 from mobster.utils import run_async_subprocess
 
 logger = logging.getLogger(__name__)

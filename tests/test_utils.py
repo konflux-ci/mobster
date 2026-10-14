@@ -30,29 +30,31 @@ def test_normalize_file_name() -> None:
     assert utils.normalize_file_name("") == ""
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(["fail"], [(True,), (False,)])
 @patch("mobster.utils.open")
-@patch("mobster.utils.json")
-async def test_load_sbom_from_json(
-    mock_json: MagicMock, mock_open: MagicMock, fail: bool, caplog: LogCaptureFixture
+@patch("mobster.utils.json.loads")
+def test_load_file_to_dict(
+    mock_json_loads: MagicMock,
+    mock_open: MagicMock,
+    fail: bool,
+    caplog: LogCaptureFixture,
 ) -> None:
     mock_stream = MagicMock()
     mock_stream.read.return_value = "foo"
     mock_open.return_value.__enter__.return_value = mock_stream
 
     if fail:
-        mock_json.loads.side_effect = JSONDecodeError("a", "b", 1)
+        mock_json_loads.side_effect = JSONDecodeError("a", "b", 1)
         with pytest.raises(JSONDecodeError):
-            await utils.load_sbom_from_json(MagicMock())
-            assert (
-                "Expected a JSON SBOM. Found different file contents!"
-                in caplog.messages
-            )
-            assert "foo" in caplog.messages
+            utils.load_file_to_dict(MagicMock())
+        assert any(
+            "Expected a JSON dictionary. Found different file contents!" in msg
+            for msg in caplog.messages
+        )
+        assert "foo" in caplog.messages
     else:
-        await utils.load_sbom_from_json(MagicMock())
-        mock_json.loads.assert_called_once_with("foo")
+        utils.load_file_to_dict(MagicMock())
+        mock_json_loads.assert_called_once_with("foo")
 
 
 def test_get_tpa_ca(monkeypatch: pytest.MonkeyPatch) -> None:

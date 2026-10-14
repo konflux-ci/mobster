@@ -18,7 +18,6 @@ from spdx_tools.spdx.writer.write_utils import convert
 
 import mobster.utils
 from mobster import syft
-from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
@@ -43,7 +42,6 @@ from mobster.cmd.generate.oci_image.sbom_utils import (
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
     DocumentIndexOCI,
-    normalize_and_load_sbom,
 )
 from mobster.error import (
     BuilderContextualizationError,
@@ -53,8 +51,10 @@ from mobster.error import (
 )
 from mobster.image import Image
 from mobster.log import log_elapsed
+from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.sbom.load import load_dict_to_sbom, load_file_to_sbom
 from mobster.sbom.merge import merge_sboms
-from mobster.utils import load_sbom_from_json
+from mobster.sbom.spdx import normalize_and_load_sbom
 
 logging.captureWarnings(True)  # CDX validation uses `warn()`
 LOGGER = logging.getLogger(__name__)
@@ -100,7 +100,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 LOGGER.warning("\n".join(e.args))
 
     async def _load_and_filter_hermeto_sbom(self) -> dict[str, Any]:
-        hermeto_sbom = await load_sbom_from_json(self.cli_args.from_hermeto)
+        hermeto_sbom = mobster.utils.load_file_to_dict(self.cli_args.from_hermeto)
 
         arch = self.cli_args.arch or mobster.utils.identify_arch()
         return filter_hermeto_sbom_by_arch(hermeto_sbom, arch)
@@ -148,11 +148,11 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
 
     async def _handle_bom_inputs(
         self,
-    ) -> dict[str, Any]:
+    ) -> Document | CycloneDX1BomWrapper:
         """
         Handles the input SBOM files, merging them if necessary.
         Returns:
-            dict[str, Any]: Merged/loaded SBOM dictionary.
+            Merged/loaded SBOM object.
         Raises:
             ArgumentError: If neither Syft nor Hermeto SBOMs are provided.
         """
@@ -167,30 +167,31 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 "At least one of --from-syft, --from-hermeto, --image-pullspec, "
                 "or --metadata-path must be provided",
             )
+        pullspec = self.cli_args.image_pullspec
 
         if self.cli_args.metadata_path is not None:
             self._load_metadata()
-            # if we don't have an sbom provided to us, use syft to generate it
-            if self.cli_args.from_syft is None and self.cli_args.from_hermeto is None:
-                return await syft.scan_image(self._metadata.image.pullspec)
+            pullspec = self._metadata.image.pullspec
         if self.cli_args.from_syft is not None:
             # Merging Syft & Hermeto SBOMs
             if len(self.cli_args.from_syft) > 1 or self.cli_args.from_hermeto:
                 syft_sboms = []
 
                 for path in self.cli_args.from_syft:
-                    syft_sboms.append(await load_sbom_from_json(path))
+                    syft_sboms.append(mobster.utils.load_file_to_dict(path))
 
                 hermeto_sbom = None
                 if self.cli_args.from_hermeto:
                     hermeto_sbom = await self._load_and_filter_hermeto_sbom()
 
                 return merge_sboms(syft_sboms, hermeto_sbom)
-            return await load_sbom_from_json(self.cli_args.from_syft[0])
+            return load_file_to_sbom(self.cli_args.from_syft[0], append_mobster=True)
         if self.cli_args.from_hermeto is not None:
-            return await self._load_and_filter_hermeto_sbom()
+            return load_dict_to_sbom(
+                await self._load_and_filter_hermeto_sbom(), append_mobster=True
+            )
 
-        return await syft.scan_image(self.cli_args.image_pullspec)
+        return load_dict_to_sbom(await syft.scan_image(pullspec), append_mobster=True)
 
     @staticmethod
     async def execute_parent_contextualization(
@@ -209,7 +210,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
                 "Parent image SBOM could not be found skipping "
                 "contextualization, non-contextual SBOM will be produced"
             )
-        parent_sbom_doc = await normalize_and_load_sbom(
+        parent_sbom_doc = normalize_and_load_sbom(
             parent_image_sbom, append_mobster=False
         )
         parent_spdx_id_from_component = get_parent_spdx_id_from_component(
@@ -429,23 +430,15 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         """
         LOGGER.debug("Generating SBOM document for OCI image")
 
-        # Get/merge the raw SBOM
-        merged_sbom_dict = await self._handle_bom_inputs()
-        sbom: Document | CycloneDX1BomWrapper
+        # Get/merge the raw SBOM into an SBOM object
+        sbom = await self._handle_bom_inputs()
         image_arch = self.cli_args.arch or mobster.utils.identify_arch()
 
-        # Parse into objects
-        if merged_sbom_dict.get("bomFormat") == "CycloneDX":
+        if isinstance(sbom, CycloneDX1BomWrapper):
             if self.cli_args.contextualize:
                 raise ArgumentError(
                     None, "--contextualize is only allowed when processing SPDX format"
                 )
-            sbom = CycloneDX1BomWrapper.from_dict(merged_sbom_dict)
-        elif "spdxVersion" in merged_sbom_dict:
-            sbom = await normalize_and_load_sbom(merged_sbom_dict)
-        else:
-            raise ValueError("Unknown SBOM Format!")
-
         base_images_refs = []
         base_images_map: dict[str, Image] = {}
 

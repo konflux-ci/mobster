@@ -13,17 +13,16 @@ from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
-from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 
 from mobster.cmd.generate.oci_image.constants import BUILDER_IMAGE_PROPERTY
 from mobster.image import IMAGE_PKG_SPDX_PREFIX, Image
 from mobster.sbom.spdx import (
     DOC_ELEMENT_ID,
+    deduplicate_relationships,
     get_image_package,
-    get_mobster_tool_string,
     get_namespace,
+    get_normalized_purl,
     get_package_purl,
-    get_red_hat_org_string,
 )
 
 KONFLUX_JSON_ACTOR = Actor(actor_type=ActorType.TOOL, name="konflux:jsonencoded")
@@ -34,138 +33,6 @@ class MissingBuilderAnnotation(Exception):
     Raised when an intermediate image package for an image package couldn't be
     created because it doesn't contain a builder image annotation.
     """
-
-
-async def normalize_actor(actor: str) -> str:
-    """
-    Adds a necessary actor classificator if not present.
-    This allows the SPDX library to load the actor without
-    validation issues.
-    Defaults to `TOOL`.
-    Args:
-        actor (str): The input actor.
-    Returns:
-        str: The normalized actor.
-    """
-    if not actor.upper().startswith(
-        ("TOOL: ", "ORGANIZATION: ", "PERSON: ", "NOASSERTION")
-    ):
-        return "Tool: " + actor
-    return actor
-
-
-def normalize_red_hat_creator(creators: list[str]) -> list[str]:
-    """
-    Ensure exactly one canonical "Organization: Red Hat" entry is present in
-    the creators list. Any case-insensitive variant (e.g. "Organization: red hat")
-    is removed and replaced with the correct form.
-
-    Args:
-        creators: The list of SPDX creator strings to normalize.
-
-    Returns:
-        list[str]: Updated creators list with the canonical Red Hat entry.
-    """
-    red_hat_org = get_red_hat_org_string()
-    result = [c for c in creators if c.lower() != red_hat_org.lower()]
-    result.append(red_hat_org)
-    return result
-
-
-async def normalize_package(package: dict[str, Any]) -> None:
-    """
-    Adds necessary fields to an SPDX Package to be loaded by the
-    SPDX library without validation issues.
-    Args:
-        package (dict[str, Any]): The package to be normalized.
-
-    Returns:
-        None: Nothing, changes are performed in-place.
-    """
-    if "downloadLocation" not in package:
-        package["downloadLocation"] = "NOASSERTION"
-    if "name" not in package:
-        package["name"] = ""
-    if supplier := package.get("supplier"):
-        package["supplier"] = await normalize_actor(supplier)
-
-
-async def normalize_sbom(
-    sbom: dict[str, Any], append_mobster_creator: bool = True
-) -> None:
-    """
-    Adds necessary fields to an SPDX SBOM to be loaded by the
-    SPDX library without validation issues.
-    Args:
-        sbom: The SBOM to be normalized.
-        append_mobster_creator: If Mobster should append its name as one of
-                               the creators of the SBOM.
-
-    Returns:
-        None: Nothing, changes are performed in-place.
-    """
-    if "SPDXID" not in sbom:
-        sbom["SPDXID"] = "SPDXRef-DOCUMENT"
-    if "dataLicense" not in sbom:
-        sbom["dataLicense"] = "CC0-1.0"
-    if "spdxVersion" not in sbom:
-        sbom["spdxVersion"] = "SPDX-2.3"
-    if "name" not in sbom:
-        sbom["name"] = "MOBSTER:UNFILLED_NAME (please update this field)"
-    if "documentNamespace" not in sbom:
-        sbom["documentNamespace"] = get_namespace(sbom["name"])
-
-    creation_info = sbom.get("creationInfo", {})
-    if "created" not in creation_info:
-        creation_info["created"] = "1970-01-01T00:00:00Z"
-    creators = creation_info.get("creators", [])
-    new_creators = [await normalize_actor(creator) for creator in creators]
-    new_creators = normalize_red_hat_creator(new_creators)
-    if append_mobster_creator:
-        new_creators.append(get_mobster_tool_string())
-    creation_info["creators"] = new_creators
-    sbom["creationInfo"] = creation_info
-
-    for package in sbom.get("packages", []):
-        await normalize_package(package)
-
-
-async def normalize_and_load_sbom(
-    sbom: dict[str, Any], append_mobster: bool = True
-) -> Document:
-    """
-    Normalize and load the SPDX SBOM.
-    Args:
-        sbom: The SBOM dict to normalize and load.
-        append_mobster: If Mobster should append its name as one of
-                               the creators of the SBOM.
-    Returns:
-        Loaded SPDX SBOM object.
-    """
-    await normalize_sbom(sbom, append_mobster)
-    return JsonLikeDictParser().parse(sbom)  # type: ignore[no-untyped-call]
-
-
-def get_normalized_purl(purl: str) -> str:
-    """
-    Get a normalized purl by only including fields that are valid for
-    comparison.
-
-    Args:
-        purl: purl string to normalize
-
-    Returns
-        str: the normalized purl string
-    """
-
-    purl_obj = PackageURL.from_string(purl)
-    normalized = PackageURL(
-        name=purl_obj.name,
-        type=purl_obj.type,
-        version=purl_obj.version,
-        namespace=purl_obj.namespace,
-    )
-    return normalized.to_string()
 
 
 async def update_sbom_name_and_namespace(sbom: Document, image: Image) -> None:
@@ -402,6 +269,7 @@ async def update_package_in_spdx_sbom(
     else:
         # Check existing relationships and redirect the current roots to the new root
         await redirect_current_roots_to_new_root(sbom, package.spdx_id)
+    sbom.relationships = deduplicate_relationships(sbom.relationships)
     return sbom
 
 

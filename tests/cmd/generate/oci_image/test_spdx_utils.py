@@ -24,105 +24,17 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     find_spdx_root_relationships,
     get_annotations_by_spdx_id,
     is_virtual_root,
-    normalize_actor,
-    normalize_package,
-    normalize_red_hat_creator,
-    normalize_sbom,
     redirect_current_roots_to_new_root,
     redirect_spdx_virtual_root_to_new_root,
     update_package_in_spdx_sbom,
 )
 from mobster.image import Image
 from mobster.sbom.spdx import (
-    get_mobster_tool_string,
     get_package_purl,
     get_red_hat_org_string,
+    normalize_red_hat_creator,
 )
 from tests.conftest import create_annotation_with_spdx_id
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ["actor", "expected_output"],
-    [
-        ("foo", "Tool: foo"),
-        ("Tool: foo", "Tool: foo"),
-        ("Person: foo", "Person: foo"),
-        ("Organization: foo", "Organization: foo"),
-        ("NOASSERTION", "NOASSERTION"),
-    ],
-)
-async def test_normalize_actor(actor: str, expected_output: str) -> None:
-    assert await normalize_actor(actor) == expected_output
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ["input_package_dict", "expected_output_dict"],
-    [
-        (
-            {"SPDXID": "SPDXRef-foo"},
-            {"SPDXID": "SPDXRef-foo", "downloadLocation": "NOASSERTION", "name": ""},
-        ),
-        (
-            {
-                "name": "foo",
-                "supplier": "bar",
-            },
-            {
-                "name": "foo",
-                "supplier": "Tool: bar",
-                "downloadLocation": "NOASSERTION",
-            },
-        ),
-    ],
-)
-async def test_normalize_package(
-    input_package_dict: dict[str, Any], expected_output_dict: dict[str, Any]
-) -> None:
-    package_dict = input_package_dict.copy()
-    await normalize_package(package_dict)
-    assert package_dict == expected_output_dict
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ["input_sbom_dict", "expected_sbom_dict"],
-    [
-        (
-            {"packages": [{"SPDXID": "SPDXRef-foo"}]},
-            {
-                "SPDXID": "SPDXRef-DOCUMENT",
-                "dataLicense": "CC0-1.0",
-                "spdxVersion": "SPDX-2.3",
-                "documentNamespace": "https://konflux-ci.dev/spdxdocs/"
-                "MOBSTER:UNFILLED_NAME (please update this field)-1",
-                "name": "MOBSTER:UNFILLED_NAME (please update this field)",
-                "creationInfo": {
-                    "created": "1970-01-01T00:00:00Z",
-                    "creators": [get_red_hat_org_string(), get_mobster_tool_string()],
-                },
-                "packages": [
-                    {
-                        "SPDXID": "SPDXRef-foo",
-                        "downloadLocation": "NOASSERTION",
-                        "name": "",
-                    }
-                ],
-            },
-        )
-    ],
-)
-@patch("mobster.sbom.spdx.uuid4")
-async def test_normalize_sbom(
-    mock_uuid: MagicMock,
-    input_sbom_dict: dict[str, Any],
-    expected_sbom_dict: dict[str, Any],
-) -> None:
-    mock_uuid.return_value = 1
-    sbom_dict = input_sbom_dict.copy()
-    await normalize_sbom(sbom_dict)
-    assert sbom_dict == expected_sbom_dict
 
 
 @pytest.mark.asyncio

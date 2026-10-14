@@ -17,7 +17,6 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
 from mobster import syft
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
-from mobster.cmd.generate.oci_image.spdx_utils import normalize_and_load_sbom
 from mobster.image import Image
 from mobster.sbom import cyclonedx, spdx
 
@@ -222,7 +221,7 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
             syft_dict = await syft.scan_image(
                 base.reference, output_format=syft.SPDX_JSON
             )
-            syft_doc = await normalize_and_load_sbom(syft_dict, append_mobster=False)
+            syft_doc = spdx.normalize_and_load_sbom(syft_dict, append_mobster=False)
             return merge_syft_packages_into_modelcar_spdx(
                 sbom,
                 syft_doc,

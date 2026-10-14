@@ -7,7 +7,7 @@ from cyclonedx.model.bom import Bom
 from cyclonedx.model.component import Component
 from packageurl import PackageURL
 
-from mobster.cmd.cyclonedx_wrapper import CycloneDX1BomWrapper
+from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.sbom.enrich import (
     CycloneDXEnricher,
     _create_enricher,
