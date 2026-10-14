@@ -238,7 +238,9 @@ In both cases, non-contextual SBOM is produced.
   SBOM is sourced from hermetic or non-hermetic build, or if it is contextualized or
   non-contextualized. It also means that if parent SBOM is contextualized (is aware of its 
   parent - or component's grandparent content), contextual information is preserved and
-  passed to the component.
+  passed to the component. This includes the inherited image graph: parent,
+  ancestor, builder, additional, and intermediate image packages, together with
+  their annotations and relationships.
 * Contextual SBOM mechanism can be disabled by _not_ including `--contextualize` flag in
   `mobster generate oci-image` command - in that case, non-contextual SBOM will be produced.
 
