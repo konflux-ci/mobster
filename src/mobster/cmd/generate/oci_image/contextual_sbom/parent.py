@@ -59,47 +59,42 @@ class ImageItem:
 
 
 async def download_parent_image_sbom(
-    parent_image: Image | None, arch: str
+    parent_image: Image, arch: str
 ) -> dict[str, Any] | None:
     """
-    Downloads parent SBOM. First tries to download arch-specific SBOM, then image index
-    as a fallback.
+    Downloads the parent SBOM for the requested architecture.
     Args:
         parent_image: Which image SBOM to download.
         arch: Architecture of the target system.
             Will be the same as the current runtime arch.
     Returns:
-        The found SBOM or `None` if the SBOM is in CycloneDX format or not found.
+        The found SBOM or `None` if no matching architecture, the SBOM is in
+        CycloneDX format, or no SBOM is found.
     """
-    if not parent_image:
-        LOGGER.info(
-            "[Parent image content] Contextual mechanism "
-            "won't be used, there is no parent image."
-        )
-        return None
     image_or_index = await Image.from_repository_digest_manifest(
         parent_image.repository, parent_image.digest
     )
-    actual_parent_image = image_or_index
+    actual_parent_image: Image | None = image_or_index
     if isinstance(image_or_index, IndexImage):
+        actual_parent_image = None
         for child in image_or_index.children:
             if child.arch == arch:
                 actual_parent_image = child
                 break
-    if isinstance(actual_parent_image, IndexImage):
-        LOGGER.debug(
-            "[Parent image content] Only the index image of parent was "
-            "found for ref %s and arch %s",
+    if actual_parent_image is None:
+        LOGGER.info(
+            "[Parent image content] Contextual mechanism won't be used, "
+            "no parent image was found for ref %s and arch %s.",
             parent_image.reference,
             arch,
         )
-    else:
-        LOGGER.debug(
-            "[Parent image content] The specific arch was successfully "
-            "located for ref %s and arch %s",
-            parent_image.reference,
-            arch,
-        )
+        return None
+    LOGGER.debug(
+        "[Parent image content] The specific arch was successfully "
+        "located for ref %s and arch %s",
+        parent_image.reference,
+        arch,
+    )
 
     cosign_client = cosign.AnonymousFetcher()
     try:
@@ -130,18 +125,6 @@ def get_parent_spdx_id_from_component(component_sbom_doc: Document) -> str:
     relationship. Component SBOM is created before contextualization
     and bears single DESCENDANT_OF relationship pointing to its parent.
 
-    Acquired parent's SPDXID is used to align relationships
-    in the final component SBOM;
-    - modification of relationships present in component:
-        - `component (before package match) CONTAINS package (parent-owned)`
-          -> `parent (after package match -> parent name from component) CONTAINS
-          package (parent-owned)`
-    - modification of relationships inherited from parent to component:
-        - `parent (name from parent) DESCENDANT_OF grandparent` ->
-          `parent (name from component) DESCENDANT_OF grandparent`
-        - `grandparent BUILD_TOOL_OF parent (name from parent)` ->
-          `parent (name from component) DESCENDANT_OF grandparent`
-
     Absence of the DESCENDANT_OF relationship (contextual workflow is guarded
     against contextualization of the images built FROM scratch or oci-archive)
     or multiple relationships in non-contextualized component SBOM indicate
@@ -154,9 +137,6 @@ def get_parent_spdx_id_from_component(component_sbom_doc: Document) -> str:
 
     Returns:
         SPDX ID of the parent image defined by this component.
-        It must always be present assuming that _execute_contextual_workflow
-        is skipping parent contextualization for FROM scratch or oci-archive
-        images.
 
     Raises:
         SBOMError: If the passed SBOM does not contain DESCENDANT_OF
@@ -431,13 +411,6 @@ def _collect(
             continue
         relationship_end_spdx_id = getattr(candidate_rel, kind.relationship_end.value)
         if isinstance(relationship_end_spdx_id, str):
-            # TO DO(ISV-7657): A package may legitimately participate in
-            # multiple distinct relationships of the same kind. Examples
-            # include one builder image BUILD_TOOL_OF both a parent and a
-            # grandparent (and their intermediate images DESCENDANT_OF that
-            # builder), the same base image targeted by both a parent and a
-            # deeper grandparent. Preserve all distinct relationship edges and
-            # reject only exact duplicates.
             if relationship_end_spdx_id in rel_index:
                 raise SBOMError(
                     "[Parent image content] Multiple"
@@ -470,6 +443,8 @@ def _relationship_has_package_endpoints(
     `package CONTAINS file` relationship is normal Syft evidence and is
     silently skipped. Other malformed `CONTAINS` relationships are skipped
     with a warning. Invalid image relationships are rejected.
+
+    Called only for relationship types selected by `ContentKind`.
 
     Args:
         relationship: SPDX relationship to validate.

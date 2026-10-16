@@ -2,27 +2,21 @@
 This module contains errors raised in SBOM generation.
 """
 
+import traceback
 
-def format_exception_messages(exc: BaseException) -> str:
+
+def format_exception_chain_for_log(exc: BaseException) -> str:
     """
-    Return chained exception messages as a single-line string.
+    Return the complete exception chain as a single-line string.
 
-    Exception causes are traversed from the outer exception towards the root
-    cause and returned in root-to-wrapper order. Newlines are escaped so the
-    result can be emitted as one log record (important for log
-    collectors that split shell output into separate events)
-    Used for Contextual workflow.
+    The standard traceback formatter preserves causes and contexts without
+    stack frames. Newlines are escaped so the result can be emitted as one log
+    record, which is required by log collectors that split shell output into
+    separate events.
     """
-    messages: list[str] = []
-    seen: set[int] = set()
-    current: BaseException | None = exc
-
-    while current is not None and id(current) not in seen:
-        seen.add(id(current))
-        messages.append(str(current).replace("\n", "\\n"))
-        current = current.__cause__ or current.__context__
-
-    return " <- ".join(reversed(messages))
+    exception_lines = traceback.format_exception(exc, limit=0, chain=True)
+    formatted_chain = "".join(exception_lines).strip("\n")
+    return formatted_chain.replace("\n", "\\n")
 
 
 class SBOMError(Exception):
