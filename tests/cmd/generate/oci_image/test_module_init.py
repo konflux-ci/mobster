@@ -575,7 +575,7 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_
         "amd64",
     )
     mock_execute_contextual.assert_awaited_once()
-    assert "Contextual SBOM workflow failed: error" in caplog.messages
+    assert caplog.messages[-1] == "Contextual SBOM workflow failed: ValueError: error"
 
 
 @pytest.mark.asyncio
@@ -607,8 +607,11 @@ async def test_assess_contextual_workflow_logs_all_exception_messages(
 
     mock_execute_contextual.assert_awaited_once()
     assert caplog.messages[-1] == (
-        "Contextual SBOM workflow failed: root error <- "
-        "contextualization error <- workflow error"
+        "Contextual SBOM workflow failed: ValueError: root error\\n"
+        "\\nThe above exception was the direct cause of the following exception:\\n"
+        "\\nmobster.error.SBOMError: contextualization error\\n"
+        "\\nThe above exception was the direct cause of the following exception:\\n"
+        "\\nRuntimeError: workflow error"
     )
 
 

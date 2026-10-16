@@ -903,16 +903,6 @@ async def test_download_parent_image_sbom(
 
 
 @pytest.mark.asyncio
-async def test_download_parent_image_sbom_no_image(caplog: LogCaptureFixture) -> None:
-    caplog.set_level("INFO")
-    assert await download_parent_image_sbom(None, "") is None
-    assert (
-        "[Parent image content] Contextual mechanism won't be used, there is no "
-        "parent image." in caplog.messages
-    )
-
-
-@pytest.mark.asyncio
 @patch("mobster.oci.cosign.anonymous_fetcher.AnonymousFetcher.fetch_sbom")
 @patch("mobster.image.Image.from_repository_digest_manifest")
 async def test_download_parent_image_sbom_no_arch_match(
@@ -925,16 +915,12 @@ async def test_download_parent_image_sbom_no_arch_match(
         "foo", "sha256:1", children=[Image("foo", "sha256:2", arch="spam")]
     )
     mock_from_repo_manifest.return_value = index_image
-    mock_sbom = MagicMock()
-    mock_sbom.format.is_spdx2.return_value = True
-    mock_sbom.doc = {"documentNamespace": "https://test/parent"}
-    mock_fetch_sbom.return_value = mock_sbom
 
-    await download_parent_image_sbom(Image("foo", "sha256:1"), "bar")
-    mock_fetch_sbom.assert_awaited_once_with(index_image)
+    assert await download_parent_image_sbom(Image("foo", "sha256:1"), "bar") is None
+    mock_fetch_sbom.assert_not_awaited()
     assert (
-        "[Parent image content] Only the index image of parent "
-        "was found for ref foo@sha256:1 and arch bar" in caplog.messages
+        "[Parent image content] Contextual mechanism won't be used, no parent "
+        "image was found for ref foo@sha256:1 and arch bar." in caplog.messages
     )
 
 
