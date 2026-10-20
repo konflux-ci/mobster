@@ -20,6 +20,12 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     LEGACY_BASE_IMAGE,
     ContentKind,
 )
+from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import (
+    ContentItem,
+    collect_image_items,
+    collect_package_items,
+    get_annotations_by_spdx_id_filter_by_type,
+)
 from mobster.cmd.generate.oci_image.contextual_sbom.logging import (
     MatchingStatistics,
 )
@@ -27,12 +33,8 @@ from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     ComponentRelationshipResolver,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.parent import (
-    ContentItem,
     ImageItem,
-    collect_image_items,
-    collect_package_items,
     download_parent_image_sbom,
-    get_annotations_by_spdx_id_filter_by_type,
     get_grandparent_and_ancestor_items_from_used_parent,
     get_parent_spdx_id_from_component,
     map_parent_to_component_and_update_component,

@@ -26,7 +26,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 from mobster.sbom.spdx import get_normalized_purl, get_package_purl
 
 if TYPE_CHECKING:
-    from mobster.cmd.generate.oci_image.contextual_sbom.parent import (
+    from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import (
         ContentItem,
         ImageItem,
     )
@@ -129,9 +129,7 @@ class ComponentRelationshipResolver:
         """Create unique key from PURL object."""
         return f"{purl.type}/{purl.namespace or ''}/{purl.name}@{purl.version}"
 
-    def find_candidates(
-        self, parent_package: Package
-    ) -> list["ContentItem"]:
+    def find_candidates(self, parent_package: Package) -> list["ContentItem"]:
         """
         Find candidate component packages that may match the given parent package
         using prioritized identifier-based lookup strategy.

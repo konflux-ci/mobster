@@ -14,7 +14,9 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
 )
 
 if TYPE_CHECKING:
-    from mobster.cmd.generate.oci_image.contextual_sbom.parent import ContentItem
+    from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import (
+        ContentItem,
+    )
 
 LOGGER = logging.getLogger(__name__)
 
@@ -202,9 +204,7 @@ class MatchingStatistics:
             item.package.spdx_id for item in component_packages
         }
 
-    def record_parent_packages(
-        self, parent_packages: list["ContentItem"]
-    ) -> None:
+    def record_parent_packages(self, parent_packages: list["ContentItem"]) -> None:
         """Record all parent packages."""
         self.parent.all_packages = {item.package.spdx_id for item in parent_packages}
 
