@@ -38,11 +38,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     ComponentRelationshipResolver,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
-    AnnotationAdditionalImage,
-    AnnotationAncestorImage,
-    AnnotationBaseImage,
-    AnnotationBuilderImage,
-    AnnotationIntermediateImage,
+    AnnotationImage,
     AnnotationParseError,
     KonfluxAnnotationManager,
     find_spdx_root_packages_spdxid,
@@ -65,6 +61,14 @@ class ImageItem:
     package: Package
     relationship: Relationship
     annotations: list[Annotation]
+
+
+@dataclass(frozen=True)
+class ContentItem:
+    """A content package and the relationship that identifies its owner."""
+
+    package: Package
+    relationship: Relationship
 
 
 async def download_parent_image_sbom(
@@ -411,13 +415,7 @@ def get_grandparent_and_ancestor_items_from_used_parent(
 def get_annotations_by_spdx_id_filter_by_type(
     parent_sbom_doc: Document,
     spdx_id: str,
-    annotation_type: (
-        type[AnnotationBaseImage]
-        | type[AnnotationAncestorImage]
-        | type[AnnotationBuilderImage]
-        | type[AnnotationAdditionalImage]
-        | type[AnnotationIntermediateImage]
-    ),
+    annotation_type: type[AnnotationImage],
 ) -> list[Annotation]:
     """
     Return all annotations with the given Konflux annotation type for a package
@@ -464,9 +462,9 @@ def get_annotations_by_spdx_id_filter_by_type(
 def _collect(
     sbom_doc: Document,
     kind: ContentKind,
-) -> list[tuple[Package, Relationship]]:
+) -> list[ContentItem]:
     """
-    Pair each package with the relationship of the given kind that points to it.
+    Collect packages with relationships of the given kind that point to them.
 
     All matching relationships pointing to packages are preserved. Whether a
     package may participate in multiple relationships is validated by the
@@ -477,7 +475,7 @@ def _collect(
         kind: Declarative description of the content kind to collect.
 
     Returns:
-        List of (package, relationship) pairs matching the kind.
+        Content items matching the kind.
     """
     package_spdx_ids = {pkg.spdx_id for pkg in sbom_doc.packages}
     file_spdx_ids = {file.spdx_id for file in sbom_doc.files}
@@ -495,11 +493,14 @@ def _collect(
             getattr(candidate_rel, kind.relationship_end.value), []
         ).append(candidate_rel)
 
-    pkg_rel_pairs: list[tuple[Package, Relationship]] = []
+    content_items: list[ContentItem] = []
     for pkg in sbom_doc.packages:
-        pkg_rel_pairs.extend((pkg, rel) for rel in rel_index.get(pkg.spdx_id, []))
+        content_items.extend(
+            ContentItem(pkg, relationship)
+            for relationship in rel_index.get(pkg.spdx_id, [])
+        )
 
-    return pkg_rel_pairs
+    return content_items
 
 
 def _relationship_has_package_endpoints(
@@ -573,7 +574,7 @@ def _relationship_has_package_endpoints(
 
 def collect_package_items(
     sbom_doc: Document,
-) -> list[tuple[Package, Relationship]]:
+) -> list[ContentItem]:
     """
     Collect content packages (CONTAINS) of the SBOM document.
 
@@ -585,19 +586,19 @@ def collect_package_items(
         sbom_doc: SBOM document to inspect.
 
     Returns:
-        List of (package, relationship) pairs.
+        Content items.
     """
-    package_items = _collect(sbom_doc, CONTENT_PACKAGE)
+    content_items = _collect(sbom_doc, CONTENT_PACKAGE)
     _validate_relationship_cardinality_for_content_kind(
-        sbom_doc, package_items, CONTENT_PACKAGE
+        sbom_doc, content_items, CONTENT_PACKAGE
     )
 
-    return package_items
+    return content_items
 
 
 def _validate_relationship_cardinality_for_content_kind(
     sbom_doc: Document,
-    package_items: list[tuple[Package, Relationship]],
+    content_items: list[ContentItem],
     kind: ContentKind,
 ) -> None:
     """
@@ -614,7 +615,7 @@ def _validate_relationship_cardinality_for_content_kind(
 
     Args:
         sbom_doc: SBOM document containing the relationships.
-        package_items: Package and relationship pairs to inspect.
+        content_items: Content items to inspect.
         kind: Content kind defining whether multiple relationships are allowed.
 
     Raises:
@@ -622,11 +623,11 @@ def _validate_relationship_cardinality_for_content_kind(
             relationships.
     """
     distinct_relationships_by_endpoint: dict[str, list[Relationship]] = {}
-    for package, relationship in _warn_on_identical_relationships(
-        sbom_doc, package_items, kind
+    for item in _warn_and_deduplicate_identical_relationships(
+        sbom_doc, content_items, kind
     ):
-        distinct_relationships_by_endpoint.setdefault(package.spdx_id, []).append(
-            relationship
+        distinct_relationships_by_endpoint.setdefault(item.package.spdx_id, []).append(
+            item.relationship
         )
 
     if kind.allows_multiple_relationships_per_endpoint:
@@ -673,11 +674,11 @@ def _validate_relationship_cardinality_for_content_kind(
     )
 
 
-def _warn_on_identical_relationships(
+def _warn_and_deduplicate_identical_relationships(
     sbom_doc: Document,
-    package_items: list[tuple[Package, Relationship]],
+    content_items: list[ContentItem],
     kind: ContentKind,
-) -> list[tuple[Package, Relationship]]:
+) -> list[ContentItem]:
     """
     Warn about identical relationship triplets and return their first occurrences.
 
@@ -689,18 +690,18 @@ def _warn_on_identical_relationships(
 
     Args:
         sbom_doc: SBOM document containing the relationships.
-        package_items: Package and relationship pairs to inspect.
+        content_items: Content items to inspect.
         kind: Content kind used in the warning.
 
     Returns:
-        Package and relationship pairs with duplicate triplets removed.
+        Content items with duplicate relationship triplets removed.
     """
     relationship_triplet_occurrences: Counter[
         tuple[str, RelationshipType, str | SpdxNoAssertion | SpdxNone]
     ] = Counter()
-    unique_package_items: list[tuple[Package, Relationship]] = []
-    for package_item in package_items:
-        relationship = package_item[1]
+    unique_content_items: list[ContentItem] = []
+    for item in content_items:
+        relationship = item.relationship
         relationship_triplet = (
             relationship.spdx_element_id,
             relationship.relationship_type,
@@ -708,13 +709,11 @@ def _warn_on_identical_relationships(
         )
         relationship_triplet_occurrences[relationship_triplet] += 1
         if relationship_triplet_occurrences[relationship_triplet] == 1:
-            unique_package_items.append(package_item)
+            unique_content_items.append(item)
 
-    for (
-        subject,
-        relationship_type,
-        target,
-    ), occurrence_count in relationship_triplet_occurrences.items():
+    for (subject, relationship_type, target), occurrence_count in (
+        relationship_triplet_occurrences.items()
+    ):
         if occurrence_count > 1:
             LOGGER.warning(
                 "[Parent image content] Identical relationship triplet found for "
@@ -728,7 +727,7 @@ def _warn_on_identical_relationships(
                 sbom_doc.creation_info.document_namespace,
             )
 
-    return unique_package_items
+    return unique_content_items
 
 
 def collect_image_items(
@@ -757,13 +756,13 @@ def collect_image_items(
     _validate_relationship_cardinality_for_content_kind(sbom_doc, collected_items, kind)
 
     items: list[ImageItem] = []
-    for pkg, rel in collected_items:
+    for item in collected_items:
         annotations = get_annotations_by_spdx_id_filter_by_type(
-            sbom_doc, pkg.spdx_id, kind.annotation_type
+            sbom_doc, item.package.spdx_id, kind.annotation_type
         )
         if not annotations:
             continue
-        items.append(ImageItem(pkg, rel, annotations))
+        items.append(ImageItem(item.package, item.relationship, annotations))
 
     return items
 

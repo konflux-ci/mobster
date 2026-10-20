@@ -6,6 +6,7 @@ import pytest
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.parser.parse_anything import parse_file
+from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
 from spdx_tools.spdx.writer.write_anything import write_file
 
 from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
@@ -22,6 +23,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     KonfluxAnnotationManager,
 )
 from mobster.image import Image
+from mobster.sbom.load import load_file_to_sbom
 from tests.spdx_builder import AnnotatedPackage, SPDXPackageBuilder, SPDXSBOMBuilder
 
 
@@ -163,7 +165,7 @@ class GenerateData:
 
 def run_mobster_generate(gdata: GenerateData) -> subprocess.CompletedProcess[bytes]:
     """
-    Run a mobster generate oci image command with the supplied arguments.
+    Run Mobster OCI-image generation and validate its SPDX output.
     """
     cmd = ["mobster", "generate", "--output", str(gdata.output_sbom_path), "oci-image"]
     if gdata.input_sbom_path is not None:
@@ -197,7 +199,11 @@ def run_mobster_generate(gdata: GenerateData) -> subprocess.CompletedProcess[byt
     if gdata.build_metadata_path:
         cmd.extend(["--build-metadata-path", str(gdata.build_metadata_path)])
 
-    return subprocess.run(cmd, check=True, capture_output=True)
+    result = subprocess.run(cmd, check=True, capture_output=True)
+    sbom = load_file_to_sbom(gdata.output_sbom_path)
+    if isinstance(sbom, Document):
+        assert validate_full_spdx_document(sbom) == []
+    return result
 
 
 @pytest.fixture

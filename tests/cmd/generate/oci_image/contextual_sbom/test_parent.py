@@ -27,6 +27,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     ComponentRelationshipResolver,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.parent import (
+    ContentItem,
     ImageItem,
     collect_image_items,
     collect_package_items,
@@ -54,11 +55,11 @@ from .conftest import (
 )
 
 
-def _content_item(owner_id: str, pkg_id: str) -> tuple[Package, Relationship]:
+def _content_item(owner_id: str, pkg_id: str) -> ContentItem:
     """`owner CONTAINS pkg` content-package item."""
     pkg = Package(pkg_id, "name", SpdxNoAssertion())
     rel = Relationship(owner_id, RelationshipType.CONTAINS, pkg_id)
-    return pkg, rel
+    return ContentItem(pkg, rel)
 
 
 def _base_image_item(
@@ -126,41 +127,41 @@ def _intermediate_image_item(
 
 
 def test_collect_package_items(mock_doc: MagicMock) -> None:
-    pkg1, rel1 = _content_item("SPDXRef-root", "SPDXRef-pkg1")
-    pkg2, rel2 = _content_item("SPDXRef-root", "SPDXRef-pkg2")
+    item1 = _content_item("SPDXRef-root", "SPDXRef-pkg1")
+    item2 = _content_item("SPDXRef-root", "SPDXRef-pkg2")
     root = Package("SPDXRef-root", "root", SpdxNoAssertion())
-    mock_doc.packages = [root, pkg1, pkg2]
-    mock_doc.relationships = [rel1, rel2]
+    mock_doc.packages = [root, item1.package, item2.package]
+    mock_doc.relationships = [item1.relationship, item2.relationship]
 
-    assert collect_package_items(mock_doc) == [(pkg1, rel1), (pkg2, rel2)]
+    assert collect_package_items(mock_doc) == [item1, item2]
 
 
 def test_collect_package_items_skips_package_without_contains(
     mock_doc: MagicMock,
 ) -> None:
-    pkg1, rel1 = _content_item("SPDXRef-root", "SPDXRef-pkg1")
+    item = _content_item("SPDXRef-root", "SPDXRef-pkg1")
     root = Package("SPDXRef-root", "root", SpdxNoAssertion())
     orphan = Package("SPDXRef-orphan", "name", SpdxNoAssertion())
-    mock_doc.packages = [root, pkg1, orphan]
-    mock_doc.relationships = [rel1]
+    mock_doc.packages = [root, item.package, orphan]
+    mock_doc.relationships = [item.relationship]
 
-    assert collect_package_items(mock_doc) == [(pkg1, rel1)]
+    assert collect_package_items(mock_doc) == [item]
 
 
 def test_collect_package_items_raises_on_duplicate_relationship(
     mock_doc: MagicMock,
 ) -> None:
     """A content package must have exactly one CONTAINS relationship."""
-    pkg, rel = _content_item("SPDXRef-root", "SPDXRef-pkg")
+    item = _content_item("SPDXRef-root", "SPDXRef-pkg")
     duplicate_rel = Relationship(
-        "SPDXRef-other-root", RelationshipType.CONTAINS, pkg.spdx_id
+        "SPDXRef-other-root", RelationshipType.CONTAINS, item.package.spdx_id
     )
     mock_doc.packages = [
         Package("SPDXRef-root", "root", SpdxNoAssertion()),
         Package("SPDXRef-other-root", "other-root", SpdxNoAssertion()),
-        pkg,
+        item.package,
     ]
-    mock_doc.relationships = [rel, duplicate_rel]
+    mock_doc.relationships = [item.relationship, duplicate_rel]
     mock_doc.creation_info.document_namespace = "https://example.test/sbom"
 
     with pytest.raises(SBOMError) as error:
@@ -179,16 +180,21 @@ def test_collect_package_items_warns_on_identical_relationship_triplet(
     caplog: LogCaptureFixture,
 ) -> None:
     """An identical CONTAINS triplet is one logical ownership relationship."""
-    pkg, rel = _content_item("SPDXRef-root", "SPDXRef-pkg")
-    duplicate_rel = Relationship("SPDXRef-root", RelationshipType.CONTAINS, pkg.spdx_id)
+    item = _content_item("SPDXRef-root", "SPDXRef-pkg")
+    duplicate_rel = Relationship(
+        "SPDXRef-root", RelationshipType.CONTAINS, item.package.spdx_id
+    )
     mock_doc.packages = [
         Package("SPDXRef-root", "root", SpdxNoAssertion()),
-        pkg,
+        item.package,
     ]
-    mock_doc.relationships = [rel, duplicate_rel]
+    mock_doc.relationships = [item.relationship, duplicate_rel]
     caplog.set_level("WARNING")
 
-    assert collect_package_items(mock_doc) == [(pkg, rel), (pkg, duplicate_rel)]
+    assert collect_package_items(mock_doc) == [
+        item,
+        ContentItem(item.package, duplicate_rel),
+    ]
     assert any(
         "content kind 'content package'" in message
         and "SPDXRef-root CONTAINS SPDXRef-pkg (2 occurrences)" in message
@@ -201,20 +207,20 @@ def test_collect_package_items_warns_on_identical_triplet_and_rejects_distinct_o
     caplog: LogCaptureFixture,
 ) -> None:
     """A repeated edge must not hide a distinct, ambiguous package owner."""
-    pkg, relationship = _content_item("SPDXRef-root-a", "SPDXRef-pkg")
+    item = _content_item("SPDXRef-root-a", "SPDXRef-pkg")
     duplicate_relationship = Relationship(
-        "SPDXRef-root-a", RelationshipType.CONTAINS, pkg.spdx_id
+        "SPDXRef-root-a", RelationshipType.CONTAINS, item.package.spdx_id
     )
     distinct_relationship = Relationship(
-        "SPDXRef-root-b", RelationshipType.CONTAINS, pkg.spdx_id
+        "SPDXRef-root-b", RelationshipType.CONTAINS, item.package.spdx_id
     )
     mock_doc.packages = [
         Package("SPDXRef-root-a", "root-a", SpdxNoAssertion()),
         Package("SPDXRef-root-b", "root-b", SpdxNoAssertion()),
-        pkg,
+        item.package,
     ]
     mock_doc.relationships = [
-        relationship,
+        item.relationship,
         duplicate_relationship,
         distinct_relationship,
     ]
@@ -238,25 +244,25 @@ def test_collect_package_items_reports_all_duplicate_relationships(
     All packages with ambiguous CONTAINS ownership
     from single document are reported together.
     """
-    package1, relationship1 = _content_item("SPDXRef-root-1", "SPDXRef-pkg-1")
-    package2, relationship2 = _content_item("SPDXRef-root-1", "SPDXRef-pkg-2")
+    item1 = _content_item("SPDXRef-root-1", "SPDXRef-pkg-1")
+    item2 = _content_item("SPDXRef-root-1", "SPDXRef-pkg-2")
     # invalid state: package is owned by two origins
     duplicate_relationship1 = Relationship(
-        "SPDXRef-root-2", RelationshipType.CONTAINS, package1.spdx_id
+        "SPDXRef-root-2", RelationshipType.CONTAINS, item1.package.spdx_id
     )
     duplicate_relationship2 = Relationship(
-        "SPDXRef-root-3", RelationshipType.CONTAINS, package2.spdx_id
+        "SPDXRef-root-3", RelationshipType.CONTAINS, item2.package.spdx_id
     )
     mock_doc.packages = [
-        package1,
-        package2,
+        item1.package,
+        item2.package,
         Package("SPDXRef-root-1", "root-1", SpdxNoAssertion()),
         Package("SPDXRef-root-2", "root-2", SpdxNoAssertion()),
         Package("SPDXRef-root-3", "root-3", SpdxNoAssertion()),
     ]
     mock_doc.relationships = [
-        relationship1,
-        relationship2,
+        item1.relationship,
+        item2.relationship,
         duplicate_relationship1,
         duplicate_relationship2,
     ]
@@ -275,20 +281,20 @@ def test_collect_package_items_ignores_file_relationships(
     mock_doc: MagicMock,
 ) -> None:
     """Package-to-file evidence must not affect package collection."""
-    package, package_rel = _content_item("SPDXRef-root", "SPDXRef-pkg")
+    item = _content_item("SPDXRef-root", "SPDXRef-pkg")
     file_rel = Relationship(
-        package.spdx_id,
+        item.package.spdx_id,
         RelationshipType.CONTAINS,
         "SPDXRef-file",
     )
     mock_doc.packages = [
         Package("SPDXRef-root", "root", SpdxNoAssertion()),
-        package,
+        item.package,
     ]
     mock_doc.files = [File("file", "SPDXRef-file", [])]
-    mock_doc.relationships = [package_rel, file_rel]
+    mock_doc.relationships = [item.relationship, file_rel]
 
-    assert collect_package_items(mock_doc) == [(package, package_rel)]
+    assert collect_package_items(mock_doc) == [item]
 
 
 @pytest.mark.parametrize(
@@ -316,7 +322,7 @@ def test_collect_package_items_warns_on_unsupported_contains_relationship(
     files: list[File],
 ) -> None:
     """CONTAINS relationships outside the ownership model warn and are skipped."""
-    package, package_rel = _content_item("SPDXRef-root", "SPDXRef-pkg")
+    item = _content_item("SPDXRef-root", "SPDXRef-pkg")
     unsupported_rel = Relationship(
         subject,
         RelationshipType.CONTAINS,
@@ -324,13 +330,13 @@ def test_collect_package_items_warns_on_unsupported_contains_relationship(
     )
     mock_doc.packages = [
         Package("SPDXRef-root", "root", SpdxNoAssertion()),
-        package,
+        item.package,
     ]
     mock_doc.files = files
-    mock_doc.relationships = [package_rel, unsupported_rel]
+    mock_doc.relationships = [item.relationship, unsupported_rel]
     caplog.set_level("WARNING")
 
-    assert collect_package_items(mock_doc) == [(package, package_rel)]
+    assert collect_package_items(mock_doc) == [item]
     assert any(
         "Skipping invalid CONTAINS relationship: "
         f"{subject} CONTAINS {target}." in message

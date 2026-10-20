@@ -4,10 +4,7 @@ import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any
-
-from spdx_tools.spdx.model.package import Package
-from spdx_tools.spdx.model.relationship import Relationship
+from typing import TYPE_CHECKING, Any
 
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     MatchBy,
@@ -15,6 +12,9 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     PackageMatchInfo,
     PackageProducer,
 )
+
+if TYPE_CHECKING:
+    from mobster.cmd.generate.oci_image.contextual_sbom.parent import ContentItem
 
 LOGGER = logging.getLogger(__name__)
 
@@ -195,16 +195,18 @@ class MatchingStatistics:
     duplicates: DuplicateTracker = field(default_factory=DuplicateTracker)
 
     def record_component_packages(
-        self, component_packages: list[tuple[Package, Relationship]]
+        self, component_packages: list["ContentItem"]
     ) -> None:
         """Record all component packages."""
-        self.component.all_packages = {c.spdx_id for c, r in component_packages}
+        self.component.all_packages = {
+            item.package.spdx_id for item in component_packages
+        }
 
     def record_parent_packages(
-        self, parent_packages: list[tuple[Package, Relationship]]
+        self, parent_packages: list["ContentItem"]
     ) -> None:
         """Record all parent packages."""
-        self.parent.all_packages = {p.spdx_id for p, r in parent_packages}
+        self.parent.all_packages = {item.package.spdx_id for item in parent_packages}
 
     def record_parent_package_match(self, parent_spdx_id: str) -> None:
         """

@@ -6,7 +6,7 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, TypeVar
+from typing import Any, ClassVar, TypeVar
 
 from packageurl import PackageURL
 from spdx_tools.spdx.model.actor import Actor, ActorType
@@ -311,7 +311,13 @@ class AnnotationParseError(Exception):
     """An error occurred during parsing of a Konflux annotation."""
 
 
-class AnnotationIntermediateImage:
+class AnnotationImage:
+    """Base type for parsed Konflux annotations."""
+
+    name: ClassVar[str]
+
+
+class AnnotationIntermediateImage(AnnotationImage):
     """
     Parsed Konflux intermediate image annotation.
 
@@ -325,7 +331,7 @@ class AnnotationIntermediateImage:
         self.stage_index = stage_index
 
 
-class AnnotationBuilderImage:
+class AnnotationBuilderImage(AnnotationImage):
     """
     Parsed Konflux builder image annotation.
 
@@ -339,7 +345,7 @@ class AnnotationBuilderImage:
         self.stage_index = stage_index
 
 
-class AnnotationBaseImage:
+class AnnotationBaseImage(AnnotationImage):
     """
     Parsed Konflux base image annotation. Empty, because its presence already
     signals a base image.
@@ -348,7 +354,7 @@ class AnnotationBaseImage:
     name = "konflux:container:is_base_image"
 
 
-class AnnotationAncestorImage:
+class AnnotationAncestorImage(AnnotationImage):
     """
     Parsed Konflux ancestor image (grandparent
     of the component and more recent) annotation.
@@ -357,7 +363,7 @@ class AnnotationAncestorImage:
     name = "konflux:container:is_ancestor_image"
 
 
-class AnnotationAdditionalImage:
+class AnnotationAdditionalImage(AnnotationImage):
     """Parsed Konflux annotation for additional builder images."""
 
     name = "konflux:container:is_builder_image:additional_builder_image"
@@ -473,14 +479,7 @@ class KonfluxAnnotationManager:
     @staticmethod
     def parse(
         ann: Annotation,
-    ) -> (
-        None
-        | AnnotationIntermediateImage
-        | AnnotationBuilderImage
-        | AnnotationBaseImage
-        | AnnotationAdditionalImage
-        | AnnotationAncestorImage
-    ):
+    ) -> AnnotationImage | None:
         """
         Parse an SPDX annotation document and return the internal
         representation or return None if it's not a Konflux annotation.

@@ -26,7 +26,10 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 from mobster.sbom.spdx import get_normalized_purl, get_package_purl
 
 if TYPE_CHECKING:
-    from mobster.cmd.generate.oci_image.contextual_sbom.parent import ImageItem
+    from mobster.cmd.generate.oci_image.contextual_sbom.parent import (
+        ContentItem,
+        ImageItem,
+    )
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +51,7 @@ class ComponentRelationshipResolver:
 
     def __init__(
         self,
-        component_packages: list[tuple[Package, Relationship]],
+        component_packages: list["ContentItem"],
         parent_sbom_doc: Document,
         component_sbom_doc: Document,
         stats: MatchingStatistics,
@@ -57,16 +60,15 @@ class ComponentRelationshipResolver:
         Initialize and build all indexes.
 
         Args:
-            component_packages: List of (component Package, component
-                Relationship) tuples to index
+            component_packages: Content items to index.
             parent_sbom_doc: Parent SBOM document
             component_sbom_doc: Component SBOM document
             stats: Statistics tracker for recording packages without
                 unique IDs
         """
-        self.checksum_index: dict[str, list[tuple[Package, Relationship]]] = {}
-        self.verification_code_index: dict[str, list[tuple[Package, Relationship]]] = {}
-        self.purl_index: dict[str, list[tuple[Package, Relationship]]] = {}
+        self.checksum_index: dict[str, list[ContentItem]] = {}
+        self.verification_code_index: dict[str, list[ContentItem]] = {}
+        self.purl_index: dict[str, list[ContentItem]] = {}
         self.component_packages = component_packages
         self.parent_sbom_doc = parent_sbom_doc
         self.component_sbom_doc = component_sbom_doc
@@ -83,17 +85,18 @@ class ComponentRelationshipResolver:
 
         Also records component packages without any unique identifier.
         """
-        for pkg, rel in self.component_packages:
+        for item in self.component_packages:
+            pkg = item.package
             has_unique_id = False
 
             if pkg.checksums:
                 checksum_key = self._create_checksum_key(pkg.checksums)
-                self.checksum_index.setdefault(checksum_key, []).append((pkg, rel))
+                self.checksum_index.setdefault(checksum_key, []).append(item)
                 has_unique_id = True
 
             if pkg.verification_code and pkg.verification_code.value:
                 vc_key = pkg.verification_code.value
-                self.verification_code_index.setdefault(vc_key, []).append((pkg, rel))
+                self.verification_code_index.setdefault(vc_key, []).append(item)
                 has_unique_id = True
 
             purl = get_package_purl(pkg)
@@ -104,7 +107,7 @@ class ComponentRelationshipResolver:
                     purl_obj = PackageURL.from_string(purl)
                     if purl_obj.version:
                         purl_key = self._create_purl_key(purl_obj)
-                        self.purl_index.setdefault(purl_key, []).append((pkg, rel))
+                        self.purl_index.setdefault(purl_key, []).append(item)
                         has_unique_id = True
                 except ValueError:
                     LOGGER.warning(
@@ -128,7 +131,7 @@ class ComponentRelationshipResolver:
 
     def find_candidates(
         self, parent_package: Package
-    ) -> list[tuple[Package, Relationship]]:
+    ) -> list["ContentItem"]:
         """
         Find candidate component packages that may match the given parent package
         using prioritized identifier-based lookup strategy.
@@ -142,7 +145,7 @@ class ComponentRelationshipResolver:
                 in the indexed component SBOM
 
         Returns:
-            List of candidate (Package, Relationship) tuples
+            Candidate content items.
         """
         if parent_package.checksums:
             checksum_key = self._create_checksum_key(parent_package.checksums)
@@ -217,7 +220,9 @@ class ComponentRelationshipResolver:
 
         self.stats.record_parent_package_match(parent_package.spdx_id)
 
-        for component_package, component_relationship in candidates:
+        for item in candidates:
+            component_package = item.package
+            component_relationship = item.relationship
             # Skip if already matched (avoid matching duplicates multiple times)
             if self.is_matched(component_package.spdx_id):
                 continue
@@ -234,7 +239,7 @@ class ComponentRelationshipResolver:
 
     def resolve_component_relationships(
         self,
-        parent_packages: list[tuple[Package, Relationship]],
+        parent_packages: list["ContentItem"],
         parent_spdx_id_from_component: str,
         parent_root_packages: list[str],
     ) -> None:
@@ -246,7 +251,9 @@ class ComponentRelationshipResolver:
         2. Modify the component relationship to point to parent or grandparent
         3. Mark the component package as matched
         """
-        for parent_package, parent_relationship in parent_packages:
+        for item in parent_packages:
+            parent_package = item.package
+            parent_relationship = item.relationship
             for component_package, component_relationship, match_info in self.get_match(
                 parent_package
             ):

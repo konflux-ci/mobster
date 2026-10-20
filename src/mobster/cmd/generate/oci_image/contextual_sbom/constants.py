@@ -10,6 +10,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     AnnotationAncestorImage,
     AnnotationBaseImage,
     AnnotationBuilderImage,
+    AnnotationImage,
     AnnotationIntermediateImage,
 )
 
@@ -89,14 +90,7 @@ class ContentKind:
     name: str
     relationship_type: RelationshipType
     relationship_end: RelationshipEnd
-    annotation_type: (
-        type[AnnotationBaseImage]
-        | type[AnnotationAncestorImage]
-        | type[AnnotationBuilderImage]
-        | type[AnnotationAdditionalImage]
-        | type[AnnotationIntermediateImage]
-        | None
-    )
+    annotation_type: type[AnnotationImage] | None
     allows_multiple_relationships_per_endpoint: bool = False
 
 
@@ -142,75 +136,45 @@ LEGACY_BASE_IMAGE = ContentKind(
     allows_multiple_relationships_per_endpoint=False,
 )
 
-# allows_multiple_relationships_per_endpoint for BUILDER_IMAGE, ADDITIONAL_IMAGE
-# and INTERMEDIATE_IMAGE explanation:
-# SPDX IDs of image packages are generated deterministically by Mobster. This
-# complicates inheritance of builders and their intermediates from parent SBOM
-# to component SBOM in specific edge-cases.
-# There are two situations where the same builder image is used in multiple
-# parts of the image chain and deterministic naming may collide*:
+# SPDX IDs of image packages are generated deterministically by Mobster.
+# Within one component, repeated uses of the same builder base image are
+# deduplicated to a single builder image package and a single BUILD_TOOL_OF
+# relationship. Builder contextualization similarly reuses the package and
+# DESCENDANT_OF relationship for a repeatedly present intermediate image.
 #
-# - The same builder may build the component and one or more of its ancestors:
-#   `builder* BUILD_TOOL_OF parent` and `builder* BUILD_TOOL_OF component`.
-#   Parent contextualization first supplies the parent's already-existing
-#   intermediate to the component. If both stages have intermediate content,
-#   component builder contextualization later tries to create the same
-#   deterministic intermediate identity:
-#   `builder-intermediate* DESCENDANT_OF builder` (parent) and
-#   `builder-intermediate* DESCENDANT_OF builder` (component)
+# Problem: Reusing an identical builder, additional, or intermediate image
+# across different images in the image chain can make the concrete image/stage
+# associated with its content ambiguous.
+# - When a builder or additional image is reused by different images, its
+#   content remains traceable to the source image, but the SBOM cannot identify
+#   the concrete image into which each package was copied.
+# - An identical intermediate image reused by different images cannot be
+#   associated with the concrete image into which its content was copied,
+#   making the concrete origin of its content ambiguous.
 #
-# - The same builder may build two ancestors present in the parent SBOM, i.e.,
-#   `builder* BUILD_TOOL_OF parent` and `builder* BUILD_TOOL_OF grandparent`.
-#   Similar situation as previous - if both ancestors copy content from
-#   intermediate layers, then intermediate image packages with identical names
-#   are derived from these builders and those will interfere* in parent SBOM:
-#   `builder-intermediate* DESCENDANT_OF builder` (parent) and
-#   `builder-intermediate* DESCENDANT_OF builder` (grandparent)
+# Temporary workaround: single builder or additional image package may retain
+# distinct BUILD_TOOL_OF relationships to different images in the image
+# chain.
 #
-# Current implementation:
-# A reused builder image package may have distinct `BUILD_TOOL_OF`
-# relationships to ancestors and/or to the component. This is allowed, with a
-# tradeoff regarding content package origin tracking in the contextual SBOM.
-# In case of `builder CONTAINS vulnerable-package` we can say that `builder` is
-# the origin that needs to be remediated but we cannot say from the contextual
-# SBOM where it was copied (parent or component in the first example or parent
-# or grandparent in the second).
+# In contrast, reuse of an identical intermediate image package inherited from
+# the parent SBOM is rejected by
+# `builder.DocumentIndexOCI.ensure_intermediate_image_package`, and the workflow
+# falls back to a non-contextual SBOM.
 #
-# Duplicate intermediate image packages are disallowed. The runtime safeguard
-# is implemented in `builder.DocumentIndexOCI.ensure_intermediate_image_package`:
-# an intermediate that was inherited when the current builder-contextualization
-# document was created cannot be reused for the current builder; contextualization
-# fails instead of silently reusing it.
-# `allows_multiple_relationships_per_endpoint=False` remains a defensive
-# per-document check in the parent collector. The runtime safeguard prevents
-# this collision in a normally constructed contextualization chain, but the
-# collector can still detect it in malformed or externally produced parent SBOMs.
+# TO DO: Repeated builder, additional, and intermediate image occurrences
+# across the component and ancestor chain require distinct image-package
+# identities that preserve their source-image or derived-stage identity.
+# Content-package CONTAINS relationships associated with the new image packages
+# must be correctly updated, and correct annotations must be attributed to the
+# appropriate image package.
+# After that:
+#  - allows_multiple_relationships_per_endpoint can be removed
+#  - _validate_relationship_cardinality_for_content_kind can enforce one
+#    relationship per selected endpoint for every image ContentKind
+#  - the temporary safeguard in
+#    builder.DocumentIndexOCI.ensure_intermediate_image_package can be removed,
+#    because intermediate image identities will be unique
 #
-# The same collision can occur when an additional image is reused across the
-# ancestor chain or when a builder and an additional image resolve to the same
-# image. Therefore ADDITIONAL_IMAGE also allows multiple relationships per
-# endpoint.
-#
-# The restriction is needed because intermediate content is part of a concrete
-# built stage (component, parent, or grandparent in the examples), not part of
-# the builder image. I.e., if the same `builder-intermediate` identity represents
-# both parent and component stages, the relationship cascade
-# `builder-intermediate CONTAINS vulnerable-package`,
-# `builder-intermediate DESCENDANT_OF builder`, and
-# `builder BUILD_TOOL_OF parent` plus `builder BUILD_TOOL_OF component`
-# cannot identify the concrete source stage of the vulnerable package.
-#
-# TO DO: Intermediate packages, and ideally also builder/additional packages,
-# need unique SPDX IDs within the ancestor chain while preserving their image
-# identity. The copied content must remain correctly attributed to them.
-#
-# Note: Reusing the same builder image in multiple stages of one image does not
-# create duplicate builder packages or `BUILD_TOOL_OF` relationships before
-# contextualization. The non-contextual workflow deduplicates builder images by
-# digest and preserves every stage annotation on the single package. During
-# builder contextualization, one derived intermediate package is created per
-# builder in the current component SBOM.
-
 # Example in parent SBOM:
 # `builder BUILD_TOOL_OF parent` (also includes builders of ancestors)
 BUILDER_IMAGE = ContentKind(

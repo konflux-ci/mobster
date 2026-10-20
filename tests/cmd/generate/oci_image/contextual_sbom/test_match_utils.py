@@ -28,6 +28,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     validate_and_compare_purls,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.parent import (
+    ContentItem,
     map_parent_to_component_and_update_component,
 )
 from tests.cmd.generate.oci_image.contextual_sbom.conftest import (
@@ -105,7 +106,7 @@ def test_component_package_index_all_identifiers(
 
     stats = MatchingStatistics()
     index = ComponentRelationshipResolver(
-        [(pkg, rel)],
+        [ContentItem(pkg, rel)],
         parent_doc,
         component_doc,
         stats,
@@ -129,7 +130,7 @@ def test_component_package_index_all_identifiers(
     candidates = index.find_candidates(parent_pkg)
     assert len(candidates) == (1 if should_index else 0)
     if should_index:
-        assert candidates[0] == (pkg, rel)
+        assert candidates[0] == ContentItem(pkg, rel)
 
     # Verify that packages without unique IDs are recorded in stats
     if not should_index:
