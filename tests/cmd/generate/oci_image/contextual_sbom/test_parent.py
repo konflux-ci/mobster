@@ -22,6 +22,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import (
     ContentItem,
+    ImageItem,
     collect_image_items,
     collect_package_items,
     get_annotations_by_spdx_id_filter_by_type,
@@ -33,7 +34,6 @@ from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     ComponentRelationshipResolver,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.parent import (
-    ImageItem,
     download_parent_image_sbom,
     get_grandparent_and_ancestor_items_from_used_parent,
     get_parent_spdx_id_from_component,

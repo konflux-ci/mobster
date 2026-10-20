@@ -15,6 +15,9 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     PackageMatchInfo,
     PackageProducer,
 )
+from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import (
+    ContentItem,
+)
 from mobster.cmd.generate.oci_image.contextual_sbom.logging import (
     BuilderStatistics,
     DuplicateTracker,
@@ -133,7 +136,7 @@ def test_record_packages(
     """Test recording component and parent packages."""
     stats = MatchingStatistics()
     packages = [
-        (
+        ContentItem(
             Package(spdx_ref, f"pkg{i + 1}", SpdxNoAssertion()),
             Relationship("SPDXRef-root", RelationshipType.CONTAINS, spdx_ref),
         )

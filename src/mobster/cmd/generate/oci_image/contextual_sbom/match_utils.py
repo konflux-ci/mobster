@@ -2,7 +2,6 @@
 
 import logging
 from collections.abc import Generator
-from typing import TYPE_CHECKING
 
 from packageurl import PackageURL
 from spdx_tools.spdx.model.actor import ActorType
@@ -19,17 +18,15 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     PackageMatchInfo,
     PackageProducer,
 )
+from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import (
+    ContentItem,
+    ImageItem,
+)
 from mobster.cmd.generate.oci_image.contextual_sbom.logging import MatchingStatistics
 from mobster.cmd.generate.oci_image.spdx_utils import (
     get_annotations_by_spdx_id,
 )
 from mobster.sbom.spdx import get_normalized_purl, get_package_purl
-
-if TYPE_CHECKING:
-    from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import (
-        ContentItem,
-        ImageItem,
-    )
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,7 +48,7 @@ class ComponentRelationshipResolver:
 
     def __init__(
         self,
-        component_packages: list["ContentItem"],
+        component_packages: list[ContentItem],
         parent_sbom_doc: Document,
         component_sbom_doc: Document,
         stats: MatchingStatistics,
@@ -129,7 +126,7 @@ class ComponentRelationshipResolver:
         """Create unique key from PURL object."""
         return f"{purl.type}/{purl.namespace or ''}/{purl.name}@{purl.version}"
 
-    def find_candidates(self, parent_package: Package) -> list["ContentItem"]:
+    def find_candidates(self, parent_package: Package) -> list[ContentItem]:
         """
         Find candidate component packages that may match the given parent package
         using prioritized identifier-based lookup strategy.
@@ -237,7 +234,7 @@ class ComponentRelationshipResolver:
 
     def resolve_component_relationships(
         self,
-        parent_packages: list["ContentItem"],
+        parent_packages: list[ContentItem],
         parent_spdx_id_from_component: str,
         parent_root_packages: list[str],
     ) -> None:
@@ -268,7 +265,7 @@ class ComponentRelationshipResolver:
 
     def supply_image_packages(
         self,
-        image_packages: "list[ImageItem]",
+        image_packages: list[ImageItem],
     ) -> None:
         """
         Supply all image packages, their annotations and relationships

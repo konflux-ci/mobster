@@ -4,7 +4,7 @@ import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     MatchBy,
@@ -12,11 +12,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     PackageMatchInfo,
     PackageProducer,
 )
-
-if TYPE_CHECKING:
-    from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import (
-        ContentItem,
-    )
+from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import ContentItem
 
 LOGGER = logging.getLogger(__name__)
 
@@ -196,15 +192,13 @@ class MatchingStatistics:
     producer_matches: ProducerMatchStats = field(default_factory=ProducerMatchStats)
     duplicates: DuplicateTracker = field(default_factory=DuplicateTracker)
 
-    def record_component_packages(
-        self, component_packages: list["ContentItem"]
-    ) -> None:
+    def record_component_packages(self, component_packages: list[ContentItem]) -> None:
         """Record all component packages."""
         self.component.all_packages = {
             item.package.spdx_id for item in component_packages
         }
 
-    def record_parent_packages(self, parent_packages: list["ContentItem"]) -> None:
+    def record_parent_packages(self, parent_packages: list[ContentItem]) -> None:
         """Record all parent packages."""
         self.parent.all_packages = {item.package.spdx_id for item in parent_packages}
 
