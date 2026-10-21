@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from mobster.cmd import augment, enrich
+from mobster.cmd import attest, augment, enrich
 from mobster.cmd.delete import delete_tpa
 from mobster.cmd.download import download_tpa
 from mobster.cmd.generate import (
@@ -46,6 +46,8 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     delete_command_parser(subparsers)
     # Enrich command
     enrich_command_parser(subparsers)
+    # Attest command
+    attest_command_parser(subparsers)
 
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output.")
 
@@ -695,3 +697,63 @@ def enrich_aibom_parser(subparsers: Any) -> None:
         help="path to the mapped json spec file in JSON format",
     )
     aibom_parser.set_defaults(func=enrich.EnrichCommand)
+
+
+def attest_command_parser(subparsers: Any) -> None:
+    """
+    A parser for attaching signed SBOM attestations to images.
+
+    The resulting command is a wrapper around ``cosign attest`` that
+    uploads an SBOM as a signed keyless attestation.
+    """
+
+    def validated_reference(value: str) -> str:
+        if not ARTIFACT_PATTERN.match(value):
+            raise argparse.ArgumentTypeError(
+                "The image reference must be digested, in the format "
+                "<registry>/<repository>@sha256:<digest>"
+            )
+        return value
+
+    attest_parser = subparsers.add_parser(
+        "attest",
+        help="Attach an SBOM to an image as a signed keyless attestation",
+    )
+    attest_parser.add_argument(
+        "--image-ref",
+        type=validated_reference,
+        required=True,
+        help="Digested reference of the image to attest, in the format "
+        "<registry>/<repository>@sha256:<digest>",
+    )
+    attest_parser.add_argument(
+        "--sbom-path",
+        type=Path,
+        required=True,
+        help="Path to the SBOM file to attach as an attestation",
+    )
+    attest_parser.add_argument(
+        "--rekor-url",
+        type=str,
+        required=True,
+        help="URL of the Rekor transparency log service",
+    )
+    attest_parser.add_argument(
+        "--fulcio-url",
+        type=str,
+        required=True,
+        help="URL of the Fulcio certificate authority service",
+    )
+    attest_parser.add_argument(
+        "--oidc-issuer-url",
+        type=str,
+        required=True,
+        help="URL of the OIDC issuer that issued the identity token",
+    )
+    attest_parser.add_argument(
+        "--oidc-token-path",
+        type=Path,
+        required=True,
+        help="Path to the file containing the OIDC identity token",
+    )
+    attest_parser.set_defaults(func=attest.AttestCommand)
