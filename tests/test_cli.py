@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 import pytest
 
 from mobster.cli import (
+    attest_command_parser,
     generate_oci_image_parser,
     parse_concurrency,
     parse_tpa_labels,
@@ -68,6 +69,43 @@ def test_generate_oci_image_parser(command: list[str], success: bool) -> None:
 
     if success:
         main_parser.parse_args(command)
+    else:
+        with pytest.raises(SystemExit):
+            main_parser.parse_args(command)
+
+
+@pytest.mark.parametrize(
+    ["image_ref", "success"],
+    [
+        ("quay.io/foo/bar@sha256:1234567890123456789012345678901212345678901234567890123456789012", True),
+        ("quay.io/foo/bar:latest", False),
+        ("not an url", False),
+    ],
+)
+def test_attest_command_parser(image_ref: str, success: bool) -> None:
+    main_parser = ArgumentParser("mobster")
+    subparsers = main_parser.add_subparsers(dest="command", required=True)
+    attest_command_parser(subparsers)
+
+    command = [
+        "attest",
+        "--image-ref",
+        image_ref,
+        "--sbom-path",
+        "sbom.json",
+        "--rekor-url",
+        "https://rekor.example.com",
+        "--fulcio-url",
+        "https://fulcio.example.com",
+        "--oidc-issuer-url",
+        "https://oidc.example.com",
+        "--oidc-token-path",
+        "token",
+    ]
+
+    if success:
+        args = main_parser.parse_args(command)
+        assert args.image_ref == image_ref
     else:
         with pytest.raises(SystemExit):
             main_parser.parse_args(command)
