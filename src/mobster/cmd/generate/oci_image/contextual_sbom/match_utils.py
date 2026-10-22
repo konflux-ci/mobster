@@ -2,7 +2,6 @@
 
 import logging
 from collections.abc import Generator
-from typing import TYPE_CHECKING
 
 from packageurl import PackageURL
 from spdx_tools.spdx.model.actor import ActorType
@@ -19,14 +18,15 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     PackageMatchInfo,
     PackageProducer,
 )
+from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import (
+    ContentItem,
+    ImageItem,
+)
 from mobster.cmd.generate.oci_image.contextual_sbom.logging import MatchingStatistics
 from mobster.cmd.generate.oci_image.spdx_utils import (
     get_annotations_by_spdx_id,
 )
 from mobster.sbom.spdx import get_normalized_purl, get_package_purl
-
-if TYPE_CHECKING:
-    from mobster.cmd.generate.oci_image.contextual_sbom.parent import ImageItem
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class ComponentRelationshipResolver:
 
     def __init__(
         self,
-        component_packages: list[tuple[Package, Relationship]],
+        component_packages: list[ContentItem],
         parent_sbom_doc: Document,
         component_sbom_doc: Document,
         stats: MatchingStatistics,
@@ -57,16 +57,15 @@ class ComponentRelationshipResolver:
         Initialize and build all indexes.
 
         Args:
-            component_packages: List of (component Package, component
-                Relationship) tuples to index
+            component_packages: Content items to index.
             parent_sbom_doc: Parent SBOM document
             component_sbom_doc: Component SBOM document
             stats: Statistics tracker for recording packages without
                 unique IDs
         """
-        self.checksum_index: dict[str, list[tuple[Package, Relationship]]] = {}
-        self.verification_code_index: dict[str, list[tuple[Package, Relationship]]] = {}
-        self.purl_index: dict[str, list[tuple[Package, Relationship]]] = {}
+        self.checksum_index: dict[str, list[ContentItem]] = {}
+        self.verification_code_index: dict[str, list[ContentItem]] = {}
+        self.purl_index: dict[str, list[ContentItem]] = {}
         self.component_packages = component_packages
         self.parent_sbom_doc = parent_sbom_doc
         self.component_sbom_doc = component_sbom_doc
@@ -83,17 +82,18 @@ class ComponentRelationshipResolver:
 
         Also records component packages without any unique identifier.
         """
-        for pkg, rel in self.component_packages:
+        for item in self.component_packages:
+            pkg = item.package
             has_unique_id = False
 
             if pkg.checksums:
                 checksum_key = self._create_checksum_key(pkg.checksums)
-                self.checksum_index.setdefault(checksum_key, []).append((pkg, rel))
+                self.checksum_index.setdefault(checksum_key, []).append(item)
                 has_unique_id = True
 
             if pkg.verification_code and pkg.verification_code.value:
                 vc_key = pkg.verification_code.value
-                self.verification_code_index.setdefault(vc_key, []).append((pkg, rel))
+                self.verification_code_index.setdefault(vc_key, []).append(item)
                 has_unique_id = True
 
             purl = get_package_purl(pkg)
@@ -104,7 +104,7 @@ class ComponentRelationshipResolver:
                     purl_obj = PackageURL.from_string(purl)
                     if purl_obj.version:
                         purl_key = self._create_purl_key(purl_obj)
-                        self.purl_index.setdefault(purl_key, []).append((pkg, rel))
+                        self.purl_index.setdefault(purl_key, []).append(item)
                         has_unique_id = True
                 except ValueError:
                     LOGGER.warning(
@@ -126,9 +126,7 @@ class ComponentRelationshipResolver:
         """Create unique key from PURL object."""
         return f"{purl.type}/{purl.namespace or ''}/{purl.name}@{purl.version}"
 
-    def find_candidates(
-        self, parent_package: Package
-    ) -> list[tuple[Package, Relationship]]:
+    def find_candidates(self, parent_package: Package) -> list[ContentItem]:
         """
         Find candidate component packages that may match the given parent package
         using prioritized identifier-based lookup strategy.
@@ -142,7 +140,7 @@ class ComponentRelationshipResolver:
                 in the indexed component SBOM
 
         Returns:
-            List of candidate (Package, Relationship) tuples
+            Candidate content items.
         """
         if parent_package.checksums:
             checksum_key = self._create_checksum_key(parent_package.checksums)
@@ -217,7 +215,9 @@ class ComponentRelationshipResolver:
 
         self.stats.record_parent_package_match(parent_package.spdx_id)
 
-        for component_package, component_relationship in candidates:
+        for item in candidates:
+            component_package = item.package
+            component_relationship = item.relationship
             # Skip if already matched (avoid matching duplicates multiple times)
             if self.is_matched(component_package.spdx_id):
                 continue
@@ -234,7 +234,7 @@ class ComponentRelationshipResolver:
 
     def resolve_component_relationships(
         self,
-        parent_packages: list[tuple[Package, Relationship]],
+        parent_packages: list[ContentItem],
         parent_spdx_id_from_component: str,
         parent_root_packages: list[str],
     ) -> None:
@@ -246,7 +246,9 @@ class ComponentRelationshipResolver:
         2. Modify the component relationship to point to parent or grandparent
         3. Mark the component package as matched
         """
-        for parent_package, parent_relationship in parent_packages:
+        for item in parent_packages:
+            parent_package = item.package
+            parent_relationship = item.relationship
             for component_package, component_relationship, match_info in self.get_match(
                 parent_package
             ):
@@ -263,15 +265,31 @@ class ComponentRelationshipResolver:
 
     def supply_image_packages(
         self,
-        image_packages: "list[ImageItem]",
+        image_packages: list[ImageItem],
     ) -> None:
         """
         Supply all image packages, their annotations and relationships
         from parent SBOM to component SBOM.
 
-        This method adds ancestor image packages to the component SBOM. Each
-        image package is supplied as one ``ImageItem`` containing its package,
-        relationship, and image annotation.
+        This method supplies grandparent, ancestor, builder, additional, and
+        intermediate image packages from the parent SBOM to the component SBOM.
+
+        Each `ImageItem` contains one image package, one relationship, and all
+        matching annotations for that package. An image package may occur in multiple
+        items when it participates in distinct relationships, for example:
+
+        - the same image package is both a parent and a builder in one image
+        - the same builder image is used for the parent and for an ancestor
+        - the same builder image is already present in the component and is also
+          inherited from the parent (this relies on the same image PURL producing
+          the same deterministic SPDX ID in Mobster)
+        - the same image is a builder and an additional image in separate images
+          (component/ancestor(s) or between multiple ancestors) - the builder base
+          and an additional image reference resolve to the same image
+
+        If a package is already present, it is not added again. Missing distinct
+        relationships and annotations are still added to the component SBOM. An
+        identical relationship triplet is not added again.
 
         Note: This method expects that component package relationships already point
         to the correct parent/grandparent packages (modified by
@@ -280,10 +298,36 @@ class ComponentRelationshipResolver:
         Args:
             image_packages: Image items to be supplied to the component SBOM.
         """
+        package_spdx_ids = {
+            package.spdx_id for package in self.component_sbom_doc.packages
+        }
+        relationship_keys = {
+            (
+                relationship.spdx_element_id,
+                relationship.relationship_type,
+                relationship.related_spdx_element_id,
+            )
+            for relationship in self.component_sbom_doc.relationships
+        }
+
         for item in image_packages:
-            self.component_sbom_doc.relationships.append(item.relationship)
-            self.component_sbom_doc.packages.append(item.package)
-            self.component_sbom_doc.annotations.append(item.annotation)
+            relationship = item.relationship
+            relationship_key = (
+                relationship.spdx_element_id,
+                relationship.relationship_type,
+                relationship.related_spdx_element_id,
+            )
+            if relationship_key not in relationship_keys:
+                self.component_sbom_doc.relationships.append(relationship)
+                relationship_keys.add(relationship_key)
+
+            if item.package.spdx_id not in package_spdx_ids:
+                self.component_sbom_doc.packages.append(item.package)
+                package_spdx_ids.add(item.package.spdx_id)
+
+            for annotation in item.annotations:
+                if annotation not in self.component_sbom_doc.annotations:
+                    self.component_sbom_doc.annotations.append(annotation)
 
     @staticmethod
     def _modify_relationship_in_component(

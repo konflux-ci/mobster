@@ -17,6 +17,9 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import MatchBy
+from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import (
+    ContentItem,
+)
 from mobster.cmd.generate.oci_image.contextual_sbom.logging import (
     MatchingStatistics,
 )
@@ -105,7 +108,7 @@ def test_component_package_index_all_identifiers(
 
     stats = MatchingStatistics()
     index = ComponentRelationshipResolver(
-        [(pkg, rel)],
+        [ContentItem(pkg, rel)],
         parent_doc,
         component_doc,
         stats,
@@ -129,7 +132,7 @@ def test_component_package_index_all_identifiers(
     candidates = index.find_candidates(parent_pkg)
     assert len(candidates) == (1 if should_index else 0)
     if should_index:
-        assert candidates[0] == (pkg, rel)
+        assert candidates[0] == ContentItem(pkg, rel)
 
     # Verify that packages without unique IDs are recorded in stats
     if not should_index:

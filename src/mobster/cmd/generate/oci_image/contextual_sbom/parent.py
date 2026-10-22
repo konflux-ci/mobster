@@ -12,50 +12,34 @@ item - image package, relevant relationship and image package annotation
 
 import logging
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import Any
 
-from spdx_tools.spdx.model.annotation import Annotation
 from spdx_tools.spdx.model.document import Document
-from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
+    ADDITIONAL_IMAGE,
     ANCESTOR_IMAGE,
     BASE_IMAGE,
-    CONTENT_PACKAGE,
+    BUILDER_IMAGE,
+    INTERMEDIATE_IMAGE,
     LEGACY_BASE_IMAGE,
-    ContentKind,
+)
+from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import (
+    ImageItem,
+    collect_image_items,
+    collect_package_items,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.logging import MatchingStatistics
 from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
     ComponentRelationshipResolver,
 )
-from mobster.cmd.generate.oci_image.spdx_utils import (
-    AnnotationAncestorImage,
-    AnnotationBaseImage,
-    AnnotationParseError,
-    KonfluxAnnotationManager,
-    find_spdx_root_packages_spdxid,
-    get_annotations_by_spdx_id,
-)
+from mobster.cmd.generate.oci_image.spdx_utils import find_spdx_root_packages_spdxid
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.oci import cosign
 
 LOGGER = logging.getLogger(__name__)
-
-
-@dataclass
-class ImageItem:
-    """
-    A resolved image package, with annotation and relationship, modified and
-    ready to be supplied to component SBOM.
-    """
-
-    package: Package
-    relationship: Relationship
-    annotation: Annotation
 
 
 async def download_parent_image_sbom(
@@ -208,12 +192,12 @@ def process_grandparent_item(
             by the component SBOM.
 
     Returns:
-        The grandparent image item with its package and annotation updated and
+        The grandparent image item with its package and annotations updated and
         a new `DESCENDANT_OF` relationship connecting the component's parent
         to the grandparent.
     """
     grandparent_package = deepcopy(grandparent_item.package)
-    grandparent_annotation = deepcopy(grandparent_item.annotation)
+    grandparent_annotations = deepcopy(grandparent_item.annotations)
 
     # package modification
     grandparent_package.files_analyzed = False
@@ -226,18 +210,73 @@ def process_grandparent_item(
     )
 
     # annotation modification
-    if grandparent_annotation.annotation_comment:
-        grandparent_annotation.annotation_comment = (
-            grandparent_annotation.annotation_comment.replace(
+    for annotation in grandparent_annotations:
+        if "is_base_image" in annotation.annotation_comment:
+            annotation.annotation_comment = annotation.annotation_comment.replace(
                 "is_base_image", "is_ancestor_image"
             )
-        )
 
     return ImageItem(
         package=grandparent_package,
         relationship=modified_rel,
-        annotation=grandparent_annotation,
+        annotations=grandparent_annotations,
     )
+
+
+def process_builder_items(
+    builder_items: list[ImageItem],
+    parent_spdx_id_from_component: str,
+    parent_root_packages: list[str],
+) -> list[ImageItem]:
+    """
+    Aligns builder image items (additional images and builders belonging to
+    the component's parent and all of the preceding known ancestors) with
+    the component's relationships.
+
+    A builders and additional images are attached to the image that build (used
+    parent or ancestors) via BUILD_TOOL_OF. Builders and additional images of
+    the used parent itself point at the parent root
+    (`builder/additional_image BUILD_TOOL_OF parent_root`); this target must
+    be renamed to the parent name as referenced by the component
+    (`builder/additional_image BUILD_TOOL_OF parent (name from component)`).
+    Builders and additional images of deeper ancestors already reference a
+    correctly named ancestor
+    (`builder/additional_image BUILD_TOOL_OF ancestor`) and are passed through
+    unchanged (those will point on ancestors collected by
+    get_grandparent_and_ancestor_items_from_used_parent, later also supplied to
+    final component SBOM)
+
+    Args:
+        builder_items: Builder and additional image items collected across
+            the whole ancestor chain of the used parent.
+        parent_spdx_id_from_component: SPDX ID of the parent as referenced by
+            the component.
+        parent_root_packages: SPDX IDs of the used parent's root packages; a
+            BUILD_TOOL_OF target in this set marks a builder of the parent
+            itself and is renamed.
+
+    Returns:
+        The builder image items with parent-root `BUILD_TOOL_OF` targets
+        renamed to the component's parent name; all other items unchanged.
+    """
+    modified_builder_items: list[ImageItem] = []
+    for item in builder_items:
+        if item.relationship.related_spdx_element_id in parent_root_packages:
+            renamed_rel = Relationship(
+                spdx_element_id=item.relationship.spdx_element_id,
+                relationship_type=item.relationship.relationship_type,
+                related_spdx_element_id=parent_spdx_id_from_component,
+            )
+            modified_builder_items.append(
+                ImageItem(
+                    package=item.package,
+                    relationship=renamed_rel,
+                    annotations=item.annotations,
+                )
+            )
+        else:
+            modified_builder_items.append(item)
+    return modified_builder_items
 
 
 def get_grandparent_and_ancestor_items_from_used_parent(
@@ -344,210 +383,6 @@ def get_grandparent_and_ancestor_items_from_used_parent(
     ] + ancestor_image_items
 
 
-def get_annotation_by_spdx_id_filter_by_type(
-    parent_sbom_doc: Document,
-    spdx_id: str,
-    annotation_type: (type[AnnotationBaseImage] | type[AnnotationAncestorImage]),
-) -> Annotation | None:
-    """
-    Returns the annotation with the given Konflux annotation type for a package
-    SPDXID, or None.
-
-    Absence of annotation for given SPDXID is not fatal here and must be
-    handled by downstream functions.
-
-    Args:
-        parent_sbom_doc: Downloaded used parent image SBOM.
-        spdx_id: SPDX ID of the package to inspect.
-        annotation_type: The type of annotation to match.
-
-    Returns:
-        The matching annotation, or None if the package has no annotation with
-        the given type.
-    """
-    for annotation in get_annotations_by_spdx_id(parent_sbom_doc, spdx_id):
-        try:
-            parsed = KonfluxAnnotationManager.parse(annotation)
-        except AnnotationParseError:
-            LOGGER.warning(
-                "[Parent image content] Annotation '%s' from parent SBOM '%s' "
-                "has a comment that could not be parsed as a Konflux annotation: "
-                "'%s'.",
-                annotation.spdx_id,
-                parent_sbom_doc.creation_info.name,
-                annotation.annotation_comment,
-            )
-            continue
-        if parsed is not None and isinstance(parsed, annotation_type):
-            return annotation
-    return None
-
-
-def _collect(
-    sbom_doc: Document,
-    kind: ContentKind,
-) -> list[tuple[Package, Relationship]]:
-    """
-    Pair each package with the relationship of the given kind that points to it.
-
-    Args:
-        sbom_doc: SBOM document to inspect (packages and relationships are read).
-        kind: Declarative description of the content kind to collect.
-
-    Returns:
-        List of (package, relationship) pairs matching the kind.
-    """
-    package_spdx_ids = {pkg.spdx_id for pkg in sbom_doc.packages}
-    file_spdx_ids = {file.spdx_id for file in sbom_doc.files}
-    rel_index: dict[str, Relationship] = {}
-    for candidate_rel in sbom_doc.relationships:
-        if candidate_rel.relationship_type != kind.relationship_type:
-            continue
-        if not _relationship_has_package_endpoints(
-            candidate_rel,
-            package_spdx_ids,
-            file_spdx_ids,
-        ):
-            continue
-        relationship_end_spdx_id = getattr(candidate_rel, kind.relationship_end.value)
-        if isinstance(relationship_end_spdx_id, str):
-            if relationship_end_spdx_id in rel_index:
-                raise SBOMError(
-                    "[Parent image content] Multiple"
-                    " relationships found for content kind "
-                    f"'{kind.name}' ({kind.relationship_type.name}, "
-                    f"{kind.relationship_end.value}) and SPDX ID "
-                    f"'{relationship_end_spdx_id}'."
-                )
-            rel_index[relationship_end_spdx_id] = candidate_rel
-
-    pkg_rel_pairs: list[tuple[Package, Relationship]] = []
-    for pkg in sbom_doc.packages:
-        rel = rel_index.get(pkg.spdx_id)
-        if rel is None:
-            continue
-        pkg_rel_pairs.append((pkg, rel))
-
-    return pkg_rel_pairs
-
-
-def _relationship_has_package_endpoints(
-    relationship: Relationship,
-    package_spdx_ids: set[str],
-    file_spdx_ids: set[str],
-) -> bool:
-    """
-    Return whether both endpoints identify packages in the SBOM.
-
-    Contextualization collects package-to-package relationships only. A
-    `package CONTAINS file` relationship is normal Syft evidence and is
-    silently skipped. Other malformed `CONTAINS` relationships are skipped
-    with a warning. Invalid image relationships are rejected.
-
-    Called only for relationship types selected by `ContentKind`.
-
-    Args:
-        relationship: SPDX relationship to validate.
-        package_spdx_ids: SPDX IDs of packages present in the SBOM.
-        file_spdx_ids: SPDX IDs of files present in the SBOM.
-
-    Returns:
-        `True` when both relationship endpoints identify existing packages.
-        `False` when the relationship is `package CONTAINS file` or another
-        `CONTAINS` shape outside the contextual ownership model. Raises
-        `SBOMError` when a non-`CONTAINS` image relationship has a non-package
-        endpoint.
-    """
-    if (
-        relationship.spdx_element_id in package_spdx_ids
-        and relationship.related_spdx_element_id in package_spdx_ids
-    ):
-        return True
-
-    if relationship.relationship_type is RelationshipType.CONTAINS:
-        if (
-            relationship.spdx_element_id in package_spdx_ids
-            and relationship.related_spdx_element_id in file_spdx_ids
-        ):
-            # package CONTAINS file is a valid and prevalent SPDX relationship
-            # in Syft evidence, but it is outside the package-level
-            # contextualization scope.
-            return False
-        # Other CONTAINS relationship shapes are outside the ownership model used
-        # for contextualization. Skip them, but make them observable.
-        LOGGER.warning(
-            "[Parent image content] Skipping invalid CONTAINS relationship: "
-            "%s CONTAINS %s.",
-            relationship.spdx_element_id,
-            relationship.related_spdx_element_id,
-        )
-        return False
-    # Remaining ContentKind relationship types describe image packages and require
-    # both endpoints to identify packages.
-    invalid_endpoints = [
-        spdx_id
-        for spdx_id in (
-            relationship.spdx_element_id,
-            relationship.related_spdx_element_id,
-        )
-        if spdx_id not in package_spdx_ids
-    ]
-    raise SBOMError(
-        "[Parent image content] Invalid image relationship "
-        f"'{relationship.relationship_type.name}': both endpoints must "
-        "identify packages; invalid endpoint SPDX ID(s): "
-        f"{invalid_endpoints}."
-    )
-
-
-def collect_package_items(
-    sbom_doc: Document,
-) -> list[tuple[Package, Relationship]]:
-    """
-    Collect content packages (CONTAINS) of the SBOM document.
-
-    Args:
-        sbom_doc: SBOM document to inspect.
-
-    Returns:
-        List of (package, relationship) pairs.
-    """
-    return _collect(sbom_doc, CONTENT_PACKAGE)
-
-
-def collect_image_items(
-    sbom_doc: Document,
-    kind: ContentKind,
-) -> list[ImageItem]:
-    """
-    Collect image package items based on annotation kind.
-
-    May return multiple items or empty list; callers need to handle output.
-
-    Args:
-        sbom_doc: SBOM document to inspect.
-        kind: Declarative description of the (annotation-carrying) content kind.
-
-    Returns:
-        List of Image items with a non-`None` annotation. Each item contains the
-        package, its matching relationship, and the annotation describing
-        image's role.
-    """
-    assert kind.annotation_type is not None, (
-        "collect_image_items requires a kind with an annotation type"
-    )
-    items: list[ImageItem] = []
-    for pkg, rel in _collect(sbom_doc, kind):
-        annotation = get_annotation_by_spdx_id_filter_by_type(
-            sbom_doc, pkg.spdx_id, kind.annotation_type
-        )
-        if annotation is None:
-            continue
-        items.append(ImageItem(pkg, rel, annotation))
-
-    return items
-
-
 async def map_parent_to_component_and_update_component(
     parent_sbom_doc: Document,
     component_sbom_doc: Document,
@@ -563,10 +398,11 @@ async def map_parent_to_component_and_update_component(
        relationship so it points at the parent (name from component) or the
        grandparent that actually owns the package (inherit relationship).
        Matching statistics are collected for later logging.
-    2. Ancestor image subtree: supply the parent's grandparent and deeper
-       ancestor image packages, together with their relationships and
-       annotations, to the component. Relationships are aligned with the
-       component's parent name where needed.
+    2. Image subtree: supply the parent's image packages (with their
+       relationships and annotations) to the component - the grandparent and
+       any deeper ancestors, plus the builder and intermediate images of the
+       parent and its ancestors. Relationships are aligned with the component's
+       parent name where needed.
 
     Args:
         parent_sbom_doc: Downloaded used parent image SBOM
@@ -611,7 +447,8 @@ async def map_parent_to_component_and_update_component(
         parent_packages, parent_spdx_id_from_component, parent_root_packages
     )
 
-    # Step 2: resolve and supply grandparent and ancestor image packages
+    # Step 2: resolve and supply image packages (grandparent, ancestors,
+    # additional images, builders and intermediates of parent and ancestors)
     # from parent to component
     # TO DO: Validate the complete image graph, ensuring that the image chain
     # from the root image to the furthest ancestor is continuous and has no
@@ -619,7 +456,21 @@ async def map_parent_to_component_and_update_component(
     grandparent_and_ancestors = get_grandparent_and_ancestor_items_from_used_parent(
         parent_sbom_doc, parent_spdx_id_from_component
     )
-    resolver.supply_image_packages(grandparent_and_ancestors)
+    parent_and_ancestors_builder_items = process_builder_items(
+        collect_image_items(parent_sbom_doc, BUILDER_IMAGE)
+        + collect_image_items(parent_sbom_doc, ADDITIONAL_IMAGE),
+        parent_spdx_id_from_component,
+        parent_root_packages,
+    )
+    parent_and_ancestors_intermediate_items = collect_image_items(
+        parent_sbom_doc,
+        INTERMEDIATE_IMAGE,
+    )
+    resolver.supply_image_packages(
+        grandparent_and_ancestors
+        + parent_and_ancestors_builder_items
+        + parent_and_ancestors_intermediate_items
+    )
 
     stats.log_summary_debug()
 
