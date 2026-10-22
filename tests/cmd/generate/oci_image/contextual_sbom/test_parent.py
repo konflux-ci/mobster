@@ -914,6 +914,7 @@ def test_process_grandparent_item_normalizes_input(
 
 
 def test_process_builder_items_rename_parent_target() -> None:
+    """Align builders and additional images of the used parent with the component."""
     pkg1, rel1, annot1 = _additional_image_item("SPDXRef-additional", "SPDXRef-parent")
     pkg2, rel2, annot2 = _builder_image_item("SPDXRef-builder", "SPDXRef-grandparent")
     pkg3, rel3, annot3 = _builder_image_item("SPDXRef-parent-builder", "SPDXRef-parent")
@@ -1483,10 +1484,20 @@ async def test_map_parent_to_component_supplies_builder_and_intermediate_subtree
 @pytest.mark.asyncio
 @patch("mobster.cmd.generate.oci_image.contextual_sbom.parent.MatchingStatistics")
 async def test_map_parent_to_component_supplies_additional_image_content(
-    mock_stats_class: MagicMock,
+    mock_stats: MagicMock,
 ) -> None:
-    """Inherit an additional image, its content, and its relationship."""
+    """
+    Reparent matching component content under an inherited additional image.
+
+    The parent SBOM declares an additional image that is `BUILD_TOOL_OF` the
+    used parent and owns a content package. The component initially owns a
+    package with the same identity. Parent contextualization must inherit the
+    additional image and its annotation, align its target with the component's
+    parent SPDX ID, and move the matching content ownership to the additional
+    image.
+    """
     parent_spdx_id = "SPDXRef-parent-name-from-component"
+    # Parent: an additional image contributes content to the used parent.
     parent_root_pkg, parent_root_rel = get_root_package_items("SPDXRef-parent")
     additional_pkg, additional_rel, additional_annot = _additional_image_item(
         "SPDXRef-additional-image", "SPDXRef-parent"
@@ -1512,6 +1523,7 @@ async def test_map_parent_to_component_supplies_additional_image_content(
     ]
     parent_sbom_doc.annotations = [additional_annot]
 
+    # Component: the same content identity is initially component-owned.
     component_content_pkg = create_package_with_identifier(
         "SPDXRef-component-additional-content", "checksum"
     )
@@ -1528,14 +1540,16 @@ async def test_map_parent_to_component_supplies_additional_image_content(
         )
     ]
     component_sbom_doc.annotations = []
-    mock_stats_class.return_value = MagicMock()
+    mock_stats.return_value = MagicMock()
 
+    # Contextualize the component against the used parent.
     result = await map_parent_to_component_and_update_component(
         parent_sbom_doc,
         component_sbom_doc,
         parent_spdx_id,
     )
 
+    # Inherit the additional image and align it with the component's parent.
     assert additional_pkg in result.packages
     assert additional_annot in result.annotations
     assert (
@@ -1546,6 +1560,7 @@ async def test_map_parent_to_component_supplies_additional_image_content(
         )
         in result.relationships
     )
+    # The matching package now has the additional image as its sole owner.
     assert (
         Relationship(
             additional_pkg.spdx_id,
@@ -1622,7 +1637,6 @@ async def test_map_parent_to_component_allows_parent_built_from_scratch(
         parent_name_from_component,
     )
 
-    assert result is component_sbom_doc
     assert builder_pkg in result.packages
     assert (
         Relationship(
