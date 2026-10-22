@@ -1,4 +1,8 @@
-from mobster.error import SBOMVerificationError
+from mobster.error import (
+    SBOMError,
+    SBOMVerificationError,
+    format_exception_chain_for_log,
+)
 
 
 def test_sbom_verification_error_message() -> None:
@@ -9,3 +13,22 @@ def test_sbom_verification_error_message() -> None:
 
     assert expected_digest in str(error)
     assert actual_digest in str(error)
+
+
+def test_format_exception_chain_for_log_returns_chain_in_one_line() -> None:
+    root_error = SBOMError("root error\nwith details")
+    wrapped_error = SBOMError("wrapped error")
+    wrapped_error.__cause__ = root_error
+
+    assert format_exception_chain_for_log(wrapped_error) == (
+        "mobster.error.SBOMError: root error\\nwith details\\n"
+        "\\nThe above exception was the direct cause of the following exception:\\n"
+        "\\nmobster.error.SBOMError: wrapped error"
+    )
+
+
+def test_format_exception_chain_for_log_handles_exception_without_cause() -> None:
+    assert (
+        format_exception_chain_for_log(SBOMError("single error"))
+        == "mobster.error.SBOMError: single error"
+    )

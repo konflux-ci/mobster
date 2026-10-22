@@ -575,7 +575,44 @@ async def test_GenerateOciImageCommand__assess_and_dispatch_contextual_workflow_
         "amd64",
     )
     mock_execute_contextual.assert_awaited_once()
-    assert "Contextual SBOM workflow failed: error" in caplog.messages
+    assert caplog.messages[-1] == "Contextual SBOM workflow failed: ValueError: error"
+
+
+@pytest.mark.asyncio
+@patch(
+    "mobster.cmd.generate.oci_image.GenerateOciImageCommand._execute_contextual_workflow"
+)
+async def test_assess_contextual_workflow_logs_all_exception_messages(
+    mock_execute_contextual: AsyncMock, caplog: LogCaptureFixture
+) -> None:
+    """Log the complete nested exception chain as one log message."""
+    try:
+        try:
+            raise ValueError("root error")
+        except ValueError as root_error:
+            raise SBOMError("contextualization error") from root_error
+    except SBOMError as contextualization_error:
+        nested_error = RuntimeError("workflow error")
+        nested_error.__cause__ = contextualization_error
+
+    command = GenerateOciImageCommand(MagicMock())
+    command.cli_args.contextualize = True
+    mock_execute_contextual.side_effect = nested_error
+
+    await command._assess_and_dispatch_contextual_workflow(
+        MagicMock(spec=Document),
+        Image("foo:latest", "sha256:1"),
+        "amd64",
+    )
+
+    mock_execute_contextual.assert_awaited_once()
+    assert caplog.messages[-1] == (
+        "Contextual SBOM workflow failed: ValueError: root error\\n"
+        "\\nThe above exception was the direct cause of the following exception:\\n"
+        "\\nmobster.error.SBOMError: contextualization error\\n"
+        "\\nThe above exception was the direct cause of the following exception:\\n"
+        "\\nRuntimeError: workflow error"
+    )
 
 
 @pytest.mark.asyncio
