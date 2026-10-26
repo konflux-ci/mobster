@@ -11,6 +11,7 @@ from mobster.cmd.download import download_tpa
 from mobster.cmd.generate import (
     modelcar,
     oci_artifact,
+    oci_cbom,
     oci_image,
     oci_index,
     pko_package,
@@ -20,6 +21,29 @@ from mobster.cmd.upload import upload
 from mobster.image import ARTIFACT_PATTERN, PULLSPEC_PATTERN
 from mobster.release import ReleaseId
 from mobster.utils import normalize_arch
+
+
+def validated_digest(value: str) -> str:
+    """
+    Validation function for OCI digest.
+    """
+    if not re.match(r"^sha256:[0-9a-f]{64}$", value, re.IGNORECASE):
+        raise ValueError(
+            "The digest must start with 'sha256:' and contain 64 hexa symbols!"
+        )
+    return value.lower()
+
+
+def validated_pullspec(value: str) -> str:
+    """
+    Validation function for pullspec with tag
+    """
+    if not re.match(PULLSPEC_PATTERN, value):
+        raise ValueError(
+            "The pullspec must contain a tag! "
+            "Use the '<registry>/<repository>:<tag>' format."
+        )
+    return value
 
 
 def setup_arg_parser() -> argparse.ArgumentParser:
@@ -80,25 +104,13 @@ def generate_command_parser(subparsers: Any) -> None:
     generate_modelcar_parser(generate_subparsers)
     generate_oci_artifact_parser(generate_subparsers)
     generate_pko_package_parser(generate_subparsers)
+    generate_oci_cbom_parser(generate_subparsers)
 
 
 def generate_oci_image_parser(subparsers: Any) -> None:
     """
     Generate the command parser for the oci image.
     """
-
-    def validated_digest(value: str) -> str:
-        assert re.match(r"^sha256:[0-9a-f]{64}$", value, re.IGNORECASE), (
-            "The digest must start with 'sha256:' and contain 64 hexa symbols!"
-        )
-        return value.lower()
-
-    def validated_pullspec(value: str) -> str:
-        assert re.match(PULLSPEC_PATTERN, value), (
-            "The pullspec must contain a tag! "
-            "Use the '<registry>/<repository>:<tag>' format."
-        )
-        return value
 
     oci_image_parser = subparsers.add_parser(
         "oci-image", help="Generate an SBOM document for OCI image"
@@ -374,6 +386,40 @@ def generate_oci_artifact_parser(subparsers: Any) -> None:
     )
 
     oci_artifact_parser.set_defaults(func=oci_artifact.GenerateOciArtifactCommand)
+
+
+def generate_oci_cbom_parser(subparsers: Any) -> None:
+    """
+    Generate the command parser for OCI CBOM type.
+    """
+    oci_cbom_parser = subparsers.add_parser(
+        "oci-cbom",
+        help="Generate a CBOM document for OCI an image"
+        "by adding identification information",
+    )
+    oci_cbom_parser.add_argument(
+        "--image-pullspec",
+        type=validated_pullspec,
+        required=True,
+        help="Image pullspec for the OCI image in the format "
+        "<registry>/<repository>:<tag>",
+    )
+    oci_cbom_parser.add_argument(
+        "--image-digest",
+        type=validated_digest,
+        required=True,
+        help="Image digest for the OCI image in the format sha256:<digest>",
+    )
+    oci_cbom_parser.add_argument(
+        "--cbom-path",
+        type=Path,
+        required=True,
+        help="Path to the CBOM file",
+    )
+    oci_cbom_parser.add_argument(
+        "--arch", type=normalize_arch, default=None, help="Image architecture"
+    )
+    oci_cbom_parser.set_defaults(func=oci_cbom.GenerateOciCBOMCommand)
 
 
 def augment_command_parser(subparsers: Any) -> None:
