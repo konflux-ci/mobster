@@ -40,8 +40,7 @@ def validated_pullspec(value: str) -> str:
     """
     if not re.match(PULLSPEC_PATTERN, value):
         raise ValueError(
-            "The pullspec must contain a tag! "
-            "Use the '<registry>/<repository>:<tag>' format."
+            "The pullspec must use the '<registry>/<repository>:<tag>' format."
         )
     return value
 
