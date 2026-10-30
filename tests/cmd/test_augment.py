@@ -24,7 +24,7 @@ from mobster.cmd.augment.handlers import CycloneDXVersion1, get_purl_digest
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import SBOM, SLSAProvenance
-from mobster.oci.cosign import SupportsFetch, SupportsProvenanceFetch
+from mobster.oci.cosign import AnonymousFetcher, SupportsFetch, SupportsProvenanceFetch
 from mobster.release import Component, ReleaseId, ReleaseRepository, Snapshot
 from mobster.sbom import cyclonedx
 from tests.conftest import assert_spdx_sbom, awaitable
@@ -150,6 +150,41 @@ class TestAugmentCommand:
             assert cmd.exit_code == 1
 
     @pytest.mark.asyncio
+    async def test_augment_without_verification_key_uses_anonymous_fetcher(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        caplog: LogCaptureFixture,
+    ) -> None:
+        args = AugmentArgs(
+            snapshot=Path("snapshot.json"),
+            output=tmp_path,
+            verification_key=None,
+            reference=None,
+        )
+        command = AugmentImageCommand(cli_args=args)
+        observed_configs: list[AugmentConfig] = []
+
+        monkeypatch.setattr(
+            "mobster.cmd.augment.make_snapshot", lambda *_: awaitable(None)
+        )
+
+        async def capture_config(
+            config: AugmentConfig, _: Snapshot | None
+        ) -> list[None]:
+            observed_configs.append(config)
+            return []
+
+        monkeypatch.setattr("mobster.cmd.augment.augment_sboms", capture_config)
+
+        with caplog.at_level("WARNING"):
+            await command.execute()
+
+        assert len(observed_configs) == 1
+        assert isinstance(observed_configs[0].cosign, AnonymousFetcher)
+        assert "without signature verification" in caplog.text
+
+    @pytest.mark.asyncio
     async def test_augment_execute_singlearch(
         self,
         make_augment_command: MakeAugmentCommand,
@@ -202,6 +237,8 @@ class TestAugmentCommand:
         make_augment_command: MakeAugmentCommand,
         prepare_sbom: Callable[[str], SBOM],
         mock_write_sbom: AsyncMock,
+        fake_cosign: "FakeCosign",
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         index_reference = "quay.io/org/tenant/test@sha256:bbbbbbbb"
         index_repo, index_digest = index_reference.split("@", 1)
@@ -214,6 +251,10 @@ class TestAugmentCommand:
             output=Path("output"),
             verification_key=None,
             reference=index_reference,
+        )
+        monkeypatch.setattr(
+            "mobster.cmd.augment.cosign.AnonymousFetcher",
+            lambda: FakeAnonymousFetcher(fake_cosign),
         )
 
         snapshot = Snapshot(
@@ -258,6 +299,8 @@ class TestAugmentCommand:
         self,
         make_augment_command: MakeAugmentCommand,
         mock_write_sbom: AsyncMock,
+        fake_cosign: "FakeCosign",
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         reference = "quay.io/org/tenant/test@sha256:dddddddd"
         repo, digest = reference.split("@", 1)
@@ -267,6 +310,10 @@ class TestAugmentCommand:
             output=Path("output"),
             verification_key=None,
             reference=reference,
+        )
+        monkeypatch.setattr(
+            "mobster.cmd.augment.cosign.AnonymousFetcher",
+            lambda: FakeAnonymousFetcher(fake_cosign),
         )
 
         snapshot = Snapshot(
@@ -323,10 +370,72 @@ class TestAugmentCommand:
         mock_verify_sbom.side_effect = SBOMVerificationError()
 
         image = Image("quay.io/repo", "sha256:aaaaaaaa")
-        _, attestation_valid = await load_sbom(image, fake_cosign, True)
+        _, attestation_valid = await load_sbom(image, fake_cosign)
         assert attestation_valid is False
         assert caplog.records[-1].exc_text
         assert "Attestation verification failed for image" in caplog.records[-1].message
+
+    @pytest.mark.asyncio
+    async def test_load_raw_attachment_still_checks_provenance(
+        self,
+        fake_cosign: "FakeCosign",
+    ) -> None:
+        image = Image("quay.io/repo", "sha256:aaaaaaaa")
+
+        with patch("mobster.cmd.augment.verify_sbom") as mock_verify:
+            sbom, attestation_valid = await load_sbom(image, fake_cosign)
+
+        assert sbom.signature_verified is None
+        assert attestation_valid
+        mock_verify.assert_awaited_once_with(sbom, image, fake_cosign)
+
+    @pytest.mark.asyncio
+    async def test_load_verified_attestation_skips_provenance_check(
+        self,
+        fake_cosign: "FakeCosign",
+    ) -> None:
+        image = Image("quay.io/repo", "sha256:aaaaaaaa")
+        sbom = fake_cosign.sboms[image.digest]
+        sbom.signature_verified = True
+
+        with patch("mobster.cmd.augment.verify_sbom") as mock_verify:
+            loaded_sbom, attestation_valid = await load_sbom(image, fake_cosign)
+
+        assert loaded_sbom is sbom
+        assert attestation_valid
+        mock_verify.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_load_failed_attestation_skips_provenance_check(
+        self,
+        fake_cosign: "FakeCosign",
+    ) -> None:
+        image = Image("quay.io/repo", "sha256:aaaaaaaa")
+        sbom = fake_cosign.sboms[image.digest]
+        sbom.signature_verified = False
+
+        with patch("mobster.cmd.augment.verify_sbom") as mock_verify:
+            loaded_sbom, attestation_valid = await load_sbom(image, fake_cosign)
+
+        assert loaded_sbom is sbom
+        assert not attestation_valid
+        mock_verify.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_load_without_provenance_support_skips_verification(
+        self,
+    ) -> None:
+        image = Image("quay.io/repo", "sha256:aaaaaaaa")
+        sbom = SBOM({}, "digest", image.reference)
+        fetcher = AsyncMock(spec=SupportsFetch)
+        fetcher.fetch_sbom.return_value = sbom
+
+        with patch("mobster.cmd.augment.verify_sbom") as mock_verify:
+            loaded_sbom, attestation_valid = await load_sbom(image, fetcher)
+
+        assert loaded_sbom is sbom
+        assert attestation_valid
+        mock_verify.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_update_sbom_error_handling(
@@ -343,11 +452,38 @@ class TestAugmentCommand:
             sem = asyncio.Semaphore(1)
             config = AugmentConfig(
                 cosign=fake_cosign,
-                verify=False,
                 semaphore=sem,
                 output_dir=Path("/tmp"),
             )
             assert await update_sbom(config, repo, img) is None
+
+    @pytest.mark.asyncio
+    async def test_update_signed_attestation_without_konflux_provenance(
+        self,
+        fake_cosign: "FakeCosign",
+        tmp_path: Path,
+        mock_write_sbom: AsyncMock,
+    ) -> None:
+        image = Image("quay.io/org/tenant/test", "sha256:aaaaaaaa")
+        sbom = fake_cosign.sboms["sha256:aaaaaaaa"]
+        sbom.signature_verified = True
+        verified_fetcher = FakeCosign({}, {image.digest: sbom})
+        repository = ReleaseRepository(
+            public_repo_url="registry.redhat.io/repo",
+            tags=["latest"],
+            internal_repo_url="quay.io/repo",
+        )
+        config = AugmentConfig(
+            cosign=verified_fetcher,
+            semaphore=asyncio.Semaphore(1),
+            output_dir=tmp_path,
+        )
+
+        result = await update_sbom(config, repository, image)
+
+        assert result is not None
+        assert result.attestation_valid
+        mock_write_sbom.assert_awaited_once()
 
 
 class FakeCosign(SupportsFetch, SupportsProvenanceFetch):
@@ -390,6 +526,16 @@ class FakeCosign(SupportsFetch, SupportsProvenanceFetch):
 
     async def attest_provenance(self, predicate: Any, image_ref: str) -> None:
         pass
+
+
+class FakeAnonymousFetcher(SupportsFetch):
+    """Fetch-only client, like AnonymousFetcher, which cannot fetch provenance."""
+
+    def __init__(self, fake_cosign: FakeCosign) -> None:
+        self.fake_cosign = fake_cosign
+
+    async def fetch_sbom(self, image: Image) -> SBOM:
+        return await self.fake_cosign.fetch_sbom(image)
 
 
 def test_get_sbom_to_filename_dict_duplicate_prevention() -> None:
@@ -617,7 +763,6 @@ class TestUpdateFormatSupport:
         with patch("mobster.cmd.augment.handlers.SPDXVersion2.update_sbom"):
             config = AugmentConfig(
                 cosign=mock_cosign,
-                verify=False,
                 semaphore=semaphore,
                 output_dir=Path("/tmp"),
             )
@@ -644,7 +789,6 @@ class TestUpdateFormatSupport:
         with patch("mobster.cmd.augment.handlers.SPDXVersion2.update_sbom"):
             config = AugmentConfig(
                 cosign=mock_cosign,
-                verify=False,
                 semaphore=semaphore,
                 output_dir=Path("/tmp"),
             )
@@ -670,7 +814,6 @@ class TestUpdateFormatSupport:
         with patch("mobster.cmd.augment.handlers.CycloneDXVersion1.update_sbom"):
             config = AugmentConfig(
                 cosign=mock_cosign,
-                verify=False,
                 semaphore=semaphore,
                 output_dir=Path("/tmp"),
             )
@@ -693,7 +836,6 @@ class TestUpdateFormatSupport:
         setup_load_sbom(test_sbom)
         config = AugmentConfig(
             cosign=mock_cosign,
-            verify=False,
             semaphore=semaphore,
             output_dir=Path("/tmp"),
         )
@@ -716,7 +858,6 @@ class TestUpdateFormatSupport:
         setup_load_sbom(test_sbom)
         config = AugmentConfig(
             cosign=mock_cosign,
-            verify=False,
             semaphore=semaphore,
             output_dir=Path("/tmp"),
         )

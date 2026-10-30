@@ -11,9 +11,10 @@ import pytest
 from dateutil.parser import isoparse
 from pytest import LogCaptureFixture
 
-from mobster.error import SBOMError
+from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image
 from mobster.oci import cosign
+from mobster.oci.artifact import SBOM
 from mobster.sbom.detect import SBOMFormat
 
 
@@ -217,6 +218,7 @@ class TestStaticFetcher:
         sbom = await client.fetch_sbom(image)
 
         assert sbom.doc == sbom_doc
+        assert sbom.signature_verified is None
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -246,6 +248,283 @@ class TestStaticFetcher:
 
         with pytest.raises(SBOMError):
             await client.fetch_sbom(image)
+
+    @staticmethod
+    def make_attestation(
+        image: Image, sbom_doc: dict[str, Any], bundle: bool = False
+    ) -> bytes:
+        statement = {
+            "_type": "https://in-toto.io/Statement/v0.1",
+            "subject": [
+                {
+                    "name": image.reference,
+                    "digest": {"sha256": image.digest.split(":", 1)[1]},
+                }
+            ],
+            "predicate": sbom_doc,
+        }
+        encoded_payload = base64.b64encode(json.dumps(statement).encode()).decode()
+        if bundle:
+            return json.dumps(
+                {
+                    "mediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+                    "dsseEnvelope": {"payload": encoded_payload},
+                }
+            ).encode()
+        return json.dumps({"payload": encoded_payload}).encode()
+
+    @staticmethod
+    def mock_cosign(
+        monkeypatch: pytest.MonkeyPatch,
+        responses: dict[str, tuple[int, bytes, bytes]],
+    ) -> list[list[str]]:
+        """
+        Mock cosign in the static and anonymous fetcher modules. Commands are
+        matched by keys "download-sbom", "download-spdxjson",
+        "download-cyclonedx", "verify-spdxjson" and "verify-cyclonedx".
+        Returns the list of executed commands.
+        """
+        commands: list[list[str]] = []
+
+        async def mock_run_async_subprocess(
+            command: list[str], **_: Any
+        ) -> tuple[int, bytes, bytes]:
+            commands.append(command)
+            if command[1:3] == ["download", "sbom"]:
+                key = "download-sbom"
+            elif command[1:3] == ["download", "attestation"]:
+                key = f"download-{command[-2]}"
+            elif command[1] == "verify-attestation":
+                attestation_type = next(
+                    option.split("=", 1)[1]
+                    for option in command
+                    if option.startswith("--type=")
+                )
+                key = f"verify-{attestation_type}"
+            else:
+                raise AssertionError(f"Unexpected Cosign command: {command}")
+            return responses.get(key, (1, b"", b"no attestations found"))
+
+        for module in ("static", "anonymous_fetcher"):
+            monkeypatch.setattr(
+                f"mobster.oci.cosign.{module}.run_async_subprocess",
+                mock_run_async_subprocess,
+            )
+        return commands
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ["sbom_doc", "bundle", "attestation_type"],
+        [
+            pytest.param(
+                {"spdxVersion": "SPDX-2.3"}, False, "spdxjson", id="spdx-v2-envelope"
+            ),
+            pytest.param(
+                {"spdxVersion": "SPDX-2.3"}, True, "spdxjson", id="spdx-v3-bundle"
+            ),
+            pytest.param(
+                {"bomFormat": "CycloneDX", "specVersion": "1.6"},
+                False,
+                "cyclonedx",
+                id="cyclonedx",
+            ),
+        ],
+    )
+    @pytest.mark.parametrize(
+        "missing_error",
+        [
+            pytest.param(
+                b"Error: MANIFEST_UNKNOWN: manifest unknown", id="manifest-unknown"
+            ),
+            pytest.param(
+                b"Error: no SBOM found attached to image index", id="image-index"
+            ),
+            pytest.param(
+                b"Error: no sbom attached to reference\n"
+                b"error during command execution: no sbom attached to reference\n",
+                id="no-sbom-attached",
+            ),
+        ],
+    )
+    async def test_fetch_sbom_falls_back_to_verified_attestation(
+        self,
+        image: Image,
+        client: cosign.StaticKeyFetcher,
+        monkeypatch: pytest.MonkeyPatch,
+        sbom_doc: dict[str, Any],
+        bundle: bool,
+        attestation_type: str,
+        missing_error: bytes,
+    ) -> None:
+        attestation = self.make_attestation(image, sbom_doc, bundle)
+        commands = self.mock_cosign(
+            monkeypatch,
+            {
+                "download-sbom": (1, b"", missing_error),
+                f"download-{attestation_type}": (0, attestation + b"\n", b""),
+                f"verify-{attestation_type}": (0, attestation + b"\n", b""),
+            },
+        )
+
+        sbom = await client.fetch_sbom(image)
+
+        assert sbom.doc == sbom_doc
+        assert sbom.signature_verified is True
+        assert [command[1] for command in commands].count("download") == (
+            2 if attestation_type == "spdxjson" else 3
+        )
+        verification_commands = [
+            command for command in commands if command[1] == "verify-attestation"
+        ]
+        assert len(verification_commands) == 1
+        assert "--key=/verification-key" in verification_commands[0]
+        assert f"--type={attestation_type}" in verification_commands[0]
+        assert verification_commands[0][-1] == image.reference
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "error",
+        [
+            "unauthorized: authentication required",
+            "no matching signatures",
+            "dial tcp: connect: connection refused",
+        ],
+    )
+    async def test_fetch_sbom_does_not_fallback_for_non_missing_errors(
+        self,
+        image: Image,
+        client: cosign.StaticKeyFetcher,
+        monkeypatch: pytest.MonkeyPatch,
+        error: str,
+    ) -> None:
+        commands = self.mock_cosign(
+            monkeypatch, {"download-sbom": (1, b"", error.encode())}
+        )
+
+        with pytest.raises(SBOMError, match=error):
+            await client.fetch_sbom(image)
+
+        assert len(commands) == 1
+        assert commands[0][1:3] == ["download", "sbom"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "verify_error",
+        [
+            pytest.param(
+                b"Error: no matching attestations: invalid signature when "
+                b"validating ASN.1 encoded signature",
+                id="signature-mismatch",
+            ),
+            pytest.param(
+                b"Error: none of the attestations matched the predicate type: "
+                b"spdxjson, found: https://slsa.dev/provenance/v0.2",
+                id="predicate-mismatch",
+            ),
+        ],
+    )
+    async def test_fetch_sbom_returns_unverified_when_attestation_signature_fails(
+        self,
+        image: Image,
+        client: cosign.StaticKeyFetcher,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: LogCaptureFixture,
+        verify_error: bytes,
+    ) -> None:
+        sbom_doc = {"spdxVersion": "SPDX-2.3"}
+        attestation = self.make_attestation(image, sbom_doc)
+        commands = self.mock_cosign(
+            monkeypatch,
+            {
+                "download-sbom": (1, b"", b"manifest unknown"),
+                "download-spdxjson": (0, attestation + b"\n", b""),
+                "verify-spdxjson": (1, b"", verify_error),
+            },
+        )
+
+        with caplog.at_level("WARNING"):
+            sbom = await client.fetch_sbom(image)
+
+        assert sbom.doc == sbom_doc
+        assert sbom.signature_verified is False
+        assert "could not be verified" in caplog.text
+        assert not any(record.exc_info for record in caplog.records)
+        # The attachment is downloaded only once, without falling back to
+        # the anonymous fetcher, which would download it again.
+        assert [command[1:3] for command in commands] == [
+            ["download", "sbom"],
+            ["download", "attestation"],
+            ["verify-attestation", "--key=/verification-key"],
+        ]
+
+    @pytest.mark.asyncio
+    async def test_fetch_sbom_fails_on_attestation_verification_errors(
+        self,
+        image: Image,
+        client: cosign.StaticKeyFetcher,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        attestation = self.make_attestation(image, {"spdxVersion": "SPDX-2.3"})
+        self.mock_cosign(
+            monkeypatch,
+            {
+                "download-sbom": (1, b"", b"manifest unknown"),
+                "download-spdxjson": (0, attestation + b"\n", b""),
+                "verify-spdxjson": (1, b"", b"unexpected status code 503"),
+            },
+        )
+
+        with pytest.raises(SBOMError, match="503") as exc_info:
+            await client.fetch_sbom(image)
+
+        assert not isinstance(exc_info.value, SBOMVerificationError)
+
+    @pytest.mark.asyncio
+    async def test_fetch_sbom_fails_closed_on_malformed_attestation_response(
+        self,
+        image: Image,
+        client: cosign.StaticKeyFetcher,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        attestation = self.make_attestation(image, {"spdxVersion": "SPDX-2.3"})
+        self.mock_cosign(
+            monkeypatch,
+            {
+                "download-sbom": (1, b"", b"manifest unknown"),
+                "download-spdxjson": (0, attestation + b"\n", b""),
+                "verify-spdxjson": (0, b"not-json\n", b""),
+            },
+        )
+
+        with pytest.raises(json.JSONDecodeError):
+            await client.fetch_sbom(image)
+
+    @pytest.mark.asyncio
+    async def test_fetch_sbom_fails_when_no_attested_sbom_exists(
+        self,
+        image: Image,
+        client: cosign.StaticKeyFetcher,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        commands = self.mock_cosign(
+            monkeypatch,
+            {"download-sbom": (1, b"", b"MANIFEST_UNKNOWN: manifest unknown")},
+        )
+
+        with pytest.raises(
+            SBOMError, match="no attached or attested SBOM found.*MANIFEST_UNKNOWN"
+        ):
+            await client.fetch_sbom(image)
+
+        assert not any(command[1] == "verify-attestation" for command in commands)
+
+
+def test_sbom_signature_verification_is_not_derived_from_document() -> None:
+    sbom = SBOM(
+        {"spdxVersion": "SPDX-2.3", "signature_verified": True}, "digest", "ref"
+    )
+
+    assert sbom.signature_verified is None
 
 
 class TestStaticSigner:
@@ -391,15 +670,15 @@ class TestKeylessFetcher:
             b'b3UiOiAidXAifSwgeyJsZXQgeW91IjogImRvd24ifV19fQ=="}',
             b"",
         )
-        assert (
-            await cosign.KeylessSBOMFetcher(
-                cosign.VerifyConfig(
-                    keyless_verify_config=cosign.KeylessVerifyConfig(
-                        identity_pattern="aaa", oidc_issuer="aa"
-                    )
+        sbom = await cosign.KeylessSBOMFetcher(
+            cosign.VerifyConfig(
+                keyless_verify_config=cosign.KeylessVerifyConfig(
+                    identity_pattern="aaa", oidc_issuer="aa"
                 )
-            ).fetch_sbom(MagicMock(reference="aaaa"))
-        ).doc == {"never gonna": [{"give you": "up"}, {"let you": "down"}]}
+            )
+        ).fetch_sbom(MagicMock(reference="aaaa"))
+        assert sbom.doc == {"never gonna": [{"give you": "up"}, {"let you": "down"}]}
+        assert sbom.signature_verified is True
 
     @pytest.mark.asyncio
     @patch("mobster.oci.cosign.keyless.check_tuf")

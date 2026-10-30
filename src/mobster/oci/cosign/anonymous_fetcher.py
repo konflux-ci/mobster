@@ -1,6 +1,7 @@
 """Cosign fetch client without any secrets for verification"""
 
 import logging
+from typing import Literal
 
 from mobster.error import SBOMError
 from mobster.image import Image
@@ -13,47 +14,54 @@ from mobster.utils import run_async_subprocess
 logger = logging.getLogger(__name__)
 
 
+async def download_sbom_attestation(
+    image_ref: str, env: dict[str, str]
+) -> tuple[bytes, Literal["spdxjson", "cyclonedx"]] | None:
+    """
+    Download SBOM attestation bytes without verifying their signature. Make
+    sure to run this function from within the context of make_oci_auth_file.
+    Tries both SPDX and CycloneDX formats (in this order).
+
+    Args:
+        image_ref: Image reference
+        env: Environment for the cosign subprocess
+
+    Returns:
+        Byte representation of the latest attestation and its cosign predicate
+        type, or None if the image has no SBOM attestation.
+    """
+    sbom_types: tuple[Literal["spdxjson", "cyclonedx"], ...] = (
+        "spdxjson",
+        "cyclonedx",
+    )
+    for sbom_type in sbom_types:
+        cmd = [
+            "cosign",
+            "download",
+            "attestation",
+            "--predicate-type",
+            sbom_type,
+            image_ref,
+        ]
+        logger.debug("Executing for %s command '%s'", image_ref, " ".join(cmd))
+        code, stdout, stderr = await run_async_subprocess(cmd, env=env)
+        if code == 0 and (raw_lines := [line for line in stdout.splitlines() if line]):
+            return raw_lines[-1], sbom_type
+        logger.warning(
+            "Cosign fetching attestation of type %s failed for %s with output %s",
+            sbom_type,
+            image_ref,
+            stderr,
+        )
+    return None
+
+
 class AnonymousFetcher(SupportsFetch):
     """
     Cosign fetch client with no secrets for verification
     """
 
     # pylint: disable=too-few-public-methods
-
-    @staticmethod
-    async def _download_attestation(
-        image_ref: str, env: dict[str, str]
-    ) -> bytes | None:
-        """
-        Download SBOM attestation bytes. Make sure to run this function
-        from within the context of make_oci_auth_file. Tries both SPDX
-        and CycloneDX formats (in this order).
-        Args:
-            image_ref: Image reference
-        Returns: byte representation of the latest attestation
-        """
-        for sbom_type in "spdxjson", "cyclonedx":
-            cmd = [
-                "cosign",
-                "download",
-                "attestation",
-                "--predicate-type",
-                sbom_type,
-                image_ref,
-            ]
-            logger.debug("Executing for %s command '%s'", image_ref, " ".join(cmd))
-            code, stdout, stderr = await run_async_subprocess(cmd, env=env)
-            if code == 0 and (
-                raw_lines := [line for line in stdout.splitlines() if line]
-            ):
-                return raw_lines[-1]
-            logger.warning(
-                "Cosign fetching attestation of type %s failed for %s with output %s",
-                sbom_type,
-                image_ref,
-                stderr,
-            )
-        return None
 
     async def fetch_sbom(self, image: Image) -> SBOM:
         """
@@ -79,9 +87,8 @@ class AnonymousFetcher(SupportsFetch):
                     image_ref,
                     stderr,
                 )
-                att_bytes = await self._download_attestation(image_ref, env)
-                if att_bytes:
-                    return get_sbom_from_attestation_bytes(att_bytes, image_ref)
+                if attestation := await download_sbom_attestation(image_ref, env):
+                    return get_sbom_from_attestation_bytes(attestation[0], image_ref)
         raise SBOMError(
             f"Failed to fetch SBOM {image_ref}, it is not attached, nor attested."
         )
