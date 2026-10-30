@@ -210,7 +210,6 @@ async def augment_component_sboms(
     snapshot = await make_snapshot(snapshot_spec, None, semaphore)
     config = AugmentConfig(
         cosign=cosign_client,
-        verify=True,
         semaphore=semaphore,
         output_dir=sbom_path,
         release_id=release_id,

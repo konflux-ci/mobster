@@ -27,8 +27,9 @@ class SBOMError(Exception):
 
 class SBOMVerificationError(SBOMError):
     """
-    Exception raised when an SBOM's digest could not be verified by
-    SBOM_BLOB_URL value in the provenance.
+    Exception raised when an SBOM or its provenance could not be verified,
+    for example when an SBOM's digest does not match the SBOM_BLOB_URL value
+    in the provenance, or no attestation signature matches the trusted key.
     """
 
 

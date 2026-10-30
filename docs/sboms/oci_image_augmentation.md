@@ -27,7 +27,8 @@ $ mobster augment --output sboms/ oci-image \
 ### SBOM sources and verification
 
 Augmentation checks for the existing `.sbom` attachment first. When that
-attachment is absent, Mobster reads the SBOM from an SPDX `.att` attestation.
+attachment is absent, Mobster reads the SBOM from a `.att` attestation, trying
+SPDX first and CycloneDX second.
 In both cases, `--verification-key` is used to verify trust, but each source is
 verified differently:
 
@@ -47,9 +48,13 @@ $ mobster augment --output sboms/ oci-image \
 
 If the verification fails, the SBOM is still augmented, but it is reported as
 not attested, so the released images created from it are not attested with a
-release-time SBOM. This applies to both sources. A missing `.sbom` attachment
-triggers the `.att` fallback; other errors, such as authentication or network
-failures, fail the run.
+release-time SBOM. This applies to both sources. For `.att` attestations, a
+verification failure means that no attestation signature matches the supplied
+key. A missing `.sbom` attachment triggers the `.att` fallback. Other errors,
+such as authentication or network failures when downloading the attachment or
+verifying the attestation, fail the run. If neither source exists, the run
+fails with the original Cosign error, which also covers a wrong image
+reference.
 
 Without `--verification-key`, Mobster logs a warning and reads the `.sbom`
 attachment or the `.att` attestation without verifying either.

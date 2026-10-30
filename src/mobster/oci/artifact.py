@@ -225,8 +225,10 @@ class SBOM:
     Object representing an SBOM for an image.
 
     Attributes:
-        signature_verified: True only when a trusted static key verified the
-            image's SBOM attestation. This value is not read from the SBOM doc.
+        signature_verified: Result of the SBOM attestation signature check done
+            by the fetcher: True if verified, False if the check failed, None if
+            the fetcher did not check it (e.g. legacy attachments). This value
+            is not read from the SBOM doc.
     """
 
     def __init__(
@@ -234,7 +236,7 @@ class SBOM:
         doc: dict[Any, Any],
         digest: str,
         reference: str,
-        signature_verified: bool = False,
+        signature_verified: bool | None = None,
     ) -> None:
         """
         An SBOM downloaded using cosign.
@@ -243,8 +245,8 @@ class SBOM:
             doc: The parsed SBOM dictionary
             digest: SHA256 digest of the raw SBOM data
             reference: Reference of the image the SBOM was attached to
-            signature_verified: Set only by a fetcher after a trusted static key
-                verified the SBOM attestation. Never inferred from the SBOM doc.
+            signature_verified: Set only by a fetcher that checked the SBOM
+                attestation signature. Never inferred from the SBOM doc.
         """
         self.doc = doc
         self.digest = digest

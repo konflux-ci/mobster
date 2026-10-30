@@ -55,7 +55,6 @@ class AugmentConfig:
 
     Attributes:
         cosign: Implementation of the fetch protocol for manipulating SBOMs
-        verify: Use pubkey verification for attestations
         semaphore: asyncio semaphore to limit the number of concurrent operations
         output_dir: Path to directory to save the augmented SBOMs to
         release_id: ReleaseId to optionally inject into SBOMs
@@ -63,7 +62,6 @@ class AugmentConfig:
     """
 
     cosign: cosign.SupportsFetch
-    verify: bool
     semaphore: asyncio.Semaphore
     output_dir: Path
     release_id: ReleaseId | None = None
@@ -106,7 +104,6 @@ class AugmentImageCommand(Command):
 
         config = AugmentConfig(
             cosign=cosign_client,
-            verify=self.cli_args.verification_key is not None,
             semaphore=semaphore,
             output_dir=self.cli_args.output,
             release_id=self.cli_args.release_id,
@@ -190,43 +187,41 @@ async def verify_sbom(
 
 
 async def load_sbom(
-    image: Image, cosign_client: cosign.SupportsFetch, verify: bool
+    image: Image, cosign_client: cosign.SupportsFetch
 ) -> tuple[SBOM, bool]:
     """
-    Download and parse the sbom for the image reference and verify that its digest
-    matches that in the image provenance.
+    Download and parse the sbom for the image reference and verify it.
+
+    SBOM attestations are verified by the fetcher itself. Other SBOMs are
+    verified against the image provenance if the client supports fetching it.
 
     Args:
         image: Image to load the sbom for
         cosign_client: Implementation of the fetch protocol
-        verify: True if the SBOM should be verified. Raw attachments are checked
-            against image provenance; signed SBOM attestations are already bound
-            to the image by Cosign verification.
 
     Returns:
         SBOM and True if its attestation was validated successfully,
         SBOM and False otherwise
     """
     sbom = await cosign_client.fetch_sbom(image)
-    attestation_valid = True
-    if (
-        verify
-        and not sbom.signature_verified
-        and isinstance(cosign_client, cosign.SupportsProvenanceFetch)
-    ):
+    if sbom.signature_verified is not None:
+        # The fetcher already checked the SBOM attestation signature
+        return sbom, sbom.signature_verified
+    if not isinstance(cosign_client, cosign.SupportsProvenanceFetch):
         # Only clients that support provenance fetch shall
         # use it for SBOM verification
-        try:
-            await verify_sbom(sbom, image, cosign_client)
-        except SBOMError:
-            LOGGER.exception(
-                "Attestation verification failed for image '%s'."
-                "The released images created from this image will"
-                "not be attested with a release time SBOM!",
-                image.reference,
-            )
-            attestation_valid = False
-    return sbom, attestation_valid
+        return sbom, True
+    try:
+        await verify_sbom(sbom, image, cosign_client)
+    except SBOMError:
+        LOGGER.exception(
+            "Attestation verification failed for image '%s'."
+            "The released images created from this image will"
+            "not be attested with a release time SBOM!",
+            image.reference,
+        )
+        return sbom, False
+    return sbom, True
 
 
 async def write_sbom(sbom: Any, path: Path) -> None:
@@ -299,9 +294,7 @@ async def update_sbom(
 
     async with config.semaphore:
         try:
-            sbom, attestation_valid = await load_sbom(
-                image, config.cosign, config.verify
-            )
+            sbom, attestation_valid = await load_sbom(image, config.cosign)
 
             if not update_sbom_in_situ(
                 repository,

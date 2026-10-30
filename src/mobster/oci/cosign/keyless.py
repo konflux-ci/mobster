@@ -87,7 +87,9 @@ class KeylessSBOMFetcher(SupportsFetch):
                 raise SBOMError(
                     f"Failed to fetch attestation for {image}: {stderr.decode()}."
                 )
-        return get_sbom_from_attestation_bytes(raw_attestation, image.reference)
+        return get_sbom_from_attestation_bytes(
+            raw_attestation, image.reference, signature_verified=True
+        )
 
 
 class KeylessSigner(SupportsSign):
