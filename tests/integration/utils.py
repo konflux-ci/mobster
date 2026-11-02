@@ -1,8 +1,13 @@
 """Utility functions for integration tests."""
 
 import json
+import tempfile
 from pathlib import Path
 from typing import Any
+
+from mobster.image import Image
+from mobster.oci.cosign.static import StaticKeySigner
+from mobster.sbom.detect import SBOMFormat
 
 
 def prepare_input_sbom(
@@ -32,3 +37,21 @@ def prepare_input_sbom(
         json.dump(original_content, file)
 
     return dest_path, original_content
+
+
+async def attest_sbom_bytes(
+    signer: StaticKeySigner, image: Image, sbom: bytes, sbom_format: SBOMFormat
+) -> None:
+    """
+    Sign an in-memory SBOM and attach it to an image as a cosign attestation.
+
+    Args:
+        signer: Signer holding the key used to sign the attestation.
+        image: Image to attest.
+        sbom: Raw SBOM content.
+        sbom_format: Format of the SBOM, which selects the attestation type.
+    """
+    with tempfile.NamedTemporaryFile() as sbom_file:
+        sbom_file.write(sbom)
+        sbom_file.flush()
+        await signer.attest_sbom(Path(sbom_file.name), image.reference, sbom_format)

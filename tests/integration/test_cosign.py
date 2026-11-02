@@ -1,10 +1,8 @@
-import tempfile
-from pathlib import Path
-
 import pytest
 import pytest_asyncio
+from pytest_lazy_fixtures import lf
 
-from mobster.error import SBOMError
+from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image
 from mobster.oci.cosign import (
     AnonymousFetcher,
@@ -15,6 +13,7 @@ from mobster.oci.cosign import (
 from mobster.oci.cosign.static import StaticKeyFetcher, StaticKeySigner
 from mobster.sbom.detect import SBOMFormat
 from tests.integration.oci_client import ReferrersTagOCIClient
+from tests.integration.utils import attest_sbom_bytes
 
 
 @pytest_asyncio.fixture()
@@ -26,20 +25,26 @@ async def image_with_empty_sbom(oci_client: ReferrersTagOCIClient) -> Image:
 
 
 @pytest_asyncio.fixture()
-async def image_with_empty_attested_sbom(
+async def image_with_empty_cdx_attested_sbom(
     cosign_sign_key: str, oci_client: ReferrersTagOCIClient
 ) -> Image:
-    sbom = b"{}"
     image = await oci_client.create_image("empty-sbom-attestation", "tag")
-    cosign = StaticKeySigner(
+    signer = StaticKeySigner(
         SignConfig(static_sign_config=StaticSignConfig(sign_key=cosign_sign_key))
     )
-    with tempfile.NamedTemporaryFile() as tmpfile:
-        tmpfile.write(sbom)
-        tmpfile.flush()
-        await cosign.attest_sbom(
-            Path(tmpfile.name), image.reference, SBOMFormat.CDX_V1_5
-        )
+    await attest_sbom_bytes(signer, image, b"{}", SBOMFormat.CDX_V1_5)
+    return image
+
+
+@pytest_asyncio.fixture()
+async def image_with_empty_spdx_attested_sbom(
+    cosign_sign_key: str, oci_client: ReferrersTagOCIClient
+) -> Image:
+    image = await oci_client.create_image("empty-spdx-sbom-attestation", "tag")
+    signer = StaticKeySigner(
+        SignConfig(static_sign_config=StaticSignConfig(sign_key=cosign_sign_key))
+    )
+    await attest_sbom_bytes(signer, image, b"{}", SBOMFormat.SPDX_2_3)
     return image
 
 
@@ -49,29 +54,107 @@ async def image_with_no_sbom(oci_client: ReferrersTagOCIClient) -> Image:
 
 
 @pytest.mark.asyncio
-async def test_cosign_fetch_sbom(image_with_empty_sbom: Image) -> None:
+@pytest.mark.parametrize(
+    ["image", "verify_key", "expected_verified"],
+    [
+        # fetch_sbom does not verify .sbom attachments, with or without a key.
+        # Verification against provenance happens later in the flow, if enabled.
+        pytest.param(lf("image_with_empty_sbom"), None, False, id="attachment-no-key"),
+        pytest.param(
+            lf("image_with_empty_sbom"),
+            lf("cosign_verify_key"),
+            False,
+            id="attachment-with-key",
+        ),
+        # stored as an OCI 1.1 referrer (sigstore bundle)
+        pytest.param(
+            lf("image_with_empty_spdx_attested_sbom"),
+            lf("cosign_verify_key"),
+            True,
+            id="spdx-attestation",
+        ),
+        # CycloneDX fallback when no SPDX attestation is present.
+        pytest.param(
+            lf("image_with_empty_cdx_attested_sbom"),
+            lf("cosign_verify_key"),
+            True,
+            id="cdx-attestation",
+        ),
+    ],
+)
+async def test_cosign_fetch_sbom(
+    image: Image, verify_key: str | None, expected_verified: bool
+) -> None:
     """
-    Test fetching an SBOM from an image that has one.
+    Test fetching an SBOM from an image that has one, either attached or
+    attested. Only the attested SBOMs are signature-verified.
 
     Args:
-        image_with_empty_sbom: Image fixture with an empty SBOM.
+        image: Image fixture with an empty SBOM.
+        verify_key: Verification key passed to the fetcher.
+        expected_verified: Whether the SBOM is expected to be signature-verified.
     """
-    cosign = StaticKeyFetcher(VerifyConfig())
-    sbom = await cosign.fetch_sbom(image_with_empty_sbom)
+    cosign = StaticKeyFetcher(VerifyConfig(static_verify_key=verify_key))
+    sbom = await cosign.fetch_sbom(image)
     assert sbom.doc == {}
+    assert sbom.signature_verified is expected_verified
 
 
 @pytest.mark.asyncio
-async def test_cosign_fetch_sbom_no_sbom(image_with_no_sbom: Image) -> None:
+@pytest.mark.parametrize(
+    ["image", "verify_key", "error", "match"],
+    [
+        pytest.param(
+            lf("image_with_empty_spdx_attested_sbom"),
+            None,
+            SBOMError,
+            "--verification-key",
+            id="attestation-no-key",
+        ),
+        # attestation signed by a different key than the one passed
+        pytest.param(
+            lf("image_with_empty_spdx_attested_sbom"),
+            lf("other_cosign_verify_key"),
+            SBOMVerificationError,
+            "matches the key",
+            id="attestation-wrong-key",
+        ),
+        # cosign reports a missing SBOM the same way as a wrong key
+        pytest.param(
+            lf("image_with_no_sbom"),
+            lf("cosign_verify_key"),
+            SBOMVerificationError,
+            "matches the key",
+            id="no-sbom-with-key",
+        ),
+        # Without a key, the .sbom attachment is checked, but attestations are not.
+        pytest.param(
+            lf("image_with_no_sbom"),
+            None,
+            SBOMError,
+            r"no \.sbom attachment found",
+            id="no-sbom-no-key",
+        ),
+    ],
+)
+async def test_cosign_fetch_sbom_key_errors(
+    image: Image, verify_key: str | None, error: type[SBOMError], match: str
+) -> None:
     """
-    Test fetching an SBOM from an image that has none.
+    Test that an SBOM attestation is used only when it verifies with the
+    configured key. Together with test_cosign_fetch_sbom, this shows the
+    configured key is what decides the result.
 
     Args:
-        image_with_no_sbom: Image fixture with no SBOM.
+        image: Image fixture.
+        verify_key: Verification key passed to the fetcher.
+        error: Expected exception type. SBOMVerificationError subclasses
+            SBOMError, so match is needed to tell the cases apart.
+        match: Regex expected in the exception message.
     """
-    cosign = StaticKeyFetcher(VerifyConfig())
-    with pytest.raises(SBOMError):
-        await cosign.fetch_sbom(image_with_no_sbom)
+    cosign = StaticKeyFetcher(VerifyConfig(static_verify_key=verify_key))
+    with pytest.raises(error, match=match):
+        await cosign.fetch_sbom(image)
 
 
 @pytest.mark.asyncio
@@ -93,7 +176,9 @@ async def test_fetch_anonymous_attached(image_with_empty_sbom: Image) -> None:
 
 
 @pytest.mark.asyncio
-async def test_fetch_anonymous_attested(image_with_empty_attested_sbom: Image) -> None:
+async def test_fetch_anonymous_attested(
+    image_with_empty_cdx_attested_sbom: Image,
+) -> None:
     cosign = AnonymousFetcher()
-    sbom = await cosign.fetch_sbom(image_with_empty_attested_sbom)
+    sbom = await cosign.fetch_sbom(image_with_empty_cdx_attested_sbom)
     assert sbom.doc == {}

@@ -3,9 +3,10 @@ import base64
 import json
 import subprocess
 import tempfile
-from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Iterator
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import pytest
 import pytest_asyncio
@@ -13,10 +14,12 @@ import pytest_asyncio
 from mobster.cmd.upload.tpa import TPAClient, get_tpa_default_client
 from mobster.image import Image
 from mobster.oci.cosign.static import StaticKeySigner
+from mobster.sbom.detect import detect_sbom_format
 from mobster.tekton.s3 import S3Client
 from tests.integration.oci_client import ReferrersTagOCIClient
+from tests.integration.utils import attest_sbom_bytes
 
-AddProvenanceFunc = Callable[[StaticKeySigner, str, Image], Awaitable[None]]
+AttachBuildSBOMFunc = Callable[[StaticKeySigner, Image, bytes], Awaitable[None]]
 
 
 @pytest.fixture(scope="session")
@@ -171,8 +174,14 @@ def test_id(request: pytest.FixtureRequest) -> str:
     return str(request.node.name)
 
 
-@pytest.fixture(scope="session")
-def cosign_keys() -> tuple[str, str]:  # type: ignore[misc]
+@contextmanager
+def _generate_cosign_keys() -> Iterator[tuple[str, str]]:
+    """
+    Generate a throwaway cosign key pair, deleted on exit.
+
+    Yields:
+        Paths to the private and the public key.
+    """
     with tempfile.TemporaryDirectory() as temp_dir:
         with tempfile.NamedTemporaryFile() as password_tempfile:
             password_tempfile.write(b"")
@@ -191,6 +200,22 @@ def cosign_keys() -> tuple[str, str]:  # type: ignore[misc]
         priv_key = temp_dir_path / "cosign.key"
         assert priv_key.exists()
         yield str(priv_key), str(pub_key)
+
+
+@pytest.fixture(scope="session")
+def cosign_keys() -> Generator[tuple[str, str]]:
+    with _generate_cosign_keys() as keys:
+        yield keys
+
+
+@pytest.fixture(scope="session")
+def other_cosign_verify_key() -> Generator[str]:
+    """
+    Public key of a second key pair, which did not sign anything. Used to check
+    that verification fails with a key that does not match the signature.
+    """
+    with _generate_cosign_keys() as (_, pub_key):
+        yield pub_key
 
 
 @pytest.fixture(scope="session")
@@ -271,25 +296,46 @@ def _build_v1_predicate(sbom_ref: str, image: Image) -> dict[str, Any]:
     return predicate
 
 
-@pytest.fixture(params=["v0.2", "v1"])
-def add_provenance_to_sbom(request: pytest.FixtureRequest) -> AddProvenanceFunc:
+@pytest.fixture(params=["provenance-v0.2", "provenance-v1", "attestation-only"])
+def attach_build_sbom(
+    request: pytest.FixtureRequest, oci_client: ReferrersTagOCIClient
+) -> AttachBuildSBOMFunc:
     """
-    Fixture factory returning an async callable that attaches a signed
-    provenance to an SBOM. Parametrized so every test using this fixture
-    runs once per SLSA provenance version (v0.2 and v1).
-    """
-    build_fn = {
-        "v0.2": _build_v02_predicate,
-        "v1": _build_v1_predicate,
-    }[request.param]
+    Fixture factory returning an async callable that attaches a build-time SBOM
+    to an image. Parametrized so every test using this fixture runs once per
+    way of publishing the SBOM; tests can pick a subset with indirect
+    parametrization:
 
-    async def _add_provenance(
-        cosign_client: StaticKeySigner, sbom_ref: str, image: Image
+    - "provenance-v0.2", "provenance-v1": legacy ``.sbom`` attachment
+      referenced from a signed SLSA provenance of the given version,
+    - "attestation-only": signed SBOM attestation only, with no ``.sbom``
+      attachment and no provenance.
+    """
+
+    async def _attach(
+        cosign_client: StaticKeySigner, image: Image, sbom: bytes
     ) -> None:
-        predicate = build_fn(sbom_ref, image)
-        cosign_type: Literal["slsaprovenance02", "slsaprovenance1"] = (
-            "slsaprovenance02" if request.param == "v0.2" else "slsaprovenance1"
-        )
-        await cosign_client.attest_provenance(predicate, image.reference, cosign_type)
+        sbom_format = detect_sbom_format(json.loads(sbom))
+        if request.param == "attestation-only":
+            await attest_sbom_bytes(cosign_client, image, sbom, sbom_format)
+            return
 
-    return _add_provenance
+        sbom_ref = await oci_client.attach_sbom(
+            image, "spdx" if sbom_format.is_spdx2() else "cyclonedx", sbom
+        )
+        if request.param == "provenance-v0.2":
+            await cosign_client.attest_provenance(
+                _build_v02_predicate(sbom_ref, image),
+                image.reference,
+                "slsaprovenance02",
+            )
+        elif request.param == "provenance-v1":
+            await cosign_client.attest_provenance(
+                _build_v1_predicate(sbom_ref, image),
+                image.reference,
+                "slsaprovenance1",
+            )
+        else:
+            raise ValueError(f"Unknown attach_build_sbom mode: {request.param}")
+
+    return _attach

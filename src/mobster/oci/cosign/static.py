@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-from mobster.error import SBOMError
+from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
 from mobster.oci.artifact import SBOM, SLSAProvenance
@@ -78,8 +78,10 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
             Returns an empty list if no attestations match the predicate type.
 
         Raises:
-            SBOMError: If cosign verification fails for a reason other than
-                a missing predicate type.
+            SBOMVerificationError: If no attestation is signed by the
+                configured key.
+            SBOMError: If cosign verification fails for any other reason,
+                such as network or authentication errors.
         """
 
         with make_oci_auth_file(image.reference) as authfile:
@@ -104,10 +106,14 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
             stderr_str = stderr.decode()
             if "none of the attestations matched the predicate type" in stderr_str:
                 return []
+            if "no matching attestations" in stderr_str:
+                raise SBOMVerificationError(
+                    f"No attestation for {image} matches the key (cosign reports "
+                    "missing attestations and key mismatches the same way): "
+                    f"{stderr_str}."
+                )
 
-            raise SBOMError(
-                f"Failed to fetch attestation for {image}: {stderr.decode()}."
-            )
+            raise SBOMError(f"Failed to fetch attestation for {image}: {stderr_str}.")
 
         return stdout.splitlines()
 
@@ -155,18 +161,25 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
                 is SPDX or CDX, specific version does not matter
 
         Returns:
-            The initialized SBOM object
+            The initialized SBOM object, marked verified after Cosign validates
+            the attestation with the configured public key.
         """
         attestation_type = get_cosign_attestation_type(sbom_format)
         attestations = await self._verify_attestation(image, attestation_type)
         if attestations:
-            last_attestation = attestations[-1]
-            return get_sbom_from_attestation_bytes(last_attestation, image.reference)
+            return get_sbom_from_attestation_bytes(
+                attestations[-1], image.reference, signature_verified=True
+            )
         return None
 
     async def fetch_sbom(self, image: Image) -> SBOM:
         """
-        Fetch and parse the SBOM for the supplied image.
+        Fetch the legacy ``.sbom`` attachment, or a verified SBOM attestation if
+        there is none.
+
+        The attestation fallback covers images whose SBOM is a signed in-toto
+        attestation attached using OCI referrers API rather than a ``.sbom``
+        tag attachment.
 
         Args:
             image: Image to fetch the SBOM of
@@ -177,11 +190,45 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
                 env={"DOCKER_CONFIG": str(authfile.parent)},
                 retry_times=3,
             )
+            if code == 0:
+                return SBOM.from_cosign_output(stdout, image.reference)
 
-        if code != 0:
-            raise SBOMError(f"Failed to fetch SBOM {image}: {stderr.decode()}")
+            error = stderr.decode()
+            if not self._is_missing_sbom_attachment(error):
+                raise SBOMError(f"Failed to fetch SBOM {image}: {error}")
 
-        return SBOM.from_cosign_output(stdout, image.reference)
+        if not self.config.static_verify_key:
+            raise SBOMError(
+                f"Failed to fetch SBOM {image}: no .sbom attachment found; SBOM "
+                "attestations (such as those attached via OCI referrers) are only "
+                f"fetched with a verification key (--verification-key). "
+                f"Cosign output: {error}"
+            )
+
+        # Only the SPDX/CycloneDX family matters here, not the exact version.
+        for sbom_format in (SBOMFormat.SPDX_2_3, SBOMFormat.CDX_V1_6):
+            sbom = await self.fetch_attested_sbom(image, sbom_format)
+            if sbom:
+                return sbom
+        raise SBOMError(
+            f"Failed to fetch SBOM {image}: no .sbom attachment nor "
+            "SPDX/CycloneDX attestation was found."
+        )
+
+    @staticmethod
+    def _is_missing_sbom_attachment(error: str) -> bool:
+        """Return whether Cosign reports that the image has no SBOM attachment."""
+        error = error.lower()
+        return any(
+            marker in error
+            for marker in (
+                "manifest unknown",
+                "manifest_unknown",
+                "no matching referrers found",
+                "no sbom attached to reference",
+                "no sbom found attached to image index",
+            )
+        )
 
 
 class StaticKeySigner(SupportsSign):
