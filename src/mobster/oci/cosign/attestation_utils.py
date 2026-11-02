@@ -10,7 +10,9 @@ from mobster.sbom.detect import SBOMFormat
 
 
 def get_sbom_from_attestation_bytes(
-    attestation_bytes: bytes, image_reference: str
+    attestation_bytes: bytes,
+    image_reference: str,
+    signature_verified: bool = False,
 ) -> SBOM:
     """
     Parse an SBOM from an Attestation bytes.
@@ -20,6 +22,7 @@ def get_sbom_from_attestation_bytes(
         attestation_bytes: The raw attestation bytes.
             Must be only a single attestation!
         image_reference: The image reference.
+        signature_verified: True only if the fetcher verified the signature.
     Returns:
         SBOM object from this attestation.
     """
@@ -29,6 +32,7 @@ def get_sbom_from_attestation_bytes(
         ],
         hashlib.sha256(attestation_bytes).hexdigest(),
         image_reference,
+        signature_verified=signature_verified,
     )
 
 

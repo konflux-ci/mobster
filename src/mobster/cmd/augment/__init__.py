@@ -184,20 +184,25 @@ async def load_sbom(
     image: Image, cosign_client: cosign.SupportsFetch, verify: bool
 ) -> tuple[SBOM, bool]:
     """
-    Download and parse the sbom for the image reference and verify that its digest
-    matches that in the image provenance.
+    Download and parse the sbom for the image reference and verify it.
+
+    SBOM attestations are verified by the fetcher itself. Other SBOMs are
+    verified against the image provenance if requested and the client supports
+    fetching it.
 
     Args:
         image: Image to load the sbom for
         cosign_client: Implementation of the fetch protocol
-        verify: True if the SBOM's digest should be verified via the
-            provenance of the image
+        verify: Whether to verify the SBOM digest against the image provenance
 
     Returns:
         SBOM and True if its attestation was validated successfully,
         SBOM and False otherwise
     """
     sbom = await cosign_client.fetch_sbom(image)
+    if sbom.signature_verified:
+        # The fetcher already checked the SBOM attestation signature
+        return sbom, True
     attestation_valid = True
     if verify and isinstance(cosign_client, cosign.SupportsProvenanceFetch):
         # Only clients that support provenance fetch shall
