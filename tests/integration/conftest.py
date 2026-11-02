@@ -228,23 +228,44 @@ def _build_v1_predicate(sbom_ref: str, image: Image) -> dict[str, Any]:
             "buildType": "https://mobyproject.org/buildkit@v1",
             "externalParameters": {},
             "internalParameters": {},
-            "resolvedDependencies": [],
+            "resolvedDependencies": [
+                {
+                    "uri": "build-task",
+                    "name": "pipelineTask",
+                    "digest": {"sha256": "a" * 64},
+                    "content": base64.b64encode(
+                        json.dumps(
+                            {
+                                "metadata": {"name": "pipelinerun1", "uid": "1"},
+                                "spec": {"params": [{"name": "FOO", "value": "BAR"}]},
+                                "status": {
+                                    "results": [
+                                        {
+                                            "name": "IMAGE_REF",
+                                            "type": "string",
+                                            "value": image.reference,
+                                        },
+                                        {
+                                            "name": "SBOM_BLOB_URL",
+                                            "type": "string",
+                                            "value": sbom_ref,
+                                        },
+                                        {
+                                            "name": "IMAGE_DIGEST",
+                                            "type": "string",
+                                            "value": image.digest,
+                                        },
+                                    ]
+                                },
+                            }
+                        ).encode()
+                    ).decode(),
+                }
+            ],
         },
         "runDetails": {
             "builder": {"id": "https://konflux.dev"},
             "metadata": {"finishedOn": "1970-01-01T00:00:00Z"},
-            "byproducts": [
-                {
-                    "name": "taskRunResults/IMAGE_REF",
-                    "content": base64.b64encode(
-                        json.dumps(image.reference).encode()
-                    ).decode(),
-                },
-                {
-                    "name": "taskRunResults/SBOM_BLOB_URL",
-                    "content": base64.b64encode(json.dumps(sbom_ref).encode()).decode(),
-                },
-            ],
         },
     }
     return predicate

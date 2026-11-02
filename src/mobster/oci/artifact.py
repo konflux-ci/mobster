@@ -13,7 +13,6 @@ from typing import Any
 import dateutil.parser
 
 from mobster.error import SBOMError
-from mobster.image import parse_image_reference
 from mobster.sbom.detect import SBOMFormat, detect_sbom_format
 
 logger = logging.getLogger(__name__)
@@ -87,6 +86,31 @@ class SLSAProvenance:
         )
 
     @staticmethod
+    def _parse_results_to_sbom_digests(
+        results_to_parse: list[dict[str, str]],
+    ) -> dict[str, str]:
+        """
+        Parses taskRun results to extract data for verification.
+        Args:
+            results_to_parse: Iterable of task results.
+
+        Returns:
+            Mapped Image digests to SBOM digests.
+        """
+        sbom_blob_url, image_digest = "", ""
+        sbom_urls: dict[str, str] = {}
+        for result in results_to_parse:
+            match result.get("name"):
+                case "SBOM_BLOB_URL":
+                    sbom_blob_url = result.get("value", "")
+                case "IMAGE_DIGEST":
+                    image_digest = result.get("value", "")
+            if all([sbom_blob_url, image_digest]):
+                sbom_digest = sbom_blob_url.split("@", 1)[1]
+                sbom_urls[image_digest] = sbom_digest
+        return sbom_urls
+
+    @staticmethod
     def _parse_v02(predicate: Any) -> "SLSAProvenance":
         """
         Parse an SLSA provenance v0.2 from an in-toto attestation's predicate
@@ -111,21 +135,14 @@ class SLSAProvenance:
             build_finished_on = None
 
         # map image digests to sbom blob digests
-        sbom_blob_urls: dict[str, str] = {}
+        sbom_digests: dict[str, str] = {}
         tasks = predicate.get("buildConfig", {}).get("tasks", [])
         for task in tasks:
-            curr_digest, sbom_url = "", ""
-            for result in task.get("results", []):
-                if result.get("name") == "SBOM_BLOB_URL":
-                    sbom_url = result.get("value")
-                if result.get("name") == "IMAGE_DIGEST":
-                    curr_digest = result.get("value")
-            if not all([curr_digest, sbom_url]):
-                continue
+            sbom_digests.update(
+                SLSAProvenance._parse_results_to_sbom_digests(task.get("results", []))
+            )
 
-            sbom_blob_urls[curr_digest] = sbom_url.split("@", 1)[1]
-
-        return SLSAProvenance(build_finished_on, sbom_blob_urls)
+        return SLSAProvenance(build_finished_on, sbom_digests)
 
     @staticmethod
     def _parse_v1(predicate: Any) -> "SLSAProvenance":
@@ -151,49 +168,28 @@ class SLSAProvenance:
         else:
             build_finished_on = None
 
-        image_digests: dict[str, str] = {}
         sbom_digests: dict[str, str] = {}
-        byproducts = predicate.get("runDetails", {}).get("byproducts", [])
 
-        for byproduct in byproducts:
-            name = byproduct.get("name", "")
-            if name not in (
-                "taskRunResults/IMAGE_REF",
-                "taskRunResults/SBOM_BLOB_URL",
-            ):
+        for task_run in predicate.get("buildDefinition", {}).get(
+            "resolvedDependencies", []
+        ):
+            content = task_run.get("content")
+            task_uri = task_run.get("uri")
+            if not content:
                 continue
-
-            content = byproduct.get("content")
-            if content is None:
-                raise SLSAParsingError(
-                    f'Byproduct with name {name} is missing "content" field'
-                )
-
             try:
                 decoded = json.loads(base64.b64decode(content))
             except (binascii.Error, json.JSONDecodeError) as err:
                 raise SLSAParsingError(
-                    f"Failed to decode {name} content: {err}"
+                    f"Failed to decode {task_uri} content: {err}"
                 ) from err
-
-            if not isinstance(decoded, str):
-                raise SLSAParsingError(
-                    f"Expected string content for {name}, got {type(decoded).__name__}"
+            sbom_digests.update(
+                SLSAProvenance._parse_results_to_sbom_digests(
+                    decoded.get("status", {}).get("results", [])
                 )
+            )
 
-            repository, digest = parse_image_reference(decoded)
-            if name == "taskRunResults/IMAGE_REF":
-                image_digests.setdefault(repository, digest)
-            elif name == "taskRunResults/SBOM_BLOB_URL":
-                sbom_digests[repository] = digest
-
-        sbom_blob_urls = {
-            image_digests[repo]: sbom_digest
-            for repo, sbom_digest in sbom_digests.items()
-            if repo in image_digests
-        }
-
-        return SLSAProvenance(build_finished_on, sbom_blob_urls)
+        return SLSAProvenance(build_finished_on, sbom_digests)
 
     @property
     def build_finished_on(self) -> datetime.datetime | None:
