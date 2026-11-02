@@ -173,21 +173,20 @@ class SLSAProvenance:
         for task_run in predicate.get("buildDefinition", {}).get(
             "resolvedDependencies", []
         ):
+            if task_run.get("name") != "pipelineTask":
+                continue
             content = task_run.get("content")
             task_uri = task_run.get("uri")
             if not content:
                 continue
             try:
                 decoded = json.loads(base64.b64decode(content))
-            except (binascii.Error, json.JSONDecodeError) as err:
+                results = decoded.get("status", {}).get("results", [])
+            except (binascii.Error, json.JSONDecodeError, AttributeError) as err:
                 raise SLSAParsingError(
                     f"Failed to decode {task_uri} content: {err}"
                 ) from err
-            sbom_digests.update(
-                SLSAProvenance._parse_results_to_sbom_digests(
-                    decoded.get("status", {}).get("results", [])
-                )
-            )
+            sbom_digests.update(SLSAProvenance._parse_results_to_sbom_digests(results))
 
         return SLSAProvenance(build_finished_on, sbom_digests)
 

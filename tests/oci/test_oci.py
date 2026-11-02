@@ -486,8 +486,10 @@ class TestSLSAProvenance:
                     },
                     "buildDefinition": {
                         "resolvedDependencies": [
-                            {"uri": "irrelevant"},
+                            {"uri": "irrelevant", "content": "dGhlIGdhbWU="},
+                            {"uri": "somehow-without-content", "name": "pipelineTask"},
                             {
+                                "name": "pipelineTask",
                                 "content": base64.b64encode(
                                     json.dumps(
                                         {
@@ -506,7 +508,7 @@ class TestSLSAProvenance:
                                             }
                                         }
                                     ).encode(),
-                                ).decode()
+                                ).decode(),
                             },
                         ]
                     },
@@ -549,6 +551,7 @@ class TestSLSAProvenance:
                     "buildDefinition": {
                         "resolvedDependencies": [
                             {
+                                "name": "pipelineTask",
                                 "content": "!!!not-valid-base64!!!",
                                 "uri": "super-critical-task",
                             }
