@@ -242,6 +242,9 @@ class MergeIndex(Generic[T]):
         items_by_unique_key:
             Contains all deduplicated packages and
             their unique keys.
+        hermeto_specific:
+            Contains Hermeto packages that would otherwise
+            be lost to deduplication.
         id_mapping:
             Mapping of any SBOM Item id present in
             inputs mapped to an SBOM ID present in
@@ -252,6 +255,7 @@ class MergeIndex(Generic[T]):
     hermeto_non_registry_items: dict[str, SBOMItem[T]] = field(default_factory=dict)
     items_by_path: dict[Path, SBOMItem[T]] = field(default_factory=dict)
     items_by_unique_key: dict[str, SBOMItem[T]] = field(default_factory=dict)
+    hermeto_specific: list[SBOMItem[T]] = field(default_factory=list)
     id_mapping: dict[str, str] = field(default_factory=dict)
 
     def add(self, item: SBOMItem[T]) -> bool:
@@ -264,16 +268,24 @@ class MergeIndex(Generic[T]):
 
         Args:
             item: SBOM Item to add.
+        Returns:
+            True if the package will be persisted. False otherwise.
         """
         purl = item.purl()
+        unique_key = _unique_key(item)
         if item.source is SBOMSource.HERMETO:
             self.hermeto_involved = True
+            self.id_mapping[item.id()] = item.id()
             if _is_hermeto_non_registry_dependency(item):
                 self.hermeto_non_registry_items[item.name()] = item
             if purl and purl.subpath:
                 self.items_by_path[Path(purl.subpath)] = item
-            self.items_by_unique_key[_unique_key(item)] = item
-            self.id_mapping[item.id()] = item.id()
+            if unique_key in self.items_by_unique_key:
+                # Similar Hermeto package is already present,
+                # keeping both instances
+                self.hermeto_specific.append(item)
+            else:
+                self.items_by_unique_key[unique_key] = item
             return True
 
         # If item is sourced from Syft:
@@ -293,11 +305,10 @@ class MergeIndex(Generic[T]):
             if path_key in self.items_by_path:
                 self.id_mapping[item.id()] = self.items_by_path[path_key].id()
                 return False
-        syft_key = _unique_key(item)
-        if syft_key in self.items_by_unique_key:
-            self.id_mapping[item.id()] = self.items_by_unique_key[syft_key].id()
+        if unique_key in self.items_by_unique_key:
+            self.id_mapping[item.id()] = self.items_by_unique_key[unique_key].id()
             return False
-        self.items_by_unique_key[syft_key] = item
+        self.items_by_unique_key[unique_key] = item
         self.id_mapping[item.id()] = item.id()
         return True
 
@@ -319,7 +330,7 @@ class MergeIndex(Generic[T]):
         Returns:
             The unique merged deduplicated items.
         """
-        return list(self.items_by_unique_key.values())
+        return list(self.items_by_unique_key.values()) + self.hermeto_specific
 
 
 def wrap_as_spdx(items: list[Package], source: SBOMSource) -> list[SPDXPackage]:
