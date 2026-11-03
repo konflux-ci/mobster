@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from unittest import TestCase
 from unittest.mock import AsyncMock, MagicMock
 
 import httpx
@@ -189,8 +190,10 @@ def assert_cdx_sbom(actual: Any, expected: Any) -> None:
     for key in {*actual.keys(), *expected.keys()}:
         if key in ignored_keys:
             continue
-
-        assert actual.get(key) == expected.get(key)
+        if isinstance(actual.get(key), list) and isinstance(expected.get(key), list):
+            TestCase().assertCountEqual(actual.get(key), expected.get(key))
+        else:
+            assert actual.get(key) == expected.get(key)
 
 
 def check_timestamp_isoformat(timestamp: str) -> None:

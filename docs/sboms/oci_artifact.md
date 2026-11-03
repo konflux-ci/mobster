@@ -10,7 +10,6 @@ tekton task.
 ```bash
 # Using an example oci-copy.yaml file generate the SBOM for the OCI artifact
 mobster generate \
-    generate  \
     --output oci-copy.spdx.json \
     oci-artifact \
     --oci-copy-yaml sample-oci-copy.yaml \
