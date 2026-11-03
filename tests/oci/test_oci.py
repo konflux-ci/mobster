@@ -483,26 +483,35 @@ class TestSLSAProvenance:
                 "predicate": {
                     "runDetails": {
                         "metadata": {"finishedOn": "2024-08-20T14:00:00Z"},
-                        "byproducts": [
-                            {"name": "taskRunResults/UNRELATED"},
+                    },
+                    "buildDefinition": {
+                        "resolvedDependencies": [
+                            {"uri": "irrelevant", "content": "dGhlIGdhbWU="},
+                            {"uri": "somehow-without-content", "name": "pipelineTask"},
                             {
-                                "name": "taskRunResults/IMAGE_REF",
+                                "name": "pipelineTask",
                                 "content": base64.b64encode(
                                     json.dumps(
-                                        f"registry.example.io/repo@{image_digest}"
-                                    ).encode()
+                                        {
+                                            "status": {
+                                                "results": [
+                                                    {
+                                                        "name": "IMAGE_DIGEST",
+                                                        "value": image_digest,
+                                                    },
+                                                    {
+                                                        "name": "SBOM_BLOB_URL",
+                                                        "value": f"quay.io/"
+                                                        f"foo@{sbom_digest}",
+                                                    },
+                                                ]
+                                            }
+                                        }
+                                    ).encode(),
                                 ).decode(),
                             },
-                            {
-                                "name": "taskRunResults/SBOM_BLOB_URL",
-                                "content": base64.b64encode(
-                                    json.dumps(
-                                        f"registry.example.io/repo@{sbom_digest}"
-                                    ).encode()
-                                ).decode(),
-                            },
-                        ],
-                    }
+                        ]
+                    },
                 },
             }
         )
@@ -531,68 +540,28 @@ class TestSLSAProvenance:
 
         assert prov.build_finished_on is None
 
-    def test_v1_bad_base64_in_byproduct(self) -> None:
+    def test_v1_bad_base64_in_content(self) -> None:
         raw = _make_slsa_raw(
             {
                 "predicateType": "https://slsa.dev/provenance/v1",
                 "predicate": {
                     "runDetails": {
                         "metadata": {},
-                        "byproducts": [
+                    },
+                    "buildDefinition": {
+                        "resolvedDependencies": [
                             {
-                                "name": "taskRunResults/IMAGE_REF",
+                                "name": "pipelineTask",
                                 "content": "!!!not-valid-base64!!!",
-                            },
-                        ],
-                    }
+                                "uri": "super-critical-task",
+                            }
+                        ]
+                    },
                 },
             }
         )
 
         with pytest.raises(SLSAParsingError):
-            SLSAProvenance.parse(raw)
-
-    def test_v1_non_string_byproduct_content(self) -> None:
-        raw = _make_slsa_raw(
-            {
-                "predicateType": "https://slsa.dev/provenance/v1",
-                "predicate": {
-                    "runDetails": {
-                        "metadata": {},
-                        "byproducts": [
-                            {
-                                "name": "taskRunResults/IMAGE_REF",
-                                "content": base64.b64encode(
-                                    json.dumps({"not": "a string"}).encode()
-                                ).decode(),
-                            },
-                        ],
-                    }
-                },
-            }
-        )
-
-        with pytest.raises(SLSAParsingError, match="Expected string content"):
-            SLSAProvenance.parse(raw)
-
-    def test_v1_missing_content_field(self) -> None:
-        raw = _make_slsa_raw(
-            {
-                "predicateType": "https://slsa.dev/provenance/v1",
-                "predicate": {
-                    "runDetails": {
-                        "metadata": {},
-                        "byproducts": [
-                            {
-                                "name": "taskRunResults/IMAGE_REF",
-                            },
-                        ],
-                    }
-                },
-            }
-        )
-
-        with pytest.raises(SLSAParsingError, match='missing "content" field'):
             SLSAProvenance.parse(raw)
 
     def test_sbom_digest_unknown_image(self) -> None:
