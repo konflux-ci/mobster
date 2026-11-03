@@ -1,5 +1,53 @@
 # Changelog
 
+## [2.4.0](https://github.com/konflux-ci/mobster/compare/v2.3.0...v2.4.0) (2026-11-03)
+
+
+### Features
+
+* **ISV-7657:** inherit additional images from ancestors ([5ae63c9](https://github.com/konflux-ci/mobster/commit/5ae63c9bdc5b4269d9bf065dbdebdcd06b899f02))
+* **ISV-7657:** inherit builder subtrees from parent ([fc30e71](https://github.com/konflux-ci/mobster/commit/fc30e719cc9a5b6748dadff1e79e218355e928d0))
+* **ISV-7778:** add generate oci cbom command ([7557a4a](https://github.com/konflux-ci/mobster/commit/7557a4a4b62e102297f27f3548dcd69bd0d5f3d4))
+* **ISV-7778:** add generate oci cbom command ([e4bbfe2](https://github.com/konflux-ci/mobster/commit/e4bbfe2680554287289fc5abd50557f5088bfc3a))
+* **KONFLUX-15176:** add SECURITY.md for CRA ([1e1631d](https://github.com/konflux-ci/mobster/commit/1e1631d43e05741803b2b6ae6ee18fa55205aa2b))
+
+
+### Bug Fixes
+
+* fix pip audit ([956391d](https://github.com/konflux-ci/mobster/commit/956391d83491176e7f03667b9c03771cc938927e))
+* **ISV-7657:** address review comment ([6f6a672](https://github.com/konflux-ci/mobster/commit/6f6a67253d842f075751f5bb648aa1ce02b8b160))
+* **ISV-7657:** address review comments ([a11952f](https://github.com/konflux-ci/mobster/commit/a11952ff580979e096e0dbe580878a66578ea618))
+* **ISV-7657:** fix mypy and tests ([0085139](https://github.com/konflux-ci/mobster/commit/008513904fb93d2a5890d8e270f8c5099ec22929))
+* **ISV-7657:** Improved validations stemming from builder inheritance ([cce9f56](https://github.com/konflux-ci/mobster/commit/cce9f56d387bc7cbce78c354f096be1bce12f937))
+* **ISV-7691:** address AI review feedback ([7d82db2](https://github.com/konflux-ci/mobster/commit/7d82db2b9d95dcd136b197ed3a2fa3348767116c))
+* **ISV-7691:** address review feedback ([f25d4a4](https://github.com/konflux-ci/mobster/commit/f25d4a4eac22b95f70fe96959fdf638ec17a04ac))
+* **ISV-7691:** enforce pkg-to-pkg relationships for collected ContentKinds ([ecb55cd](https://github.com/konflux-ci/mobster/commit/ecb55cd249d6920e67c421e1738b09dac8389f9e))
+* **ISV-7691:** preserve chained errors in logs ([0a120fc](https://github.com/konflux-ci/mobster/commit/0a120fc3023c23004a6b3801ab527f2d602344e4))
+* **ISV-7719:** use str for key objects in Cosign config ([a421729](https://github.com/konflux-ci/mobster/commit/a421729d7e2d0d8b620f7db55c1d6aacdb5ec17d))
+* **ISV-7719:** use str for key objects in Cosign config ([7c694f6](https://github.com/konflux-ci/mobster/commit/7c694f69a841299f24220f6ece67361320dd8c66))
+* **ISV-7778:** change exception type for input validation ([e6318d2](https://github.com/konflux-ci/mobster/commit/e6318d2f3a0bdf6eda25029750b70e8c011fa2eb))
+* **ISV-7822:** address Qodo comments ([307c19f](https://github.com/konflux-ci/mobster/commit/307c19f448a15d4b14a9701c40a50cedfa267299))
+* **ISV-7822:** parsing of SLSA v1 Provenances is fixed ([562daab](https://github.com/konflux-ci/mobster/commit/562daabe312da27061a28ef40af28eec14babfe2))
+* **ISV-7822:** parsing of SLSA v1 Provenances is fixed ([60f48f9](https://github.com/konflux-ci/mobster/commit/60f48f90399004cfda5226cc59e3a580192aa8a1))
+* **KONFLUX-15696:** address review comments ([d06cc1f](https://github.com/konflux-ci/mobster/commit/d06cc1f098ab4ead28ff59a719c841cabc5d3d4b))
+* **KONFLUX-15696:** refactor file structure according to comments ([7f51b52](https://github.com/konflux-ci/mobster/commit/7f51b5201aa5ef7354b6451c968017ca21acbf55))
+* **KONFLUX-15696:** relationships are remapped during merge ([2b4079e](https://github.com/konflux-ci/mobster/commit/2b4079e4b2f543e650b18a44cb4b0de5358a23fd))
+* **KONFLUX-15696:** relationships are remapped during merge ([613be9c](https://github.com/konflux-ci/mobster/commit/613be9cdd49a2ecf07d462b0c6c25373a3155f58))
+* **KONFLUX-16696:** address agent review comments ([2f3d871](https://github.com/konflux-ci/mobster/commit/2f3d8715e5e4e81a3a0b9f50c4aa34d73136f29b))
+* use a valid s3 backend ([09f10ad](https://github.com/konflux-ci/mobster/commit/09f10ad07a940f2ae40ea3abbb8ee1fc5473b6c4))
+* use a valid s3 backend ([ca122a9](https://github.com/konflux-ci/mobster/commit/ca122a9fe3b8cdb2f26d6cb8e9e0511ffedcce37))
+* use pullable spec for integration tests ([13370d4](https://github.com/konflux-ci/mobster/commit/13370d4f69877cedec690c0691e8ef02b3076573))
+* use pullable spec for integration tests ([3d0812f](https://github.com/konflux-ci/mobster/commit/3d0812f2051dc7d5a647343e07ed50f2e6fe1c02))
+
+
+### Documentation
+
+* add SECURITY.md for CRA ([dbb6c00](https://github.com/konflux-ci/mobster/commit/dbb6c0071e42166b2eab19e5fe8af3c67167c7aa))
+* **ISV-7719:** update outdated docstring ([90c422b](https://github.com/konflux-ci/mobster/commit/90c422b08c375a0c22dff08c9c86d4c6661e7663))
+* **ISV-7778:** fix the pullspec validation message ([eb3bd43](https://github.com/konflux-ci/mobster/commit/eb3bd4392ab28be23d5926fd50a82960b5d383e4))
+* **ISV-7778:** fix typo in mobster generate oci-artifact ([3f1c85e](https://github.com/konflux-ci/mobster/commit/3f1c85ed4c21cfe5764ce267eb066d188b096a8e))
+* **KONFLUX-15696:** update test docstrings ([71b8c20](https://github.com/konflux-ci/mobster/commit/71b8c20c81b23df35dc56e2f867e519c02a8f131))
+
 ## [2.3.0](https://github.com/konflux-ci/mobster/compare/v2.2.0...v2.3.0) (2026-09-09)
 
 
