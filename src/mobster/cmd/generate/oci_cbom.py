@@ -10,6 +10,7 @@ from pathlib import Path
 from cyclonedx.model.dependency import Dependency
 
 from mobster.cmd.generate.base import GenerateCommand
+from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.sbom.cyclonedx import get_component
 from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
@@ -76,9 +77,10 @@ class GenerateOciCBOMCommand(GenerateCommand):
         """
         args = OciCBOMArgs.from_cli_args(self.cli_args)
         loaded_cbom = load_file_to_sbom(args.cbom_path, True)
-        assert isinstance(loaded_cbom, CycloneDX1BomWrapper), (
-            "Mobster cannot process CBOMs in different formats than CycloneDX1."
-        )
+        if not isinstance(loaded_cbom, CycloneDX1BomWrapper):
+            raise SBOMError(
+                "Mobster cannot process CBOMs in different formats than CycloneDX1."
+            )
         image = Image.from_image_index_url_and_digest(
             args.image_pullspec, args.image_digest, args.arch
         )
