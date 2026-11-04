@@ -27,7 +27,9 @@ class PackageStats:
 
     all_packages: set[str] = field(default_factory=set)
     matched_packages: set[str] = field(default_factory=set)
-    packages_without_unique_id: set[str] = field(default_factory=set)
+    packages_without_any_uid: set[str] = field(default_factory=set)
+    packages_with_non_unique_id: set[str] = field(default_factory=set)
+    packages_with_unique_id: set[str] = field(default_factory=set)
 
     @property
     def unmatched_packages(self) -> set[str]:
@@ -35,13 +37,19 @@ class PackageStats:
         return self.all_packages - self.matched_packages
 
     @property
-    def unmatched_with_unique_id(self) -> set[str]:
-        """
-        Packages with unique ID that were not matched.
-        In component SBOM those are component-only content (installed in final layer).
-        In parent SBOM those are removed at build time.
-        """
-        return self.unmatched_packages - self.packages_without_unique_id
+    def unmatched_anonymous(self) -> set[str]:
+        """Unmatched packages that have no UID at all."""
+        return self.unmatched_packages & self.packages_without_any_uid
+
+    @property
+    def unmatched_rejected(self) -> set[str]:
+        """Unmatched packages whose only UID is a non-unique PURL."""
+        return self.unmatched_packages & self.packages_with_non_unique_id
+
+    @property
+    def unmatched_accepted(self) -> set[str]:
+        """Unmatched packages with a unique ID that could be compared."""
+        return self.unmatched_packages & self.packages_with_unique_id
 
 
 @dataclass
@@ -269,19 +277,29 @@ class MatchingStatistics:
         ):
             self.producer_matches.hermeto_to_hermeto += 1
 
-    def record_component_package_without_unique_id(self, spdx_id: str) -> None:
-        """
-        Record component package without unique identifier.
-        Stores the information only once per package.
-        """
-        self.component.packages_without_unique_id.add(spdx_id)
+    def record_component_package_without_any_uid(self, spdx_id: str) -> None:
+        """Record an anonymous component package with no UID at all."""
+        self.component.packages_without_any_uid.add(spdx_id)
 
-    def record_parent_package_without_unique_id(self, spdx_id: str) -> None:
-        """
-        Record parent package without unique identifier.
-        Stores the information only once per package.
-        """
-        self.parent.packages_without_unique_id.add(spdx_id)
+    def record_parent_package_without_any_uid(self, spdx_id: str) -> None:
+        """Record an anonymous parent package with no UID at all."""
+        self.parent.packages_without_any_uid.add(spdx_id)
+
+    def record_component_package_with_unique_id(self, spdx_id: str) -> None:
+        """Record a component package that has a unique ID."""
+        self.component.packages_with_unique_id.add(spdx_id)
+
+    def record_parent_package_with_unique_id(self, spdx_id: str) -> None:
+        """Record a parent package that has a unique ID."""
+        self.parent.packages_with_unique_id.add(spdx_id)
+
+    def record_component_package_with_non_unique_id(self, spdx_id: str) -> None:
+        """Record a component package whose only UID is a non-unique PURL."""
+        self.component.packages_with_non_unique_id.add(spdx_id)
+
+    def record_parent_package_with_non_unique_id(self, spdx_id: str) -> None:
+        """Record a parent package whose only UID is a non-unique PURL."""
+        self.parent.packages_with_non_unique_id.add(spdx_id)
 
     def _prepare_duplicate_identifier_data(
         self,
@@ -366,21 +384,17 @@ class MatchingStatistics:
                 "total": len(self.component.all_packages),
                 "matched": len(self.component.matched_packages),
                 "unmatched_all": len(self.component.unmatched_packages),
-                "unmatched_component_only": len(
-                    self.component.unmatched_with_unique_id
-                ),
-                "unmatched_without_unique_id": len(
-                    self.component.packages_without_unique_id
-                ),
+                "unmatched_anonymous": len(self.component.unmatched_anonymous),
+                "unmatched_rejected": len(self.component.unmatched_rejected),
+                "unmatched_accepted": len(self.component.unmatched_accepted),
             },
             "parent_packages": {
                 "total": len(self.parent.all_packages),
                 "matched": len(self.parent.matched_packages),
                 "unmatched_all": len(self.parent.unmatched_packages),
-                "unmatched_removed_at_build": len(self.parent.unmatched_with_unique_id),
-                "unmatched_without_unique_id": len(
-                    self.parent.packages_without_unique_id
-                ),
+                "unmatched_anonymous": len(self.parent.unmatched_anonymous),
+                "unmatched_rejected": len(self.parent.unmatched_rejected),
+                "unmatched_accepted": len(self.parent.unmatched_accepted),
             },
             "match_methods": {
                 "by_checksum": self.match_methods.by_checksum,
@@ -507,42 +521,37 @@ class MatchingStatistics:
         """
         Log statistics about unmatched packages (component-only and removed at build).
         """
-        # non-matchable - missing unique ID
-        LOGGER.debug(
-            "Component packages without unique ID: %d",
-            len(self.component.packages_without_unique_id),
-        )
-        if self.component.packages_without_unique_id:
+        for label, package_stats in (
+            ("Component", self.component),
+            ("Parent", self.parent),
+        ):
             LOGGER.debug(
-                "Component packages without unique ID SPDX IDs: %s \n ",
-                "\n".join(self.component.packages_without_unique_id),
+                "%s unmatched anonymous packages: %d",
+                label,
+                len(package_stats.unmatched_anonymous),
             )
-        LOGGER.debug(
-            "Parent packages without unique ID: %d",
-            len(self.parent.packages_without_unique_id),
-        )
-        if self.parent.packages_without_unique_id:
+            if package_stats.unmatched_anonymous:
+                LOGGER.debug(
+                    "%s unmatched anonymous SPDX IDs: %s \n ",
+                    label,
+                    "\n".join(package_stats.unmatched_anonymous),
+                )
             LOGGER.debug(
-                "Parent packages without unique ID SPDX IDs: %s \n ",
-                ("\n".join(self.parent.packages_without_unique_id),),
+                "%s unmatched rejected packages: %d",
+                label,
+                len(package_stats.unmatched_rejected),
             )
-
-        # has unique ID but has not been matched
-        LOGGER.debug(
-            "Component-only packages (unique ID, but unmatched with parent): %d",
-            len(self.component.unmatched_with_unique_id),
-        )
-        LOGGER.debug(
-            "Parent packages removed from parent at build time (unique ID, "
-            "but unmatched with component): %d",
-            len(self.parent.unmatched_with_unique_id),
-        )
-        if self.parent.unmatched_with_unique_id:
             LOGGER.debug(
-                "Parent packages removed from parent at build time (unique "
-                "ID, but unmatched with component) SPDX IDs: %s \n ",
-                "\n".join(self.parent.unmatched_with_unique_id),
+                "%s unmatched accepted packages: %d",
+                label,
+                len(package_stats.unmatched_accepted),
             )
+            if package_stats.unmatched_accepted:
+                LOGGER.debug(
+                    "%s unmatched accepted SPDX IDs: %s \n ",
+                    label,
+                    "\n".join(package_stats.unmatched_accepted),
+                )
 
     def _log_duplicate_identifiers(self) -> None:
         """
