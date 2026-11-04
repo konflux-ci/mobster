@@ -541,6 +541,12 @@ class MatchingStatistics:
                 label,
                 len(package_stats.unmatched_rejected),
             )
+            if package_stats.unmatched_rejected:
+                LOGGER.debug(
+                    "%s unmatched rejected SPDX IDs: %s \n ",
+                    label,
+                    "\n".join(package_stats.unmatched_rejected),
+                )
             LOGGER.debug(
                 "%s unmatched accepted packages: %d",
                 label,
