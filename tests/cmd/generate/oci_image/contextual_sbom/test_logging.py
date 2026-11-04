@@ -54,15 +54,19 @@ def test_unmatched_packages() -> None:
     assert stats.unmatched_packages == {"pkg2", "pkg3"}
 
 
-def test_unmatched_with_unique_id() -> None:
-    """Test that unmatched_with_unique_id excludes packages without unique ID."""
+def test_unmatched_uid_categories() -> None:
+    """Test unmatched packages are split into anonymous, rejected, and accepted."""
     stats = PackageStats()
-    stats.all_packages = {"pkg1", "pkg2", "pkg3", "pkg4"}
+    stats.all_packages = {"pkg1", "pkg2", "pkg3", "pkg4", "pkg5"}
     stats.matched_packages = {"pkg1"}
-    stats.packages_without_unique_id = {"pkg3"}
+    stats.packages_without_any_uid = {"pkg3"}
+    stats.packages_with_non_unique_id = {"pkg5"}
+    stats.packages_with_unique_id = {"pkg1", "pkg2", "pkg4"}
 
-    # pkg2 and pkg3 are unmatched, but pkg3 has no unique ID
-    assert stats.unmatched_with_unique_id == {"pkg2", "pkg4"}
+    assert stats.unmatched_anonymous == {"pkg3"}
+    assert stats.unmatched_rejected == {"pkg5"}
+    assert stats.unmatched_accepted == {"pkg2", "pkg4"}
+    assert stats.unmatched_packages == {"pkg2", "pkg3", "pkg4", "pkg5"}
 
 
 def test_duplicate_checksums_property() -> None:
@@ -337,10 +341,16 @@ def test_log_summary_structured(caplog: LogCaptureFixture) -> None:
     stats = MatchingStatistics()
 
     # Setup some test data
-    stats.component.all_packages = {"c1", "c2", "c3"}
+    stats.component.all_packages = {"c1", "c2", "c3", "c4"}
     stats.component.matched_packages = {"c1"}
-    stats.parent.all_packages = {"p1", "p2"}
+    stats.component.packages_without_any_uid = {"c2"}
+    stats.component.packages_with_non_unique_id = {"c3"}
+    stats.component.packages_with_unique_id = {"c1", "c4"}
+    stats.parent.all_packages = {"p1", "p2", "p3", "p4"}
     stats.parent.matched_packages = {"p1"}
+    stats.parent.packages_without_any_uid = {"p2"}
+    stats.parent.packages_with_non_unique_id = {"p3"}
+    stats.parent.packages_with_unique_id = {"p1", "p4"}
     stats.match_methods.by_checksum = 1
 
     with caplog.at_level("INFO"):
@@ -351,10 +361,34 @@ def test_log_summary_structured(caplog: LogCaptureFixture) -> None:
 
     data = json.loads(log_message)
     assert data["event_type"] == "contextual_sbom_matching_statistics"
-    assert data["component_packages"]["total"] == 3
+    assert data["component_packages"]["total"] == 4
     assert data["component_packages"]["matched"] == 1
-    assert data["parent_packages"]["total"] == 2
+    assert data["component_packages"]["unmatched_all"] == 3
+    assert data["component_packages"]["unmatched_anonymous"] == 1
+    assert data["component_packages"]["unmatched_rejected"] == 1
+    assert data["component_packages"]["unmatched_accepted"] == 1
+    assert "unmatched_without_unique_id" not in data["component_packages"]
+    assert "unmatched_component_only" not in data["component_packages"]
+    assert (
+        data["component_packages"]["unmatched_anonymous"]
+        + data["component_packages"]["unmatched_rejected"]
+        + data["component_packages"]["unmatched_accepted"]
+        == data["component_packages"]["unmatched_all"]
+    )
+    assert data["parent_packages"]["total"] == 4
     assert data["parent_packages"]["matched"] == 1
+    assert data["parent_packages"]["unmatched_all"] == 3
+    assert data["parent_packages"]["unmatched_anonymous"] == 1
+    assert data["parent_packages"]["unmatched_rejected"] == 1
+    assert data["parent_packages"]["unmatched_accepted"] == 1
+    assert "unmatched_without_unique_id" not in data["parent_packages"]
+    assert "unmatched_removed_at_build" not in data["parent_packages"]
+    assert (
+        data["parent_packages"]["unmatched_anonymous"]
+        + data["parent_packages"]["unmatched_rejected"]
+        + data["parent_packages"]["unmatched_accepted"]
+        == data["parent_packages"]["unmatched_all"]
+    )
     assert data["match_methods"]["by_checksum"] == 1
 
 
@@ -362,10 +396,14 @@ def test_log_summary_debug_with_matches(caplog: LogCaptureFixture) -> None:
     """Test debug logging with matches."""
     stats = MatchingStatistics()
 
-    stats.component.all_packages = {"c1", "c2"}
-    stats.parent.all_packages = {"p1", "p2"}
+    stats.component.all_packages = {"c1", "c2", "c3"}
+    stats.parent.all_packages = {"p1", "p2", "p3"}
     stats.component.matched_packages = {"c1"}
     stats.parent.matched_packages = {"p1"}
+    stats.component.packages_without_any_uid = {"c2"}
+    stats.component.packages_with_unique_id = {"c1", "c3"}
+    stats.parent.packages_without_any_uid = {"p2"}
+    stats.parent.packages_with_unique_id = {"p1", "p3"}
     stats.match_methods.by_checksum = 1
 
     with caplog.at_level("DEBUG"):
@@ -374,11 +412,16 @@ def test_log_summary_debug_with_matches(caplog: LogCaptureFixture) -> None:
     # Check that debug logs contain expected content with specific values
     log_text = "\n".join(record.message for record in caplog.records)
     assert "Package Matching Statistics" in log_text
-    assert "Total component packages: 2" in log_text
+    assert "Total component packages: 3" in log_text
     assert "Component packages matched: 1" in log_text
-    assert "Total parent packages: 2" in log_text
+    assert "Total parent packages: 3" in log_text
     assert "Parent packages matched: 1" in log_text
     assert "Matched by checksum: 1" in log_text
+    assert "Component unmatched anonymous packages: 1" in log_text
+    assert "Component unmatched anonymous SPDX IDs: c2" in log_text
+    assert "Component unmatched accepted SPDX IDs: c3" in log_text
+    assert "Parent unmatched anonymous SPDX IDs: p2" in log_text
+    assert "Parent unmatched accepted SPDX IDs: p3" in log_text
 
 
 def test_log_summary_debug_with_no_matches(caplog: LogCaptureFixture) -> None:

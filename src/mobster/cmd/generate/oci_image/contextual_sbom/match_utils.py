@@ -31,6 +31,22 @@ from mobster.sbom.spdx import get_normalized_purl, get_package_purl
 LOGGER = logging.getLogger(__name__)
 
 
+def _parse_unique_id_purl(purl: str | None, package_side: str) -> PackageURL | None:
+    """Parse a PURL and return it only when it has type, name, and version."""
+    if not purl:
+        return None
+
+    try:
+        purl_obj = PackageURL.from_string(purl)
+    except ValueError:
+        LOGGER.warning("Could not parse %s SBOM package URL %s", package_side, purl)
+        return None
+
+    if not purl_obj.type or not purl_obj.name or not purl_obj.version:
+        return None
+    return purl_obj
+
+
 # pylint: disable=too-many-instance-attributes
 class ComponentRelationshipResolver:
     """
@@ -97,23 +113,18 @@ class ComponentRelationshipResolver:
                 has_unique_id = True
 
             purl = get_package_purl(pkg)
-            # Packages with missing or malformed purl, or
-            # purl without version are not indexed
-            if purl:
-                try:
-                    purl_obj = PackageURL.from_string(purl)
-                    if purl_obj.version:
-                        purl_key = self._create_purl_key(purl_obj)
-                        self.purl_index.setdefault(purl_key, []).append(item)
-                        has_unique_id = True
-                except ValueError:
-                    LOGGER.warning(
-                        "Could not parse component's SBOM package URL %s", purl
-                    )
+            purl_obj = _parse_unique_id_purl(purl, "component's")
+            if purl_obj:
+                purl_key = self._create_purl_key(purl_obj)
+                self.purl_index.setdefault(purl_key, []).append(item)
+                has_unique_id = True
 
-            # Record component packages without any unique identifier
-            if not has_unique_id:
-                self.stats.record_component_package_without_unique_id(pkg.spdx_id)
+            if has_unique_id:
+                self.stats.record_component_package_with_unique_id(pkg.spdx_id)
+            elif purl:
+                self.stats.record_component_package_with_non_unique_id(pkg.spdx_id)
+            else:
+                self.stats.record_component_package_without_any_uid(pkg.spdx_id)
 
     @staticmethod
     def _create_checksum_key(checksums: list[Checksum]) -> str:
@@ -142,41 +153,37 @@ class ComponentRelationshipResolver:
         Returns:
             Candidate content items.
         """
+        has_unique_id = bool(parent_package.checksums)
         if parent_package.checksums:
             checksum_key = self._create_checksum_key(parent_package.checksums)
             if checksum_key in self.checksum_index:
+                self.stats.record_parent_package_with_unique_id(parent_package.spdx_id)
                 return self.checksum_index[checksum_key]
 
         if parent_package.verification_code and parent_package.verification_code.value:
+            has_unique_id = True
             vc_key = parent_package.verification_code.value
             if vc_key in self.verification_code_index:
+                self.stats.record_parent_package_with_unique_id(parent_package.spdx_id)
                 return self.verification_code_index[vc_key]
 
         purl = get_package_purl(parent_package)
-        has_valid_purl = False
-        # Parent packages with absent checksum, pkg verification code,
-        # missing or malformed purl, or purl without version are not
-        # eligible for matching against component packages.
-        # The resolver cannot match such parent packages with component packages.
-        if purl:
-            try:
-                purl_obj = PackageURL.from_string(purl)
-                if purl_obj.version:
-                    has_valid_purl = True
-                    purl_key = self._create_purl_key(purl_obj)
-                    if purl_key in self.purl_index:
-                        return self.purl_index[purl_key]
-            except ValueError:
-                LOGGER.warning("Could not parse parent's SBOM package URL %s", purl)
+        purl_obj = _parse_unique_id_purl(purl, "parent's")
+        if purl_obj:
+            has_unique_id = True
+            purl_key = self._create_purl_key(purl_obj)
+            if purl_key in self.purl_index:
+                self.stats.record_parent_package_with_unique_id(parent_package.spdx_id)
+                return self.purl_index[purl_key]
 
-        # Record parent packages without any unique identifier
-        # (no checksums, no verification_code, and no valid purl with version)
-        if (
-            not parent_package.checksums
-            and not parent_package.verification_code
-            and not has_valid_purl
-        ):
-            self.stats.record_parent_package_without_unique_id(parent_package.spdx_id)
+        # A weak PURL is rejected only when no checksum or verification code
+        # provides a unique ID for this package.
+        if has_unique_id:
+            self.stats.record_parent_package_with_unique_id(parent_package.spdx_id)
+        elif purl:
+            self.stats.record_parent_package_with_non_unique_id(parent_package.spdx_id)
+        else:
+            self.stats.record_parent_package_without_any_uid(parent_package.spdx_id)
 
         return []
 
