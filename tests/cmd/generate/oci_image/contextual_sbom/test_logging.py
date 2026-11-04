@@ -396,14 +396,16 @@ def test_log_summary_debug_with_matches(caplog: LogCaptureFixture) -> None:
     """Test debug logging with matches."""
     stats = MatchingStatistics()
 
-    stats.component.all_packages = {"c1", "c2", "c3"}
-    stats.parent.all_packages = {"p1", "p2", "p3"}
+    stats.component.all_packages = {"c1", "c2", "c3", "c4"}
+    stats.parent.all_packages = {"p1", "p2", "p3", "p4"}
     stats.component.matched_packages = {"c1"}
     stats.parent.matched_packages = {"p1"}
     stats.component.packages_without_any_uid = {"c2"}
-    stats.component.packages_with_unique_id = {"c1", "c3"}
+    stats.component.packages_with_non_unique_id = {"c3"}
+    stats.component.packages_with_unique_id = {"c1", "c4"}
     stats.parent.packages_without_any_uid = {"p2"}
-    stats.parent.packages_with_unique_id = {"p1", "p3"}
+    stats.parent.packages_with_non_unique_id = {"p3"}
+    stats.parent.packages_with_unique_id = {"p1", "p4"}
     stats.match_methods.by_checksum = 1
 
     with caplog.at_level("DEBUG"):
@@ -412,16 +414,20 @@ def test_log_summary_debug_with_matches(caplog: LogCaptureFixture) -> None:
     # Check that debug logs contain expected content with specific values
     log_text = "\n".join(record.message for record in caplog.records)
     assert "Package Matching Statistics" in log_text
-    assert "Total component packages: 3" in log_text
+    assert "Total component packages: 4" in log_text
     assert "Component packages matched: 1" in log_text
-    assert "Total parent packages: 3" in log_text
+    assert "Total parent packages: 4" in log_text
     assert "Parent packages matched: 1" in log_text
     assert "Matched by checksum: 1" in log_text
     assert "Component unmatched anonymous packages: 1" in log_text
     assert "Component unmatched anonymous SPDX IDs: c2" in log_text
-    assert "Component unmatched accepted SPDX IDs: c3" in log_text
+    assert "Component unmatched rejected packages: 1" in log_text
+    assert "Component unmatched rejected SPDX IDs: c3" in log_text
+    assert "Component unmatched accepted SPDX IDs: c4" in log_text
     assert "Parent unmatched anonymous SPDX IDs: p2" in log_text
-    assert "Parent unmatched accepted SPDX IDs: p3" in log_text
+    assert "Parent unmatched rejected packages: 1" in log_text
+    assert "Parent unmatched rejected SPDX IDs: p3" in log_text
+    assert "Parent unmatched accepted SPDX IDs: p4" in log_text
 
 
 def test_log_summary_debug_with_no_matches(caplog: LogCaptureFixture) -> None:
