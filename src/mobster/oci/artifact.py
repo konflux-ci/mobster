@@ -173,8 +173,6 @@ class SLSAProvenance:
         for task_run in predicate.get("buildDefinition", {}).get(
             "resolvedDependencies", []
         ):
-            if task_run.get("name") != "pipelineTask":
-                continue
             content = task_run.get("content")
             task_uri = task_run.get("uri")
             if not content:
