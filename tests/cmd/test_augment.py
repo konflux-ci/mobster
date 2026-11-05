@@ -107,7 +107,7 @@ class TestAugmentCommand:
         args = MagicMock()
         args.snapshot = Path("snapshot.json")
         args.output = Path("output")
-        args.verification_key = Path("key.pub")
+        args.verification_key = "key.pub"
 
         cmd = make_augment_command(args, None)
         return cmd
