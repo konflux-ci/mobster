@@ -486,7 +486,7 @@ class TestSLSAProvenance:
                     },
                     "buildDefinition": {
                         "resolvedDependencies": [
-                            {"uri": "irrelevant", "content": "dGhlIGdhbWU="},
+                            {"uri": "irrelevant", "content": "eyJ0aGUiOiAiZ2FtZSJ9"},
                             {"uri": "somehow-without-content", "name": "pipelineTask"},
                             {
                                 "name": "pipelineTask",
