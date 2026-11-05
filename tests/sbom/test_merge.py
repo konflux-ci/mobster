@@ -373,6 +373,34 @@ def test_merge_index_drops_duplicate_by_key() -> None:
     assert index.id_mapping[hermeto.id()] == hermeto.id()
 
 
+def test_merge_index_keeps_hermeto() -> None:
+    index = MergeIndex[Package]()
+    first = make_spdx_package(
+        "foo",
+        "1.0.0",
+        "pkg:pypi/foo@1.0.0",
+        spdx_id="SPDXRef-plain",
+        source=SBOMSource.HERMETO,
+    )
+    second = make_spdx_package(
+        "foo",
+        "1.0.0",
+        "pkg:pypi/foo@1.0.0#spam",
+        spdx_id="SPDXRef-spam",
+        source=SBOMSource.HERMETO,
+    )
+    assert index.add(first) is True
+    assert index.add(second) is True
+    assert [item.id() for item in index.get_items()] == [
+        "SPDXRef-plain",
+        "SPDXRef-spam",
+    ]
+    # Check the packages will be mapped correctly and the relationships
+    # will not dangle
+    assert index.id_mapping["SPDXRef-plain"] == "SPDXRef-plain"
+    assert index.id_mapping["SPDXRef-spam"] == "SPDXRef-spam"
+
+
 def test_merge_index_not_double_encoded() -> None:
     """Regression for #512: +incompatible must encode once so Syft matches Hermeto."""
     purl = "pkg:golang/github.com/golang-jwt/jwt@v3.2.2+incompatible"
