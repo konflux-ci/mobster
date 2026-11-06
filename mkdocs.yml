@@ -9,6 +9,7 @@ nav:
       - "Lifecycle": sboms/sbom_lifecycle.md
       - "Augmentation": sboms/oci_image_augmentation.md
       - "Upload": sboms/upload.md
+      - "Attest": sboms/attest.md
       - "Download": sboms/download.md
       - "Delete": sboms/delete.md
   - "SBOM content types":
