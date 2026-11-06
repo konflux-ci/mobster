@@ -9,6 +9,7 @@ Examples include OCI image tags or the image's release repository.
 You can perform the augmentation via the mobster command: `augment oci-image`.
 
 ## Augment oci-image
+
 You can either augment a specific OCI image by providing the optional
 `--reference` argument, or augment SBOMs for all images in the supplied
 snapshot:
@@ -16,9 +17,30 @@ snapshot:
 $ mobster augment --output sboms/ oci-image \
     --reference quay.io/repo/image@sha256:<digest> \
     --snapshot snapshot.json
+```
 
+```bash
 $ mobster augment --output sboms/ oci-image \
     --snapshot snapshot.json
+```
+
+### SBOM sources and verification
+
+Augmentation checks for the existing `.sbom` attachment first. This works
+without a verification key. With `--verification-key`, the
+image provenance signature is checked against the supplied public key and the
+SBOM digest is compared to the digest recorded in that provenance. A failed
+provenance check reports the legacy SBOM as not attested but still augments it.
+
+If the `.sbom` attachment is missing, Mobster falls back to verifying and 
+fetching SBOMs linked using the OCI referrers API (`cosign verify-attestation`).
+SPDX is preferred, CycloneDX is a fallback. Only successfully verified SBOMs
+are used; there is no unverified download option.
+
+```bash
+$ mobster augment --output sboms/ oci-image \
+    --snapshot snapshot.json \
+    --verification-key cosign.pub
 ```
 
 ## Augmentation examples
