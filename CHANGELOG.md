@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.4.1](https://github.com/konflux-ci/mobster/compare/v2.4.0...v2.4.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* **ISV-7822:** parse v2alpha4 Provenance correctly ([92cacff](https://github.com/konflux-ci/mobster/commit/92cacff9237e70280c20eb8fc12b6112c563ab64))
+* **ISV-7822:** parse v2alpha4 Provenance correctly ([f472dc6](https://github.com/konflux-ci/mobster/commit/f472dc6485a60a7d7cf21e11dd009b093467335c))
+* **ISV-7830:** resolve Hermeto dangling relationships ([ca6aaa4](https://github.com/konflux-ci/mobster/commit/ca6aaa4bb7bd3c8a9188340ae1ebe77db2484c00))
+
 ## [2.4.0](https://github.com/konflux-ci/mobster/compare/v2.3.0...v2.4.0) (2026-11-03)
 
 
