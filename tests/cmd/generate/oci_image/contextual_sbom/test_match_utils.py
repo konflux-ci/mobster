@@ -136,26 +136,26 @@ def test_component_package_index_all_identifiers(
 
     # Verify anonymous and rejected packages are distinguished in stats.
     if identifier_type == "none":
-        assert pkg.spdx_id in stats.component.packages_without_any_uid
-        assert parent_pkg.spdx_id in stats.parent.packages_without_any_uid
-        assert pkg.spdx_id not in stats.component.packages_with_non_unique_id
-        assert parent_pkg.spdx_id not in stats.parent.packages_with_non_unique_id
-        assert pkg.spdx_id not in stats.component.packages_with_unique_id
-        assert parent_pkg.spdx_id not in stats.parent.packages_with_unique_id
+        assert pkg.spdx_id in stats.component.packages_anonymous
+        assert parent_pkg.spdx_id in stats.parent.packages_anonymous
+        assert pkg.spdx_id not in stats.component.packages_with_rejected_id
+        assert parent_pkg.spdx_id not in stats.parent.packages_with_rejected_id
+        assert pkg.spdx_id not in stats.component.packages_with_accepted_id
+        assert parent_pkg.spdx_id not in stats.parent.packages_with_accepted_id
     elif identifier_type in ("purl_no_version", "purl_invalid"):
-        assert pkg.spdx_id in stats.component.packages_with_non_unique_id
-        assert parent_pkg.spdx_id in stats.parent.packages_with_non_unique_id
-        assert pkg.spdx_id not in stats.component.packages_without_any_uid
-        assert parent_pkg.spdx_id not in stats.parent.packages_without_any_uid
-        assert pkg.spdx_id not in stats.component.packages_with_unique_id
-        assert parent_pkg.spdx_id not in stats.parent.packages_with_unique_id
+        assert pkg.spdx_id in stats.component.packages_with_rejected_id
+        assert parent_pkg.spdx_id in stats.parent.packages_with_rejected_id
+        assert pkg.spdx_id not in stats.component.packages_anonymous
+        assert parent_pkg.spdx_id not in stats.parent.packages_anonymous
+        assert pkg.spdx_id not in stats.component.packages_with_accepted_id
+        assert parent_pkg.spdx_id not in stats.parent.packages_with_accepted_id
     else:
-        assert pkg.spdx_id in stats.component.packages_with_unique_id
-        assert parent_pkg.spdx_id in stats.parent.packages_with_unique_id
-        assert pkg.spdx_id not in stats.component.packages_without_any_uid
-        assert parent_pkg.spdx_id not in stats.parent.packages_without_any_uid
-        assert pkg.spdx_id not in stats.component.packages_with_non_unique_id
-        assert parent_pkg.spdx_id not in stats.parent.packages_with_non_unique_id
+        assert pkg.spdx_id in stats.component.packages_with_accepted_id
+        assert parent_pkg.spdx_id in stats.parent.packages_with_accepted_id
+        assert pkg.spdx_id not in stats.component.packages_anonymous
+        assert parent_pkg.spdx_id not in stats.parent.packages_anonymous
+        assert pkg.spdx_id not in stats.component.packages_with_rejected_id
+        assert parent_pkg.spdx_id not in stats.parent.packages_with_rejected_id
 
 
 def test_unique_id_checksum_overrides_non_unique_purl() -> None:
@@ -188,10 +188,10 @@ def test_unique_id_checksum_overrides_non_unique_purl() -> None:
         [ContentItem(component_pkg, rel)], parent_doc, component_doc, stats
     )
     assert index.find_candidates(parent_pkg) == []
-    assert stats.component.packages_with_non_unique_id == set()
-    assert stats.parent.packages_with_non_unique_id == set()
-    assert stats.component.packages_with_unique_id == {component_pkg.spdx_id}
-    assert stats.parent.packages_with_unique_id == {parent_pkg.spdx_id}
+    assert stats.component.packages_with_rejected_id == set()
+    assert stats.parent.packages_with_rejected_id == set()
+    assert stats.component.packages_with_accepted_id == {component_pkg.spdx_id}
+    assert stats.parent.packages_with_accepted_id == {parent_pkg.spdx_id}
     assert stats.component.unmatched_accepted == {component_pkg.spdx_id}
     assert stats.parent.unmatched_accepted == {parent_pkg.spdx_id}
 
@@ -227,10 +227,10 @@ def test_unique_id_verification_code_overrides_non_unique_purl() -> None:
         stats,
     )
     assert index.find_candidates(parent_pkg) == []
-    assert stats.component.packages_with_unique_id == {component_pkg.spdx_id}
-    assert stats.parent.packages_with_unique_id == {parent_pkg.spdx_id}
-    assert stats.component.packages_with_non_unique_id == set()
-    assert stats.parent.packages_with_non_unique_id == set()
+    assert stats.component.packages_with_accepted_id == {component_pkg.spdx_id}
+    assert stats.parent.packages_with_accepted_id == {parent_pkg.spdx_id}
+    assert stats.component.packages_with_rejected_id == set()
+    assert stats.parent.packages_with_rejected_id == set()
     assert stats.component.unmatched_accepted == {component_pkg.spdx_id}
     assert stats.parent.unmatched_accepted == {parent_pkg.spdx_id}
 

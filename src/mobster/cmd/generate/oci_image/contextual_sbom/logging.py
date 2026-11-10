@@ -27,9 +27,9 @@ class PackageStats:
 
     all_packages: set[str] = field(default_factory=set)
     matched_packages: set[str] = field(default_factory=set)
-    packages_without_any_uid: set[str] = field(default_factory=set)
-    packages_with_non_unique_id: set[str] = field(default_factory=set)
-    packages_with_unique_id: set[str] = field(default_factory=set)
+    packages_anonymous: set[str] = field(default_factory=set)
+    packages_with_rejected_id: set[str] = field(default_factory=set)
+    packages_with_accepted_id: set[str] = field(default_factory=set)
 
     @property
     def unmatched_packages(self) -> set[str]:
@@ -39,17 +39,17 @@ class PackageStats:
     @property
     def unmatched_anonymous(self) -> set[str]:
         """Unmatched packages that have no UID at all."""
-        return self.unmatched_packages & self.packages_without_any_uid
+        return self.unmatched_packages & self.packages_anonymous
 
     @property
     def unmatched_rejected(self) -> set[str]:
         """Unmatched packages whose only UID is a non-unique PURL."""
-        return self.unmatched_packages & self.packages_with_non_unique_id
+        return self.unmatched_packages & self.packages_with_rejected_id
 
     @property
     def unmatched_accepted(self) -> set[str]:
         """Unmatched packages with a unique ID that could be compared."""
-        return self.unmatched_packages & self.packages_with_unique_id
+        return self.unmatched_packages & self.packages_with_accepted_id
 
 
 @dataclass
@@ -277,29 +277,29 @@ class MatchingStatistics:
         ):
             self.producer_matches.hermeto_to_hermeto += 1
 
-    def record_component_package_without_any_uid(self, spdx_id: str) -> None:
+    def record_component_package_anonymous(self, spdx_id: str) -> None:
         """Record an anonymous component package with no UID at all."""
-        self.component.packages_without_any_uid.add(spdx_id)
+        self.component.packages_anonymous.add(spdx_id)
 
-    def record_parent_package_without_any_uid(self, spdx_id: str) -> None:
+    def record_parent_package_anonymous(self, spdx_id: str) -> None:
         """Record an anonymous parent package with no UID at all."""
-        self.parent.packages_without_any_uid.add(spdx_id)
+        self.parent.packages_anonymous.add(spdx_id)
 
-    def record_component_package_with_unique_id(self, spdx_id: str) -> None:
+    def record_component_package_with_accepted_id(self, spdx_id: str) -> None:
         """Record a component package that has a unique ID."""
-        self.component.packages_with_unique_id.add(spdx_id)
+        self.component.packages_with_accepted_id.add(spdx_id)
 
-    def record_parent_package_with_unique_id(self, spdx_id: str) -> None:
+    def record_parent_package_with_accepted_id(self, spdx_id: str) -> None:
         """Record a parent package that has a unique ID."""
-        self.parent.packages_with_unique_id.add(spdx_id)
+        self.parent.packages_with_accepted_id.add(spdx_id)
 
-    def record_component_package_with_non_unique_id(self, spdx_id: str) -> None:
+    def record_component_package_with_rejected_id(self, spdx_id: str) -> None:
         """Record a component package whose only UID is a non-unique PURL."""
-        self.component.packages_with_non_unique_id.add(spdx_id)
+        self.component.packages_with_rejected_id.add(spdx_id)
 
-    def record_parent_package_with_non_unique_id(self, spdx_id: str) -> None:
+    def record_parent_package_with_rejected_id(self, spdx_id: str) -> None:
         """Record a parent package whose only UID is a non-unique PURL."""
-        self.parent.packages_with_non_unique_id.add(spdx_id)
+        self.parent.packages_with_rejected_id.add(spdx_id)
 
     def _prepare_duplicate_identifier_data(
         self,
@@ -532,9 +532,9 @@ class MatchingStatistics:
             )
             if package_stats.unmatched_anonymous:
                 LOGGER.debug(
-                    "%s unmatched anonymous SPDX IDs: %s \n ",
+                    "%s unmatched anonymous SPDX IDs: %s",
                     label,
-                    "\n".join(package_stats.unmatched_anonymous),
+                    json.dumps(sorted(package_stats.unmatched_anonymous)),
                 )
             LOGGER.debug(
                 "%s unmatched rejected packages: %d",
@@ -543,21 +543,15 @@ class MatchingStatistics:
             )
             if package_stats.unmatched_rejected:
                 LOGGER.debug(
-                    "%s unmatched rejected SPDX IDs: %s \n ",
+                    "%s unmatched rejected SPDX IDs: %s",
                     label,
-                    "\n".join(package_stats.unmatched_rejected),
+                    json.dumps(sorted(package_stats.unmatched_rejected)),
                 )
             LOGGER.debug(
                 "%s unmatched accepted packages: %d",
                 label,
                 len(package_stats.unmatched_accepted),
             )
-            if package_stats.unmatched_accepted:
-                LOGGER.debug(
-                    "%s unmatched accepted SPDX IDs: %s \n ",
-                    label,
-                    "\n".join(package_stats.unmatched_accepted),
-                )
 
     def _log_duplicate_identifiers(self) -> None:
         """

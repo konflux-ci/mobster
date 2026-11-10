@@ -100,31 +100,31 @@ class ComponentRelationshipResolver:
         """
         for item in self.component_packages:
             pkg = item.package
-            has_unique_id = False
+            has_accepted_id = False
 
             if pkg.checksums:
                 checksum_key = self._create_checksum_key(pkg.checksums)
                 self.checksum_index.setdefault(checksum_key, []).append(item)
-                has_unique_id = True
+                has_accepted_id = True
 
             if pkg.verification_code and pkg.verification_code.value:
                 vc_key = pkg.verification_code.value
                 self.verification_code_index.setdefault(vc_key, []).append(item)
-                has_unique_id = True
+                has_accepted_id = True
 
             purl = get_package_purl(pkg)
             purl_obj = _parse_unique_id_purl(purl, "component's")
             if purl_obj:
                 purl_key = self._create_purl_key(purl_obj)
                 self.purl_index.setdefault(purl_key, []).append(item)
-                has_unique_id = True
+                has_accepted_id = True
 
-            if has_unique_id:
-                self.stats.record_component_package_with_unique_id(pkg.spdx_id)
+            if has_accepted_id:
+                self.stats.record_component_package_with_accepted_id(pkg.spdx_id)
             elif purl:
-                self.stats.record_component_package_with_non_unique_id(pkg.spdx_id)
+                self.stats.record_component_package_with_rejected_id(pkg.spdx_id)
             else:
-                self.stats.record_component_package_without_any_uid(pkg.spdx_id)
+                self.stats.record_component_package_anonymous(pkg.spdx_id)
 
     @staticmethod
     def _create_checksum_key(checksums: list[Checksum]) -> str:
@@ -153,37 +153,43 @@ class ComponentRelationshipResolver:
         Returns:
             Candidate content items.
         """
-        has_unique_id = bool(parent_package.checksums)
+        has_accepted_id = bool(parent_package.checksums)
         if parent_package.checksums:
             checksum_key = self._create_checksum_key(parent_package.checksums)
             if checksum_key in self.checksum_index:
-                self.stats.record_parent_package_with_unique_id(parent_package.spdx_id)
+                self.stats.record_parent_package_with_accepted_id(
+                    parent_package.spdx_id
+                )
                 return self.checksum_index[checksum_key]
 
         if parent_package.verification_code and parent_package.verification_code.value:
-            has_unique_id = True
+            has_accepted_id = True
             vc_key = parent_package.verification_code.value
             if vc_key in self.verification_code_index:
-                self.stats.record_parent_package_with_unique_id(parent_package.spdx_id)
+                self.stats.record_parent_package_with_accepted_id(
+                    parent_package.spdx_id
+                )
                 return self.verification_code_index[vc_key]
 
         purl = get_package_purl(parent_package)
         purl_obj = _parse_unique_id_purl(purl, "parent's")
         if purl_obj:
-            has_unique_id = True
+            has_accepted_id = True
             purl_key = self._create_purl_key(purl_obj)
             if purl_key in self.purl_index:
-                self.stats.record_parent_package_with_unique_id(parent_package.spdx_id)
+                self.stats.record_parent_package_with_accepted_id(
+                    parent_package.spdx_id
+                )
                 return self.purl_index[purl_key]
 
         # A weak PURL is rejected only when no checksum or verification code
         # provides a unique ID for this package.
-        if has_unique_id:
-            self.stats.record_parent_package_with_unique_id(parent_package.spdx_id)
+        if has_accepted_id:
+            self.stats.record_parent_package_with_accepted_id(parent_package.spdx_id)
         elif purl:
-            self.stats.record_parent_package_with_non_unique_id(parent_package.spdx_id)
+            self.stats.record_parent_package_with_rejected_id(parent_package.spdx_id)
         else:
-            self.stats.record_parent_package_without_any_uid(parent_package.spdx_id)
+            self.stats.record_parent_package_anonymous(parent_package.spdx_id)
 
         return []
 
