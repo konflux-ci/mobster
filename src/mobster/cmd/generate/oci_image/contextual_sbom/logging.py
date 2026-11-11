@@ -22,7 +22,7 @@ class PackageStats:
     """
     Statistics for a single SBOM (parent or component).
 
-    Tracks all packages, which were matched, and which lack unique identifiers.
+    Tracks package matching and UID classification for one SBOM.
     """
 
     all_packages: set[str] = field(default_factory=set)
@@ -518,40 +518,27 @@ class MatchingStatistics:
             )
 
     def _log_unmatched_packages(self) -> None:
-        """
-        Log statistics about unmatched packages (component-only and removed at build).
-        """
-        for label, package_stats in (
-            ("Component", self.component),
-            ("Parent", self.parent),
+        """Log structured statistics for unmatched packages in both SBOMs."""
+        for role, sbom_reference, package_stats in (
+            ("parent", self.parent_sbom_reference, self.parent),
+            ("component", self.component_sbom_reference, self.component),
         ):
-            LOGGER.debug(
-                "%s unmatched anonymous packages: %d",
-                label,
-                len(package_stats.unmatched_anonymous),
+            categories = (
+                ("unmatched_anonymous", package_stats.unmatched_anonymous, True),
+                ("unmatched_rejected", package_stats.unmatched_rejected, True),
+                ("unmatched_accepted", package_stats.unmatched_accepted, False),
             )
-            if package_stats.unmatched_anonymous:
-                LOGGER.debug(
-                    "%s unmatched anonymous SPDX IDs: %s",
-                    label,
-                    json.dumps(sorted(package_stats.unmatched_anonymous)),
-                )
-            LOGGER.debug(
-                "%s unmatched rejected packages: %d",
-                label,
-                len(package_stats.unmatched_rejected),
-            )
-            if package_stats.unmatched_rejected:
-                LOGGER.debug(
-                    "%s unmatched rejected SPDX IDs: %s",
-                    label,
-                    json.dumps(sorted(package_stats.unmatched_rejected)),
-                )
-            LOGGER.debug(
-                "%s unmatched accepted packages: %d",
-                label,
-                len(package_stats.unmatched_accepted),
-            )
+            for category, spdx_ids, include_ids in categories:
+                log_data: dict[str, Any] = {
+                    "event_type": "contextual_sbom_unmatched_packages",
+                    "sbom_role": role,
+                    "sbom_reference": sbom_reference,
+                    "package_category": category,
+                    "count": len(spdx_ids),
+                }
+                if include_ids:
+                    log_data["spdx_ids"] = sorted(spdx_ids)
+                LOGGER.debug(json.dumps(log_data))
 
     def _log_duplicate_identifiers(self) -> None:
         """

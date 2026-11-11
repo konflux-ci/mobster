@@ -31,20 +31,20 @@ from mobster.sbom.spdx import get_normalized_purl, get_package_purl
 LOGGER = logging.getLogger(__name__)
 
 
-def _parse_unique_id_purl(purl: str | None, package_side: str) -> PackageURL | None:
+def _parse_accepted_purl(purl: str | None, package_side: str) -> PackageURL | None:
     """Parse a PURL and return it only when it has type, name, and version."""
     if not purl:
         return None
 
     try:
-        purl_obj = PackageURL.from_string(purl)
+        accepted_purl = PackageURL.from_string(purl)
     except ValueError:
         LOGGER.warning("Could not parse %s SBOM package URL %s", package_side, purl)
         return None
 
-    if not purl_obj.type or not purl_obj.name or not purl_obj.version:
+    if not accepted_purl.type or not accepted_purl.name or not accepted_purl.version:
         return None
-    return purl_obj
+    return accepted_purl
 
 
 # pylint: disable=too-many-instance-attributes
@@ -76,8 +76,7 @@ class ComponentRelationshipResolver:
             component_packages: Content items to index.
             parent_sbom_doc: Parent SBOM document
             component_sbom_doc: Component SBOM document
-            stats: Statistics tracker for recording packages without
-                unique IDs
+            stats: Statistics tracker for recording package UID classifications
         """
         self.checksum_index: dict[str, list[ContentItem]] = {}
         self.verification_code_index: dict[str, list[ContentItem]] = {}
@@ -96,7 +95,7 @@ class ComponentRelationshipResolver:
         of multiple packages under same unique id in component SBOM
         (multiple packages with same identifier).
 
-        Also records component packages without any unique identifier.
+        Also records each component package's UID classification.
         """
         for item in self.component_packages:
             pkg = item.package
@@ -113,9 +112,9 @@ class ComponentRelationshipResolver:
                 has_accepted_id = True
 
             purl = get_package_purl(pkg)
-            purl_obj = _parse_unique_id_purl(purl, "component's")
-            if purl_obj:
-                purl_key = self._create_purl_key(purl_obj)
+            accepted_purl = _parse_accepted_purl(purl, "component's")
+            if accepted_purl:
+                purl_key = self._create_purl_key(accepted_purl)
                 self.purl_index.setdefault(purl_key, []).append(item)
                 has_accepted_id = True
 
@@ -144,8 +143,6 @@ class ComponentRelationshipResolver:
 
         Priority: checksums -> verification_code -> purl
 
-        Also records parent packages without any unique identifier.
-
         Args:
             parent_package: Parent package to find matching candidates for
                 in the indexed component SBOM
@@ -172,18 +169,16 @@ class ComponentRelationshipResolver:
                 return self.verification_code_index[vc_key]
 
         purl = get_package_purl(parent_package)
-        purl_obj = _parse_unique_id_purl(purl, "parent's")
-        if purl_obj:
+        accepted_purl = _parse_accepted_purl(purl, "parent's")
+        if accepted_purl:
             has_accepted_id = True
-            purl_key = self._create_purl_key(purl_obj)
+            purl_key = self._create_purl_key(accepted_purl)
             if purl_key in self.purl_index:
                 self.stats.record_parent_package_with_accepted_id(
                     parent_package.spdx_id
                 )
                 return self.purl_index[purl_key]
 
-        # A weak PURL is rejected only when no checksum or verification code
-        # provides a unique ID for this package.
         if has_accepted_id:
             self.stats.record_parent_package_with_accepted_id(parent_package.spdx_id)
         elif purl:

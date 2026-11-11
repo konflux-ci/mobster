@@ -1,6 +1,7 @@
 """Tests for contextual SBOM logging utilities."""
 
 import json
+from typing import Any
 
 import pytest
 from _pytest.logging import LogCaptureFixture
@@ -393,9 +394,11 @@ def test_log_summary_structured(caplog: LogCaptureFixture) -> None:
 
 
 def test_log_summary_debug_with_matches(caplog: LogCaptureFixture) -> None:
-    """Test debug logging with matches."""
+    """Test debug logs include structured unmatched package records."""
     stats = MatchingStatistics()
 
+    stats.parent_sbom_reference = "https://example.com/parent-sbom"
+    stats.component_sbom_reference = "https://example.com/component-sbom"
     stats.component.all_packages = {"c1", "c2", "c3", "c4", "c5"}
     stats.parent.all_packages = {"p1", "p2", "p3", "p4", "p5"}
     stats.component.matched_packages = {"c1"}
@@ -411,7 +414,7 @@ def test_log_summary_debug_with_matches(caplog: LogCaptureFixture) -> None:
     with caplog.at_level("DEBUG"):
         stats.log_summary_debug()
 
-    # Check that debug logs contain expected content with specific values
+    # Check the regular debug summary remains available.
     log_text = "\n".join(record.message for record in caplog.records)
     assert "Package Matching Statistics" in log_text
     assert "Total component packages: 5" in log_text
@@ -419,17 +422,61 @@ def test_log_summary_debug_with_matches(caplog: LogCaptureFixture) -> None:
     assert "Total parent packages: 5" in log_text
     assert "Parent packages matched: 1" in log_text
     assert "Matched by checksum: 1" in log_text
-    assert "Component unmatched anonymous packages: 2" in log_text
-    assert 'Component unmatched anonymous SPDX IDs: ["c2", "c5"]' in log_text
-    assert "Component unmatched rejected packages: 1" in log_text
-    assert 'Component unmatched rejected SPDX IDs: ["c3"]' in log_text
-    assert "Component unmatched accepted packages: 1" in log_text
-    assert "Component unmatched accepted SPDX IDs: c4" not in log_text
-    assert 'Parent unmatched anonymous SPDX IDs: ["p2", "p5"]' in log_text
-    assert "Parent unmatched rejected packages: 1" in log_text
-    assert 'Parent unmatched rejected SPDX IDs: ["p3"]' in log_text
-    assert "Parent unmatched accepted packages: 1" in log_text
-    assert "Parent unmatched accepted SPDX IDs: p4" not in log_text
+    unmatched_records: dict[tuple[str, str], dict[str, Any]] = {}
+    for record in caplog.records:
+        if not record.message.startswith("{"):
+            continue
+        data = json.loads(record.message)
+        if data.get("event_type") == "contextual_sbom_unmatched_packages":
+            unmatched_records[(data["sbom_role"], data["package_category"])] = data
+
+    assert len(unmatched_records) == 6
+    assert unmatched_records[("component", "unmatched_anonymous")] == {
+        "event_type": "contextual_sbom_unmatched_packages",
+        "sbom_role": "component",
+        "sbom_reference": "https://example.com/component-sbom",
+        "package_category": "unmatched_anonymous",
+        "count": 2,
+        "spdx_ids": ["c2", "c5"],
+    }
+    assert unmatched_records[("component", "unmatched_rejected")] == {
+        "event_type": "contextual_sbom_unmatched_packages",
+        "sbom_role": "component",
+        "sbom_reference": "https://example.com/component-sbom",
+        "package_category": "unmatched_rejected",
+        "count": 1,
+        "spdx_ids": ["c3"],
+    }
+    assert unmatched_records[("component", "unmatched_accepted")] == {
+        "event_type": "contextual_sbom_unmatched_packages",
+        "sbom_role": "component",
+        "sbom_reference": "https://example.com/component-sbom",
+        "package_category": "unmatched_accepted",
+        "count": 1,
+    }
+    assert unmatched_records[("parent", "unmatched_anonymous")] == {
+        "event_type": "contextual_sbom_unmatched_packages",
+        "sbom_role": "parent",
+        "sbom_reference": "https://example.com/parent-sbom",
+        "package_category": "unmatched_anonymous",
+        "count": 2,
+        "spdx_ids": ["p2", "p5"],
+    }
+    assert unmatched_records[("parent", "unmatched_rejected")] == {
+        "event_type": "contextual_sbom_unmatched_packages",
+        "sbom_role": "parent",
+        "sbom_reference": "https://example.com/parent-sbom",
+        "package_category": "unmatched_rejected",
+        "count": 1,
+        "spdx_ids": ["p3"],
+    }
+    assert unmatched_records[("parent", "unmatched_accepted")] == {
+        "event_type": "contextual_sbom_unmatched_packages",
+        "sbom_role": "parent",
+        "sbom_reference": "https://example.com/parent-sbom",
+        "package_category": "unmatched_accepted",
+        "count": 1,
+    }
 
 
 def test_log_summary_debug_with_no_matches(caplog: LogCaptureFixture) -> None:
