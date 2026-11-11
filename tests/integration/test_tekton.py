@@ -40,17 +40,17 @@ from mobster.tekton.common import upload_sboms
 from mobster.tekton.s3 import S3Client
 from tests.cmd.generate.test_product import verify_product_sbom
 from tests.conftest import GenerateOciImageTestCase
-from tests.integration.conftest import AddProvenanceFunc
+from tests.integration.conftest import AttachBuildSBOMFunc
 from tests.integration.oci_client import ReferrersTagOCIClient
 
 TESTDATA_PATH = Path(__file__).parent.parent / "data"
 
 CreateImageFunc = Callable[
-    [GenerateOciImageTestCase, str, StaticKeySigner | None],
+    [GenerateOciImageTestCase, str, StaticKeySigner],
     Awaitable[Image],
 ]
 CreateIndexFunc = Callable[
-    [str, str, list[Image], StaticKeySigner | None],
+    [str, str, list[Image], StaticKeySigner],
     Awaitable[Image],
 ]
 
@@ -291,7 +291,7 @@ def get_sbom_from_test_case(case: GenerateOciImageTestCase, image_digest: str) -
 @pytest.fixture
 def create_image_with_build_sbom(
     oci_client: ReferrersTagOCIClient,
-    add_provenance_to_sbom: AddProvenanceFunc,
+    attach_build_sbom: AttachBuildSBOMFunc,
 ) -> CreateImageFunc:
     """
     Fixture factory that creates an image and attaches an SBOM sourced from
@@ -301,13 +301,11 @@ def create_image_with_build_sbom(
     async def _create(
         case: GenerateOciImageTestCase,
         repo: str,
-        cosign: StaticKeySigner | None = None,
+        cosign: StaticKeySigner,
     ) -> Image:
         image = await oci_client.create_image(repo, "latest")
         sbom = get_sbom_from_test_case(case, image.digest)
-        sbom_ref = await oci_client.attach_sbom(image, "spdx", sbom)
-        if cosign:
-            await add_provenance_to_sbom(cosign, sbom_ref, image)
+        await attach_build_sbom(cosign, image, sbom)
         return image
 
     return _create
@@ -316,7 +314,7 @@ def create_image_with_build_sbom(
 @pytest.fixture
 def create_index_with_build_sbom(
     oci_client: ReferrersTagOCIClient,
-    add_provenance_to_sbom: AddProvenanceFunc,
+    attach_build_sbom: AttachBuildSBOMFunc,
     tmp_path: Path,
 ) -> CreateIndexFunc:
     """
@@ -328,7 +326,7 @@ def create_index_with_build_sbom(
         repo_with_registry: str,
         repo: str,
         images: list[Image],
-        cosign: StaticKeySigner | None = None,
+        cosign: StaticKeySigner,
     ) -> Image:
         index = await oci_client.create_image_index(repo, "index", images)
 
@@ -346,9 +344,7 @@ def create_index_with_build_sbom(
             digest=index.digest,
         )
 
-        sbom_ref = await oci_client.attach_sbom(index, "spdx", sbom)
-        if cosign:
-            await add_provenance_to_sbom(cosign, sbom_ref, index)
+        await attach_build_sbom(cosign, index, sbom)
         return index
 
     return _create
@@ -356,13 +352,35 @@ def create_index_with_build_sbom(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ["generate_oci_image_case", "image_sbom_type"],
+    ["generate_oci_image_case", "image_sbom_type", "attach_build_sbom"],
+    # every image case with both legacy provenance versions
     [
-        (lf("test_case_spdx_with_hermeto_and_additional"), SBOMFormat.SPDX_2_3),
-        (lf("test_case_spdx_without_hermeto_without_additional"), SBOMFormat.SPDX_2_3),
-        (lf("test_case_spdx_multiple_syft"), SBOMFormat.SPDX_2_3),
-        (lf("test_case_cyclonedx_with_additional"), SBOMFormat.CDX_V1_6),
+        (*case, provenance)
+        for provenance in ("provenance-v0.2", "provenance-v1")
+        for case in [
+            (lf("test_case_spdx_with_hermeto_and_additional"), SBOMFormat.SPDX_2_3),
+            (
+                lf("test_case_spdx_without_hermeto_without_additional"),
+                SBOMFormat.SPDX_2_3,
+            ),
+            (lf("test_case_spdx_multiple_syft"), SBOMFormat.SPDX_2_3),
+            (lf("test_case_cyclonedx_with_additional"), SBOMFormat.CDX_V1_6),
+        ]
+    ]
+    # the attestation-only fallback needs one SPDX and one CycloneDX case
+    + [
+        (
+            lf("test_case_spdx_without_hermeto_without_additional"),
+            SBOMFormat.SPDX_2_3,
+            "attestation-only",
+        ),
+        (
+            lf("test_case_cyclonedx_with_additional"),
+            SBOMFormat.CDX_V1_6,
+            "attestation-only",
+        ),
     ],
+    indirect=["attach_build_sbom"],
 )
 async def test_process_component_sboms_happypath(
     test_id: str,
@@ -526,6 +544,9 @@ async def test_process_component_sboms_happypath(
 @pytest.mark.asyncio
 @pytest.mark.slow
 @pytest.mark.fail_slow("10m")
+@pytest.mark.parametrize(
+    "attach_build_sbom", ["provenance-v0.2", "provenance-v1"], indirect=True
+)
 async def test_process_component_sboms_big_release(
     test_id: str,
     s3_client: S3Client,
@@ -540,7 +561,7 @@ async def test_process_component_sboms_big_release(
     attestation_concurrency: int,
     cosign_sign_key: str,
     cosign_verify_key: str,
-    add_provenance_to_sbom: AddProvenanceFunc,
+    attach_build_sbom: AttachBuildSBOMFunc,
     create_index_with_build_sbom: CreateIndexFunc,
 ) -> None:
     """
@@ -567,11 +588,10 @@ async def test_process_component_sboms_big_release(
             image.digest.removeprefix("sha256:"),
         )
 
-    sbom_ref = await oci_client.attach_sbom(image, "spdx", sbom.encode())
     cosign_signer = StaticKeySigner(
         SignConfig(static_sign_config=StaticSignConfig(sign_key=cosign_sign_key))
     )
-    await add_provenance_to_sbom(cosign_signer, sbom_ref, image)
+    await attach_build_sbom(cosign_signer, image, sbom.encode())
 
     index = await create_index_with_build_sbom(
         repo_with_registry, repo_name, [image], cosign_signer
