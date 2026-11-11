@@ -513,6 +513,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Augment oci-image">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sbom-sources-and-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SBOM sources and verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1061,9 +1078,23 @@ snapshot:</p>
 <pre><code class="language-bash">$ mobster augment --output sboms/ oci-image \
     --reference quay.io/repo/image@sha256:&lt;digest&gt; \
     --snapshot snapshot.json
-
-$ mobster augment --output sboms/ oci-image \
+</code></pre>
+<pre><code class="language-bash">$ mobster augment --output sboms/ oci-image \
     --snapshot snapshot.json
+</code></pre>
+<h3 id="sbom-sources-and-verification">SBOM sources and verification</h3>
+<p>Augmentation checks for the existing <code>.sbom</code> attachment first. This works
+without a verification key. With <code>--verification-key</code>, the
+image provenance signature is checked against the supplied public key and the
+SBOM digest is compared to the digest recorded in that provenance. A failed
+provenance check reports the legacy SBOM as not attested but still augments it.</p>
+<p>If the <code>.sbom</code> attachment is missing, Mobster falls back to verifying and 
+fetching SBOMs linked using the OCI referrers API (<code>cosign verify-attestation</code>).
+SPDX is preferred, CycloneDX is a fallback. Only successfully verified SBOMs
+are used; there is no unverified download option.</p>
+<pre><code class="language-bash">$ mobster augment --output sboms/ oci-image \
+    --snapshot snapshot.json \
+    --verification-key cosign.pub
 </code></pre>
 <h2 id="augmentation-examples">Augmentation examples</h2>
 <p>Here is an example of what gets updated by <code>mobster augment oci-image</code>. The
