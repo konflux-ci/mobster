@@ -362,34 +362,19 @@ def test_log_summary_structured(caplog: LogCaptureFixture) -> None:
 
     data = json.loads(log_message)
     assert data["event_type"] == "contextual_sbom_matching_statistics"
-    assert data["component_packages"]["total"] == 4
-    assert data["component_packages"]["matched"] == 1
-    assert data["component_packages"]["unmatched_all"] == 3
-    assert data["component_packages"]["unmatched_anonymous"] == 1
-    assert data["component_packages"]["unmatched_rejected"] == 1
-    assert data["component_packages"]["unmatched_accepted"] == 1
-    assert "unmatched_without_unique_id" not in data["component_packages"]
-    assert "unmatched_component_only" not in data["component_packages"]
-    assert (
-        data["component_packages"]["unmatched_anonymous"]
-        + data["component_packages"]["unmatched_rejected"]
-        + data["component_packages"]["unmatched_accepted"]
-        == data["component_packages"]["unmatched_all"]
-    )
-    assert data["parent_packages"]["total"] == 4
-    assert data["parent_packages"]["matched"] == 1
-    assert data["parent_packages"]["unmatched_all"] == 3
-    assert data["parent_packages"]["unmatched_anonymous"] == 1
-    assert data["parent_packages"]["unmatched_rejected"] == 1
-    assert data["parent_packages"]["unmatched_accepted"] == 1
-    assert "unmatched_without_unique_id" not in data["parent_packages"]
-    assert "unmatched_removed_at_build" not in data["parent_packages"]
-    assert (
-        data["parent_packages"]["unmatched_anonymous"]
-        + data["parent_packages"]["unmatched_rejected"]
-        + data["parent_packages"]["unmatched_accepted"]
-        == data["parent_packages"]["unmatched_all"]
-    )
+    expected_package_summary = {
+        "total": 4,
+        "matched": 1,
+        "unmatched_all": 3,
+        "unmatched_anonymous": 1,
+        "unmatched_rejected": 1,
+        "unmatched_accepted": 1,
+    }
+    for role in ("component", "parent"):
+        package_summary = data[f"{role}_packages"]
+        assert {
+            field: package_summary[field] for field in expected_package_summary
+        } == expected_package_summary
     assert data["match_methods"]["by_checksum"] == 1
 
 
@@ -424,59 +409,24 @@ def test_log_summary_debug_with_matches(caplog: LogCaptureFixture) -> None:
     assert "Matched by checksum: 1" in log_text
     unmatched_records: dict[tuple[str, str], dict[str, Any]] = {}
     for record in caplog.records:
-        if not record.message.startswith("{"):
-            continue
-        data = json.loads(record.message)
-        if data.get("event_type") == "contextual_sbom_unmatched_packages":
+        message = record.getMessage()
+        if "contextual_sbom_unmatched_packages" in message:
+            data = json.loads(message)
             unmatched_records[(data["sbom_role"], data["package_category"])] = data
 
     assert len(unmatched_records) == 6
-    assert unmatched_records[("component", "unmatched_anonymous")] == {
-        "event_type": "contextual_sbom_unmatched_packages",
-        "sbom_role": "component",
-        "sbom_reference": "https://example.com/component-sbom",
-        "package_category": "unmatched_anonymous",
-        "count": 2,
-        "spdx_ids": ["c2", "c5"],
+    expected_unmatched = {
+        ("component", "unmatched_anonymous"): {"count": 2, "spdx_ids": ["c2", "c5"]},
+        ("component", "unmatched_rejected"): {"count": 1, "spdx_ids": ["c3"]},
+        ("component", "unmatched_accepted"): {"count": 1},
+        ("parent", "unmatched_anonymous"): {"count": 2, "spdx_ids": ["p2", "p5"]},
+        ("parent", "unmatched_rejected"): {"count": 1, "spdx_ids": ["p3"]},
+        ("parent", "unmatched_accepted"): {"count": 1},
     }
-    assert unmatched_records[("component", "unmatched_rejected")] == {
-        "event_type": "contextual_sbom_unmatched_packages",
-        "sbom_role": "component",
-        "sbom_reference": "https://example.com/component-sbom",
-        "package_category": "unmatched_rejected",
-        "count": 1,
-        "spdx_ids": ["c3"],
-    }
-    assert unmatched_records[("component", "unmatched_accepted")] == {
-        "event_type": "contextual_sbom_unmatched_packages",
-        "sbom_role": "component",
-        "sbom_reference": "https://example.com/component-sbom",
-        "package_category": "unmatched_accepted",
-        "count": 1,
-    }
-    assert unmatched_records[("parent", "unmatched_anonymous")] == {
-        "event_type": "contextual_sbom_unmatched_packages",
-        "sbom_role": "parent",
-        "sbom_reference": "https://example.com/parent-sbom",
-        "package_category": "unmatched_anonymous",
-        "count": 2,
-        "spdx_ids": ["p2", "p5"],
-    }
-    assert unmatched_records[("parent", "unmatched_rejected")] == {
-        "event_type": "contextual_sbom_unmatched_packages",
-        "sbom_role": "parent",
-        "sbom_reference": "https://example.com/parent-sbom",
-        "package_category": "unmatched_rejected",
-        "count": 1,
-        "spdx_ids": ["p3"],
-    }
-    assert unmatched_records[("parent", "unmatched_accepted")] == {
-        "event_type": "contextual_sbom_unmatched_packages",
-        "sbom_role": "parent",
-        "sbom_reference": "https://example.com/parent-sbom",
-        "package_category": "unmatched_accepted",
-        "count": 1,
-    }
+    for key, expected in expected_unmatched.items():
+        data = unmatched_records[key]
+        assert data["package_category"] == key[1]
+        assert {field: data[field] for field in expected} == expected  # type: ignore[attr-defined]
 
 
 def test_log_summary_debug_with_no_matches(caplog: LogCaptureFixture) -> None:

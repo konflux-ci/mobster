@@ -134,28 +134,23 @@ def test_component_package_index_all_identifiers(
     if should_index:
         assert candidates[0] == ContentItem(pkg, rel)
 
-    # Verify anonymous and rejected packages are distinguished in stats.
-    if identifier_type == "none":
-        assert pkg.spdx_id in stats.component.packages_anonymous
-        assert parent_pkg.spdx_id in stats.parent.packages_anonymous
-        assert pkg.spdx_id not in stats.component.packages_with_rejected_id
-        assert parent_pkg.spdx_id not in stats.parent.packages_with_rejected_id
-        assert pkg.spdx_id not in stats.component.packages_with_accepted_id
-        assert parent_pkg.spdx_id not in stats.parent.packages_with_accepted_id
-    elif identifier_type in ("purl_no_version", "purl_invalid"):
-        assert pkg.spdx_id in stats.component.packages_with_rejected_id
-        assert parent_pkg.spdx_id in stats.parent.packages_with_rejected_id
-        assert pkg.spdx_id not in stats.component.packages_anonymous
-        assert parent_pkg.spdx_id not in stats.parent.packages_anonymous
-        assert pkg.spdx_id not in stats.component.packages_with_accepted_id
-        assert parent_pkg.spdx_id not in stats.parent.packages_with_accepted_id
-    else:
-        assert pkg.spdx_id in stats.component.packages_with_accepted_id
-        assert parent_pkg.spdx_id in stats.parent.packages_with_accepted_id
-        assert pkg.spdx_id not in stats.component.packages_anonymous
-        assert parent_pkg.spdx_id not in stats.parent.packages_anonymous
-        assert pkg.spdx_id not in stats.component.packages_with_rejected_id
-        assert parent_pkg.spdx_id not in stats.parent.packages_with_rejected_id
+    # Verify the package is classified consistently in both SBOMs.
+    category = {
+        "none": "packages_anonymous",
+        "purl_no_version": "packages_with_rejected_id",
+        "purl_invalid": "packages_with_rejected_id",
+    }.get(identifier_type, "packages_with_accepted_id")
+    for package_stats, package_id in (
+        (stats.component, pkg.spdx_id),
+        (stats.parent, parent_pkg.spdx_id),
+    ):
+        for stats_category in (
+            "packages_anonymous",
+            "packages_with_rejected_id",
+            "packages_with_accepted_id",
+        ):
+            expected = {package_id} if stats_category == category else set()
+            assert getattr(package_stats, stats_category) == expected
 
 
 def test_unique_id_checksum_overrides_non_unique_purl() -> None:
