@@ -9,12 +9,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from mobster.error import SBOMError
+from mobster.image import Image
 from mobster.oci import (
     _find_auth_file,
     get_image_manifest,
     make_oci_auth_file,
 )
-from mobster.oci.artifact import SBOM, SLSAParsingError, SLSAProvenance
+from mobster.oci.artifact import BOM, SLSAParsingError, SLSAProvenance
 
 
 @pytest.fixture
@@ -381,7 +382,7 @@ class TestMakeOciAuth:
     ],
 )
 def test_sbom_bad_format(doc: dict[str, Any]) -> None:
-    sbom = SBOM(doc, "", "")
+    sbom = BOM(doc, "", Image("quay.io/test", "sha256:abc123"))
     with pytest.raises(SBOMError):
         _ = sbom.format
 
@@ -407,6 +408,7 @@ class TestSLSAProvenance:
             SLSAProvenance.parse(raw)
 
     def test_v02_happy_path(self) -> None:
+        cbom_url = "registry.example.io/crypto@sha256:ccc"
         raw = _make_slsa_raw(
             {
                 "predicateType": "https://slsa.dev/provenance/v0.2",
@@ -422,7 +424,8 @@ class TestSLSAProvenance:
                                         "value": "registry.example.io/repo@sha256:bbb",
                                     },
                                 ]
-                            }
+                            },
+                            {"results": [{"name": "CBOM_BLOB_URL", "value": cbom_url}]},
                         ]
                     },
                 },
@@ -435,6 +438,7 @@ class TestSLSAProvenance:
             2024, 6, 15, 10, 30, tzinfo=datetime.timezone.utc
         )
         assert prov.sbom_digest("sha256:aaa") == "sha256:bbb"
+        assert prov.cbom_blob_url() == cbom_url
 
     def test_v02_missing_build_finished_on(self) -> None:
         raw = _make_slsa_raw(
@@ -477,6 +481,7 @@ class TestSLSAProvenance:
     def test_v1_happy_path(self) -> None:
         image_digest = "sha256:" + "a" * 64
         sbom_digest = "sha256:" + "b" * 64
+        cbom_url = "quay.io/crypto@sha256:" + "c" * 64
         raw = _make_slsa_raw(
             {
                 "predicateType": "https://slsa.dev/provenance/v1",
@@ -488,6 +493,23 @@ class TestSLSAProvenance:
                         "resolvedDependencies": [
                             {"uri": "irrelevant", "content": "eyJ0aGUiOiAiZ2FtZSJ9"},
                             {"uri": "somehow-without-content", "name": "pipelineTask"},
+                            {
+                                "name": "pipelineTask",
+                                "content": base64.b64encode(
+                                    json.dumps(
+                                        {
+                                            "status": {
+                                                "results": [
+                                                    {
+                                                        "name": "CBOM_BLOB_URL",
+                                                        "value": cbom_url,
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    ).encode()
+                                ).decode(),
+                            },
                             {
                                 "name": "pipelineTask",
                                 "content": base64.b64encode(
@@ -522,6 +544,7 @@ class TestSLSAProvenance:
             2024, 8, 20, 14, 0, tzinfo=datetime.timezone.utc
         )
         assert prov.sbom_digest(image_digest) == sbom_digest
+        assert prov.cbom_blob_url() == cbom_url
 
     def test_v1_missing_finished_on(self) -> None:
         raw = _make_slsa_raw(

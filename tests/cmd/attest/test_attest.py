@@ -8,7 +8,7 @@ import pytest
 
 from mobster.cmd.attest import AttestCommand
 from mobster.error import SBOMError
-from mobster.sbom.detect import SBOMFormat
+from mobster.sbom.detect import BOMFormat
 
 CYCLONEDX_SBOM = {
     "bomFormat": "CycloneDX",
@@ -70,7 +70,7 @@ class TestAttestCommand:
         signer.attest_sbom.assert_awaited_once_with(
             attest_command.cli_args.sbom_path,
             attest_command.cli_args.image_ref,
-            SBOMFormat.CDX_V1_5,
+            BOMFormat.CDX_V1_5,
         )
 
     @pytest.mark.asyncio
@@ -86,7 +86,7 @@ class TestAttestCommand:
             await attest_command.execute()
 
         _, _, detected_format = signer.attest_sbom.await_args.args
-        assert detected_format == SBOMFormat.SPDX_2_3
+        assert detected_format == BOMFormat.SPDX_2_3
         assert attest_command.exit_code == 0
 
     @pytest.mark.asyncio

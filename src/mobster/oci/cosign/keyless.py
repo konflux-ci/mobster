@@ -2,14 +2,16 @@
 
 import logging
 import os.path
+import typing
 from pathlib import Path
 
 from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
-from mobster.oci.artifact import SBOM
+from mobster.oci.artifact import BOM, SLSAProvenance
 from mobster.oci.cosign.attestation_utils import (
     get_cosign_attestation_type,
+    get_latest_provenance_from_bytes,
     get_sbom_from_attestation_bytes,
 )
 from mobster.oci.cosign.config import (
@@ -17,10 +19,12 @@ from mobster.oci.cosign.config import (
     VerifyConfig,
 )
 from mobster.oci.cosign.protocol import SupportsFetch, SupportsSign
-from mobster.sbom.detect import SBOMFormat
+from mobster.sbom.detect import BOMFormat
 from mobster.utils import run_async_subprocess
 
 logger = logging.getLogger(__name__)
+
+# pylint: disable=duplicate-code
 
 
 def check_tuf() -> bool:
@@ -54,7 +58,65 @@ class KeylessSBOMFetcher(SupportsFetch):
             )
         self.config = config.keyless_verify_config
 
-    async def fetch_sbom(self, image: Image) -> SBOM:
+    async def _verify_attestation(
+        self,
+        image: Image,
+        attestation_type: typing.Literal[
+            "slsaprovenance02", "slsaprovenance1", "spdxjson", "cyclonedx"
+        ],
+    ) -> list[bytes]:
+        """
+        Verify and fetch attestations for a container image using cosign.
+
+        Runs ``cosign verify-attestation`` with the configured public key to
+        retrieve attestation payloads of the given type.
+
+        Args:
+            image: The container image to verify attestations for.
+            attestation_type: The predicate type of the attestation to verify.
+
+        Returns:
+            A list of raw attestation payloads, one per line of cosign output.
+            Returns an empty list if no attestations match the predicate type.
+
+        Raises:
+            SBOMError: If cosign verification fails for a reason other than
+                a missing predicate type.
+        """
+
+        with make_oci_auth_file(image.reference) as authfile:
+            # We ignore the transparency log, because as of now, Konflux releases
+            # don't publish to Rekor.
+            cmd = [
+                "cosign",
+                "verify-attestation",
+                "--certificate-oidc-issuer",
+                self.config.oidc_issuer,
+                "--certificate-identity-regexp",
+                str(self.config.identity_pattern),
+                "--type",
+                attestation_type,
+                image.reference,
+            ]
+            logger.debug("Executing for %s command '%s'", image, " ".join(cmd))
+            code, stdout, stderr = await run_async_subprocess(
+                cmd,
+                env={"DOCKER_CONFIG": str(authfile.parent)},
+                retry_times=3,
+            )
+
+        if code != 0:
+            stderr_str = stderr.decode()
+            if "none of the attestations matched the predicate type" in stderr_str:
+                return []
+
+            raise SBOMError(
+                f"Failed to fetch attestation for {image}: {stderr.decode()}."
+            )
+
+        return stdout.splitlines()
+
+    async def fetch_sbom(self, image: Image) -> BOM:
         raw_attestation = b""
         with make_oci_auth_file(image.reference) as authfile:
             for _attempt in range(4):
@@ -87,9 +149,35 @@ class KeylessSBOMFetcher(SupportsFetch):
                 raise SBOMError(
                     f"Failed to fetch attestation for {image}: {stderr.decode()}."
                 )
-        return get_sbom_from_attestation_bytes(
-            raw_attestation, image.reference, signature_verified=True
-        )
+            return get_sbom_from_attestation_bytes(
+                raw_attestation, image, signature_verified=True
+            )
+
+    async def fetch_latest_provenance(self, image: Image) -> SLSAProvenance:
+        """
+        Fetch the latest provenance based on the supplied image based on the
+        time the image build finished.
+
+        Args:
+            image: Image to fetch the provenances of
+        """
+
+        raw_provenances = []
+
+        for att_type in ("slsaprovenance02", "slsaprovenance1"):
+            raw_provenances.extend(await self._verify_attestation(image, att_type))
+        latest_provenance = await get_latest_provenance_from_bytes(raw_provenances)
+        if not latest_provenance:
+            raise SBOMError(f"No provenances parsed for image {image}.")
+        return latest_provenance
+
+    @staticmethod
+    def is_sbom_verified() -> bool:
+        """
+        SBOMs are downloaded using verify-attestation,
+        this method does not need Provenance verification.
+        """
+        return True
 
 
 class KeylessSigner(SupportsSign):
@@ -115,7 +203,7 @@ class KeylessSigner(SupportsSign):
         self,
         sbom_path: Path,
         image_ref: str,
-        sbom_format: SBOMFormat,
+        sbom_format: BOMFormat,
     ) -> None:
         with self.config.url_config.file() as config_file:
             cosign_command = [

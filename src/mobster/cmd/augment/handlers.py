@@ -13,7 +13,7 @@ from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.release import ReleaseId, ReleaseRepository
 from mobster.sbom import cyclonedx
-from mobster.sbom.detect import SBOMFormat
+from mobster.sbom.detect import BOMFormat
 from mobster.sbom.spdx import get_mobster_tool_string
 
 logger = logging.getLogger(__name__)
@@ -167,12 +167,12 @@ class SPDXVersion2:  # pylint: disable=too-few-public-methods
     """
 
     supported_versions = [
-        SBOMFormat.SPDX_2_0,
-        SBOMFormat.SPDX_2_1,
-        SBOMFormat.SPDX_2_2,
-        SBOMFormat.SPDX_2_2_1,
-        SBOMFormat.SPDX_2_2_2,
-        SBOMFormat.SPDX_2_3,
+        BOMFormat.SPDX_2_0,
+        BOMFormat.SPDX_2_1,
+        BOMFormat.SPDX_2_2,
+        BOMFormat.SPDX_2_2_1,
+        BOMFormat.SPDX_2_2_2,
+        BOMFormat.SPDX_2_3,
     ]
 
     @classmethod
@@ -332,9 +332,9 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
     """
 
     supported_versions = [
-        SBOMFormat.CDX_V1_4,
-        SBOMFormat.CDX_V1_5,
-        SBOMFormat.CDX_V1_6,
+        BOMFormat.CDX_V1_4,
+        BOMFormat.CDX_V1_5,
+        BOMFormat.CDX_V1_6,
     ]
 
     def update_sbom(
@@ -342,18 +342,18 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         release_repository: ReleaseRepository,
         image: Image,
         sbom: Any,
+        cpes: list[str],
         release_id: ReleaseId | None = None,
     ) -> None:
         """
         Update an SBOM for an image based on a component.
+        Only expects arch-specific image
         """
-        if isinstance(image, IndexImage):
-            raise ValueError("CDX update SBOM does not support index images.")
 
         self._bump_version(sbom)
         if release_id:
             self._augment_properties_release_id(sbom, release_id)
-        self._update_metadata_component(release_repository, image, sbom)
+        self._update_metadata_component(release_repository, image, cpes, sbom)
 
         for cdx_component in sbom.get("components", []):
             if cdx_component.get("type") != "container":
@@ -364,7 +364,7 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
                 continue
 
             self._update_container_component(
-                release_repository, image, cdx_component, update_tags=True
+                release_repository, image, cdx_component, cpes, update_tags=True
             )
 
     def _bump_version(self, sbom: Any) -> None:
@@ -418,6 +418,7 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         release_repo: ReleaseRepository,
         image: Image,
         cdx_component: Any,
+        cpes: list[str],
         update_tags: bool,
     ) -> None:
         purl = cdx_component.get("purl")
@@ -430,6 +431,18 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
             image, release_repo.public_repo_url, arch=arch, tag=tag
         )
         cdx_component["purl"] = new_purl
+        if cpes:
+            cdx_component["cpe"] = cpes[0]
+        # normalize previous identity to list if present
+        if (evidence := cdx_component.get("evidence")) is not None and isinstance(
+            evidence.get("identity"), dict
+        ):
+            previous_identity = evidence["identity"]
+            evidence["identity"] = [previous_identity]
+        for cpe in cpes[1:]:
+            cdx_component.setdefault("evidence", {}).setdefault("identity", []).append(
+                {"field": "cpe", "concludedValue": cpe}
+            )
 
         if update_tags:
             self._update_component_purl_identity(
@@ -470,11 +483,12 @@ class CycloneDXVersion1:  # pylint: disable=too-few-public-methods
         self,
         release_repository: ReleaseRepository,
         image: Image,
+        cpes: list[str],
         sbom: Any,
     ) -> None:
         component = sbom.get("metadata", {}).get("component", {})
         self._update_container_component(
-            release_repository, image, component, update_tags=False
+            release_repository, image, component, cpes, update_tags=False
         )
 
         if "metadata" in sbom:

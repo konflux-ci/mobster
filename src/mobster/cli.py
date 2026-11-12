@@ -5,7 +5,9 @@ import re
 from pathlib import Path
 from typing import Any
 
-from mobster.cmd import attest, augment, enrich
+from mobster.cmd import attest, enrich
+from mobster.cmd.augment.cbom import AugmentCBOMCommand
+from mobster.cmd.augment.sbom import AugmentImageCommand
 from mobster.cmd.delete import delete_tpa
 from mobster.cmd.download import download_tpa
 from mobster.cmd.generate import (
@@ -45,6 +47,23 @@ def validated_pullspec(value: str) -> str:
     return value
 
 
+def validate_cpes(value: str) -> list[str]:
+    """
+    Validate CPE format for CLI inputs.
+    """
+    pattern = r"^\s*[^,\s]+(\s*,\s*[^,\s]+)*\s*$"
+    cpes = value.split(",")
+
+    if len(cpes) == 0 or not re.match(pattern, value):
+        raise argparse.ArgumentError(
+            None,
+            "--cpes parameter should be a comma separated string of CPEs, "
+            "like A,B,C or just A",
+        )
+
+    return cpes
+
+
 def setup_arg_parser() -> argparse.ArgumentParser:
     """
     Setup the argument parser for the CLI.
@@ -69,8 +88,6 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     delete_command_parser(subparsers)
     # Enrich command
     enrich_command_parser(subparsers)
-    # Attest command
-    attest_command_parser(subparsers)
 
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output.")
 
@@ -440,6 +457,7 @@ def augment_command_parser(subparsers: Any) -> None:
 
     augment_subparsers = augment_parser.add_subparsers(dest="type", required=True)
     generate_augment_oci_image_parser(augment_subparsers)
+    generate_augment_oci_cbom_parser(augment_subparsers)
 
 
 def generate_augment_oci_image_parser(subparsers: Any) -> None:
@@ -449,7 +467,7 @@ def generate_augment_oci_image_parser(subparsers: Any) -> None:
     augment_oci_image_parser = subparsers.add_parser(
         "oci-image",
         help="augment SBOM documents with additional information from a mapped"
-        "snapshot spec and save them to a directory",
+        " snapshot spec and save them to a directory",
     )
     augment_oci_image_parser.add_argument(
         "--snapshot",
@@ -466,10 +484,7 @@ def generate_augment_oci_image_parser(subparsers: Any) -> None:
     augment_oci_image_parser.add_argument(
         "--verification-key",
         type=str,
-        help=(
-            "path to public key used to verify the image provenance "
-            "and SBOM attestations"
-        ),
+        help="path to public key used to verify the image provenance",
     )
     augment_oci_image_parser.add_argument(
         "--concurrency",
@@ -482,20 +497,6 @@ def generate_augment_oci_image_parser(subparsers: Any) -> None:
         type=ReleaseId,
         help="UUID4 release_id to associate with the SBOM file",
     )
-
-    def validate_cpes(value: str) -> list[str]:
-        pattern = r"^\s*[^,\s]+(\s*,\s*[^,\s]+)*\s*$"
-        cpes = value.split(",")
-
-        if len(cpes) == 0 or not re.match(pattern, value):
-            raise argparse.ArgumentError(
-                None,
-                "--cpes parameter should be a comma separated string of CPEs, "
-                "like A,B,C or just A",
-            )
-
-        return cpes
-
     augment_oci_image_parser.add_argument(
         "--cpes",
         type=validate_cpes,
@@ -504,7 +505,56 @@ def generate_augment_oci_image_parser(subparsers: Any) -> None:
         default=[],
     )
 
-    augment_oci_image_parser.set_defaults(func=augment.AugmentImageCommand)
+    augment_oci_image_parser.set_defaults(func=AugmentImageCommand)
+
+
+def generate_augment_oci_cbom_parser(subparsers: Any) -> None:
+    """
+    A parser for augmenting CBOMs for OCI images.
+    """
+    augment_oci_cbom_parser = subparsers.add_parser(
+        "cbom",
+        help="augment CBOM documents with release-time information from a mapped"
+        " snapshot spec and save them to a directory",
+    )
+    augment_oci_cbom_parser.add_argument(
+        "--snapshot",
+        type=Path,
+        required=True,
+        help="path to the mapped snapshot spec file in JSON format",
+    )
+    augment_oci_cbom_parser.add_argument(
+        "--reference",
+        type=str,
+        help="OCI image reference in the format <repository>@<digest>. If "
+        "unspecified, SBOMs for all images in the snapshot will be augmented",
+    )
+    augment_oci_cbom_parser.add_argument(
+        "--verification-key",
+        type=str,
+        help="path to public key used to verify the image provenance",
+        required=True,
+    )
+    augment_oci_cbom_parser.add_argument(
+        "--concurrency",
+        type=parse_concurrency,
+        default=8,
+        help="concurrency limit for SBOM updates (non-zero integer)",
+    )
+    augment_oci_cbom_parser.add_argument(
+        "--release-id",
+        type=ReleaseId,
+        help="UUID4 release_id to associate with the SBOM file",
+    )
+    augment_oci_cbom_parser.add_argument(
+        "--cpes",
+        type=validate_cpes,
+        help="comma separated string of CPEs to add to the main image package "
+        "in the SBOM",
+        default=[],
+    )
+
+    augment_oci_cbom_parser.set_defaults(func=AugmentCBOMCommand)
 
 
 def upload_command_parser(subparsers: Any) -> None:

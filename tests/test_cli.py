@@ -19,6 +19,27 @@ def test_setup_arg_parser() -> None:
     assert parser.description == "Mobster CLI"
 
 
+@pytest.mark.parametrize("command", ["oci-image", "cbom"])
+@pytest.mark.parametrize(
+    "value",
+    ["cpe:/a:acme:product:1.0", "cpe:/a:acme:product:1.0,cpe:/a:acme:product:2.0"],
+)
+def test_augment_cpes(command: str, value: str) -> None:
+    args = setup_arg_parser().parse_args(
+        [
+            "augment",
+            command,
+            "--snapshot",
+            "snapshot.json",
+            "--verification-key",
+            "cosign.pub",
+            "--cpes",
+            value,
+        ]
+    )
+    assert args.cpes == value.split(",")
+
+
 @pytest.mark.parametrize(
     ["value", "expected"],
     [

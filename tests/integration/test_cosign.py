@@ -104,13 +104,6 @@ async def test_cosign_fetch_sbom(
 @pytest.mark.parametrize(
     ["image", "verify_key", "error", "match"],
     [
-        pytest.param(
-            lf("image_with_empty_spdx_attested_sbom"),
-            None,
-            SBOMError,
-            "--verification-key",
-            id="attestation-no-key",
-        ),
         # attestation signed by a different key than the one passed
         pytest.param(
             lf("image_with_empty_spdx_attested_sbom"),
@@ -126,14 +119,6 @@ async def test_cosign_fetch_sbom(
             SBOMVerificationError,
             "matches the key",
             id="no-sbom-with-key",
-        ),
-        # Without a key, the .sbom attachment is checked, but attestations are not.
-        pytest.param(
-            lf("image_with_no_sbom"),
-            None,
-            SBOMError,
-            r"no \.sbom attachment found",
-            id="no-sbom-no-key",
         ),
     ],
 )

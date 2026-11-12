@@ -49,7 +49,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 )
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
-from mobster.oci.artifact import SBOM
+from mobster.oci.artifact import BOM
 
 from .conftest import (
     create_package_with_identifier,
@@ -1680,8 +1680,8 @@ async def test_download_parent_image_sbom(
 ) -> None:
     caplog.set_level("DEBUG")
     mock_get_image_or_index.return_value = image_or_index
-    mock_fetch_sbom.return_value = SBOM.from_cosign_output(
-        spdx_parent_sbom_bytes, "quay.io/foo"
+    mock_fetch_sbom.return_value = BOM.from_cosign_output(
+        spdx_parent_sbom_bytes, image_or_index
     )
     sbom_doc = await download_parent_image_sbom(Image("quay.io/foo", "sha256:a"), arch)
     assert sbom_doc is not None
@@ -1746,8 +1746,10 @@ async def test_download_parent_image_sbom_cdx(
     caplog: LogCaptureFixture,
 ) -> None:
     caplog.set_level("INFO")
-    mock_fetch_sbom.return_value = SBOM(
-        {"bomFormat": "CycloneDX", "specVersion": "1.6"}, "sha256:1", "foo.sbom"
+    mock_fetch_sbom.return_value = BOM(
+        {"bomFormat": "CycloneDX", "specVersion": "1.6"},
+        "sha256:1",
+        Image("foo", "sha256:1"),
     )
     assert await download_parent_image_sbom(Image("foo", "sha256:1"), "bar") is None
     assert (

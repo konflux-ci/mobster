@@ -5,16 +5,16 @@ import logging
 import os
 import tempfile
 import typing
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
-from mobster.oci.artifact import SBOM, SLSAProvenance
+from mobster.oci.artifact import BOM, SLSAProvenance
 from mobster.oci.cosign.attestation_utils import (
     get_cosign_attestation_type,
+    get_latest_provenance_from_bytes,
     get_sbom_from_attestation_bytes,
 )
 from mobster.oci.cosign.config import (
@@ -25,16 +25,15 @@ from mobster.oci.cosign.config import (
 )
 from mobster.oci.cosign.protocol import (
     SupportsFetch,
-    SupportsProvenanceFetch,
     SupportsSign,
 )
-from mobster.sbom.detect import SBOMFormat
+from mobster.sbom.detect import BOMFormat
 from mobster.utils import run_async_subprocess
 
 logger = logging.getLogger(__name__)
 
 
-class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
+class StaticKeyFetcher(SupportsFetch):
     """
     Client used to get OCI artifacts using Cosign with static keys.
 
@@ -126,32 +125,18 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
             image: Image to fetch the provenances of
         """
 
-        provenances: list[SLSAProvenance] = []
+        raw_provenances = []
 
         for att_type in ("slsaprovenance02", "slsaprovenance1"):
-            for raw_attestation in await self._verify_attestation(image, att_type):
-                provenances.append(SLSAProvenance.parse(raw_attestation))
-
-        if len(provenances) == 0:
+            raw_provenances.extend(await self._verify_attestation(image, att_type))
+        latest_provenance = await get_latest_provenance_from_bytes(raw_provenances)
+        if not latest_provenance:
             raise SBOMError(f"No provenances parsed for image {image}.")
-
-        # sort the provenances to ensure we attempt to use the latest one
-        if any(p.build_finished_on is None for p in provenances):
-            logger.warning(
-                "Some fetched provenances are missing build_finished_on information. "
-                "datetime.min will be used as fallback for sorting."
-            )
-
-        def key_by_build_finished_on(prov: SLSAProvenance) -> datetime:
-            if prov.build_finished_on is not None:
-                return prov.build_finished_on
-            return datetime.min.replace(tzinfo=timezone.utc)
-
-        return sorted(provenances, key=key_by_build_finished_on, reverse=True)[0]
+        return latest_provenance
 
     async def fetch_attested_sbom(
-        self, image: Image, sbom_format: SBOMFormat
-    ) -> SBOM | None:
+        self, image: Image, sbom_format: BOMFormat
+    ) -> BOM | None:
         """
         Fetch attested SBOM.
 
@@ -168,11 +153,11 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
         attestations = await self._verify_attestation(image, attestation_type)
         if attestations:
             return get_sbom_from_attestation_bytes(
-                attestations[-1], image.reference, signature_verified=True
+                attestations[-1], image, signature_verified=True
             )
         return None
 
-    async def fetch_sbom(self, image: Image) -> SBOM:
+    async def fetch_sbom(self, image: Image) -> BOM:
         """
         Fetch the legacy ``.sbom`` attachment, or a verified SBOM attestation if
         there is none.
@@ -191,22 +176,14 @@ class StaticKeyFetcher(SupportsFetch, SupportsProvenanceFetch):
                 retry_times=3,
             )
             if code == 0:
-                return SBOM.from_cosign_output(stdout, image.reference)
+                return BOM.from_cosign_output(stdout, image, signature_verified=False)
 
             error = stderr.decode()
             if not self._is_missing_sbom_attachment(error):
                 raise SBOMError(f"Failed to fetch SBOM {image}: {error}")
 
-        if not self.config.static_verify_key:
-            raise SBOMError(
-                f"Failed to fetch SBOM {image}: no .sbom attachment found; SBOM "
-                "attestations (such as those attached via OCI referrers) are only "
-                f"fetched with a verification key (--verification-key). "
-                f"Cosign output: {error}"
-            )
-
         # Only the SPDX/CycloneDX family matters here, not the exact version.
-        for sbom_format in (SBOMFormat.SPDX_2_3, SBOMFormat.CDX_V1_6):
+        for sbom_format in (BOMFormat.SPDX_2_3, BOMFormat.CDX_V1_6):
             sbom = await self.fetch_attested_sbom(image, sbom_format)
             if sbom:
                 return sbom
@@ -336,7 +313,7 @@ class StaticKeySigner(SupportsSign):
         self,
         sbom_path: Path,
         image_ref: str,
-        sbom_format: SBOMFormat,
+        sbom_format: BOMFormat,
     ) -> None:
         await self._attest_anything(
             sbom_path,
