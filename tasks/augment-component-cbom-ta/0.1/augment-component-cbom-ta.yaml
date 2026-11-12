@@ -227,7 +227,7 @@ spec:
 
     - name: process-component-cboms
       # image supporting this command does not exist yet
-      image: quay.io/konflux-ci/mobster@sha256:PLACEHOLDER
+      image: quay.io/konflux-ci/mobster@sha256:f971bb42e1e92eb364dfff2c2554718ecd678684877540975b998b9992477d8f
       env:
         - name: MOBSTER_TPA_SSO_ACCOUNT
           valueFrom:
