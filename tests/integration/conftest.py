@@ -3,10 +3,10 @@ import base64
 import json
 import subprocess
 import tempfile
-from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Iterator
+from collections.abc import AsyncGenerator, Generator, Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import pytest
 import pytest_asyncio
@@ -19,7 +19,17 @@ from mobster.tekton.s3 import S3Client
 from tests.integration.oci_client import ReferrersTagOCIClient
 from tests.integration.utils import attest_sbom_bytes
 
-AttachBuildSBOMFunc = Callable[[StaticKeySigner, Image, bytes], Awaitable[None]]
+
+class AttachBuildSBOMFunc(Protocol):
+    """Attach a build SBOM and optionally reference a separate CBOM task result."""
+
+    async def __call__(
+        self,
+        cosign_client: StaticKeySigner,
+        image: Image,
+        sbom: bytes,
+        cbom_ref: str | None = None,
+    ) -> None: ...
 
 
 @pytest.fixture(scope="session")
@@ -228,8 +238,10 @@ def cosign_verify_key(cosign_keys: tuple[str, str]) -> str:
     return cosign_keys[1]
 
 
-def _build_v02_predicate(sbom_ref: str, image: Image) -> dict[str, Any]:
-    predicate = {
+def _build_v02_predicate(
+    sbom_ref: str, image: Image, cbom_ref: str | None = None
+) -> dict[str, Any]:
+    predicate: dict[str, Any] = {
         "builder": {"id": "https://konflux.dev"},
         "buildType": "https://mobyproject.org/buildkit@v1",
         "buildConfig": {
@@ -244,11 +256,20 @@ def _build_v02_predicate(sbom_ref: str, image: Image) -> dict[str, Any]:
             ]
         },
     }
+    if cbom_ref is not None:
+        predicate["buildConfig"]["tasks"].append(
+            {
+                "finishedOn": "1970-01-01T00:00:00Z",
+                "results": [{"name": "CBOM_BLOB_URL", "value": cbom_ref}],
+            }
+        )
     return predicate
 
 
-def _build_v1_predicate(sbom_ref: str, image: Image) -> dict[str, Any]:
-    predicate = {
+def _build_v1_predicate(
+    sbom_ref: str, image: Image, cbom_ref: str | None = None
+) -> dict[str, Any]:
+    predicate: dict[str, Any] = {
         "buildDefinition": {
             "buildType": "https://mobyproject.org/buildkit@v1",
             "externalParameters": {},
@@ -293,6 +314,30 @@ def _build_v1_predicate(sbom_ref: str, image: Image) -> dict[str, Any]:
             "metadata": {"finishedOn": "1970-01-01T00:00:00Z"},
         },
     }
+    if cbom_ref is not None:
+        predicate["buildDefinition"]["resolvedDependencies"].append(
+            {
+                "uri": "crypto-scanner-task",
+                "name": "pipelineTask",
+                "digest": {"sha256": "b" * 64},
+                "content": base64.b64encode(
+                    json.dumps(
+                        {
+                            "metadata": {"name": "crypto-scanner", "uid": "2"},
+                            "status": {
+                                "results": [
+                                    {
+                                        "name": "CBOM_BLOB_URL",
+                                        "type": "string",
+                                        "value": cbom_ref,
+                                    }
+                                ]
+                            },
+                        }
+                    ).encode()
+                ).decode(),
+            }
+        )
     return predicate
 
 
@@ -310,13 +355,21 @@ def attach_build_sbom(
       referenced from a signed SLSA provenance of the given version,
     - "attestation-only": signed SBOM attestation only, with no ``.sbom``
       attachment and no provenance.
+
+    ``cbom_ref`` adds a separate crypto-scanner task result to provenance.
+    It is unsupported in attestation-only mode.
     """
 
     async def _attach(
-        cosign_client: StaticKeySigner, image: Image, sbom: bytes
+        cosign_client: StaticKeySigner,
+        image: Image,
+        sbom: bytes,
+        cbom_ref: str | None = None,
     ) -> None:
         sbom_format = detect_sbom_format(json.loads(sbom))
         if request.param == "attestation-only":
+            if cbom_ref is not None:
+                raise ValueError("CBOM task results require provenance")
             await attest_sbom_bytes(cosign_client, image, sbom, sbom_format)
             return
 
@@ -325,13 +378,13 @@ def attach_build_sbom(
         )
         if request.param == "provenance-v0.2":
             await cosign_client.attest_provenance(
-                _build_v02_predicate(sbom_ref, image),
+                _build_v02_predicate(sbom_ref, image, cbom_ref),
                 image.reference,
                 "slsaprovenance02",
             )
         elif request.param == "provenance-v1":
             await cosign_client.attest_provenance(
-                _build_v1_predicate(sbom_ref, image),
+                _build_v1_predicate(sbom_ref, image, cbom_ref),
                 image.reference,
                 "slsaprovenance1",
             )

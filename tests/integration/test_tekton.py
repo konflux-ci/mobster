@@ -29,7 +29,7 @@ from mobster.image import Image
 from mobster.oci.cosign import SignConfig, StaticSignConfig, VerifyConfig
 from mobster.oci.cosign.static import StaticKeyFetcher, StaticKeySigner
 from mobster.release import ReleaseId
-from mobster.sbom.detect import SBOMFormat
+from mobster.sbom.detect import BOMFormat
 from mobster.tekton.artifact import (
     COMPONENT_ARTIFACT_NAME,
     PRODUCT_ARTIFACT_NAME,
@@ -358,25 +358,25 @@ def create_index_with_build_sbom(
         (*case, provenance)
         for provenance in ("provenance-v0.2", "provenance-v1")
         for case in [
-            (lf("test_case_spdx_with_hermeto_and_additional"), SBOMFormat.SPDX_2_3),
+            (lf("test_case_spdx_with_hermeto_and_additional"), BOMFormat.SPDX_2_3),
             (
                 lf("test_case_spdx_without_hermeto_without_additional"),
-                SBOMFormat.SPDX_2_3,
+                BOMFormat.SPDX_2_3,
             ),
-            (lf("test_case_spdx_multiple_syft"), SBOMFormat.SPDX_2_3),
-            (lf("test_case_cyclonedx_with_additional"), SBOMFormat.CDX_V1_6),
+            (lf("test_case_spdx_multiple_syft"), BOMFormat.SPDX_2_3),
+            (lf("test_case_cyclonedx_with_additional"), BOMFormat.CDX_V1_6),
         ]
     ]
     # the attestation-only fallback needs one SPDX and one CycloneDX case
     + [
         (
             lf("test_case_spdx_without_hermeto_without_additional"),
-            SBOMFormat.SPDX_2_3,
+            BOMFormat.SPDX_2_3,
             "attestation-only",
         ),
         (
             lf("test_case_cyclonedx_with_additional"),
-            SBOMFormat.CDX_V1_6,
+            BOMFormat.CDX_V1_6,
             "attestation-only",
         ),
     ],
@@ -385,7 +385,7 @@ def create_index_with_build_sbom(
 async def test_process_component_sboms_happypath(
     test_id: str,
     generate_oci_image_case: GenerateOciImageTestCase,
-    image_sbom_type: SBOMFormat,
+    image_sbom_type: BOMFormat,
     s3_client: S3Client,
     s3_sbom_bucket: str,
     tpa_client: TPAClient,
@@ -525,7 +525,7 @@ async def test_process_component_sboms_happypath(
     # check for attested SBOMs
     for image_digest, expected_sbom_type in (
         (image.digest, image_sbom_type),
-        (index.digest, SBOMFormat.SPDX_2_3),
+        (index.digest, BOMFormat.SPDX_2_3),
     ):
         for release_image_repo in snapshot["components"][0]["repositories"]:
             repo_url = release_image_repo["url"]

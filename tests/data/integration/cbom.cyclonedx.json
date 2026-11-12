@@ -1,0 +1,28 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "container",
+      "name": "cbom-test-image",
+      "bom-ref": "image",
+      "purl": "pkg:oci/cbom-test-image@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?repository_url=quay.io/build/cbom-test-image"
+    }
+  },
+  "components": [
+    {
+      "type": "cryptographic-asset",
+      "name": "AES-256-GCM",
+      "bom-ref": "crypto-aes-256-gcm",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "ae",
+          "parameterSetIdentifier": "256",
+          "mode": "gcm"
+        }
+      }
+    }
+  ]
+}

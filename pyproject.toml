@@ -49,7 +49,8 @@ mobster = "mobster.main:main"
 regenerate_product_sboms = "mobster.regenerate.product:main"
 regenerate_component_sboms = "mobster.regenerate.component:main"
 process_product_sbom = "mobster.tekton.product:main"
-process_component_sboms = "mobster.tekton.component:main"
+process_component_sboms = "mobster.tekton.component_sbom:main"
+process_component_cbom = "mobster.tekton.component_cbom:main"
 
 [tool.ruff]
 line-length = 88
