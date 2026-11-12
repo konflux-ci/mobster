@@ -7,7 +7,7 @@ from typing import Any
 
 from mobster.image import Image
 from mobster.oci.cosign.static import StaticKeySigner
-from mobster.sbom.detect import SBOMFormat
+from mobster.sbom.detect import BOMFormat
 
 
 def prepare_input_sbom(
@@ -40,7 +40,7 @@ def prepare_input_sbom(
 
 
 async def attest_sbom_bytes(
-    signer: StaticKeySigner, image: Image, sbom: bytes, sbom_format: SBOMFormat
+    signer: StaticKeySigner, image: Image, sbom: bytes, sbom_format: BOMFormat
 ) -> None:
     """
     Sign an in-memory SBOM and attach it to an image as a cosign attestation.

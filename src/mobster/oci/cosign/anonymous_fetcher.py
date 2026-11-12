@@ -5,7 +5,7 @@ import logging
 from mobster.error import SBOMError
 from mobster.image import Image
 from mobster.oci import make_oci_auth_file
-from mobster.oci.artifact import SBOM
+from mobster.oci.artifact import BOM, SLSAProvenance
 from mobster.oci.cosign.attestation_utils import get_sbom_from_attestation_bytes
 from mobster.oci.cosign.protocol import SupportsFetch
 from mobster.utils import run_async_subprocess
@@ -55,7 +55,7 @@ class AnonymousFetcher(SupportsFetch):
             )
         return None
 
-    async def fetch_sbom(self, image: Image) -> SBOM:
+    async def fetch_sbom(self, image: Image) -> BOM:
         """
         Fetch and parse the SBOM for the supplied image.
 
@@ -73,7 +73,9 @@ class AnonymousFetcher(SupportsFetch):
                     env=env,
                 )
                 if code == 0:
-                    return SBOM.from_cosign_output(stdout, image_ref)
+                    return BOM.from_cosign_output(
+                        stdout, image, signature_verified=False
+                    )
                 logger.debug(
                     "Cosign SBOM fetching failed for %s with output %s",
                     image_ref,
@@ -81,7 +83,18 @@ class AnonymousFetcher(SupportsFetch):
                 )
                 att_bytes = await self._download_attestation(image_ref, env)
                 if att_bytes:
-                    return get_sbom_from_attestation_bytes(att_bytes, image_ref)
+                    return get_sbom_from_attestation_bytes(
+                        att_bytes, image, signature_verified=False
+                    )
         raise SBOMError(
             f"Failed to fetch SBOM {image_ref}, it is not attached, nor attested."
+        )
+
+    async def fetch_latest_provenance(self, image: Image) -> SLSAProvenance:
+        raise NotImplementedError(
+            "fetch_latest_provenance is not implemented "
+            "for anonymous fetcher. Provenances are unusable "
+            "for verification without verification material. "
+            "Consider using other implementations of the "
+            "protocol."
         )

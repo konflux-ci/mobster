@@ -13,7 +13,7 @@ from subprocess import CalledProcessError
 from mobster.error import SBOMError
 from mobster.oci import cosign
 from mobster.release import ReleaseId
-from mobster.tekton.component import ProcessComponentArgs, process_component_sboms
+from mobster.tekton.component_sbom import ComponentSBOMHandler, ProcessComponentSBOMArgs
 from mobster.tekton.product import ProcessProductArgs, process_product_sboms
 from mobster.tekton.s3 import S3Client
 
@@ -252,8 +252,8 @@ class SBOMRegenerator(ABC):
                 )
                 #  release_notes, snapshot, release_id
             elif self.sbom_type == SBOMType.COMPONENT:
-                await process_component_sboms(
-                    ProcessComponentArgs(
+                await ComponentSBOMHandler().process_component_boms(
+                    ProcessComponentSBOMArgs(
                         data_dir=self.args.output_path,
                         snapshot_spec=path_snapshot,
                         atlas_api_url=self.args.tpa_base_url,

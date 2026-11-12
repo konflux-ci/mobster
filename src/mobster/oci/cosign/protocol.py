@@ -4,8 +4,8 @@ import typing
 from pathlib import Path
 
 from mobster.image import Image
-from mobster.oci.artifact import SBOM, SLSAProvenance
-from mobster.sbom.detect import SBOMFormat
+from mobster.oci.artifact import BOM, SLSAProvenance
+from mobster.sbom.detect import BOMFormat
 
 
 @typing.runtime_checkable
@@ -16,20 +16,11 @@ class SupportsFetch(typing.Protocol):  # pragma: nocover
 
     # pylint: disable=too-few-public-methods
 
-    async def fetch_sbom(self, image: Image) -> SBOM:
+    async def fetch_sbom(self, image: Image) -> BOM:
         """
         Fetch the attached SBOM for an image.
         """
         raise NotImplementedError()
-
-
-@typing.runtime_checkable
-class SupportsProvenanceFetch(typing.Protocol):
-    """
-    Definition of a Cosign provenance fetch protocol.
-    """
-
-    # pylint: disable=too-few-public-methods
 
     async def fetch_latest_provenance(self, image: Image) -> SLSAProvenance:
         """
@@ -54,7 +45,7 @@ class SupportsSign(typing.Protocol):
         self,
         sbom_path: Path,
         image_ref: str,
-        sbom_format: SBOMFormat,
+        sbom_format: BOMFormat,
     ) -> None:
         """
         Use cosign to attach an SBOM to the registry. This is the new

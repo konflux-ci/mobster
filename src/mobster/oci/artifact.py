@@ -13,7 +13,8 @@ from typing import Any
 import dateutil.parser
 
 from mobster.error import SBOMError
-from mobster.sbom.detect import SBOMFormat, detect_sbom_format
+from mobster.image import Image
+from mobster.sbom.detect import BOMFormat, detect_sbom_format
 
 logger = logging.getLogger(__name__)
 
@@ -43,11 +44,15 @@ class SLSAProvenance:
     and SBOM digest mappings for container images.
     """
 
+    _CBOM_URL_STRING = "CBOM_BLOB_URL"
+
     def __init__(
-        self, build_finished_on: datetime.datetime | None, sbom_digests: dict[str, str]
+        self,
+        build_finished_on: datetime.datetime | None,
+        bom_digests: dict[str, str],
     ) -> None:
         self._build_finished_on = build_finished_on
-        self._sbom_digests: dict[str, str] = sbom_digests
+        self._bom_digests: dict[str, str] = bom_digests
 
     @staticmethod
     def parse(attestation: bytes) -> "SLSAProvenance":
@@ -97,7 +102,7 @@ class SLSAProvenance:
         Returns:
             Mapped Image digests to SBOM digests.
         """
-        sbom_blob_url, image_digest = "", ""
+        sbom_blob_url, cbom_blob_url, image_digest = "", "", ""
         sbom_urls: dict[str, str] = {}
         for result in results_to_parse:
             match result.get("name"):
@@ -105,9 +110,18 @@ class SLSAProvenance:
                     sbom_blob_url = result.get("value", "")
                 case "IMAGE_DIGEST":
                     image_digest = result.get("value", "")
+                case "CBOM_BLOB_URL":
+                    cbom_blob_url = result.get("value", "")
             if all([sbom_blob_url, image_digest]):
                 sbom_digest = sbom_blob_url.split("@", 1)[1]
                 sbom_urls[image_digest] = sbom_digest
+                break
+            if cbom_blob_url:
+                # The CBOM_BLOB_URL is a result of a different pipeline task,
+                # it will not be present in the same task run results
+                sbom_urls[SLSAProvenance._CBOM_URL_STRING] = cbom_blob_url
+                break
+
         return sbom_urls
 
     @staticmethod
@@ -210,10 +224,20 @@ class SLSAProvenance:
             The corresponding SBOM digest, or None if not found in the
             provenance data.
         """
-        return self._sbom_digests.get(image_digest)
+        return self._bom_digests.get(image_digest)
+
+    def cbom_blob_url(self) -> str | None:
+        """
+        Get the CBOM blob URL for the given Provenance.
+
+        Returns:
+            The corresponding CBOM blob URL (fetchable e.g. with ORAS),
+             or None if not found in the provenance data.
+        """
+        return self._bom_digests.get(self._CBOM_URL_STRING)
 
 
-class SBOM:
+class BOM:
     """
     Object representing an SBOM for an image.
 
@@ -226,39 +250,42 @@ class SBOM:
         self,
         doc: dict[Any, Any],
         digest: str,
-        reference: str,
+        image: Image,
         signature_verified: bool = False,
     ) -> None:
         """
-        An SBOM downloaded using cosign.
+        A *BOM downloaded using cosign.
 
         Args:
-            doc: The parsed SBOM dictionary
-            digest: SHA256 digest of the raw SBOM data
-            reference: Reference of the image the SBOM was attached to
-            signature_verified: Set only by a fetcher that checked the SBOM
-                attestation signature. Never inferred from the SBOM doc.
+            doc: The parsed *BOM dictionary
+            digest: SHA256 digest of the raw *BOM data
+            image: Reference of the image the *BOM was attached to
+            signature_verified: Set only by a fetcher that checked the *BOM
+                attestation signature. Never inferred from the *BOM doc.
         """
         self.doc = doc
         self.digest = digest
-        self.reference = reference
+        self.image = image
         self.signature_verified = signature_verified
 
     @property
-    def format(self) -> SBOMFormat:
+    def format(self) -> BOMFormat:
         """
-        Return the format of the SBOM document.
+        Return the format of the *BOM document.
         """
         return detect_sbom_format(self.doc)
 
     @staticmethod
-    def from_cosign_output(raw: bytes, reference: str) -> "SBOM":
+    def from_cosign_output(
+        raw: bytes, image: Image, signature_verified: bool = False
+    ) -> "BOM":
         """
-        Create an SBOM object from raw cosign download sbom output.
+        Create an *BOM object from raw cosign download *BOM output.
 
         Args:
-            raw: Raw bytes from cosign download sbom command
-            reference: Image reference string
+            raw: Raw bytes from cosign download *BOM command
+            image: Image this *BOM has been attached to.
+            signature_verified: Has this *BOM been verified by a fetcher?
         """
         try:
             doc = json.loads(raw)
@@ -266,4 +293,4 @@ class SBOM:
             raise SBOMError("Could not decode SBOM.") from err
 
         hexdigest = f"sha256:{hashlib.sha256(raw).hexdigest()}"
-        return SBOM(doc, hexdigest, reference)
+        return BOM(doc, hexdigest, image, signature_verified)

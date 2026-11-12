@@ -6,7 +6,7 @@ from typing import Any
 from mobster.error import SBOMError
 
 
-class SBOMFormat(Enum):
+class BOMFormat(Enum):
     """
     Enumeration of all SBOM formats supported for updates.
     """
@@ -31,7 +31,7 @@ class SBOMFormat(Enum):
         return self.value.startswith("SPDX-2")
 
 
-def detect_sbom_format(sbom: dict[str, Any]) -> SBOMFormat:
+def detect_sbom_format(sbom: dict[str, Any]) -> BOMFormat:
     """
     Return the format of the SBOM document.
 
@@ -46,7 +46,7 @@ def detect_sbom_format(sbom: dict[str, Any]) -> SBOMFormat:
             raise SBOMError("SBOM is missing specVersion field.")
 
         try:
-            spec = SBOMFormat(raw)
+            spec = BOMFormat(raw)
         except ValueError:
             raise SBOMError(f"CDX spec {raw} not recognized.") from None
 
@@ -57,7 +57,7 @@ def detect_sbom_format(sbom: dict[str, Any]) -> SBOMFormat:
         raise SBOMError("SBOM is missing spdxVersion field.")
 
     try:
-        spec = SBOMFormat(raw)
+        spec = BOMFormat(raw)
     except ValueError:
         raise SBOMError(f"SPDX spec {raw} not recognized.") from None
 

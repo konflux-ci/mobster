@@ -3,33 +3,27 @@ import json
 import os
 from base64 import b64encode
 from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from _pytest.logging import LogCaptureFixture
 from packageurl import PackageURL
 
-from mobster.cmd.augment import (
-    AugmentConfig,
-    AugmentImageCommand,
-    get_sbom_to_filename_dict,
-    load_sbom,
-    update_sbom,
-    verify_sbom,
-)
+from mobster.cmd.augment.bom import AugmentConfig, BOMRefDetail
 from mobster.cmd.augment.handlers import CycloneDXVersion1, get_purl_digest
+from mobster.cmd.augment.sbom import AugmentImageCommand, SBOMAugmenter
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image, IndexImage
-from mobster.oci.artifact import SBOM, SLSAProvenance
-from mobster.oci.cosign import SupportsFetch, SupportsProvenanceFetch
+from mobster.oci.artifact import BOM, SLSAProvenance
+from mobster.oci.cosign import SupportsFetch
 from mobster.release import Component, ReleaseId, ReleaseRepository, Snapshot
 from mobster.sbom import cyclonedx
 from tests.conftest import assert_spdx_sbom, awaitable
 
-TESTDATA_PATH = Path(__file__).parent.parent.joinpath("data/component")
+TESTDATA_PATH = Path(__file__).parent.parent.parent.joinpath("data/component")
 
 
 @dataclass
@@ -61,7 +55,7 @@ class TestAugmentCommand:
 
             cmd = AugmentImageCommand(cli_args=args)
             monkeypatch.setattr(
-                "mobster.cmd.augment.make_snapshot", lambda *_: awaitable(snapshot)
+                "mobster.cmd.augment.sbom.make_snapshot", lambda *_: awaitable(snapshot)
             )
             return cmd
 
@@ -76,26 +70,28 @@ class TestAugmentCommand:
         self, monkeypatch: pytest.MonkeyPatch, fake_cosign: "FakeCosign"
     ) -> None:
         monkeypatch.setattr(
-            "mobster.cmd.augment.cosign.StaticKeyFetcher",
+            "mobster.cmd.augment.bom.cosign.StaticKeyFetcher",
             lambda *_: fake_cosign,
         )
 
     @pytest.fixture(autouse=True)
     def mock_write_sbom(self, monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
         """
-        Fixture to patch mobster.cmd.augment.write_sbom function.
+        Fixture to patch the shared BOM writer.
         """
         mock = AsyncMock()
-        monkeypatch.setattr("mobster.cmd.augment.write_sbom", mock)
+        monkeypatch.setattr("mobster.cmd.augment.bom.write_bom", mock)
         return mock
 
     @pytest.fixture()
-    def prepare_sbom(self) -> Callable[[str], SBOM]:
-        def _load_sbom(reference: str) -> SBOM:
+    def prepare_sbom(self) -> Callable[[str], BOM]:
+        def _load_sbom(reference: str) -> BOM:
             _, digest = reference.split("@", 1)
             expected_path = TESTDATA_PATH.joinpath(f"sboms/{digest}.expected")
             with open(expected_path, "rb") as fp:
-                return SBOM.from_cosign_output(fp.read(), reference)
+                return BOM.from_cosign_output(
+                    fp.read(), Image(*reference.split("@", 1))
+                )
 
         return _load_sbom
 
@@ -139,11 +135,11 @@ class TestAugmentCommand:
         cmd = AugmentImageCommand(cli_args=args)
 
         monkeypatch.setattr(
-            "mobster.cmd.augment.make_snapshot", lambda _, __, ___: awaitable(None)
+            "mobster.cmd.augment.sbom.make_snapshot", lambda _, __, ___: awaitable(None)
         )
 
         with patch(
-            "mobster.cmd.augment.augment_sboms",
+            "mobster.cmd.augment.bom.BOMAugmenter.augment_boms",
         ) as fake_update_sboms:
             fake_update_sboms.return_value = [None]
             await cmd.execute()
@@ -167,11 +163,13 @@ class TestAugmentCommand:
         command = AugmentImageCommand(cli_args=args)
 
         monkeypatch.setattr(
-            "mobster.cmd.augment.make_snapshot", lambda *_: awaitable(None)
+            "mobster.cmd.augment.sbom.make_snapshot", lambda *_: awaitable(None)
         )
 
         capture_config = AsyncMock(return_value=[])
-        monkeypatch.setattr("mobster.cmd.augment.augment_sboms", capture_config)
+        monkeypatch.setattr(
+            "mobster.cmd.augment.bom.BOMAugmenter.augment_boms", capture_config
+        )
 
         await command.execute()
 
@@ -216,7 +214,9 @@ class TestAugmentCommand:
                 "fetch_sbom",
                 AsyncMock(side_effect=SBOMVerificationError("key mismatch")),
             ) as fetch_sbom,
-            patch("mobster.cmd.augment.verify_sbom") as verify_provenance,
+            patch(
+                "mobster.cmd.augment.sbom.SBOMAugmenter.verify_sbom"
+            ) as verify_provenance,
         ):
             await command.execute()
 
@@ -229,7 +229,7 @@ class TestAugmentCommand:
     async def test_augment_execute_singlearch(
         self,
         make_augment_command: MakeAugmentCommand,
-        prepare_sbom: Callable[[str], SBOM],
+        prepare_sbom: Callable[[str], BOM],
         mock_write_sbom: AsyncMock,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -276,7 +276,7 @@ class TestAugmentCommand:
     async def test_augment_execute_multiarch(
         self,
         make_augment_command: MakeAugmentCommand,
-        prepare_sbom: Callable[[str], SBOM],
+        prepare_sbom: Callable[[str], BOM],
         mock_write_sbom: AsyncMock,
     ) -> None:
         index_reference = "quay.io/org/tenant/test@sha256:bbbbbbbb"
@@ -330,10 +330,24 @@ class TestAugmentCommand:
             assert_spdx_sbom(write_call.args[0], expected.doc)
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "cpes",
+        [
+            [],
+            ["cpe:/a:redhat:discovery:1.0::el9"],
+            [
+                "cpe:/a:redhat:discovery:1.0::el9",
+                "cpe:/a:redhat:discovery:1.0::el8",
+                "cpe:/a:redhat:discovery:1.0::el7",
+            ],
+        ],
+        ids=["no-cpes", "one-cpe", "multiple-cpes"],
+    )
     async def test_augment_execute_cdx_singlearch(
         self,
         make_augment_command: MakeAugmentCommand,
         mock_write_sbom: AsyncMock,
+        cpes: list[str],
     ) -> None:
         reference = "quay.io/org/tenant/test@sha256:dddddddd"
         repo, digest = reference.split("@", 1)
@@ -343,6 +357,7 @@ class TestAugmentCommand:
             output=Path("output"),
             verification_key=None,
             reference=reference,
+            cpes=cpes,
         )
 
         snapshot = Snapshot(
@@ -371,7 +386,7 @@ class TestAugmentCommand:
 
         assert len(write_calls) == 1
         written_sbom = write_calls[0].args[0]
-        VerifyCycloneDX.verify_components_updated(snapshot, written_sbom)
+        VerifyCycloneDX.verify_components_updated(snapshot, written_sbom, cpes)
 
     @pytest.mark.asyncio
     async def test_verify_sbom_failure(
@@ -379,30 +394,25 @@ class TestAugmentCommand:
         fake_cosign: "FakeCosign",
     ) -> None:
         image = Image("quay.io/repo", "sha256:aaaaaaaa")
-        sbom = SBOM({}, "bad_digest", "ref")
+        sbom = BOM({}, "bad_digest", image)
 
         with pytest.raises(SBOMVerificationError):
-            await verify_sbom(sbom, image, fake_cosign)
+            await SBOMAugmenter().verify_sbom(sbom, image, fake_cosign)
 
     @pytest.mark.asyncio
-    @patch("mobster.cmd.augment.verify_sbom")
-    async def test_load_sbom_warn(
-        self,
-        mock_verify_sbom: AsyncMock,
-        fake_cosign: "FakeCosign",
-        caplog: LogCaptureFixture,
-    ) -> None:
-        """
-        This test verifies the workflow doesn't raise an exception
-        when SBOM has a different digest than mentioned in the attestation.
-        """
-        mock_verify_sbom.side_effect = SBOMVerificationError()
-
+    async def test_verify_sbom_missing_provenance_digest(self) -> None:
+        """Missing provenance evidence must identify the unverified image."""
         image = Image("quay.io/repo", "sha256:aaaaaaaa")
-        _, attestation_valid = await load_sbom(image, fake_cosign, True)
-        assert attestation_valid is False
-        assert caplog.records[-1].exc_text
-        assert "Attestation verification failed for image" in caplog.records[-1].message
+        sbom = BOM({}, "sha256:bbbbbbbb", image)
+        provenance = SLSAProvenance(None, {})
+        cosign = FakeCosign({image.digest: provenance}, {image.digest: sbom})
+
+        with pytest.raises(SBOMVerificationError) as exc_info:
+            await SBOMAugmenter.verify_sbom(sbom, image, cosign)
+
+        assert str(exc_info.value) == (
+            f"Provenance does not contain SBOM_BLOB_URL for image {image.reference}."
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("verify", [True, False])
@@ -416,14 +426,20 @@ class TestAugmentCommand:
         image = Image("quay.io/repo", "sha256:aaaaaaaa")
         sbom = fake_cosign.sboms[image.digest]
         sbom.signature_verified = signature_verified
+        mock_config = MagicMock()
+        mock_config.cosign = fake_cosign
+        mock_config.verify = verify
 
-        with patch("mobster.cmd.augment.verify_sbom") as mock_verify:
-            loaded_sbom, attestation_valid = await load_sbom(image, fake_cosign, verify)
+        with patch("mobster.cmd.augment.sbom.SBOMAugmenter.verify_sbom") as mock_verify:
+            loaded_sbom = await SBOMAugmenter().load_bom(image, mock_config)
 
-        assert loaded_sbom is sbom
-        assert attestation_valid is True
+        assert loaded_sbom is not sbom
+        assert loaded_sbom.doc == sbom.doc
+        assert loaded_sbom.digest == sbom.digest
+        assert loaded_sbom.image == image
+        assert loaded_sbom.signature_verified == signature_verified
         if verify and not signature_verified:
-            mock_verify.assert_awaited_once_with(sbom, image, fake_cosign)
+            mock_verify.assert_awaited_once_with(loaded_sbom, image, fake_cosign)
         else:
             mock_verify.assert_not_awaited()
 
@@ -437,7 +453,9 @@ class TestAugmentCommand:
             public_repo_url="quay.io/repo", tags=[], internal_repo_url="quay.io/repo"
         )
 
-        with patch("mobster.cmd.augment.update_sbom_in_situ") as mock_update:
+        with patch(
+            "mobster.cmd.augment.sbom.SBOMAugmenter.update_bom_in_situ"
+        ) as mock_update:
             mock_update.side_effect = SBOMError
             sem = asyncio.Semaphore(1)
             config = AugmentConfig(
@@ -446,7 +464,8 @@ class TestAugmentCommand:
                 semaphore=sem,
                 output_dir=Path("/tmp"),
             )
-            assert await update_sbom(config, repo, img) is None
+            assert await SBOMAugmenter().update_bom(config, repo, img) is None
+            mock_update.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_update_signed_attestation_without_konflux_provenance(
@@ -471,16 +490,15 @@ class TestAugmentCommand:
             output_dir=tmp_path,
         )
 
-        result = await update_sbom(config, repository, image)
+        result = await SBOMAugmenter().update_bom(config, repository, image)
 
         assert result is not None
-        assert result.attestation_valid
         mock_write_sbom.assert_awaited_once()
 
 
-class FakeCosign(SupportsFetch, SupportsProvenanceFetch):
+class FakeCosign(SupportsFetch):
     def __init__(
-        self, provenances: dict[str, SLSAProvenance], sboms: dict[str, SBOM]
+        self, provenances: dict[str, SLSAProvenance], sboms: dict[str, BOM]
     ) -> None:
         self.provenances = provenances
         self.sboms = sboms
@@ -488,8 +506,10 @@ class FakeCosign(SupportsFetch, SupportsProvenanceFetch):
     async def fetch_latest_provenance(self, image: Image) -> SLSAProvenance:
         return [self.provenances[image.digest]][0]
 
-    async def fetch_sbom(self, image: Image) -> SBOM:
-        return self.sboms[image.digest]
+    async def fetch_sbom(self, image: Image) -> BOM:
+        sbom = deepcopy(self.sboms[image.digest])
+        sbom.image = image
+        return sbom
 
     @staticmethod
     def load() -> "FakeCosign":
@@ -503,8 +523,8 @@ class FakeCosign(SupportsFetch, SupportsProvenanceFetch):
         for sbom_file in os.listdir(sbom_path):
             full = sbom_path.joinpath(sbom_file)
             with open(full, "rb") as fp:
-                sboms[sbom_file] = SBOM.from_cosign_output(
-                    fp.read(), f"quay.io/repo@{sbom_file}"
+                sboms[sbom_file] = BOM.from_cosign_output(
+                    fp.read(), Image("quay.io/repo", sbom_file)
                 )
 
         for prov_file in os.listdir(prov_path):
@@ -525,12 +545,12 @@ def test_get_sbom_to_filename_dict_duplicate_prevention() -> None:
     Test the get_sbom_to_filename_dict functions correctly handles SBOMs with
     duplicate image references.
     """
-    sbom1 = SBOM({}, "digest1", "quay.io/repo@sha256:aaaaaaaa")
-    sbom2 = SBOM({}, "digest2", "quay.io/repo@sha256:aaaaaaaa")
-    sbom3 = SBOM({}, "digest3", "quay.io/repo@sha256:aaaaaaaa")
+    sbom1 = BOM({}, "digest1", Image("quay.io/repo", "sha256:aaaaaaaa"))
+    sbom2 = BOM({}, "digest2", Image("quay.io/repo", "sha256:aaaaaaaa"))
+    sbom3 = BOM({}, "digest3", Image("quay.io/repo", "sha256:aaaaaaaa"))
 
     sboms = [sbom1, sbom2, sbom3]
-    result = get_sbom_to_filename_dict(sboms)
+    result = SBOMAugmenter().get_sbom_to_filename_dict(sboms)
 
     assert len(result) == 3
     assert sbom1 in result
@@ -615,6 +635,7 @@ class VerifyCycloneDX:
         snapshot: Snapshot,
         cdx_component: Any,
         verify_tags: bool,
+        cpes: list[str],
     ) -> None:
         if (purl_str := cdx_component.get("purl")) is None:
             return
@@ -630,6 +651,12 @@ class VerifyCycloneDX:
             PackageURL.from_string(purl_str), kflx_component.release_repositories
         )
 
+        assert cdx_component.get("cpe") == (cpes[0] if cpes else None)
+        identity = cdx_component.get("evidence", {}).get("identity", [])
+        assert [item for item in identity if item.get("field") == "cpe"] == [
+            {"field": "cpe", "concludedValue": cpe} for cpe in cpes[1:]
+        ]
+
         if verify_tags:
             VerifyCycloneDX.verify_tags(kflx_component, cdx_component)
 
@@ -642,19 +669,24 @@ class VerifyCycloneDX:
         assert cyclonedx.get_tools_component_dict() in components
 
     @staticmethod
-    def verify_components_updated(snapshot: Snapshot, sbom: Any) -> None:
+    def verify_components_updated(
+        snapshot: Snapshot, sbom: Any, cpes: list[str]
+    ) -> None:
         """
         This method verifies that all CycloneDX container components that have a
         matching Konflux component in the release are updated.
         """
         VerifyCycloneDX.verify_component_updated(
-            snapshot, sbom["metadata"]["component"], verify_tags=False
+            snapshot, sbom["metadata"]["component"], verify_tags=False, cpes=cpes
         )
         VerifyCycloneDX.verify_mobster_version_info(sbom)
 
         for component in sbom.get("components", []):
             VerifyCycloneDX.verify_component_updated(
-                snapshot, component, verify_tags=True
+                snapshot,
+                component,
+                verify_tags=True,
+                cpes=cpes,
             )
 
 
@@ -719,11 +751,11 @@ class TestUpdateFormatSupport:
     @pytest.fixture
     def setup_load_sbom(
         self, monkeypatch: pytest.MonkeyPatch
-    ) -> Callable[[SBOM], None]:
-        def _setup_load_sbom(test_sbom: SBOM) -> None:
-            monkeypatch.setattr(
-                "mobster.cmd.augment.load_sbom", lambda *_: awaitable((test_sbom, True))
-            )
+    ) -> Callable[[BOM], AsyncMock]:
+        def _setup_load_sbom(test_sbom: BOM) -> AsyncMock:
+            mock = AsyncMock(return_value=test_sbom)
+            monkeypatch.setattr("mobster.cmd.augment.sbom.SBOMAugmenter.load_bom", mock)
+            return mock
 
         return _setup_load_sbom
 
@@ -737,22 +769,24 @@ class TestUpdateFormatSupport:
         component: Component,
         mock_cosign: MagicMock,
         semaphore: asyncio.Semaphore,
-        setup_load_sbom: Callable[[SBOM], None],
+        tmp_path: Path,
+        setup_load_sbom: Callable[[BOM], AsyncMock],
         version: str,
     ) -> None:
-        test_sbom = SBOM({"spdxVersion": version}, "digest", "ref")
-        setup_load_sbom(test_sbom)
+        test_sbom = BOM({"spdxVersion": version}, "digest", component.image)
+        load_sbom = setup_load_sbom(test_sbom)
         with patch("mobster.cmd.augment.handlers.SPDXVersion2.update_sbom"):
             config = AugmentConfig(
                 cosign=mock_cosign,
                 verify=False,
                 semaphore=semaphore,
-                output_dir=Path("/tmp"),
+                output_dir=tmp_path,
             )
-            result = await update_sbom(
+            result = await SBOMAugmenter().update_bom(
                 config, component.release_repositories[0], component.image
             )
-            assert result is not None
+            assert isinstance(result, BOMRefDetail)
+            load_sbom.assert_awaited_once_with(component.image, config)
 
     @pytest.mark.parametrize(
         "version",
@@ -764,10 +798,10 @@ class TestUpdateFormatSupport:
         index_component: Component,
         mock_cosign: MagicMock,
         semaphore: asyncio.Semaphore,
-        setup_load_sbom: Callable[[SBOM], None],
+        setup_load_sbom: Callable[[BOM], AsyncMock],
         version: str,
     ) -> None:
-        test_sbom = SBOM({"spdxVersion": version}, "digest", "ref")
+        test_sbom = BOM({"spdxVersion": version}, "digest", index_component.image)
         setup_load_sbom(test_sbom)
         with patch("mobster.cmd.augment.handlers.SPDXVersion2.update_sbom"):
             config = AugmentConfig(
@@ -776,7 +810,7 @@ class TestUpdateFormatSupport:
                 semaphore=semaphore,
                 output_dir=Path("/tmp"),
             )
-            result = await update_sbom(
+            result = await SBOMAugmenter().update_bom(
                 config, index_component.release_repositories[0], index_component.image
             )
             assert result is not None
@@ -788,24 +822,28 @@ class TestUpdateFormatSupport:
         component: Component,
         mock_cosign: MagicMock,
         semaphore: asyncio.Semaphore,
-        setup_load_sbom: Callable[[SBOM], None],
+        tmp_path: Path,
+        setup_load_sbom: Callable[[BOM], AsyncMock],
         version: str,
     ) -> None:
-        test_sbom = SBOM(
-            {"bomFormat": "CycloneDX", "specVersion": version}, "digest", "ref"
+        test_sbom = BOM(
+            {"bomFormat": "CycloneDX", "specVersion": version},
+            "digest",
+            component.image,
         )
-        setup_load_sbom(test_sbom)
+        load_sbom = setup_load_sbom(test_sbom)
         with patch("mobster.cmd.augment.handlers.CycloneDXVersion1.update_sbom"):
             config = AugmentConfig(
                 cosign=mock_cosign,
                 verify=False,
                 semaphore=semaphore,
-                output_dir=Path("/tmp"),
+                output_dir=tmp_path,
             )
-            result = await update_sbom(
+            result = await SBOMAugmenter().update_bom(
                 config, component.release_repositories[0], component.image
             )
-            assert result is not None
+            assert isinstance(result, BOMRefDetail)
+            load_sbom.assert_awaited_once_with(component.image, config)
 
     @pytest.mark.asyncio
     async def test_cyclonedx_with_index_image_fails(
@@ -813,10 +851,12 @@ class TestUpdateFormatSupport:
         index_component: Component,
         mock_cosign: MagicMock,
         semaphore: asyncio.Semaphore,
-        setup_load_sbom: Callable[[SBOM], None],
+        setup_load_sbom: Callable[[BOM], AsyncMock],
     ) -> None:
-        test_sbom = SBOM(
-            {"bomFormat": "CycloneDX", "specVersion": "1.6"}, "digest", "ref"
+        test_sbom = BOM(
+            {"bomFormat": "CycloneDX", "specVersion": "1.6"},
+            "digest",
+            index_component.image,
         )
         setup_load_sbom(test_sbom)
         config = AugmentConfig(
@@ -826,7 +866,7 @@ class TestUpdateFormatSupport:
             output_dir=Path("/tmp"),
         )
         assert (
-            await update_sbom(
+            await SBOMAugmenter().update_bom(
                 config, index_component.release_repositories[0], index_component.image
             )
             is None
@@ -838,9 +878,9 @@ class TestUpdateFormatSupport:
         component: Component,
         mock_cosign: MagicMock,
         semaphore: asyncio.Semaphore,
-        setup_load_sbom: Callable[[SBOM], None],
+        setup_load_sbom: Callable[[BOM], AsyncMock],
     ) -> None:
-        test_sbom = SBOM({"unknown": "format"}, "digest", "ref")
+        test_sbom = BOM({"unknown": "format"}, "digest", component.image)
         setup_load_sbom(test_sbom)
         config = AugmentConfig(
             cosign=mock_cosign,
@@ -849,7 +889,7 @@ class TestUpdateFormatSupport:
             output_dir=Path("/tmp"),
         )
         assert (
-            await update_sbom(
+            await SBOMAugmenter().update_bom(
                 config, component.release_repositories[0], component.image
             )
             is None
@@ -872,19 +912,76 @@ def test_cdx_augment_properties_release_id() -> None:
     assert {"name": "release_id", "value": str(release_id)} in sbom["properties"]
 
 
-def test_cdx_update_sbom_raises_error_for_index_image() -> None:
-    handler = CycloneDXVersion1()
+@pytest.mark.asyncio
+@pytest.mark.parametrize("digest", ["sha256:aaaaaaaa"], ids=["spdx"])
+async def test_release_sbom_to_two_repositories(digest: str, tmp_path: Path) -> None:
+    """Test that the SBOMs are updated separately for each release repository."""
+    cosign = FakeCosign.load()
+    sbom = cosign.sboms[digest]
+    repositories = [
+        ReleaseRepository(
+            public_repo_url="registry.redhat.io/product/stable",
+            internal_repo_url="quay.io/release/stable",
+            tags=["1.0", "stable"],
+        ),
+        ReleaseRepository(
+            public_repo_url="registry.redhat.io/product/preview",
+            internal_repo_url="quay.io/release/preview",
+            tags=["2.0", "preview"],
+        ),
+    ]
+    component = Component("test", sbom.image, repositories)
+    config = AugmentConfig(cosign, False, asyncio.Semaphore(2), tmp_path)
 
-    index_image = IndexImage("quay.io/repo", "sha256:test", children=[])
-    with pytest.raises(
-        ValueError, match="CDX update SBOM does not support index images."
-    ):
-        handler.update_sbom(
-            ReleaseRepository(
-                public_repo_url="quay.io/repo",
-                tags=["latest"],
-                internal_repo_url="quay.io/repo",
-            ),
-            index_image,
-            {},
-        )
+    results = await SBOMAugmenter().update_component_boms(config, component)
+
+    for result, repository in zip(results, repositories, strict=True):
+        assert result is not None
+        doc = json.loads(result.path.read_text())
+        purl_strings = [
+            ref["referenceLocator"]
+            for package in doc["packages"]
+            for ref in package["externalRefs"]
+            if ref["referenceType"] == "purl"
+        ]
+        purls = [PackageURL.from_string(value) for value in purl_strings]
+        tags = set()
+        for purl in purls:
+            assert isinstance(purl.qualifiers, dict)
+            assert purl.qualifiers["repository_url"] == repository.public_repo_url
+            tags.add(purl.qualifiers["tag"])
+        assert tags == set(repository.tags)
+
+
+def test_cdx_augment_preserves_legacy_identity_with_multiple_cpes() -> None:
+    """Convert a CycloneDX 1.5 identity object to a list without losing evidence."""
+    image = Image("quay.io/example/image", "sha256:" + "a" * 64)
+    repository = ReleaseRepository(
+        public_repo_url="registry.example.com/release",
+        internal_repo_url="quay.io/release",
+        tags=["latest"],
+    )
+    legacy_identity = {"field": "name", "confidence": 0.9}
+    component = {
+        "type": "container",
+        "name": "image",
+        "purl": image.purl_str(),
+        "evidence": {"identity": deepcopy(legacy_identity)},
+    }
+    sbom: dict[str, Any] = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "metadata": {"component": deepcopy(component)},
+        "components": [deepcopy(component)],
+    }
+    cpes = ["cpe:/a:acme:product:1.0:update1", "cpe:/a:acme:product:1.0:update2"]
+
+    CycloneDXVersion1().update_sbom(repository, image, sbom, cpes)
+
+    assert sbom["specVersion"] == "1.6"
+    for updated in [sbom["metadata"]["component"], sbom["components"][0]]:
+        assert updated["cpe"] == cpes[0]
+        assert updated["evidence"]["identity"] == [
+            legacy_identity,
+            {"field": "cpe", "concludedValue": cpes[1]},
+        ]

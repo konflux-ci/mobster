@@ -15,11 +15,11 @@ from mobster.cmd.upload.upload import (
 from mobster.oci import cosign
 from mobster.release import ReleaseId
 from mobster.tekton.common import upload_sboms
-from mobster.tekton.component import (
-    ProcessComponentArgs,
-    _get_cpes_from_release_data,
+from mobster.tekton.component import get_cpes_from_release_data
+from mobster.tekton.component_sbom import (
+    ComponentSBOMHandler,
+    ProcessComponentSBOMArgs,
     parse_args,
-    process_component_sboms,
 )
 
 
@@ -77,7 +77,7 @@ async def test_upload_sboms_failure_tries_s3(
 @patch("mobster.tekton.component.connect_with_s3", MagicMock(return_value=True))
 @patch("mobster.tekton.component.upload_snapshot", AsyncMock())
 @patch("mobster.tekton.component.tempfile", MagicMock())
-@patch("mobster.tekton.component.augment_component_sboms")
+@patch("mobster.tekton.component_sbom.ComponentBOMHandler.augment_component_boms")
 @patch("mobster.oci.cosign.keyless.check_tuf", MagicMock(return_value=True))
 async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> None:
     relase_id = ReleaseId.new()
@@ -116,7 +116,7 @@ async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> No
         .set_tlog_url("https://spam.example")
         .set_issuer_url("https://foo")
     )
-    assert parsed_args == ProcessComponentArgs(
+    assert parsed_args == ProcessComponentSBOMArgs(
         data_dir=Path("foo"),
         snapshot_spec=Path("foo/bar"),
         atlas_api_url="https://atlas.example",
@@ -141,7 +141,7 @@ async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> No
         ),
         release_data=Path("foo/spam"),
     )
-    await process_component_sboms(parsed_args)
+    await ComponentSBOMHandler().process_component_boms(parsed_args)
     assert isinstance(mock_augment_sboms.call_args.args[3], cosign.KeylessSBOMFetcher)
 
 
@@ -149,7 +149,7 @@ async def test_parse_component_args_keyless(mock_augment_sboms: AsyncMock) -> No
 @patch("mobster.tekton.component.connect_with_s3", MagicMock(return_value=True))
 @patch("mobster.tekton.component.upload_snapshot", AsyncMock())
 @patch("mobster.tekton.component.tempfile", MagicMock())
-@patch("mobster.tekton.component.augment_component_sboms")
+@patch("mobster.tekton.component_sbom.ComponentBOMHandler.augment_component_boms")
 async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> None:
     relase_id = ReleaseId.new()
     parsed_args = parse_args(
@@ -178,7 +178,7 @@ async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> Non
         ]
     )
     expected_url_config = cosign.URLSigningConfig().set_tlog_url("https://spam.example")
-    assert parsed_args == ProcessComponentArgs(
+    assert parsed_args == ProcessComponentSBOMArgs(
         data_dir=Path("foo"),
         snapshot_spec=Path("foo/bar"),
         atlas_api_url="https://atlas.example",
@@ -203,7 +203,7 @@ async def test_parse_component_args_static(mock_augment_sboms: AsyncMock) -> Non
         ),
         release_data=Path("foo/spam"),
     )
-    await process_component_sboms(parsed_args)
+    await ComponentSBOMHandler().process_component_boms(parsed_args)
     assert isinstance(mock_augment_sboms.call_args.args[3], cosign.StaticKeyFetcher)
 
 
@@ -266,4 +266,4 @@ def test__get_cpes_from_release_data(
         fake_open.return_value.__enter__.return_value.read.return_value = json.dumps(
             input_json
         )
-        assert _get_cpes_from_release_data(Path("/tmp/foo")) == expected_cpes
+        assert get_cpes_from_release_data(Path("/tmp/foo")) == expected_cpes

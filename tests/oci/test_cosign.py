@@ -3,6 +3,7 @@ import datetime
 import hashlib
 import json
 from collections.abc import Callable, Generator
+from contextlib import nullcontext
 from functools import partial
 from pathlib import Path
 from typing import Any, Literal
@@ -15,8 +16,8 @@ from pytest import LogCaptureFixture
 from mobster.error import SBOMError, SBOMVerificationError
 from mobster.image import Image
 from mobster.oci import cosign
-from mobster.oci.artifact import SBOM
-from mobster.sbom.detect import SBOMFormat
+from mobster.oci.artifact import BOM
+from mobster.sbom.detect import BOMFormat
 
 
 async def mock_cosign_subprocess(
@@ -152,11 +153,11 @@ class TestStaticFetcher:
             fake_verify_attestation,
         )
 
-        sbom = await client.fetch_attested_sbom(image, SBOMFormat.SPDX_2_3)
+        sbom = await client.fetch_attested_sbom(image, BOMFormat.SPDX_2_3)
 
         assert sbom
         assert sbom.doc == sbom_doc
-        assert sbom.reference == image.reference
+        assert sbom.image == image
         assert sbom.digest == hashlib.sha256(attestation_raw).hexdigest()
 
     @pytest.mark.asyncio
@@ -174,7 +175,7 @@ class TestStaticFetcher:
             "_verify_attestation",
             fake_verify_attestation,
         )
-        assert not await client.fetch_attested_sbom(image, SBOMFormat.CDX_V1_6)
+        assert not await client.fetch_attested_sbom(image, BOMFormat.CDX_V1_6)
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -479,8 +480,10 @@ class TestStaticFetcher:
 
 
 def test_sbom_signature_verification_is_not_derived_from_document() -> None:
-    sbom = SBOM(
-        {"spdxVersion": "SPDX-2.3", "signature_verified": True}, "digest", "ref"
+    sbom = BOM(
+        {"spdxVersion": "SPDX-2.3", "signature_verified": True},
+        "digest",
+        Image("quay.io/test", "sha256:abc123"),
     )
 
     assert sbom.signature_verified is False
@@ -569,7 +572,7 @@ class TestKeylessSigner:
             return_value=(0, b"", b""),
         ) as mocked_run:
             await fake_keyless_cosign.attest_sbom(
-                Path("/sbom.json"), "quay.io/foo/bar@sha256:a", SBOMFormat.SPDX_2_3
+                Path("/sbom.json"), "quay.io/foo/bar@sha256:a", BOMFormat.SPDX_2_3
             )
         mocked_run.assert_awaited_once_with(
             [
@@ -610,11 +613,116 @@ class TestKeylessSigner:
         ):
             with pytest.raises(SBOMError):
                 await fake_keyless_cosign.attest_sbom(
-                    Path("a"), "b", SBOMFormat.CDX_V1_6
+                    Path("a"), "b", BOMFormat.CDX_V1_6
                 )
 
 
 class TestKeylessFetcher:
+    @pytest.fixture
+    def client(self) -> cosign.KeylessSBOMFetcher:
+        with patch("mobster.oci.cosign.keyless.check_tuf", return_value=True):
+            return cosign.KeylessSBOMFetcher(
+                cosign.VerifyConfig(
+                    keyless_verify_config=cosign.KeylessVerifyConfig(
+                        identity_pattern="test-identity", oidc_issuer="test-issuer"
+                    )
+                )
+            )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("latest_version", ["v0.2", "v1"])
+    async def test_fetch_latest_provenance(
+        self, client: cosign.KeylessSBOMFetcher, tmp_path: Path, latest_version: str
+    ) -> None:
+        image = Image("quay.io/example/image", "sha256:" + "a" * 64)
+        authfile = tmp_path / "config.json"
+        old_date = "2024-01-01T00:00:00Z"
+        new_date = "2025-01-01T00:00:00Z"
+        responses = []
+        for version in ("v0.2", "v1"):
+            date = new_date if version == latest_version else old_date
+            predicate = (
+                {"metadata": {"buildFinishedOn": date}, "buildConfig": {"tasks": []}}
+                if version == "v0.2"
+                else {"runDetails": {"metadata": {"finishedOn": date}}}
+            )
+            statement = {
+                "predicateType": f"https://slsa.dev/provenance/{version}",
+                "predicate": predicate,
+            }
+            raw = json.dumps(
+                {"payload": base64.b64encode(json.dumps(statement).encode()).decode()}
+            ).encode()
+            responses.append((0, raw + b"\n", b""))
+
+        with (
+            patch(
+                "mobster.oci.cosign.keyless.make_oci_auth_file",
+                side_effect=lambda _: nullcontext(authfile),
+            ),
+            patch(
+                "mobster.oci.cosign.keyless.run_async_subprocess", side_effect=responses
+            ) as run,
+        ):
+            provenance = await client.fetch_latest_provenance(image)
+
+        assert provenance.build_finished_on == isoparse(new_date)
+        assert client.is_sbom_verified() is True
+        assert run.await_count == 2
+        for invocation, attestation_type in zip(
+            run.await_args_list, ("slsaprovenance02", "slsaprovenance1"), strict=True
+        ):
+            assert invocation.args[0] == [
+                "cosign",
+                "verify-attestation",
+                "--certificate-oidc-issuer",
+                "test-issuer",
+                "--certificate-identity-regexp",
+                "test-identity",
+                "--type",
+                attestation_type,
+                image.reference,
+            ]
+            assert invocation.kwargs == {
+                "env": {"DOCKER_CONFIG": str(tmp_path)},
+                "retry_times": 3,
+            }
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("stderr", "message", "calls"),
+        [
+            (
+                b"none of the attestations matched the predicate type",
+                "No provenances parsed",
+                2,
+            ),
+            (b"certificate verification failed", "certificate verification failed", 1),
+        ],
+    )
+    async def test_fetch_latest_provenance_failure(
+        self,
+        client: cosign.KeylessSBOMFetcher,
+        tmp_path: Path,
+        stderr: bytes,
+        message: str,
+        calls: int,
+    ) -> None:
+        image = Image("quay.io/example/image", "sha256:" + "a" * 64)
+        with (
+            patch(
+                "mobster.oci.cosign.keyless.make_oci_auth_file",
+                side_effect=lambda _: nullcontext(tmp_path / "config.json"),
+            ),
+            patch(
+                "mobster.oci.cosign.keyless.run_async_subprocess",
+                return_value=(1, b"", stderr),
+            ) as run,
+            pytest.raises(SBOMError, match=message),
+        ):
+            await client.fetch_latest_provenance(image)
+        assert run.await_count == calls
+
     @pytest.mark.asyncio
     @patch("mobster.oci.cosign.keyless.check_tuf")
     @patch("mobster.oci.cosign.keyless.run_async_subprocess")
@@ -684,6 +792,12 @@ class TestGetCosign:
 
 
 class TestAnonymousFetcher:
+    @pytest.mark.asyncio
+    async def test_fetch_latest_provenance_unsupported(self) -> None:
+        image = Image("quay.io/example/image", "sha256:" + "a" * 64)
+        with pytest.raises(NotImplementedError, match="fetch_latest_provenance"):
+            await cosign.AnonymousFetcher().fetch_latest_provenance(image)
+
     @patch(
         "mobster.oci.cosign.anonymous_fetcher.make_oci_auth_file",
         MagicMock(reference="foo"),
@@ -692,19 +806,19 @@ class TestAnonymousFetcher:
         ["successful_sbom_type", "which_attempt_will_succeed", "expect_problems"],
         [
             pytest.param(
-                SBOMFormat.SPDX_2_3, 1, False, id="first attempt successful, attested"
+                BOMFormat.SPDX_2_3, 1, False, id="first attempt successful, attested"
             ),
             pytest.param(
-                SBOMFormat.CDX_V1_6, 2, False, id="second attempt successful, attested"
+                BOMFormat.CDX_V1_6, 2, False, id="second attempt successful, attested"
             ),
             pytest.param(None, 3, False, id="third attempt successful, attached"),
-            pytest.param(SBOMFormat.SPDX_2_3, 5, True, id="out of attempts"),
+            pytest.param(BOMFormat.SPDX_2_3, 5, True, id="out of attempts"),
         ],
     )
     @pytest.mark.asyncio
     async def test_fetch_sbom_retry(
         self,
-        successful_sbom_type: SBOMFormat | None,
+        successful_sbom_type: BOMFormat | None,
         which_attempt_will_succeed: int,
         expect_problems: bool,
     ) -> None:
@@ -739,9 +853,9 @@ class TestAnonymousFetcher:
                     else failed_result
                 )
             if (
-                successful_sbom_type is SBOMFormat.SPDX_2_3 and "spdxjson" in cmd_arr
+                successful_sbom_type is BOMFormat.SPDX_2_3 and "spdxjson" in cmd_arr
             ) or (
-                successful_sbom_type is SBOMFormat.CDX_V1_6 and "cyclonedx" in cmd_arr
+                successful_sbom_type is BOMFormat.CDX_V1_6 and "cyclonedx" in cmd_arr
             ):
                 call_no += 1
                 return (

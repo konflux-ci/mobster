@@ -11,7 +11,7 @@ from mobster.oci.cosign import (
     VerifyConfig,
 )
 from mobster.oci.cosign.static import StaticKeyFetcher, StaticKeySigner
-from mobster.sbom.detect import SBOMFormat
+from mobster.sbom.detect import BOMFormat
 from tests.integration.oci_client import ReferrersTagOCIClient
 from tests.integration.utils import attest_sbom_bytes
 
@@ -32,7 +32,7 @@ async def image_with_empty_cdx_attested_sbom(
     signer = StaticKeySigner(
         SignConfig(static_sign_config=StaticSignConfig(sign_key=cosign_sign_key))
     )
-    await attest_sbom_bytes(signer, image, b"{}", SBOMFormat.CDX_V1_5)
+    await attest_sbom_bytes(signer, image, b"{}", BOMFormat.CDX_V1_5)
     return image
 
 
@@ -44,7 +44,7 @@ async def image_with_empty_spdx_attested_sbom(
     signer = StaticKeySigner(
         SignConfig(static_sign_config=StaticSignConfig(sign_key=cosign_sign_key))
     )
-    await attest_sbom_bytes(signer, image, b"{}", SBOMFormat.SPDX_2_3)
+    await attest_sbom_bytes(signer, image, b"{}", BOMFormat.SPDX_2_3)
     return image
 
 
@@ -104,13 +104,6 @@ async def test_cosign_fetch_sbom(
 @pytest.mark.parametrize(
     ["image", "verify_key", "error", "match"],
     [
-        pytest.param(
-            lf("image_with_empty_spdx_attested_sbom"),
-            None,
-            SBOMError,
-            "--verification-key",
-            id="attestation-no-key",
-        ),
         # attestation signed by a different key than the one passed
         pytest.param(
             lf("image_with_empty_spdx_attested_sbom"),
@@ -126,14 +119,6 @@ async def test_cosign_fetch_sbom(
             SBOMVerificationError,
             "matches the key",
             id="no-sbom-with-key",
-        ),
-        # Without a key, the .sbom attachment is checked, but attestations are not.
-        pytest.param(
-            lf("image_with_no_sbom"),
-            None,
-            SBOMError,
-            r"no \.sbom attachment found",
-            id="no-sbom-no-key",
         ),
     ],
 )
