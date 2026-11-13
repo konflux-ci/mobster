@@ -153,62 +153,44 @@ def test_component_package_index_all_identifiers(
             assert getattr(package_stats, stats_category) == expected
 
 
-def test_unique_id_checksum_overrides_non_unique_purl() -> None:
-    """A weak PURL does not reject packages that have a unique checksum ID."""
+@pytest.mark.parametrize(
+    "accepted_identifier",
+    ["checksum", "verification_code"],
+    ids=["checksum", "verification-code"],
+)
+def test_accepted_identifier_overrides_rejected_purl(accepted_identifier: str) -> None:
+    """An accepted identifier takes precedence over a rejected PURL."""
     weak_purl = ExternalPackageRef(
         ExternalPackageRefCategory.PACKAGE_MANAGER, "purl", "pkg:npm/package"
     )
+    if accepted_identifier == "checksum":
+        component_identifier: dict[str, Any] = {
+            "checksums": [Checksum(ChecksumAlgorithm.SHA256, "component-checksum")]
+        }
+        parent_identifier: dict[str, Any] = {
+            "checksums": [Checksum(ChecksumAlgorithm.SHA256, "parent-checksum")]
+        }
+    else:
+        component_identifier = {
+            "verification_code": PackageVerificationCode(value="component-vc")
+        }
+        parent_identifier = {
+            "verification_code": PackageVerificationCode(value="parent-vc")
+        }
+
     component_pkg = Package(
         "SPDXRef-component",
         "component",
         SpdxNoAssertion(),
-        checksums=[Checksum(ChecksumAlgorithm.SHA256, "component-checksum")],
         external_references=[weak_purl],
+        **component_identifier,
     )
     parent_pkg = Package(
         "SPDXRef-parent",
         "parent",
         SpdxNoAssertion(),
-        checksums=[Checksum(ChecksumAlgorithm.SHA256, "parent-checksum")],
         external_references=[weak_purl],
-    )
-    rel = Relationship("SPDXRef-root", RelationshipType.CONTAINS, component_pkg.spdx_id)
-    parent_doc = MagicMock(spec=Document)
-    component_doc = MagicMock(spec=Document)
-    stats = MatchingStatistics()
-    stats.component.all_packages = {component_pkg.spdx_id}
-    stats.parent.all_packages = {parent_pkg.spdx_id}
-
-    index = ComponentRelationshipResolver(
-        [ContentItem(component_pkg, rel)], parent_doc, component_doc, stats
-    )
-    assert index.find_candidates(parent_pkg) == []
-    assert stats.component.packages_with_rejected_id == set()
-    assert stats.parent.packages_with_rejected_id == set()
-    assert stats.component.packages_with_accepted_id == {component_pkg.spdx_id}
-    assert stats.parent.packages_with_accepted_id == {parent_pkg.spdx_id}
-    assert stats.component.unmatched_accepted == {component_pkg.spdx_id}
-    assert stats.parent.unmatched_accepted == {parent_pkg.spdx_id}
-
-
-def test_unique_id_verification_code_overrides_non_unique_purl() -> None:
-    """A unique verification code takes precedence over a weak PURL."""
-    weak_purl = ExternalPackageRef(
-        ExternalPackageRefCategory.PACKAGE_MANAGER, "purl", "pkg:npm/package"
-    )
-    component_pkg = Package(
-        "SPDXRef-component-vc",
-        "component",
-        SpdxNoAssertion(),
-        verification_code=PackageVerificationCode(value="component-vc"),
-        external_references=[weak_purl],
-    )
-    parent_pkg = Package(
-        "SPDXRef-parent-vc",
-        "parent",
-        SpdxNoAssertion(),
-        verification_code=PackageVerificationCode(value="parent-vc"),
-        external_references=[weak_purl],
+        **parent_identifier,
     )
     rel = Relationship("SPDXRef-root", RelationshipType.CONTAINS, component_pkg.spdx_id)
     stats = MatchingStatistics()
@@ -222,10 +204,10 @@ def test_unique_id_verification_code_overrides_non_unique_purl() -> None:
         stats,
     )
     assert index.find_candidates(parent_pkg) == []
-    assert stats.component.packages_with_accepted_id == {component_pkg.spdx_id}
-    assert stats.parent.packages_with_accepted_id == {parent_pkg.spdx_id}
     assert stats.component.packages_with_rejected_id == set()
     assert stats.parent.packages_with_rejected_id == set()
+    assert stats.component.packages_with_accepted_id == {component_pkg.spdx_id}
+    assert stats.parent.packages_with_accepted_id == {parent_pkg.spdx_id}
     assert stats.component.unmatched_accepted == {component_pkg.spdx_id}
     assert stats.parent.unmatched_accepted == {parent_pkg.spdx_id}
 
