@@ -31,6 +31,22 @@ from mobster.sbom.spdx import get_normalized_purl, get_package_purl
 LOGGER = logging.getLogger(__name__)
 
 
+def _parse_accepted_purl(purl: str | None, package_side: str) -> PackageURL | None:
+    """Parse a PURL and return it only when it has type, name, and version."""
+    if not purl:
+        return None
+
+    try:
+        accepted_purl = PackageURL.from_string(purl)
+    except ValueError:
+        LOGGER.warning("Could not parse %s SBOM package URL %s", package_side, purl)
+        return None
+
+    if not accepted_purl.type or not accepted_purl.name or not accepted_purl.version:
+        return None
+    return accepted_purl
+
+
 # pylint: disable=too-many-instance-attributes
 class ComponentRelationshipResolver:
     """
@@ -60,8 +76,7 @@ class ComponentRelationshipResolver:
             component_packages: Content items to index.
             parent_sbom_doc: Parent SBOM document
             component_sbom_doc: Component SBOM document
-            stats: Statistics tracker for recording packages without
-                unique IDs
+            stats: Statistics tracker for recording package UID classifications
         """
         self.checksum_index: dict[str, list[ContentItem]] = {}
         self.verification_code_index: dict[str, list[ContentItem]] = {}
@@ -80,40 +95,35 @@ class ComponentRelationshipResolver:
         of multiple packages under same unique id in component SBOM
         (multiple packages with same identifier).
 
-        Also records component packages without any unique identifier.
+        Also records each component package's UID classification.
         """
         for item in self.component_packages:
             pkg = item.package
-            has_unique_id = False
+            has_accepted_id = False
 
             if pkg.checksums:
                 checksum_key = self._create_checksum_key(pkg.checksums)
                 self.checksum_index.setdefault(checksum_key, []).append(item)
-                has_unique_id = True
+                has_accepted_id = True
 
             if pkg.verification_code and pkg.verification_code.value:
                 vc_key = pkg.verification_code.value
                 self.verification_code_index.setdefault(vc_key, []).append(item)
-                has_unique_id = True
+                has_accepted_id = True
 
             purl = get_package_purl(pkg)
-            # Packages with missing or malformed purl, or
-            # purl without version are not indexed
-            if purl:
-                try:
-                    purl_obj = PackageURL.from_string(purl)
-                    if purl_obj.version:
-                        purl_key = self._create_purl_key(purl_obj)
-                        self.purl_index.setdefault(purl_key, []).append(item)
-                        has_unique_id = True
-                except ValueError:
-                    LOGGER.warning(
-                        "Could not parse component's SBOM package URL %s", purl
-                    )
+            accepted_purl = _parse_accepted_purl(purl, "component's")
+            if accepted_purl:
+                purl_key = self._create_purl_key(accepted_purl)
+                self.purl_index.setdefault(purl_key, []).append(item)
+                has_accepted_id = True
 
-            # Record component packages without any unique identifier
-            if not has_unique_id:
-                self.stats.record_component_package_without_unique_id(pkg.spdx_id)
+            if has_accepted_id:
+                self.stats.record_component_package_with_accepted_id(pkg.spdx_id)
+            elif purl:
+                self.stats.record_component_package_with_rejected_id(pkg.spdx_id)
+            else:
+                self.stats.record_component_package_anonymous(pkg.spdx_id)
 
     @staticmethod
     def _create_checksum_key(checksums: list[Checksum]) -> str:
@@ -133,8 +143,6 @@ class ComponentRelationshipResolver:
 
         Priority: checksums -> verification_code -> purl
 
-        Also records parent packages without any unique identifier.
-
         Args:
             parent_package: Parent package to find matching candidates for
                 in the indexed component SBOM
@@ -142,41 +150,41 @@ class ComponentRelationshipResolver:
         Returns:
             Candidate content items.
         """
+        has_accepted_id = bool(parent_package.checksums)
         if parent_package.checksums:
             checksum_key = self._create_checksum_key(parent_package.checksums)
             if checksum_key in self.checksum_index:
+                self.stats.record_parent_package_with_accepted_id(
+                    parent_package.spdx_id
+                )
                 return self.checksum_index[checksum_key]
 
         if parent_package.verification_code and parent_package.verification_code.value:
+            has_accepted_id = True
             vc_key = parent_package.verification_code.value
             if vc_key in self.verification_code_index:
+                self.stats.record_parent_package_with_accepted_id(
+                    parent_package.spdx_id
+                )
                 return self.verification_code_index[vc_key]
 
         purl = get_package_purl(parent_package)
-        has_valid_purl = False
-        # Parent packages with absent checksum, pkg verification code,
-        # missing or malformed purl, or purl without version are not
-        # eligible for matching against component packages.
-        # The resolver cannot match such parent packages with component packages.
-        if purl:
-            try:
-                purl_obj = PackageURL.from_string(purl)
-                if purl_obj.version:
-                    has_valid_purl = True
-                    purl_key = self._create_purl_key(purl_obj)
-                    if purl_key in self.purl_index:
-                        return self.purl_index[purl_key]
-            except ValueError:
-                LOGGER.warning("Could not parse parent's SBOM package URL %s", purl)
+        accepted_purl = _parse_accepted_purl(purl, "parent's")
+        if accepted_purl:
+            has_accepted_id = True
+            purl_key = self._create_purl_key(accepted_purl)
+            if purl_key in self.purl_index:
+                self.stats.record_parent_package_with_accepted_id(
+                    parent_package.spdx_id
+                )
+                return self.purl_index[purl_key]
 
-        # Record parent packages without any unique identifier
-        # (no checksums, no verification_code, and no valid purl with version)
-        if (
-            not parent_package.checksums
-            and not parent_package.verification_code
-            and not has_valid_purl
-        ):
-            self.stats.record_parent_package_without_unique_id(parent_package.spdx_id)
+        if has_accepted_id:
+            self.stats.record_parent_package_with_accepted_id(parent_package.spdx_id)
+        elif purl:
+            self.stats.record_parent_package_with_rejected_id(parent_package.spdx_id)
+        else:
+            self.stats.record_parent_package_anonymous(parent_package.spdx_id)
 
         return []
 

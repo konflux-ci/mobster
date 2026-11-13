@@ -134,16 +134,82 @@ def test_component_package_index_all_identifiers(
     if should_index:
         assert candidates[0] == ContentItem(pkg, rel)
 
-    # Verify that packages without unique IDs are recorded in stats
-    if not should_index:
-        # Component package without unique ID should be recorded during build_indexes
-        assert pkg.spdx_id in stats.component.packages_without_unique_id
-        # Parent package without unique ID should be recorded during find_candidates
-        assert parent_pkg.spdx_id in stats.parent.packages_without_unique_id
+    # Verify the package is classified consistently in both SBOMs.
+    category = {
+        "none": "packages_anonymous",
+        "purl_no_version": "packages_with_rejected_id",
+        "purl_invalid": "packages_with_rejected_id",
+    }.get(identifier_type, "packages_with_accepted_id")
+    for package_stats, package_id in (
+        (stats.component, pkg.spdx_id),
+        (stats.parent, parent_pkg.spdx_id),
+    ):
+        for stats_category in (
+            "packages_anonymous",
+            "packages_with_rejected_id",
+            "packages_with_accepted_id",
+        ):
+            expected = {package_id} if stats_category == category else set()
+            assert getattr(package_stats, stats_category) == expected
+
+
+@pytest.mark.parametrize(
+    "accepted_identifier",
+    ["checksum", "verification_code"],
+    ids=["checksum", "verification-code"],
+)
+def test_accepted_identifier_overrides_rejected_purl(accepted_identifier: str) -> None:
+    """An accepted identifier takes precedence over a rejected PURL."""
+    weak_purl = ExternalPackageRef(
+        ExternalPackageRefCategory.PACKAGE_MANAGER, "purl", "pkg:npm/package"
+    )
+    if accepted_identifier == "checksum":
+        component_identifier: dict[str, Any] = {
+            "checksums": [Checksum(ChecksumAlgorithm.SHA256, "component-checksum")]
+        }
+        parent_identifier: dict[str, Any] = {
+            "checksums": [Checksum(ChecksumAlgorithm.SHA256, "parent-checksum")]
+        }
     else:
-        # Packages with unique IDs should NOT be recorded
-        assert pkg.spdx_id not in stats.component.packages_without_unique_id
-        assert parent_pkg.spdx_id not in stats.parent.packages_without_unique_id
+        component_identifier = {
+            "verification_code": PackageVerificationCode(value="component-vc")
+        }
+        parent_identifier = {
+            "verification_code": PackageVerificationCode(value="parent-vc")
+        }
+
+    component_pkg = Package(
+        "SPDXRef-component",
+        "component",
+        SpdxNoAssertion(),
+        external_references=[weak_purl],
+        **component_identifier,
+    )
+    parent_pkg = Package(
+        "SPDXRef-parent",
+        "parent",
+        SpdxNoAssertion(),
+        external_references=[weak_purl],
+        **parent_identifier,
+    )
+    rel = Relationship("SPDXRef-root", RelationshipType.CONTAINS, component_pkg.spdx_id)
+    stats = MatchingStatistics()
+    stats.component.all_packages = {component_pkg.spdx_id}
+    stats.parent.all_packages = {parent_pkg.spdx_id}
+
+    index = ComponentRelationshipResolver(
+        [ContentItem(component_pkg, rel)],
+        MagicMock(spec=Document),
+        MagicMock(spec=Document),
+        stats,
+    )
+    assert index.find_candidates(parent_pkg) == []
+    assert stats.component.packages_with_rejected_id == set()
+    assert stats.parent.packages_with_rejected_id == set()
+    assert stats.component.packages_with_accepted_id == {component_pkg.spdx_id}
+    assert stats.parent.packages_with_accepted_id == {parent_pkg.spdx_id}
+    assert stats.component.unmatched_accepted == {component_pkg.spdx_id}
+    assert stats.parent.unmatched_accepted == {parent_pkg.spdx_id}
 
 
 @pytest.mark.asyncio
