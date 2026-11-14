@@ -1,5 +1,5 @@
 FROM quay.io/konflux-ci/task-runner@sha256:ab7440e1101af1ff0418e16badede2f1590664d3189099030bf3f782371bd9da AS golang
-FROM registry.access.redhat.com/ubi9/python-312@sha256:26533737695d39d003558de435f54f52bd54879d8184a0d7038147d1ff3ea9bd AS builder
+FROM registry.access.redhat.com/ubi9/python-312@sha256:19e1e927138b40454858f297884c2c4e2f13f5ba95b3f55faea174d3cbb57067 AS builder
 
 # Set the working directory in the container
 WORKDIR /app
@@ -30,7 +30,7 @@ COPY src/mobster /app/src/mobster
 RUN poetry install --without dev
 
 # Use Red Hat UBI 9 Python base image for the runtime
-FROM registry.access.redhat.com/ubi9/python-312@sha256:26533737695d39d003558de435f54f52bd54879d8184a0d7038147d1ff3ea9bd
+FROM registry.access.redhat.com/ubi9/python-312@sha256:19e1e927138b40454858f297884c2c4e2f13f5ba95b3f55faea174d3cbb57067
 
 ARG TARGETARCH
 
