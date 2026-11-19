@@ -10,7 +10,7 @@ import pytest
 from spdx_tools.spdx.model.relationship import RelationshipType as RT
 from spdx_tools.spdx.parser.parse_anything import parse_file
 
-from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
+from mobster.cmd.generate.oci_image.contextual_sbom import (
     BuilderPkgMetadata,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import OriginType
