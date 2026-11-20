@@ -16,8 +16,8 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     ContentKind,
 )
 from mobster.cmd.generate.oci_image.spdx_utils import (
-    AnnotationImage,
     AnnotationParseError,
+    KonfluxAnnotation,
     KonfluxAnnotationManager,
     get_annotations_by_spdx_id,
 )
@@ -50,7 +50,7 @@ class ContentItem:
 def get_annotations_by_spdx_id_filter_by_type(
     parent_sbom_doc: Document,
     spdx_id: SPDXId,
-    annotation_type: type[AnnotationImage],
+    annotation_type: type[KonfluxAnnotation],
 ) -> list[Annotation]:
     """
     Return all annotations with the given Konflux annotation type for a package

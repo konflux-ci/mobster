@@ -1072,6 +1072,8 @@ def test_document_index_package_lookup(simple_spdx_document: Document) -> None:
     """Test basic package lookup operations."""
     index = DocumentIndexOCI(simple_spdx_document)
 
+    assert index._root_spdx_id is None
+
     ctx = index.package_by_spdx_id("SPDXRef-PackageA")
     assert ctx.pkg.name == "package-a"
 
@@ -1083,6 +1085,29 @@ def test_document_index_package_lookup(simple_spdx_document: Document) -> None:
     assert purl_ctxs[0].pkg.name == "package-b"
 
     assert index.packages_by_purl("pkg:/golang/nonexistent@1.0.0") == []
+
+
+@pytest.mark.parametrize("reverse_root_relationship", [False, True])
+def test_document_index_content_packages(
+    image_spdx_document: Document, reverse_root_relationship: bool
+) -> None:
+    """Exclude roots and image packages while retaining content without a PURL."""
+    root = Package("SPDXRef-root", "root", SpdxNoAssertion())
+    image_spdx_document.packages.append(root)
+    relationship = (
+        Relationship(root.spdx_id, RelationshipType.DESCRIBED_BY, "SPDXRef-DOCUMENT")
+        if reverse_root_relationship
+        else Relationship("SPDXRef-DOCUMENT", RelationshipType.DESCRIBES, root.spdx_id)
+    )
+    image_spdx_document.relationships.append(relationship)
+    index = DocumentIndexOCI(image_spdx_document)
+
+    assert index._root_spdx_id == root.spdx_id
+    assert [ctx.pkg.spdx_id for ctx in index.content_packages] == [
+        "SPDXRef-RegularPackage"
+    ]
+    assert index.package_by_spdx_id(root.spdx_id).pkg is root
+    assert len(index.image_packages()) == 2
 
 
 @pytest.mark.parametrize(

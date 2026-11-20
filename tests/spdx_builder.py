@@ -73,6 +73,10 @@ class SPDXPackageBuilder:
         )
         return self
 
+    def generated_by_hermeto_annotation(self) -> "SPDXPackageBuilder":
+        self._annotations.append(KonfluxAnnotationManager.generated_by_hermeto(""))
+        return self
+
     def is_base_image_annotation(self) -> "SPDXPackageBuilder":
         self._annotations.append(KonfluxAnnotationManager.base_image(""))
         return self

@@ -10,7 +10,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     AnnotationAncestorImage,
     AnnotationBaseImage,
     AnnotationBuilderImage,
-    AnnotationImage,
+    KonfluxAnnotation,
     AnnotationIntermediateImage,
 )
 from mobster.sbom.spdx import SPDXId
@@ -91,7 +91,7 @@ class ContentKind:
     name: str
     relationship_type: RelationshipType
     relationship_end: RelationshipEnd
-    annotation_type: type[AnnotationImage] | None
+    annotation_type: type[KonfluxAnnotation] | None
     allows_multiple_relationships_per_endpoint: bool = False
 
 
@@ -246,3 +246,4 @@ class OriginType(str, Enum):
     BUILDER = "builder"
     INTERMEDIATE = "intermediate"
     EXTERNAL = "external"
+    ANCESTOR = "ancestor"
