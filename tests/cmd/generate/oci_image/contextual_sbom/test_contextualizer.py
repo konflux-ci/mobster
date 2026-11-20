@@ -5,10 +5,10 @@ import pytest
 from _pytest.logging import LogCaptureFixture
 from spdx_tools.spdx.model.relationship import RelationshipType
 
-from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
-    BuilderContextualizer,
+from mobster.cmd.generate.oci_image.contextual_sbom import (
     BuilderPkgMetadata,
     BuilderPkgMetadataItem,
+    Contextualizer,
     Origin,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import OriginType
@@ -201,9 +201,7 @@ def test_generate_origins(
     ]
 
     assert (
-        BuilderContextualizer().generate_origins(
-            sbom_index_two_images, metadata_two_images
-        )
+        Contextualizer().generate_origins(sbom_index_two_images, metadata_two_images)
         == expected_origins
     )
 
@@ -216,9 +214,7 @@ def test_generate_origins_without_metadata(
     respective metadata items.
     """
     metadata = BuilderPkgMetadata(packages=[])
-    assert (
-        BuilderContextualizer().generate_origins(sbom_index_two_images, metadata) == []
-    )
+    assert Contextualizer().generate_origins(sbom_index_two_images, metadata) == []
 
 
 def test_generate_origins_metadata_missing_package(
@@ -237,9 +233,7 @@ def test_generate_origins_metadata_missing_package(
             ),
         ]
     )
-    assert (
-        BuilderContextualizer().generate_origins(sbom_index_two_images, metadata) == []
-    )
+    assert Contextualizer().generate_origins(sbom_index_two_images, metadata) == []
 
 
 def test_resolve_origins(sbom_index_two_images: DocumentIndexOCI) -> None:
@@ -293,7 +287,7 @@ def test_resolve_origins(sbom_index_two_images: DocumentIndexOCI) -> None:
         },
     }
 
-    resolved = BuilderContextualizer().resolve_origins(sbom_index_two_images, origins)
+    resolved = Contextualizer().resolve_origins(sbom_index_two_images, origins)
 
     for (
         image_spdx_id,
@@ -413,7 +407,7 @@ def test_contextualize(
 ) -> None:
     index = _contextualize_sbom_index()
     metadata = _contextualize_metadata()
-    contextualizer = BuilderContextualizer()
+    contextualizer = Contextualizer()
 
     with caplog.at_level(logging.INFO):
         document = contextualizer.contextualize(index, metadata)
@@ -429,7 +423,7 @@ def test_contextualize(
     builder_log_messages = [
         record.message
         for record in caplog.records
-        if record.name == "mobster.cmd.generate.oci_image.contextual_sbom.builder"
+        if record.name == "mobster.cmd.generate.oci_image.contextual_sbom"
     ]
     assert (
         "PURLs in generated SBOM do not match PURL from metadata: pkg:golang/net@v1.0.1"

@@ -20,9 +20,9 @@ import mobster.utils
 from mobster import syft
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.cmd.generate.oci_image.add_image import extend_sbom_with_image_reference
-from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
-    BuilderContextualizer,
+from mobster.cmd.generate.oci_image.contextual_sbom import (
     BuilderPkgMetadata,
+    Contextualizer,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.parent import (
     download_parent_image_sbom,
@@ -236,7 +236,7 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         builder_ctx_sbom = deepcopy(parent_contextualized_sbom)
         index = DocumentIndexOCI(builder_ctx_sbom)
 
-        builder = BuilderContextualizer()
+        builder = Contextualizer()
         contextual_sbom = builder.contextualize(index, builder_metadata)
         LOGGER.debug("Builder content contextualization complete.")
         return contextual_sbom
