@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.5.0](https://github.com/konflux-ci/mobster/compare/v2.4.1...v2.5.0) (2026-11-20)
+
+
+### Features
+
+* **ISV-7722:** add attest command for signed SBOM attestations ([31b7623](https://github.com/konflux-ci/mobster/commit/31b76230b003b8537f5dd63a2563136b4321184c))
+* **ISV-7784:** add augment cbom command ([395e2bb](https://github.com/konflux-ci/mobster/commit/395e2bb71d985ec167b095ec897319fc2e2767fc))
+* **ISV-7784:** add augment-component-cbom-ta task ([e5ed52c](https://github.com/konflux-ci/mobster/commit/e5ed52cbc8ff4958f001397b20d56ebba0c375ea))
+* **ISV-7784:** add CBOM augmentation ([d4904ec](https://github.com/konflux-ci/mobster/commit/d4904ec5a7cbe7ebb7d06984250dac6a75e977c5))
+* **ISV-7784:** add process_component_cbom command ([9fd2f2f](https://github.com/konflux-ci/mobster/commit/9fd2f2fb4d485aeca716e23004cd95e85e534cb8))
+* **MMENG-4692:** Add support for SBOMs attached using referrers API ([44efede](https://github.com/konflux-ci/mobster/commit/44efede4f530d3476bd14561c6df6f86629ddc34))
+* **MMENG-4692:** Add support for SBOMs attachments via referrers API ([fff074a](https://github.com/konflux-ci/mobster/commit/fff074a186f153d691a04e0f3cbfb090a6338bbf))
+
+
+### Bug Fixes
+
+* **ISV-7690:** include SPDX IDs for unmatched rejected packages ([49dd1cb](https://github.com/konflux-ci/mobster/commit/49dd1cbad2aebbe2e6a9b492357608a7b0525860))
+* **ISV-7690:** rename the functions and variable names ([6d2b583](https://github.com/konflux-ci/mobster/commit/6d2b58302db21d9d572230e71a72a95b8c073dd9))
+* **ISV-7690:** track anonymous packages in parent content logs ([54a4483](https://github.com/konflux-ci/mobster/commit/54a4483e7ccf069ae26a624a4e66454a52d77151))
+* **ISV-7690:** track anonymous packages in parent content logs ([75ae5cc](https://github.com/konflux-ci/mobster/commit/75ae5cc9cb832fe318fa01bbf1fced7422df3f6c))
+* **ISV-7690:** update the logging and comments ([0630c55](https://github.com/konflux-ci/mobster/commit/0630c55dbd6b017c2c35dac37835bd7ceb06f6d0))
+* reduce the unnecessary testing ([08e682f](https://github.com/konflux-ci/mobster/commit/08e682f77cd9bb3e30f49c94629eab7d511d25f1))
+* update the tests ([ecab797](https://github.com/konflux-ci/mobster/commit/ecab797fe42649a3e74447e8d177bfea0218b32a))
+
 ## [2.4.1](https://github.com/konflux-ci/mobster/compare/v2.4.0...v2.4.1) (2026-11-06)
 
 
