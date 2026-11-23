@@ -3,11 +3,15 @@
 import hashlib
 import re
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from packageurl import PackageURL
 
 from mobster.error import SBOMError
 from mobster.oci import get_image_manifest
+
+if TYPE_CHECKING:
+    from mobster.sbom.spdx import SPDXId
 
 # Regular expression to validate OCI image references with digest
 # credit to https://regex101.com/r/nmsdpa/1)
@@ -275,13 +279,13 @@ class Image:  # pylint: disable=too-many-instance-attributes
         """
         return self.purl().to_string()
 
-    def propose_spdx_id(self) -> str:
+    def propose_spdx_id(self) -> "SPDXId":
         """
         Generate a proposed SPDX ID for the image.
         The ID is generated using the image name and a SHA-256 hash of the package URL.
 
         Returns:
-            str: A proposed SPDX ID for the image.
+            SPDXId: A proposed SPDX ID for the image.
         """
         purl_hex_digest = hashlib.sha256(self.purl_str().encode()).hexdigest()
         return f"{IMAGE_PKG_SPDX_PREFIX}-{self.normalized_name}-{purl_hex_digest}"

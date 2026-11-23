@@ -3,8 +3,12 @@
 import hashlib
 import re
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from packageurl import PackageURL
+
+if TYPE_CHECKING:
+    from mobster.sbom.spdx import SPDXId
 
 
 @dataclass
@@ -53,13 +57,13 @@ class Artifact:
         """
         return self.purl().to_string()
 
-    def propose_spdx_id(self) -> str:
+    def propose_spdx_id(self) -> "SPDXId":
         """
         Generate a proposed SPDX ID for the image.
         The ID is generated using the image name and a SHA-256 hash of the package URL.
 
         Returns:
-            str: A proposed SPDX ID for the image.
+            SPDXId: A proposed SPDX ID for the image.
         """
         purl_hex_digest = hashlib.sha256(self.purl_str().encode()).hexdigest()
         return f"SPDXRef-Package-{self.sanitized_filename}-{purl_hex_digest}"

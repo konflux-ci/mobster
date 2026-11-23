@@ -17,6 +17,7 @@ from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.oci_image.spdx_utils import KonfluxAnnotationManager
+from mobster.sbom.spdx import SPDXId
 
 
 @dataclass
@@ -31,7 +32,7 @@ class AnnotatedPackage:
     annotations: list[Annotation] = field(default_factory=list)
 
     @property
-    def spdx_id(self) -> str:
+    def spdx_id(self) -> SPDXId:
         return self.package.spdx_id
 
 
@@ -46,7 +47,7 @@ class SPDXPackageBuilder:
         self._name: str | None = None
         self._external_references: list[ExternalPackageRef] = []
         self._checksums: list[Checksum] = []
-        self._spdx_id: str | None = None
+        self._spdx_id: SPDXId | None = None
         self._primary_package_purpose: PackagePurpose | None = None
         self._annotations: list[Annotation] = []
         self._verification_code: PackageVerificationCode | None = None
@@ -59,7 +60,7 @@ class SPDXPackageBuilder:
         self._name = name
         return self
 
-    def spdx_id(self, spdx_id: str) -> "SPDXPackageBuilder":
+    def spdx_id(self, spdx_id: SPDXId) -> "SPDXPackageBuilder":
         self._spdx_id = spdx_id
         return self
 
@@ -100,7 +101,7 @@ class SPDXPackageBuilder:
         self._primary_package_purpose = purpose
         return self
 
-    def spdx_id_from_name(self, name: str) -> str:
+    def spdx_id_from_name(self, name: str) -> SPDXId:
         """
         Generate an spdx_id from a package name, while normalizing it to use
         just alphanumeric characters plus '.' and '-'.
@@ -158,7 +159,9 @@ class SPDXSBOMBuilder:
 
         # tuple associating parent and child package spdx_ids and the
         # relationship between them to add to the SPDX document
-        self._relationships: list[tuple[str | None, RelationshipType, str | None]] = []
+        self._relationships: list[
+            tuple[SPDXId | None, RelationshipType, SPDXId | None]
+        ] = []
 
         # packages and their associated annotations to be added to the SPDX document
         self._packages: list[AnnotatedPackage] = []
@@ -295,9 +298,9 @@ class SPDXSBOMBuilder:
     @staticmethod
     def __add_relationship(
         doc: Document,
-        spdx_id: str,
+        spdx_id: SPDXId,
         reltype: RelationshipType,
-        rel_spdx_id: str,
+        rel_spdx_id: SPDXId,
     ) -> None:
         doc.relationships.append(
             Relationship(

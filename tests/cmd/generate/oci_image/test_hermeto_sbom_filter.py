@@ -9,6 +9,7 @@ import pytest
 from mobster.cmd.generate.oci_image.hermeto_sbom_filter import (
     filter_hermeto_sbom_by_arch,
 )
+from mobster.sbom.spdx import SPDXId
 
 
 @pytest.fixture
@@ -101,7 +102,7 @@ class TestFilterHermetoSPDXSbomByArch:
         ],
     )
     def test_filter_spdx_sbom(
-        self, target_arch: str, spdx_sbom: dict[str, Any], expected_ids: set[str]
+        self, target_arch: str, spdx_sbom: dict[str, Any], expected_ids: set[SPDXId]
     ) -> None:
         """Test filtering SBOM for a target architecture."""
 

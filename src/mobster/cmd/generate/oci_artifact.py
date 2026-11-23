@@ -13,6 +13,7 @@ from mobster.artifact import Artifact
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.image import Image
 from mobster.sbom import cyclonedx, spdx
+from mobster.sbom.spdx import SPDXId
 
 LOGGER = logging.getLogger(__name__)
 
@@ -133,15 +134,15 @@ class GenerateOciArtifactCommand(GenerateCommandWithOutputTypeSelector):
         return document
 
     def get_artifact_relationship(
-        self, spdx_id: str, oci_image_spdx_id: str
+        self, spdx_id: SPDXId, oci_image_spdx_id: SPDXId
     ) -> Relationship:
         """
         Get a relationship for the artifact in relation to the main image.
         This relationship indicates artifact is contained within the OCI image.
 
         Args:
-            spdx_id (str): An SPDX ID for the artifact.
-            oci_image_spdx_id: str: An SPDX ID for the main image.
+            spdx_id (SPDXId): An SPDX ID for the artifact.
+            oci_image_spdx_id: SPDXId: An SPDX ID for the main image.
 
         Returns:
             Relationship: A SPDX relationship object for the child image.

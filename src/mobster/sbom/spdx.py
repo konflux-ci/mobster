@@ -1,7 +1,7 @@
 """A module for SPDX SBOM format"""
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, TypeAlias
 from uuid import uuid4
 
 from packageurl import PackageURL
@@ -24,10 +24,13 @@ from mobster.artifact import Artifact
 from mobster.image import Image
 from mobster.release import ReleaseId
 
-DOC_ELEMENT_ID = "SPDXRef-DOCUMENT"
+# SPDX element identifiers are represented as plain strings.
+SPDXId: TypeAlias = str
+
+DOC_ELEMENT_ID: SPDXId = "SPDXRef-DOCUMENT"
 
 
-def get_root_package_relationship(spdx_id: str) -> Relationship:
+def get_root_package_relationship(spdx_id: SPDXId) -> Relationship:
     """Get a relationship for the root package in relation to the SPDX document.
 
     Args:
@@ -81,7 +84,7 @@ def get_creation_info(sbom_name: str) -> CreationInfo:
 
 
 def get_image_package(
-    image: Image, spdx_id: str, package_name: str | None = None
+    image: Image, spdx_id: SPDXId, package_name: str | None = None
 ) -> Package:
     """Transform the parsed image object into SPDX package object.
 
@@ -148,7 +151,7 @@ def get_package_from_artifact(artifact: Artifact) -> Package:
 
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 def get_package(
-    spdx_id: str,
+    spdx_id: SPDXId,
     name: str,
     external_refs: list[ExternalPackageRef],
     checksums: list[Checksum],
@@ -377,7 +380,7 @@ def normalize_and_load_sbom(
 
 def _serialize_relationship(
     relationship: Relationship,
-) -> tuple[str, RelationshipType, str, str | None]:
+) -> tuple[SPDXId, RelationshipType, SPDXId, str | None]:
     if (
         isinstance(relationship.related_spdx_element_id, str)
         or relationship.related_spdx_element_id is None

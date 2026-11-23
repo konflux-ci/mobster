@@ -20,7 +20,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
 )
 from mobster.cmd.generate.oci_image.spdx_utils import DocumentIndexOCI, PackageContext
 from mobster.error import BuilderContextualizationError
-from mobster.sbom.spdx import get_package_purl
+from mobster.sbom.spdx import SPDXId, get_package_purl
 
 LOGGER = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ class BuilderContextualizer:
 
     def generate_origins(
         self, index: DocumentIndexOCI, builder_metadata: BuilderPkgMetadata
-    ) -> list[tuple[str, Origin]]:
+    ) -> list[tuple[SPDXId, Origin]]:
         """
         Generate origins of packages in a document based on metadata.
 
@@ -276,7 +276,7 @@ class BuilderContextualizer:
         return None
 
     def resolve_origins(
-        self, index: DocumentIndexOCI, origins: list[tuple[str, Origin]]
+        self, index: DocumentIndexOCI, origins: list[tuple[SPDXId, Origin]]
     ) -> DocumentIndexOCI:
         """
         Modify the passed index to reflect the passed origins information. Adjusts
@@ -336,7 +336,7 @@ class BuilderContextualizer:
 
     @staticmethod
     def _find_current_image_contains_relationship(
-        index: DocumentIndexOCI, pkg_spdx_id: str
+        index: DocumentIndexOCI, pkg_spdx_id: SPDXId
     ) -> Relationship | None:
         """
         Find the current relationship where an image package CONTAINS the package

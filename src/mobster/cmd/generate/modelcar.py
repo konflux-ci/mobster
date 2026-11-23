@@ -19,6 +19,7 @@ from mobster import syft
 from mobster.cmd.generate.base import GenerateCommandWithOutputTypeSelector
 from mobster.image import Image
 from mobster.sbom import cyclonedx, spdx
+from mobster.sbom.spdx import SPDXId
 
 LOGGER = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ def _spdx_package_purls(package: Package) -> list[str]:
 def merge_syft_packages_into_modelcar_spdx(
     modelcar_sbom: Document,
     syft_sbom: Document,
-    parent_id: str,
+    parent_id: SPDXId,
 ) -> Document:
     """
     Merge packages from a Syft SPDX Document into a modelcar composition Document.
@@ -329,7 +330,7 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
         return document
 
     async def get_modelcar_descendant_image_relationship(
-        self, spdx_id: str, modelcar_spdx_id: str
+        self, spdx_id: SPDXId, modelcar_spdx_id: SPDXId
     ) -> Relationship:
         """
         Get a relationship for the image in relation to the modelcar image.
@@ -337,8 +338,8 @@ class GenerateModelcarCommand(GenerateCommandWithOutputTypeSelector):
         a descendant of the image represented by spdx_id.
 
         Args:
-            spdx_id (str): An SPDX ID for the descendaten image.
-            modelcar_spdx_id: str: An SPDX ID for the modelcar image.
+            spdx_id (SPDXId): An SPDX ID for the descendaten image.
+            modelcar_spdx_id: SPDXId: An SPDX ID for the modelcar image.
 
         Returns:
             Relationship: A SPDX relationship object for the child image.

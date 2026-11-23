@@ -5,6 +5,7 @@ import pytest
 
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
+from mobster.sbom.spdx import SPDXId
 
 
 def test_image() -> None:
@@ -62,7 +63,7 @@ def test_image() -> None:
         ("repo/name@weird", "SPDXRef-image-name-weird"),
     ],
 )
-def test_image_spdx_id(repository: str, expected_id: str) -> None:
+def test_image_spdx_id(repository: str, expected_id: SPDXId) -> None:
     image = Image(repository=repository, digest="sha256:aaaa")
     # drop the last 65 chars - purl digest and separator
     actual = image.propose_spdx_id()[:-65]

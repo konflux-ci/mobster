@@ -19,7 +19,7 @@ from spdx_tools.spdx.parser.parse_anything import parse_file
 
 from mobster import get_mobster_version
 from mobster.cmd.upload.tpa import TPAClient
-from mobster.sbom.spdx import get_mobster_tool_string
+from mobster.sbom.spdx import SPDXId, get_mobster_tool_string
 
 
 @pytest.fixture
@@ -515,7 +515,7 @@ def spdx_parent_sbom_builder_removed() -> Document:
     )
 
 
-def create_annotation_with_spdx_id(spdx_id: str) -> Annotation:
+def create_annotation_with_spdx_id(spdx_id: SPDXId) -> Annotation:
     """Create an annotation with a specific SPDX ID."""
     return Annotation(
         spdx_id,
