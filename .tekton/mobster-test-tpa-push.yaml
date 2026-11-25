@@ -328,7 +328,7 @@ spec:
         params:
         - name: image-platform
           value:
-          - $(params.build-platforms)
+          - linux/x86_64
       name: clair-scan
       params:
       - name: image-digest
