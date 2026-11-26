@@ -13,6 +13,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     AnnotationImage,
     AnnotationIntermediateImage,
 )
+from mobster.sbom.spdx import SPDXId
 
 HERMETO_ANNOTATION_COMMENTS = [
     '{"name": "cachi2:found_by", "value": "cachi2"}',
@@ -35,7 +36,7 @@ class PackageInfo:
     Information about a package used for matching.
     """
 
-    spdx_id: str
+    spdx_id: SPDXId
     producer: PackageProducer
 
 

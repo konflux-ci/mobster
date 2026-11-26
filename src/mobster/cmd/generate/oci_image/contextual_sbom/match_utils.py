@@ -26,7 +26,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.logging import MatchingStati
 from mobster.cmd.generate.oci_image.spdx_utils import (
     get_annotations_by_spdx_id,
 )
-from mobster.sbom.spdx import get_normalized_purl, get_package_purl
+from mobster.sbom.spdx import SPDXId, get_normalized_purl, get_package_purl
 
 LOGGER = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ class ComponentRelationshipResolver:
         self.component_packages = component_packages
         self.parent_sbom_doc = parent_sbom_doc
         self.component_sbom_doc = component_sbom_doc
-        self.matched_packages: set[str] = set()
+        self.matched_packages: set[SPDXId] = set()
         self.stats = stats
 
         self._build_indexes()
@@ -188,11 +188,11 @@ class ComponentRelationshipResolver:
 
         return []
 
-    def mark_as_matched(self, spdx_id: str) -> None:
+    def mark_as_matched(self, spdx_id: SPDXId) -> None:
         """Mark component package as matched."""
         self.matched_packages.add(spdx_id)
 
-    def is_matched(self, spdx_id: str) -> bool:
+    def is_matched(self, spdx_id: SPDXId) -> bool:
         """Check if component package was already matched."""
         return spdx_id in self.matched_packages
 
@@ -243,8 +243,8 @@ class ComponentRelationshipResolver:
     def resolve_component_relationships(
         self,
         parent_packages: list[ContentItem],
-        parent_spdx_id_from_component: str,
-        parent_root_packages: list[str],
+        parent_spdx_id_from_component: SPDXId,
+        parent_root_packages: list[SPDXId],
     ) -> None:
         """
         Resolve and modify component relationships based on parent package matches.
@@ -341,8 +341,8 @@ class ComponentRelationshipResolver:
     def _modify_relationship_in_component(
         component_relationship: Relationship,
         parent_relationship: Relationship,
-        parent_spdx_id_from_component: str,
-        parent_root_packages: list[str],
+        parent_spdx_id_from_component: SPDXId,
+        parent_root_packages: list[SPDXId],
     ) -> None:
         """
         Function modifies relationship in component SBOM.

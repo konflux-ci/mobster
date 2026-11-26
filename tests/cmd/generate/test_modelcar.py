@@ -28,6 +28,7 @@ from mobster.cmd.generate.modelcar import (
     merge_syft_components_into_modelcar_cdx,
     merge_syft_packages_into_modelcar_spdx,
 )
+from mobster.sbom.spdx import SPDXId
 from tests.conftest import assert_cdx_sbom, assert_spdx_sbom
 
 BASE_SPDX_ID = (
@@ -60,7 +61,7 @@ def _modelcar_args(**overrides: object) -> MagicMock:
     return args
 
 
-def _spdx_pkg(spdx_id: str, name: str, *purls: str) -> Package:
+def _spdx_pkg(spdx_id: SPDXId, name: str, *purls: str) -> Package:
     refs = [
         ExternalPackageRef(
             category=ExternalPackageRefCategory.PACKAGE_MANAGER,

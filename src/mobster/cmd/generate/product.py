@@ -22,6 +22,7 @@ from mobster.cmd.generate.base import GenerateCommand
 from mobster.error import SBOMError
 from mobster.release import Component, ReleaseId, Snapshot, make_snapshot
 from mobster.sbom import spdx
+from mobster.sbom.spdx import SPDXId
 
 LOGGER = logging.getLogger(__name__)
 
@@ -162,7 +163,7 @@ def create_sbom(
 
 
 def create_product_package(
-    product_elem_id: str, release_notes: ReleaseNotes
+    product_elem_id: SPDXId, release_notes: ReleaseNotes
 ) -> Package:
     """Create SPDX package corresponding to the product.
 
@@ -273,7 +274,7 @@ def get_component_packages(components: list[Component]) -> list[Package]:
 
 
 def get_component_relationships(
-    product_elem_id: str, packages: list[Package]
+    product_elem_id: SPDXId, packages: list[Package]
 ) -> list[Relationship]:
     """Get SPDX relationship for each SPDX component package.
 

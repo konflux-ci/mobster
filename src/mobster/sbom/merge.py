@@ -22,7 +22,7 @@ from spdx_tools.spdx.model.relationship import Relationship
 
 from mobster.sbom.cyclonedx_wrapper import CycloneDX1BomWrapper
 from mobster.sbom.load import load_dict_to_sbom
-from mobster.sbom.spdx import deduplicate_relationships
+from mobster.sbom.spdx import SPDXId, deduplicate_relationships
 
 T = TypeVar("T")
 
@@ -187,7 +187,7 @@ class SPDXPackage(SBOMItem[Package]):
     Class representing an SPDX package.
     """
 
-    def id(self) -> str:
+    def id(self) -> SPDXId:
         return self.data.spdx_id
 
     def name(self) -> str:
@@ -562,10 +562,10 @@ class SPDXMerger(SBOMMerger[Document]):  # pylint: disable=too-few-public-method
 
     def _resolve_relationship_id(
         self,
-        spdx_id: str,
-        base_doc_id: str,
-        other_doc_ids: set[str],
-    ) -> str | None:
+        spdx_id: SPDXId,
+        base_doc_id: SPDXId,
+        other_doc_ids: set[SPDXId],
+    ) -> SPDXId | None:
         """
         Map an SPDX element id into the merged document's id space.
 

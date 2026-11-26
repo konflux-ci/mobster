@@ -13,6 +13,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import OriginType
 from mobster.cmd.generate.oci_image.spdx_utils import DocumentIndexOCI
+from mobster.sbom.spdx import SPDXId
 from tests.spdx_builder import SPDXPackageBuilder, SPDXSBOMBuilder
 
 
@@ -301,7 +302,7 @@ def test_resolve_origins(sbom_index_two_images: DocumentIndexOCI) -> None:
     ) in expected_package_attribution.items():
         image_pkg = resolved.package_by_spdx_id(image_spdx_id)
 
-        contains_spdx_ids: set[str] = {
+        contains_spdx_ids: set[SPDXId] = {
             rel.related_spdx_element_id  # type: ignore
             for rel in image_pkg.filter_parent_relationships(RelationshipType.CONTAINS)
         }

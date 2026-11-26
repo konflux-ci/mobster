@@ -50,6 +50,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.oci.artifact import BOM
+from mobster.sbom.spdx import SPDXId
 
 from .conftest import (
     create_package_with_identifier,
@@ -57,7 +58,7 @@ from .conftest import (
 )
 
 
-def _content_item(owner_id: str, pkg_id: str) -> ContentItem:
+def _content_item(owner_id: SPDXId, pkg_id: SPDXId) -> ContentItem:
     """`owner CONTAINS pkg` content-package item."""
     pkg = Package(pkg_id, "name", SpdxNoAssertion())
     rel = Relationship(owner_id, RelationshipType.CONTAINS, pkg_id)
@@ -65,7 +66,7 @@ def _content_item(owner_id: str, pkg_id: str) -> ContentItem:
 
 
 def _base_image_item(
-    parent_id: str, grandparent_id: str
+    parent_id: SPDXId, grandparent_id: SPDXId
 ) -> tuple[Package, Relationship, Annotation]:
     """`parent DESCENDANT_OF grandparent`, grandparent annotated is_base_image."""
     pkg = Package(grandparent_id, "name", SpdxNoAssertion())
@@ -75,7 +76,7 @@ def _base_image_item(
 
 
 def _ancestor_image_item(
-    child_id: str, ancestor_id: str
+    child_id: SPDXId, ancestor_id: SPDXId
 ) -> tuple[Package, Relationship, Annotation]:
     """`child DESCENDANT_OF ancestor`, ancestor annotated is_ancestor_image."""
     pkg = Package(ancestor_id, "name", SpdxNoAssertion())
@@ -85,7 +86,7 @@ def _ancestor_image_item(
 
 
 def _legacy_grandparent_item(
-    grandparent_id: str, parent_id: str
+    grandparent_id: SPDXId, parent_id: SPDXId
 ) -> tuple[Package, Relationship, Annotation]:
     """Legacy `grandparent BUILD_TOOL_OF parent`, annotated is_base_image."""
     pkg = Package(grandparent_id, "name", SpdxNoAssertion())
@@ -95,7 +96,7 @@ def _legacy_grandparent_item(
 
 
 def _builder_image_item(
-    builder_id: str, built_image_id: str, stage_index: int = 0
+    builder_id: SPDXId, built_image_id: SPDXId, stage_index: int = 0
 ) -> tuple[Package, Relationship, Annotation]:
     """`builder BUILD_TOOL_OF built image`, annotated is_builder_image."""
     pkg = Package(builder_id, "name", SpdxNoAssertion())
@@ -105,7 +106,7 @@ def _builder_image_item(
 
 
 def _additional_image_item(
-    additional_image_id: str, built_image_id: str
+    additional_image_id: SPDXId, built_image_id: SPDXId
 ) -> tuple[Package, Relationship, Annotation]:
     """`additional image BUILD_TOOL_OF built image`, annotated as additional."""
     pkg = Package(additional_image_id, "name", SpdxNoAssertion())
@@ -119,7 +120,7 @@ def _additional_image_item(
 
 
 def _intermediate_image_item(
-    intermediate_id: str, builder_id: str, stage_index: int = 0
+    intermediate_id: SPDXId, builder_id: SPDXId, stage_index: int = 0
 ) -> tuple[Package, Relationship, Annotation]:
     """`intermediate DESCENDANT_OF builder`, annotated is_intermediate_image."""
     pkg = Package(intermediate_id, "name", SpdxNoAssertion())
@@ -319,8 +320,8 @@ def test_collect_package_items_ignores_file_relationships(
 def test_collect_package_items_warns_on_unsupported_contains_relationship(
     mock_doc: MagicMock,
     caplog: LogCaptureFixture,
-    subject: str,
-    target: str,
+    subject: SPDXId,
+    target: SPDXId,
     files: list[File],
 ) -> None:
     """CONTAINS relationships outside the ownership model warn and are skipped."""
@@ -1146,8 +1147,8 @@ def test_supply_image_packages_preserves_builder_and_additional_roles() -> None:
 def test__modify_relationship_in_component(
     component_relationship: Relationship,
     parent_relationship: Relationship,
-    parent_spdx_id_from_component: str,
-    parent_root_packages: list[str],
+    parent_spdx_id_from_component: SPDXId,
+    parent_root_packages: list[SPDXId],
     result: Relationship,
 ) -> None:
     ComponentRelationshipResolver._modify_relationship_in_component(
@@ -1324,12 +1325,12 @@ async def test_map_parent_to_component_and_update_component(
 @patch("mobster.cmd.generate.oci_image.contextual_sbom.parent.MatchingStatistics")
 async def test_map_parent_to_component_supplies_builder_and_intermediate_subtree(
     mock_stats_class: MagicMock,
-    builder_id: str,
-    builder_target_id: str,
-    intermediate_id: str,
-    builder_content_id: str,
-    intermediate_content_id: str,
-    expected_builder_target_parent: str,
+    builder_id: SPDXId,
+    builder_target_id: SPDXId,
+    intermediate_id: SPDXId,
+    builder_content_id: SPDXId,
+    intermediate_content_id: SPDXId,
+    expected_builder_target_parent: SPDXId,
 ) -> None:
     """
     Supply parent and ancestor builder subtrees and preserve their

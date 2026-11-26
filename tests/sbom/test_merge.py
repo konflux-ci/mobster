@@ -33,6 +33,7 @@ from mobster.sbom.merge import (
     wrap_as_cdx,
     wrap_as_spdx,
 )
+from mobster.sbom.spdx import SPDXId
 from mobster.utils import load_file_to_dict
 
 INDIVIDUAL_SYFT_SBOMS = [
@@ -79,7 +80,7 @@ def make_spdx_package(
     version: str = "1.0.0",
     purl: str | None = None,
     source: SBOMSource = SBOMSource.SYFT,
-    spdx_id: str | None = None,
+    spdx_id: SPDXId | None = None,
 ) -> SPDXPackage:
     external_refs = []
     if purl:

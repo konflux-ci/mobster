@@ -21,6 +21,7 @@ from mobster.error import BuilderContextualizationError
 from mobster.image import IMAGE_PKG_SPDX_PREFIX, Image
 from mobster.sbom.spdx import (
     DOC_ELEMENT_ID,
+    SPDXId,
     deduplicate_relationships,
     get_image_package,
     get_namespace,
@@ -76,14 +77,14 @@ async def find_spdx_root_relationships(sbom: Document) -> list[Relationship]:
     return relationships
 
 
-async def find_spdx_root_packages_spdxid(sbom_doc: Document) -> list[str]:
+async def find_spdx_root_packages_spdxid(sbom_doc: Document) -> list[SPDXId]:
     """
     Finds the root element of an SPDX SBOM and returns its SPDXID.
     Args:
         sbom_doc (spdx_tools.spdx.model.document.Document): The SBOM
 
     Returns:
-        list[str]: The SPDXID of the root package
+        list[SPDXId]: The SPDXID of the root package
     """
     spdx_ids = set()
     root_relationships = await find_spdx_root_relationships(sbom_doc)
@@ -158,7 +159,7 @@ def is_syft_oci_image_root(package: Package) -> bool:
 
 
 async def redirect_spdx_virtual_root_to_new_root(
-    sbom: Document, virtual_root_id: str, new_root_id: str
+    sbom: Document, virtual_root_id: SPDXId, new_root_id: SPDXId
 ) -> None:
     """
     Redirect the relationship describing the document to a new root node.
@@ -179,14 +180,14 @@ async def redirect_spdx_virtual_root_to_new_root(
 
 
 async def redirect_current_roots_to_new_root(
-    sbom: Document, new_root_spdx_id: str
+    sbom: Document, new_root_spdx_id: SPDXId
 ) -> None:
     """
     Redirect all the current root nodes to a new root node.
 
     Args:
         sbom (dict): SBOM in JSON format.
-        new_root_spdx_id (str): New root node identifier.
+        new_root_spdx_id (SPDXId): New root node identifier.
 
     Returns:
         dict: Updated SBOM with the new root node identifier.
@@ -276,13 +277,13 @@ async def update_package_in_spdx_sbom(
     return sbom
 
 
-def get_package_by_spdx_id(doc: Document, spdx_id: str) -> Package | None:
+def get_package_by_spdx_id(doc: Document, spdx_id: SPDXId) -> Package | None:
     """
     Gets package by spdx id from document.
 
     Args:
         doc (Document): The SPDX SBOM document to search in.
-        spdx_id (str): The SPDX SBOM ID to search for.
+        spdx_id (SPDXId): The SPDX SBOM ID to search for.
 
     Returns:
         Package | None: The package with the given spdx id, or None if not found.
@@ -293,13 +294,13 @@ def get_package_by_spdx_id(doc: Document, spdx_id: str) -> Package | None:
     )
 
 
-def get_annotations_by_spdx_id(doc: Document, spdx_id: str) -> list[Annotation]:
+def get_annotations_by_spdx_id(doc: Document, spdx_id: SPDXId) -> list[Annotation]:
     """
     Gets all annotations with the given spdx id from document.
 
     Args:
         doc (Document): The SPDX SBOM document to search in.
-        spdx_id (str): The SPDX SBOM ID to search for.
+        spdx_id (SPDXId): The SPDX SBOM ID to search for.
 
     Returns:
         list[Annotation]: The list of all annotations with the given spdx id.
@@ -376,7 +377,7 @@ class KonfluxAnnotationManager:
     """
 
     @staticmethod
-    def _make_annotation(spdx_id: str, comment: dict[Any, Any]) -> Annotation:
+    def _make_annotation(spdx_id: SPDXId, comment: dict[Any, Any]) -> Annotation:
         return Annotation(
             spdx_id=spdx_id,
             annotator=KONFLUX_JSON_ACTOR,
@@ -386,7 +387,7 @@ class KonfluxAnnotationManager:
         )
 
     @staticmethod
-    def intermediate_image(spdx_id: str, stage_index: int) -> Annotation:
+    def intermediate_image(spdx_id: SPDXId, stage_index: int) -> Annotation:
         """
         Create an SPDX Annotation object for an intermediate image package.
 
@@ -404,7 +405,7 @@ class KonfluxAnnotationManager:
         return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
 
     @staticmethod
-    def builder_image(spdx_id: str, stage_index: int) -> Annotation:
+    def builder_image(spdx_id: SPDXId, stage_index: int) -> Annotation:
         """
         Create an SPDX Annotation object for a builder image package.
 
@@ -423,7 +424,7 @@ class KonfluxAnnotationManager:
         return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
 
     @staticmethod
-    def base_image(spdx_id: str) -> Annotation:
+    def base_image(spdx_id: SPDXId) -> Annotation:
         """
         Create an SPDX Annotation object for a base image package.
 
@@ -441,7 +442,7 @@ class KonfluxAnnotationManager:
         return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
 
     @staticmethod
-    def ancestor_image(spdx_id: str) -> Annotation:
+    def ancestor_image(spdx_id: SPDXId) -> Annotation:
         """
         Create an SPDX Annotation object for an ancestor image package.
 
@@ -459,7 +460,7 @@ class KonfluxAnnotationManager:
         return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
 
     @staticmethod
-    def additional_image(spdx_id: str) -> Annotation:
+    def additional_image(spdx_id: SPDXId) -> Annotation:
         """
         Create an SPDX Annotation object for an additional image package.
 
@@ -604,10 +605,10 @@ class DocumentIndexOCI:
             doc: SPDX document to index
         """
         self.doc: Document = doc
-        self._spdx_id_to_ctx: dict[str, PackageContext] = {}
+        self._spdx_id_to_ctx: dict[SPDXId, PackageContext] = {}
         self._purl_to_ctxs: dict[str, list[PackageContext]] = defaultdict(list)
         self._image_ctxs: list[PackageContext] = []
-        self._initial_intermediate_ids: set[str] = set()
+        self._initial_intermediate_ids: set[SPDXId] = set()
 
         for pkg in self.doc.packages:
             pkg_ctx = PackageContext(
@@ -641,14 +642,14 @@ class DocumentIndexOCI:
             if pkg_ctx.intermediate_image_annotation is not None
         }
 
-    def try_package_by_spdx_id(self, spdx_id: str) -> PackageContext | None:
+    def try_package_by_spdx_id(self, spdx_id: SPDXId) -> PackageContext | None:
         """
         Return a package from the document by SPDX ID if it exists, otherwise
         returns None.
         """
         return self._spdx_id_to_ctx.get(spdx_id)
 
-    def package_by_spdx_id(self, spdx_id: str) -> PackageContext:
+    def package_by_spdx_id(self, spdx_id: SPDXId) -> PackageContext:
         """
         Return a package from the document by SPDX ID if it exists, otherwise
         raises a KeyError.
@@ -838,7 +839,7 @@ class DocumentIndexOCI:
         return False
 
     def reparent_relationship(
-        self, relationship: Relationship, new_parent_spdx_id: str
+        self, relationship: Relationship, new_parent_spdx_id: SPDXId
     ) -> bool:
         """
         Change the spdx_element_id of the passed relationship to the

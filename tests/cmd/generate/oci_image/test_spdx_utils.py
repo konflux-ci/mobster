@@ -31,6 +31,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 from mobster.error import BuilderContextualizationError
 from mobster.image import Image
 from mobster.sbom.spdx import (
+    SPDXId,
     get_package_purl,
     get_red_hat_org_string,
     normalize_red_hat_creator,
@@ -139,7 +140,7 @@ async def test_find_spdx_root(
     spdx_sbom_skeleton: dict[str, Any],
     sbom_fields: dict[str, Any],
     expected_relationship_object: list[Relationship],
-    expected_spdxid: list[str],
+    expected_spdxid: list[SPDXId],
     expected_package_object: list[Package],
 ) -> None:
     new_sbom = spdx_sbom_skeleton.copy()
@@ -395,7 +396,7 @@ async def test_redirect_current_roots_to_new_root(
     spdx_sbom_skeleton: dict[str, Any],
     additional_fields: dict[str, Any],
     expected_outcome: Document,
-    new_root_spdxid: str,
+    new_root_spdxid: SPDXId,
 ) -> None:
     new_sbom = spdx_sbom_skeleton.copy()
     new_sbom.update(additional_fields)
@@ -760,7 +761,7 @@ async def test_update_package_in_spdx_sbom(
 )
 def test_get_annotations_by_spdx_id(
     doc_annotations: list[Annotation] | None,
-    spdx_id: str,
+    spdx_id: SPDXId,
     expected_length: int,
 ) -> None:
     """Test get_annotations_by_spdx_id function with various document configurations."""

@@ -22,11 +22,12 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     PackageMatchInfo,
     PackageProducer,
 )
+from mobster.sbom.spdx import SPDXId
 
 
 def get_base_image_items(
-    spdx_element_id: str,
-    related_spdx_element_id: str,
+    spdx_element_id: SPDXId,
+    related_spdx_element_id: SPDXId,
     legacy: bool,
     grandparent: bool = False,
 ) -> tuple[Package, Annotation, Relationship]:
@@ -64,7 +65,7 @@ def get_base_image_items(
     return package, annotation, relationship
 
 
-def get_root_package_items(spdx_id: str) -> tuple[Package, Relationship]:
+def get_root_package_items(spdx_id: SPDXId) -> tuple[Package, Relationship]:
     """Helper function to generate root package and relationship items."""
     return Package(spdx_id, "name", SpdxNoAssertion()), Relationship(
         "SPDXRef-DOCUMENT",
@@ -80,7 +81,7 @@ def mock_doc() -> MagicMock:
 
 
 def create_package_with_identifier(
-    spdx_id: str,
+    spdx_id: SPDXId,
     identifier_type: str,
     matching_value: bool = True,
 ) -> Package:
@@ -123,7 +124,7 @@ def create_package_with_identifier(
     return Package(**kwargs)
 
 
-def create_annotation_with_spdx_id(spdx_id: str) -> Annotation:
+def create_annotation_with_spdx_id(spdx_id: SPDXId) -> Annotation:
     """Create annotation with specified SPDX ID for testing."""
     return Annotation(
         spdx_id,
@@ -135,8 +136,8 @@ def create_annotation_with_spdx_id(spdx_id: str) -> Annotation:
 
 
 def create_package_match_info(
-    parent_spdx_id: str,
-    component_spdx_id: str,
+    parent_spdx_id: SPDXId,
+    component_spdx_id: SPDXId,
     matched: bool,
     parent_producer: PackageProducer = PackageProducer.SYFT,
     component_producer: PackageProducer = PackageProducer.SYFT,

@@ -38,6 +38,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import find_spdx_root_packages_sp
 from mobster.error import SBOMError
 from mobster.image import Image, IndexImage
 from mobster.oci import cosign
+from mobster.sbom.spdx import SPDXId
 
 LOGGER = logging.getLogger(__name__)
 
@@ -103,7 +104,7 @@ async def download_parent_image_sbom(
     return sbom.doc
 
 
-def get_parent_spdx_id_from_component(component_sbom_doc: Document) -> str:
+def get_parent_spdx_id_from_component(component_sbom_doc: Document) -> SPDXId:
     """
     Obtains the component's used parent image SPDXID from DESCENDANT_OF
     relationship. Component SBOM is created before contextualization
@@ -157,7 +158,7 @@ def get_parent_spdx_id_from_component(component_sbom_doc: Document) -> str:
 
 def process_grandparent_item(
     grandparent_item: ImageItem,
-    parent_spdx_id_from_component: str,
+    parent_spdx_id_from_component: SPDXId,
 ) -> ImageItem:
     """
     Converts a grandparent item (base image of the used parent) into an
@@ -225,8 +226,8 @@ def process_grandparent_item(
 
 def process_builder_items(
     builder_items: list[ImageItem],
-    parent_spdx_id_from_component: str,
-    parent_root_packages: list[str],
+    parent_spdx_id_from_component: SPDXId,
+    parent_root_packages: list[SPDXId],
 ) -> list[ImageItem]:
     """
     Aligns builder image items (additional images and builders belonging to
@@ -281,7 +282,7 @@ def process_builder_items(
 
 def get_grandparent_and_ancestor_items_from_used_parent(
     parent_sbom_doc: Document,
-    parent_spdx_id_from_component: str,
+    parent_spdx_id_from_component: SPDXId,
 ) -> list[ImageItem]:
     """
     Obtain the grandparent image item of the component from the used parent and, if the
@@ -386,7 +387,7 @@ def get_grandparent_and_ancestor_items_from_used_parent(
 async def map_parent_to_component_and_update_component(
     parent_sbom_doc: Document,
     component_sbom_doc: Document,
-    parent_spdx_id_from_component: str,
+    parent_spdx_id_from_component: SPDXId,
 ) -> Document:
     """
     Contextualize the component SBOM against its downloaded used parent SBOM.

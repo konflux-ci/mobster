@@ -24,6 +24,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 )
 from mobster.image import Image
 from mobster.sbom.load import load_file_to_sbom
+from mobster.sbom.spdx import SPDXId
 from tests.spdx_builder import AnnotatedPackage, SPDXPackageBuilder, SPDXSBOMBuilder
 
 
@@ -858,7 +859,7 @@ def verify_sbom_relationships(
 
 
 def verify_relationships(
-    spdx_id: str,
+    spdx_id: SPDXId,
     relationships: list[Relationship],
     packages: list[AnnotatedPackage],
     relationship_type: RelationshipType | None = None,
@@ -908,7 +909,7 @@ def verify_packages_not_included(
         )
 
 
-def get_dependency_chain_spdx_ids(relationships: list[Relationship]) -> list[str]:
+def get_dependency_chain_spdx_ids(relationships: list[Relationship]) -> list[SPDXId]:
     """
     Using the provided relationships, builds a dependency chain based on the
     DESCENDANT_OF relationships. The root element is the first element in the

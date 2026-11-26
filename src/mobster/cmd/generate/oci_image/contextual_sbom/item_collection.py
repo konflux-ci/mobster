@@ -22,6 +22,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
     get_annotations_by_spdx_id,
 )
 from mobster.error import SBOMError
+from mobster.sbom.spdx import SPDXId
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class ContentItem:
 
 def get_annotations_by_spdx_id_filter_by_type(
     parent_sbom_doc: Document,
-    spdx_id: str,
+    spdx_id: SPDXId,
     annotation_type: type[AnnotationImage],
 ) -> list[Annotation]:
     """
@@ -95,8 +96,8 @@ def get_annotations_by_spdx_id_filter_by_type(
 
 def _relationship_has_package_endpoints(
     relationship: Relationship,
-    package_spdx_ids: set[str],
-    file_spdx_ids: set[str],
+    package_spdx_ids: set[SPDXId],
+    file_spdx_ids: set[SPDXId],
 ) -> bool:
     """
     Return whether both endpoints identify packages in the SBOM.
@@ -188,7 +189,7 @@ def _validate_relationship_cardinality_for_content_kind(
         SBOMError: If a package participates in multiple disallowed
             relationships.
     """
-    distinct_relationships_by_endpoint: dict[str, list[Relationship]] = {}
+    distinct_relationships_by_endpoint: dict[SPDXId, list[Relationship]] = {}
     for item in _warn_and_deduplicate_identical_relationships(
         sbom_doc, content_items, kind
     ):
@@ -263,7 +264,7 @@ def _warn_and_deduplicate_identical_relationships(
         Content items with duplicate relationship triplets removed.
     """
     relationship_triplet_occurrences: Counter[
-        tuple[str, RelationshipType, str | SpdxNoAssertion | SpdxNone]
+        tuple[SPDXId, RelationshipType, SPDXId | SpdxNoAssertion | SpdxNone]
     ] = Counter()
     unique_content_items: list[ContentItem] = []
     for item in content_items:
@@ -318,7 +319,7 @@ def _collect(
     """
     package_spdx_ids = {pkg.spdx_id for pkg in sbom_doc.packages}
     file_spdx_ids = {file.spdx_id for file in sbom_doc.files}
-    rel_index: dict[str, list[Relationship]] = {}
+    rel_index: dict[SPDXId, list[Relationship]] = {}
     for candidate_rel in sbom_doc.relationships:
         if candidate_rel.relationship_type != kind.relationship_type:
             continue

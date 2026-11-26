@@ -26,6 +26,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.logging import (
     PackageStats,
     PerBuilderStats,
 )
+from mobster.sbom.spdx import SPDXId
 
 
 def test_builder_statistics_log_summary_structured(caplog: LogCaptureFixture) -> None:
@@ -134,7 +135,7 @@ def test_no_duplicates() -> None:
 )
 def test_record_packages(
     package_type: str,
-    spdx_refs: list[str],
+    spdx_refs: list[SPDXId],
     record_method: str,
     stats_attr: str,
 ) -> None:

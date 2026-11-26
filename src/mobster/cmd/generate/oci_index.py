@@ -14,6 +14,7 @@ from spdx_tools.spdx.writer.write_anything import write_file
 from mobster.cmd.generate.base import GenerateCommand
 from mobster.image import Image
 from mobster.sbom import spdx
+from mobster.sbom.spdx import SPDXId
 
 LOGGER = logging.getLogger(__name__)
 
@@ -36,14 +37,14 @@ class GenerateOciIndexCommand(GenerateCommand):
     DOC_ELEMENT_ID = spdx.DOC_ELEMENT_ID
     INDEX_ELEMENT_ID = "SPDXRef-image-index"
 
-    def get_child_image_relationship(self, spdx_id: str) -> Relationship:
+    def get_child_image_relationship(self, spdx_id: SPDXId) -> Relationship:
         """
         Get a relationship for the child image in relation to the OCI index image.
         This relationship indicates that the child image is
         a variant of the index image.
 
         Args:
-            spdx_id (str): An SPDX ID for the child image.
+            spdx_id (SPDXId): An SPDX ID for the child image.
 
         Returns:
             Relationship: A SPDX relationship object for the child image.

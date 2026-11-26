@@ -13,6 +13,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
     PackageProducer,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.item_collection import ContentItem
+from mobster.sbom.spdx import SPDXId
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,29 +26,29 @@ class PackageStats:
     Tracks package matching and UID classification for one SBOM.
     """
 
-    all_packages: set[str] = field(default_factory=set)
-    matched_packages: set[str] = field(default_factory=set)
-    packages_anonymous: set[str] = field(default_factory=set)
-    packages_with_rejected_id: set[str] = field(default_factory=set)
-    packages_with_accepted_id: set[str] = field(default_factory=set)
+    all_packages: set[SPDXId] = field(default_factory=set)
+    matched_packages: set[SPDXId] = field(default_factory=set)
+    packages_anonymous: set[SPDXId] = field(default_factory=set)
+    packages_with_rejected_id: set[SPDXId] = field(default_factory=set)
+    packages_with_accepted_id: set[SPDXId] = field(default_factory=set)
 
     @property
-    def unmatched_packages(self) -> set[str]:
+    def unmatched_packages(self) -> set[SPDXId]:
         """All packages that were not matched."""
         return self.all_packages - self.matched_packages
 
     @property
-    def unmatched_anonymous(self) -> set[str]:
+    def unmatched_anonymous(self) -> set[SPDXId]:
         """Unmatched packages that have no UID at all."""
         return self.unmatched_packages & self.packages_anonymous
 
     @property
-    def unmatched_rejected(self) -> set[str]:
+    def unmatched_rejected(self) -> set[SPDXId]:
         """Unmatched packages whose only UID is a non-unique PURL."""
         return self.unmatched_packages & self.packages_with_rejected_id
 
     @property
-    def unmatched_accepted(self) -> set[str]:
+    def unmatched_accepted(self) -> set[SPDXId]:
         """Unmatched packages with a unique ID that could be compared."""
         return self.unmatched_packages & self.packages_with_accepted_id
 
@@ -103,28 +104,28 @@ class DuplicateTracker:
     we record those.
     """
 
-    checksums: dict[str, set[tuple[str, str]]] = field(
+    checksums: dict[str, set[tuple[SPDXId, SPDXId]]] = field(
         default_factory=lambda: defaultdict(set)
     )
-    verification_codes: dict[str, set[tuple[str, str]]] = field(
+    verification_codes: dict[str, set[tuple[SPDXId, SPDXId]]] = field(
         default_factory=lambda: defaultdict(set)
     )
-    purls: dict[str, set[tuple[str, str]]] = field(
+    purls: dict[str, set[tuple[SPDXId, SPDXId]]] = field(
         default_factory=lambda: defaultdict(set)
     )
 
     @property
-    def duplicate_checksums(self) -> dict[str, set[tuple[str, str]]]:
+    def duplicate_checksums(self) -> dict[str, set[tuple[SPDXId, SPDXId]]]:
         """Checksums that matched multiple package pairs."""
         return {k: v for k, v in self.checksums.items() if len(v) > 1}
 
     @property
-    def duplicate_verification_codes(self) -> dict[str, set[tuple[str, str]]]:
+    def duplicate_verification_codes(self) -> dict[str, set[tuple[SPDXId, SPDXId]]]:
         """Verification codes that matched multiple package pairs."""
         return {k: v for k, v in self.verification_codes.items() if len(v) > 1}
 
     @property
-    def duplicate_purls(self) -> dict[str, set[tuple[str, str]]]:
+    def duplicate_purls(self) -> dict[str, set[tuple[SPDXId, SPDXId]]]:
         """PURLs that matched multiple package pairs."""
         return {k: v for k, v in self.purls.items() if len(v) > 1}
 
@@ -133,7 +134,7 @@ class DuplicateTracker:
 class PerBuilderStats:
     """Builder content statistics related to this specific builder."""
 
-    builder_spdx_id: str = ""
+    builder_spdx_id: SPDXId = ""
     builder_purl: str = ""
     origin_types: dict[OriginType, int] = field(
         default_factory=lambda: dict.fromkeys(OriginType, 0)
@@ -145,7 +146,7 @@ class BuilderStatistics:
     """SPDXID of builder packages mapped to their statistics"""
 
     total_metadata: int = 0
-    per_builder_stats: dict[str, PerBuilderStats] = field(default_factory=dict)
+    per_builder_stats: dict[SPDXId, PerBuilderStats] = field(default_factory=dict)
     purl_mismatch: int = 0
     ambiguous_purls: int = 0
     faulty_dependency_of: int = 0
@@ -210,7 +211,7 @@ class MatchingStatistics:
         """Record all parent packages."""
         self.parent.all_packages = {item.package.spdx_id for item in parent_packages}
 
-    def record_parent_package_match(self, parent_spdx_id: str) -> None:
+    def record_parent_package_match(self, parent_spdx_id: SPDXId) -> None:
         """
         Record that this parent package has been matched.
         This can be higher number than self.component.matched_packages,
@@ -277,27 +278,27 @@ class MatchingStatistics:
         ):
             self.producer_matches.hermeto_to_hermeto += 1
 
-    def record_component_package_anonymous(self, spdx_id: str) -> None:
+    def record_component_package_anonymous(self, spdx_id: SPDXId) -> None:
         """Record an anonymous component package with no UID at all."""
         self.component.packages_anonymous.add(spdx_id)
 
-    def record_parent_package_anonymous(self, spdx_id: str) -> None:
+    def record_parent_package_anonymous(self, spdx_id: SPDXId) -> None:
         """Record an anonymous parent package with no UID at all."""
         self.parent.packages_anonymous.add(spdx_id)
 
-    def record_component_package_with_accepted_id(self, spdx_id: str) -> None:
+    def record_component_package_with_accepted_id(self, spdx_id: SPDXId) -> None:
         """Record a component package that has a unique ID."""
         self.component.packages_with_accepted_id.add(spdx_id)
 
-    def record_parent_package_with_accepted_id(self, spdx_id: str) -> None:
+    def record_parent_package_with_accepted_id(self, spdx_id: SPDXId) -> None:
         """Record a parent package that has a unique ID."""
         self.parent.packages_with_accepted_id.add(spdx_id)
 
-    def record_component_package_with_rejected_id(self, spdx_id: str) -> None:
+    def record_component_package_with_rejected_id(self, spdx_id: SPDXId) -> None:
         """Record a component package whose only UID is a non-unique PURL."""
         self.component.packages_with_rejected_id.add(spdx_id)
 
-    def record_parent_package_with_rejected_id(self, spdx_id: str) -> None:
+    def record_parent_package_with_rejected_id(self, spdx_id: SPDXId) -> None:
         """Record a parent package whose only UID is a non-unique PURL."""
         self.parent.packages_with_rejected_id.add(spdx_id)
 
