@@ -50,9 +50,11 @@ class SLSAProvenance:
         self,
         build_finished_on: datetime.datetime | None,
         bom_digests: dict[str, str],
+        image_expires: bool = False,
     ) -> None:
         self._build_finished_on = build_finished_on
         self._bom_digests: dict[str, str] = bom_digests
+        self._image_expires = image_expires
 
     @staticmethod
     def parse(attestation: bytes) -> "SLSAProvenance":
@@ -148,6 +150,8 @@ class SLSAProvenance:
         else:
             build_finished_on = None
 
+        image_expires = SLSAProvenance._image_expires_v02(predicate)
+
         # map image digests to sbom blob digests
         sbom_digests: dict[str, str] = {}
         tasks = predicate.get("buildConfig", {}).get("tasks", [])
@@ -156,7 +160,7 @@ class SLSAProvenance:
                 SLSAProvenance._parse_results_to_sbom_digests(task.get("results", []))
             )
 
-        return SLSAProvenance(build_finished_on, sbom_digests)
+        return SLSAProvenance(build_finished_on, sbom_digests, image_expires)
 
     @staticmethod
     def _parse_v1(predicate: Any) -> "SLSAProvenance":
@@ -182,6 +186,8 @@ class SLSAProvenance:
         else:
             build_finished_on = None
 
+        image_expires = SLSAProvenance._image_expires_v1(predicate)
+
         sbom_digests: dict[str, str] = {}
 
         for task_run in predicate.get("buildDefinition", {}).get(
@@ -200,7 +206,40 @@ class SLSAProvenance:
                 ) from err
             sbom_digests.update(SLSAProvenance._parse_results_to_sbom_digests(results))
 
-        return SLSAProvenance(build_finished_on, sbom_digests)
+        return SLSAProvenance(build_finished_on, sbom_digests, image_expires)
+
+    @staticmethod
+    def _image_expires_v02(predicate: Any) -> bool:
+        """
+        Return True if the v0.2 pipeline was run with a non-empty image-expires-after
+        parameter.
+        """
+        return bool(
+            predicate.get("invocation", {})
+            .get("parameters", {})
+            .get("image-expires-after")
+        )
+
+    @staticmethod
+    def _image_expires_v1(predicate: Any) -> bool:
+        """
+        Return True if the v1 pipeline was run with a non-empty image-expires-after
+        parameter.
+        """
+        params = (
+            predicate.get("buildDefinition", {})
+            .get("externalParameters", {})
+            .get("runSpec", {})
+            .get("params", [])
+        )
+        return any(
+            p.get("name") == "image-expires-after" and p.get("value") for p in params
+        )
+
+    @property
+    def image_expires(self) -> bool:
+        """Whether image-expires-after has a nonempty value."""
+        return self._image_expires
 
     @property
     def build_finished_on(self) -> datetime.datetime | None:

@@ -407,13 +407,21 @@ class TestSLSAProvenance:
         with pytest.raises(SLSAParsingError, match="Cannot parse"):
             SLSAProvenance.parse(raw)
 
-    def test_v02_happy_path(self) -> None:
+    @pytest.mark.parametrize("expiration", [None, "", "5d"])
+    def test_v02_happy_path(self, expiration: str | None) -> None:
         cbom_url = "registry.example.io/crypto@sha256:ccc"
         raw = _make_slsa_raw(
             {
                 "predicateType": "https://slsa.dev/provenance/v0.2",
                 "predicate": {
                     "metadata": {"buildFinishedOn": "2024-06-15T10:30:00Z"},
+                    "invocation": {
+                        "parameters": (
+                            {}
+                            if expiration is None
+                            else {"image-expires-after": expiration}
+                        )
+                    },
                     "buildConfig": {
                         "tasks": [
                             {
@@ -437,6 +445,7 @@ class TestSLSAProvenance:
         assert prov.build_finished_on == datetime.datetime(
             2024, 6, 15, 10, 30, tzinfo=datetime.timezone.utc
         )
+        assert prov.image_expires is bool(expiration)
         assert prov.sbom_digest("sha256:aaa") == "sha256:bbb"
         assert prov.cbom_blob_url() == cbom_url
 
@@ -478,10 +487,14 @@ class TestSLSAProvenance:
 
         assert prov.sbom_digest("sha256:aaa") is None
 
-    def test_v1_happy_path(self) -> None:
+    @pytest.mark.parametrize("expiration", [None, "", "5d"])
+    def test_v1_happy_path(self, expiration: str | None) -> None:
         image_digest = "sha256:" + "a" * 64
         sbom_digest = "sha256:" + "b" * 64
         cbom_url = "quay.io/crypto@sha256:" + "c" * 64
+        params = [{"name": "output-image", "value": "quay.io/foo:tag"}]
+        if expiration is not None:
+            params.append({"name": "image-expires-after", "value": expiration})
         raw = _make_slsa_raw(
             {
                 "predicateType": "https://slsa.dev/provenance/v1",
@@ -490,6 +503,7 @@ class TestSLSAProvenance:
                         "metadata": {"finishedOn": "2024-08-20T14:00:00Z"},
                     },
                     "buildDefinition": {
+                        "externalParameters": {"runSpec": {"params": params}},
                         "resolvedDependencies": [
                             {"uri": "irrelevant", "content": "eyJ0aGUiOiAiZ2FtZSJ9"},
                             {"uri": "somehow-without-content", "name": "pipelineTask"},
@@ -532,7 +546,7 @@ class TestSLSAProvenance:
                                     ).encode(),
                                 ).decode(),
                             },
-                        ]
+                        ],
                     },
                 },
             }
@@ -543,8 +557,55 @@ class TestSLSAProvenance:
         assert prov.build_finished_on == datetime.datetime(
             2024, 8, 20, 14, 0, tzinfo=datetime.timezone.utc
         )
+        assert prov.image_expires is bool(expiration)
         assert prov.sbom_digest(image_digest) == sbom_digest
         assert prov.cbom_blob_url() == cbom_url
+
+    @pytest.mark.parametrize(
+        ["version", "predicate"],
+        [
+            ("v0.2", {}),
+            ("v0.2", {"invocation": {}}),
+            ("v0.2", {"invocation": {"parameters": {}}}),
+            ("v1", {}),
+            ("v1", {"buildDefinition": {"externalParameters": {}}}),
+            ("v1", {"buildDefinition": {"externalParameters": {"runSpec": {}}}}),
+            (
+                "v1",
+                {
+                    "buildDefinition": {
+                        "externalParameters": {"runSpec": {"params": []}}
+                    }
+                },
+            ),
+            (
+                "v1",
+                {
+                    "buildDefinition": {
+                        "externalParameters": {
+                            "runSpec": {"params": [{"name": "image-expires-after"}]}
+                        }
+                    }
+                },
+            ),
+        ],
+    )
+    def test_missing_expiration_metadata(
+        self, version: str, predicate: dict[str, Any]
+    ) -> None:
+        raw = _make_slsa_raw(
+            {
+                "predicateType": f"https://slsa.dev/provenance/{version}",
+                "predicate": predicate,
+            }
+        )
+
+        prov = SLSAProvenance.parse(raw)
+
+        assert prov.image_expires is False
+
+    def test_constructor_defaults_to_no_expiration(self) -> None:
+        assert SLSAProvenance(None, {}).image_expires is False
 
     def test_v1_missing_finished_on(self) -> None:
         raw = _make_slsa_raw(
