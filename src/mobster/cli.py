@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from mobster import get_mobster_version
 from mobster.cmd import attest, enrich
 from mobster.cmd.augment.cbom import AugmentCBOMCommand
 from mobster.cmd.augment.sbom import AugmentImageCommand
@@ -90,6 +91,9 @@ def setup_arg_parser() -> argparse.ArgumentParser:
     enrich_command_parser(subparsers)
 
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output.")
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {get_mobster_version()}"
+    )
 
     return parser
 
