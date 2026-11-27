@@ -20,7 +20,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
 )
 from mobster.cmd.generate.oci_image.spdx_utils import DocumentIndexOCI, PackageContext
 from mobster.error import BuilderContextualizationError
-from mobster.sbom.spdx import get_package_purl
+from mobster.sbom.spdx import SPDXId, get_package_purl
 
 LOGGER = getLogger(__name__)
 
@@ -36,6 +36,7 @@ class MissingImageContainsPackage(BuilderContextualizationError):
     Raised when a CONTAINS relationship between an image package and a package
     is not found in the SBOM.
     """
+
 
 class BuilderPkgMetadataItem(pdc.BaseModel):
     """
@@ -148,7 +149,7 @@ class Contextualizer:
 
     def generate_origins(
         self, component_index: DocumentIndexOCI
-    ) -> list[tuple[str, Origin]]:
+    ) -> list[tuple[SPDXId, Origin]]:
         """
         Generate origins of packages in a document based on metadata and the
         parent SBOM.
@@ -165,17 +166,15 @@ class Contextualizer:
 
     def _generate_ancestor_origins(
         self, component_index: DocumentIndexOCI
-    ) -> list[tuple[str, Origin]]:
-        """
-
-        """
+    ) -> list[tuple[SPDXId, Origin]]:
+        """ """
 
         # TODO: here we assign an pullspec to a component package spdx_id but
         # that is maybe unnecessary work, it's possible to instead use spdx_id
         # of the origin image package think if this is worth the complexity
         # tradeoff (probably not) - maybe if the builder stuff was also
         # refactored to use image spdx_id as origin information
-        origins: list[tuple[str, Origin]] = []
+        origins: list[tuple[SPDXId, Origin]] = []
 
         for component_pkg_ctx in component_index.content_packages:
             if component_pkg_ctx.generated_by_hermeto:
@@ -211,7 +210,7 @@ class Contextualizer:
         self,
         component_pkg_ctx: PackageContext,
         parent_matches: list[PackageContext],
-    ) -> tuple[str, Origin] | None:
+    ) -> tuple[SPDXId, Origin] | None:
         # FIXME: docstring
         """
         Generate an ancestor origin from matching parent packages.
@@ -244,7 +243,7 @@ class Contextualizer:
 
     def _generate_syft_syft_origin(
         self, component_pkg_ctx: PackageContext
-    ) -> tuple[str, Origin] | None:
+    ) -> tuple[SPDXId, Origin] | None:
         """Match Syft packages by checksum, verification code, then PURL."""
         parent_pkgs_by_checksum = self.parent_index.packages_by_checksum_id(
             component_pkg_ctx.checksum_identity
@@ -276,7 +275,7 @@ class Contextualizer:
 
     def _generate_builder_origins(
         self, component_index: DocumentIndexOCI
-    ) -> list[tuple[str, Origin]]:
+    ) -> list[tuple[SPDXId, Origin]]:
         origins = []
 
         self.stats.total_metadata = len(self.builder_metadata.packages)
@@ -401,7 +400,7 @@ class Contextualizer:
         return None
 
     def resolve_origins(
-        self, index: DocumentIndexOCI, origins: list[tuple[str, Origin]]
+        self, index: DocumentIndexOCI, origins: list[tuple[SPDXId, Origin]]
     ) -> DocumentIndexOCI:
         """
         Modify the passed index to reflect the passed origins information. Adjusts
@@ -461,7 +460,7 @@ class Contextualizer:
 
     @staticmethod
     def _find_current_image_contains_relationship(
-        index: DocumentIndexOCI, pkg_spdx_id: str
+        index: DocumentIndexOCI, pkg_spdx_id: SPDXId
     ) -> Relationship | None:
         """
         Find the current relationship where an image package CONTAINS the package

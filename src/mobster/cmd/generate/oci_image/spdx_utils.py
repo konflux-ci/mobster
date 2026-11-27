@@ -877,9 +877,9 @@ class DocumentIndexOCI:
                     assert img_purl_str is not None
 
                     img_purl = PackageURL.from_string(img_purl_str)
-                    assert isinstance(
-                        img_purl.qualifiers, dict
-                    ), "an image package PURL did not contain a dictionary of qualifiers!"
+                    assert isinstance(img_purl.qualifiers, dict), (
+                        "an image package PURL did not contain a dictionary of qualifiers!"
+                    )
 
                     img_pullspec = (
                         f"{img_purl.qualifiers['repository_url']}@{img_purl.version}"
