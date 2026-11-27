@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.6.0](https://github.com/konflux-ci/mobster/compare/v2.5.0...v2.6.0) (2026-11-27)
+
+
+### Features
+
+* add --version option to the CLI ([4dfea17](https://github.com/konflux-ci/mobster/commit/4dfea179f44369814865f2889578f57bd2c2fbbc))
+* **ISV-7823:** add image_expires attribute to SLSAProvenance ([e769dfb](https://github.com/konflux-ci/mobster/commit/e769dfb78f251c12dc4a336a8fc7e26e75689a13))
+
+
+### Bug Fixes
+
+* update the build pipeline for TPA image ([65f9f62](https://github.com/konflux-ci/mobster/commit/65f9f62a67ea3eb5406a335fb29d9f548620aa4b))
+
 ## [2.5.0](https://github.com/konflux-ci/mobster/compare/v2.4.1...v2.5.0) (2026-11-20)
 
 
