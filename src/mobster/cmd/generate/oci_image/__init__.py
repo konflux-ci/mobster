@@ -236,8 +236,9 @@ class GenerateOciImageCommand(GenerateCommandWithOutputTypeSelector):
         builder_ctx_sbom = deepcopy(parent_contextualized_sbom)
         index = DocumentIndexOCI(builder_ctx_sbom)
 
-        builder = Contextualizer()
-        contextual_sbom = builder.contextualize(index, builder_metadata)
+        # FIXME: parent stuff
+        builder = Contextualizer(parent_index=None, builder_metadata=builder_metadata)
+        contextual_sbom = builder.contextualize(index)
         LOGGER.debug("Builder content contextualization complete.")
         return contextual_sbom
 

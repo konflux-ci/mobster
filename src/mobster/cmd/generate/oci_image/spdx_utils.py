@@ -6,19 +6,21 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, ClassVar, TypeVar
+from typing import Any, ClassVar, Generator, TypeVar
 
 from packageurl import PackageURL
 from spdx_tools.spdx.model.actor import Actor, ActorType
 from spdx_tools.spdx.model.annotation import Annotation, AnnotationType
+from spdx_tools.spdx.model.checksum import Checksum
 from spdx_tools.spdx.model.document import Document
 from spdx_tools.spdx.model.package import Package
 from spdx_tools.spdx.model.relationship import Relationship, RelationshipType
 from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 
 from mobster.cmd.generate.oci_image.constants import BUILDER_IMAGE_PROPERTY
-from mobster.error import BuilderContextualizationError
+from mobster.error import BuilderContextualizationError, ContextualWorkflowError
 from mobster.image import IMAGE_PKG_SPDX_PREFIX, Image
+from mobster.purl import PURL
 from mobster.sbom.spdx import (
     DOC_ELEMENT_ID,
     SPDXId,
@@ -30,6 +32,37 @@ from mobster.sbom.spdx import (
 )
 
 KONFLUX_JSON_ACTOR = Actor(actor_type=ActorType.TOOL, name="konflux:jsonencoded")
+
+# FIXME: this is duplicate with constants.py
+HERMETO_ANNOTATION_COMMENTS = [
+    '{"name": "cachi2:found_by", "value": "cachi2"}',
+    '{"name": "hermeto:found_by", "value": "hermeto"}',
+]
+
+
+class ChecksumIdentity:
+    """
+    A collection of package checksums that can be compared using checksum
+    algorithms and values.
+    """
+
+    def __init__(self, spdx_checksums: list[Checksum]) -> None:
+        self._checksums = frozenset(
+            {(checksum.algorithm, checksum.value) for checksum in spdx_checksums}
+        )
+
+    def __eq__(self, other: object, /) -> bool:
+        """
+        Equality function for two checksum identities. Two checksums are equal
+        if at least one set of values with the same algorithm are equal.
+        """
+        if not isinstance(other, ChecksumIdentity):
+            return False
+
+        return any(checksum in other._checksums for checksum in self._checksums)
+
+    def __hash__(self) -> int:
+        return hash(self._checksums)
 
 
 class MissingBuilderAnnotation(Exception):
@@ -312,13 +345,13 @@ class AnnotationParseError(Exception):
     """An error occurred during parsing of a Konflux annotation."""
 
 
-class AnnotationImage:
+class KonfluxAnnotation:
     """Base type for parsed Konflux annotations."""
 
     name: ClassVar[str]
 
 
-class AnnotationIntermediateImage(AnnotationImage):
+class AnnotationIntermediateImage(KonfluxAnnotation):
     """
     Parsed Konflux intermediate image annotation.
 
@@ -332,7 +365,7 @@ class AnnotationIntermediateImage(AnnotationImage):
         self.stage_index = stage_index
 
 
-class AnnotationBuilderImage(AnnotationImage):
+class AnnotationBuilderImage(KonfluxAnnotation):
     """
     Parsed Konflux builder image annotation.
 
@@ -346,7 +379,7 @@ class AnnotationBuilderImage(AnnotationImage):
         self.stage_index = stage_index
 
 
-class AnnotationBaseImage(AnnotationImage):
+class AnnotationBaseImage(KonfluxAnnotation):
     """
     Parsed Konflux base image annotation. Empty, because its presence already
     signals a base image.
@@ -355,7 +388,7 @@ class AnnotationBaseImage(AnnotationImage):
     name = "konflux:container:is_base_image"
 
 
-class AnnotationAncestorImage(AnnotationImage):
+class AnnotationAncestorImage(KonfluxAnnotation):
     """
     Parsed Konflux ancestor image (grandparent
     of the component and more recent) annotation.
@@ -364,10 +397,18 @@ class AnnotationAncestorImage(AnnotationImage):
     name = "konflux:container:is_ancestor_image"
 
 
-class AnnotationAdditionalImage(AnnotationImage):
+class AnnotationAdditionalImage(KonfluxAnnotation):
     """Parsed Konflux annotation for additional builder images."""
 
     name = "konflux:container:is_builder_image:additional_builder_image"
+
+
+class AnnotationGeneratedByHermeto(KonfluxAnnotation):
+    """
+    Only for testing purposes
+    """
+
+    name = "hermeto:found_by"
 
 
 class KonfluxAnnotationManager:
@@ -478,9 +519,17 @@ class KonfluxAnnotationManager:
         return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
 
     @staticmethod
+    def generated_by_hermeto(spdx_id: str) -> Annotation:
+        comment = {
+            "name": AnnotationGeneratedByHermeto.name,
+            "value": "hermeto",
+        }
+        return KonfluxAnnotationManager._make_annotation(spdx_id, comment)
+
+    @staticmethod
     def parse(
         ann: Annotation,
-    ) -> AnnotationImage | None:
+    ) -> KonfluxAnnotation | None:
         """
         Parse an SPDX annotation document and return the internal
         representation or return None if it's not a Konflux annotation.
@@ -551,6 +600,20 @@ class PackageContext:
         return None
 
     @property
+    def purl(self) -> PURL | None:
+        purl = get_package_purl(self.pkg)
+        if purl is None:
+            return None
+        return PURL(purl)
+
+    @property
+    def checksum_identity(self) -> ChecksumIdentity:
+        """
+        Get the internal package's checksum identity.
+        """
+        return ChecksumIdentity(self.pkg.checksums)
+
+    @property
     def builder_image_annotation(self) -> AnnotationBuilderImage | None:
         """
         Get the builder image annotation for this package if present.
@@ -570,6 +633,17 @@ class PackageContext:
         Get the additional image annotation for this package if present.
         """
         return self._annotation(AnnotationAdditionalImage)
+
+    @property
+    def generated_by_hermeto(self) -> bool:
+        """
+        Return True if this package was generated by hermeto.
+        """
+        return any(
+            annot.annotator.actor_type == ActorType.TOOL
+            and annot.annotation_comment in HERMETO_ANNOTATION_COMMENTS
+            for annot in self.annotations
+        )
 
     def filter_parent_relationships(
         self, rel_type: RelationshipType
@@ -592,21 +666,34 @@ class DocumentIndexOCI:
 
     Attributes:
         doc (Document): the underlying SPDX Document object
+        _root_spdx_id: SPDX ID of the document root, if present
     """
 
     def __init__(self, doc: Document) -> None:
         """
         Initialize the document index from an SPDX document.
 
-        Builds internal lookup structures for fast access to packages by
-        SPDX ID, PURL, and identifies image packages.
+        Builds internal lookup structures for fast access to packages by SPDX
+        ID, PURL, checksums, package verification codes and identifies the root
+        and image packages.
 
         Args:
             doc: SPDX document to index
         """
+        # FIXME: rethink the stringly typing in the attributes
+
         self.doc: Document = doc
+        self._root_spdx_id: str | None = None
         self._spdx_id_to_ctx: dict[SPDXId, PackageContext] = {}
-        self._purl_to_ctxs: dict[str, list[PackageContext]] = defaultdict(list)
+
+        self._purl_to_ctxs: dict[PURL, list[PackageContext]] = defaultdict(list)
+        self._checksum_id_to_ctxs: dict[ChecksumIdentity, list[PackageContext]] = (
+            defaultdict(list)
+        )
+        self.verification_code_to_ctxs: dict[str, list[PackageContext]] = defaultdict(
+            list
+        )
+
         self._image_ctxs: list[PackageContext] = []
         self._initial_intermediate_ids: set[SPDXId] = set()
 
@@ -617,17 +704,37 @@ class DocumentIndexOCI:
 
             self._spdx_id_to_ctx[pkg.spdx_id] = pkg_ctx
 
+            # PURL-based indexing
             purl = get_package_purl(pkg)
             if purl is not None:
-                normalized = get_normalized_purl(purl)
-                self._purl_to_ctxs[normalized].append(pkg_ctx)
+                self._purl_to_ctxs[PURL(purl)].append(pkg_ctx)
 
+            # checksum-based indexing
+            self._checksum_id_to_ctxs[ChecksumIdentity(pkg.checksums)].append(pkg_ctx)
+
+            # "verification code"-based indexing
+            if pkg.verification_code is not None:
+                self.verification_code_to_ctxs[pkg.verification_code.value].append(
+                    pkg_ctx
+                )
+
+            # image package identification
             if pkg.spdx_id.startswith(IMAGE_PKG_SPDX_PREFIX):
                 self._image_ctxs.append(pkg_ctx)
 
         for rel in self.doc.relationships:
             if rel.spdx_element_id == DOC_ELEMENT_ID:
+                if rel.relationship_type == RelationshipType.DESCRIBES and isinstance(
+                    rel.related_spdx_element_id, str
+                ):
+                    self._root_spdx_id = rel.related_spdx_element_id
                 continue
+
+            if (
+                rel.related_spdx_element_id == DOC_ELEMENT_ID
+                and rel.relationship_type == RelationshipType.DESCRIBED_BY
+            ):
+                self._root_spdx_id = rel.spdx_element_id
 
             pkg_ctx = self._spdx_id_to_ctx[rel.spdx_element_id]
             pkg_ctx.parent_relationships.append(rel)
@@ -641,6 +748,16 @@ class DocumentIndexOCI:
             for pkg_ctx in self._image_ctxs
             if pkg_ctx.intermediate_image_annotation is not None
         }
+
+    @property
+    def content_packages(self) -> list[PackageContext]:
+        """Return content packages, excluding the document root and OCI images."""
+        return [
+            ctx
+            for spdx_id, ctx in self._spdx_id_to_ctx.items()
+            if spdx_id != self._root_spdx_id
+            and not spdx_id.startswith(IMAGE_PKG_SPDX_PREFIX)
+        ]
 
     def try_package_by_spdx_id(self, spdx_id: SPDXId) -> PackageContext | None:
         """
@@ -667,7 +784,7 @@ class DocumentIndexOCI:
         """
         return self._spdx_id_to_ctx[spdx_id]
 
-    def packages_by_purl(self, purl: str) -> list[PackageContext]:
+    def packages_by_purl(self, purl: PURL) -> list[PackageContext]:
         """
         Return packages from the document by a Package URL string.
 
@@ -675,14 +792,34 @@ class DocumentIndexOCI:
         that matches the passed purl.
 
         Args:
-            purl: Package URL string to search for
+            purl: Package URL to search for
 
         Returns:
             List of PackageContext objects with matching PURLs, or empty list
             if none found
         """
-        normalized = get_normalized_purl(purl)
-        return self._purl_to_ctxs.get(normalized, [])
+        return self._purl_to_ctxs.get(purl, [])
+
+    def packages_by_checksum_id(
+        self, checksum_id: ChecksumIdentity
+    ) -> list[PackageContext]:
+        """
+        Return packages from the document by matching checksums.
+
+        Args:
+            checksum_id: ChecksumIdentity to search for
+
+        Returns:
+            List of PackageContext object with checksum identity equality, or
+            empty list if none found
+        """
+        return self._checksum_id_to_ctxs[checksum_id]
+
+    def packages_by_verification_code(
+        self, verification_code: str
+    ) -> list[PackageContext]:
+        """Return packages with the given package verification code value."""
+        return self.verification_code_to_ctxs[verification_code]
 
     def image_packages(self) -> list[PackageContext]:
         """
@@ -711,6 +848,39 @@ class DocumentIndexOCI:
 
             if DocumentIndexOCI._match_image_package(img_pkg_ctx.pkg, pullspec):
                 return img_pkg_ctx
+
+        return None
+
+    def get_image_attribution_pullspec(self, spdx_id: str) -> str | None:
+        """
+        Get the pullspec of the image that contains the package specified by
+        the passed spdx id.
+
+        An image contains a package if an image package in the underlying SBOM
+        document has a CONTAINS relationship to the passed package.
+
+        Returns:
+            str: pullspec of the image that contains the passed package
+            ("repository:@sha256<hash>") or None if no such image package was
+            found (which implies a likely bug).
+        """
+        for img_pkg_ctx in self.image_packages():
+            for rel in img_pkg_ctx.filter_parent_relationships(
+                RelationshipType.CONTAINS
+            ):
+                if rel.related_spdx_element_id == spdx_id:
+                    img_purl_str = get_package_purl(img_pkg_ctx.pkg)
+                    assert img_purl_str is not None
+
+                    img_purl = PackageURL.from_string(img_purl_str)
+                    assert isinstance(img_purl.qualifiers, dict), (
+                        "an image package PURL did not contain a dictionary of qualifiers!"
+                    )
+
+                    img_pullspec = (
+                        f"{img_purl.qualifiers['repository_url']}@{img_purl.version}"
+                    )
+                    return img_pullspec
 
         return None
 

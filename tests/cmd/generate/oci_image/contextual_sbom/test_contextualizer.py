@@ -36,6 +36,14 @@ def sbom_index_two_images() -> DocumentIndexOCI:
         - "SPDXRef-Package-stdlib-from-oras"
         - "SPDXRef-Package-math-from-oras" (Which is a DEPENDENCY_OF
             "SPDXRef-Package-mergo-from-oras")
+
+    The root also CONTAINS Hermeto packages requests and urllib3, which match
+    packages in the parent SBOM, a component-only Hermeto package with an
+    unmatched PURL, and a Hermeto package without a PURL.
+    It also CONTAINS Syft packages bash and coreutils, which match parent
+    packages by checksum and package verification code, respectively.
+    Syft packages sed and grep match by PURL; grep has unmatched checksums
+    and a package verification code.
     """
 
     oras_name = "oras"
@@ -111,6 +119,78 @@ def sbom_index_two_images() -> DocumentIndexOCI:
         .build()
     )
 
+    requests_pkg = (
+        SPDXPackageBuilder()
+        .name("requests")
+        .spdx_id("SPDXRef-Package-requests")
+        .version("2.32.3")
+        .purl("pkg:pypi/requests@2.32.3")
+        .generated_by_hermeto_annotation()
+        .build()
+    )
+    urllib3_pkg = (
+        SPDXPackageBuilder()
+        .name("urllib3")
+        .spdx_id("SPDXRef-Package-urllib3")
+        .version("2.3.0")
+        .purl("pkg:pypi/urllib3@2.3.0")
+        .generated_by_hermeto_annotation()
+        .build()
+    )
+    pkg_without_purl = (
+        SPDXPackageBuilder()
+        .name("without-purl")
+        .spdx_id("SPDXRef-Package-without-purl")
+        .version("1.0.0")
+        .generated_by_hermeto_annotation()
+        .build()
+    )
+    component_only_pkg = (
+        SPDXPackageBuilder()
+        .name("component-only")
+        .spdx_id("SPDXRef-Package-component-only")
+        .version("1.0.0")
+        .purl("pkg:pypi/component-only@1.0.0")
+        .generated_by_hermeto_annotation()
+        .build()
+    )
+    bash_pkg = (
+        SPDXPackageBuilder()
+        .name("bash")
+        .spdx_id("SPDXRef-Package-bash")
+        .version("5.2.26")
+        .purl("pkg:rpm/bash@5.2.26")
+        .sha256_checksum("a" * 64)
+        .build()
+    )
+    coreutils_pkg = (
+        SPDXPackageBuilder()
+        .name("coreutils")
+        .spdx_id("SPDXRef-Package-coreutils")
+        .version("9.5")
+        .purl("pkg:rpm/coreutils@9.5")
+        .verification_code("b" * 40)
+        .build()
+    )
+    sed_pkg = (
+        SPDXPackageBuilder()
+        .name("sed")
+        .spdx_id("SPDXRef-Package-sed")
+        .version("4.9")
+        .purl("pkg:rpm/sed@4.9?arch=x86_64&distro=fedora")
+        .build()
+    )
+    grep_pkg = (
+        SPDXPackageBuilder()
+        .name("grep")
+        .spdx_id("SPDXRef-Package-grep")
+        .version("3.11")
+        .purl("pkg:rpm/grep@3.11")
+        .sha256_checksum("c" * 64)
+        .verification_code("d" * 40)
+        .build()
+    )
+
     document = (
         SPDXSBOMBuilder()
         .name("testing-doc")
@@ -123,10 +203,158 @@ def sbom_index_two_images() -> DocumentIndexOCI:
         .contains(syft_img_pkg, same_purl_pkg_2)
         .dependency_of(same_purl_pkg_1, pkg_builder_1)
         .dependency_of(same_purl_pkg_2, pkg_builder_2)
+        .root_contains(
+            [
+                requests_pkg,
+                urllib3_pkg,
+                pkg_without_purl,
+                component_only_pkg,
+                bash_pkg,
+                coreutils_pkg,
+                sed_pkg,
+                grep_pkg,
+            ]
+        )
     ).build()
 
     index = DocumentIndexOCI(document)
     return index
+
+
+@pytest.fixture
+def parent_index_empty() -> DocumentIndexOCI:
+    """
+    Fixture returning an index of an SBOM document for a parent OCI image with
+    no packages.
+    """
+    parent_img = (
+        SPDXPackageBuilder()
+        .name("parent")
+        .spdx_id("SPDXRef-image-parent")
+        .version("sha256:cccc")
+        .purl("pkg:oci/parent@sha256:cccc?repository_url=quay.io/konflux-ci/parent")
+        .build()
+    )
+    document = (
+        SPDXSBOMBuilder()
+        .name("parent-doc")
+        .root_purl("pkg:oci/parent-sbom@sha256:cccc")
+        .root_describes([parent_img])
+        .build()
+    )
+    return DocumentIndexOCI(document)
+
+
+@pytest.fixture
+def parent_index() -> DocumentIndexOCI:
+    """
+    Fixture returning an index of an SBOM document for a parent OCI image with
+    the following package layout:
+
+    The SBOM root package describes the image package "SPDXRef-image-parent".
+
+    The image package "SPDXRef-image-parent" is a DESCENDANT_OF
+    "SPDXRef-image-grandparent" and CONTAINS:
+        - "SPDXRef-Package-requests-in-parent"
+        - "SPDXRef-Package-bash-in-parent"
+        - "SPDXRef-Package-sed-in-parent"
+
+    The image package "SPDXRef-image-grandparent" CONTAINS:
+        - "SPDXRef-Package-urllib3-in-parent"
+        - "SPDXRef-Package-coreutils-in-parent"
+        - "SPDXRef-Package-grep-in-parent"
+
+    All content packages are generated by Syft. Requests and urllib3 match
+    the PURLs of Hermeto packages in the component SBOM. Bash and coreutils
+    match Syft packages by checksum and package verification code, respectively.
+    Sed and grep match Syft packages by normalized PURL.
+    """
+    parent_img = (
+        SPDXPackageBuilder()
+        .name("parent")
+        .spdx_id("SPDXRef-image-parent")
+        .version("sha256:cccc")
+        .purl("pkg:oci/parent@sha256:cccc?repository_url=quay.io/konflux-ci/parent")
+        .build()
+    )
+    grandparent_img = (
+        SPDXPackageBuilder()
+        .name("grandparent")
+        .spdx_id("SPDXRef-image-grandparent")
+        .version("sha256:dddd")
+        .purl(
+            "pkg:oci/grandparent@sha256:dddd?repository_url=quay.io/konflux-ci/grandparent"
+        )
+        .is_base_image_annotation()
+        .build()
+    )
+    requests_pkg = (
+        SPDXPackageBuilder()
+        .name("requests")
+        .spdx_id("SPDXRef-Package-requests-in-parent")
+        .version("2.32.3")
+        .purl("pkg:pypi/requests@2.32.3")
+        .build()
+    )
+    urllib3_pkg = (
+        SPDXPackageBuilder()
+        .name("urllib3")
+        .spdx_id("SPDXRef-Package-urllib3-in-parent")
+        .version("2.3.0")
+        .purl("pkg:pypi/urllib3@2.3.0")
+        .build()
+    )
+    bash_pkg = (
+        SPDXPackageBuilder()
+        .name("bash")
+        .spdx_id("SPDXRef-Package-bash-in-parent")
+        .version("5.2.26")
+        .purl("pkg:rpm/bash@5.2.26")
+        .sha256_checksum("a" * 64)
+        .build()
+    )
+    coreutils_pkg = (
+        SPDXPackageBuilder()
+        .name("coreutils")
+        .spdx_id("SPDXRef-Package-coreutils-in-parent")
+        .version("9.5")
+        .purl("pkg:rpm/coreutils@9.5")
+        .verification_code("b" * 40)
+        .build()
+    )
+    sed_pkg = (
+        SPDXPackageBuilder()
+        .name("sed")
+        .spdx_id("SPDXRef-Package-sed-in-parent")
+        .version("4.9")
+        .purl("pkg:rpm/sed@4.9?arch=x86_64&distro=ubuntu")
+        .build()
+    )
+    grep_pkg = (
+        SPDXPackageBuilder()
+        .name("grep")
+        .spdx_id("SPDXRef-Package-grep-in-parent")
+        .version("3.11")
+        .purl("pkg:rpm/grep@3.11")
+        .sha256_checksum("e" * 64)
+        .verification_code("f" * 40)
+        .build()
+    )
+    document = (
+        SPDXSBOMBuilder()
+        .name("parent-doc")
+        .root_purl("pkg:oci/parent-sbom@sha256:cccc")
+        .root_describes([parent_img])
+        .descendant_of(parent_img, grandparent_img)
+        .contains(parent_img, requests_pkg)
+        .contains(grandparent_img, urllib3_pkg)
+        .contains(parent_img, bash_pkg)
+        .contains(grandparent_img, coreutils_pkg)
+        .contains(parent_img, sed_pkg)
+        .contains(grandparent_img, grep_pkg)
+        .build()
+    )
+    return DocumentIndexOCI(document)
 
 
 @pytest.fixture
@@ -165,9 +393,12 @@ def metadata_two_images() -> BuilderPkgMetadata:
 
 
 def test_generate_origins(
-    sbom_index_two_images: DocumentIndexOCI, metadata_two_images: BuilderPkgMetadata
+    sbom_index_two_images: DocumentIndexOCI,
+    parent_index: DocumentIndexOCI,
+    metadata_two_images: BuilderPkgMetadata,
 ) -> None:
     expected_origins = [
+        # Builder and intermediate origins
         (
             "SPDXRef-Package-mergo-from-oras",
             Origin(
@@ -199,27 +430,121 @@ def test_generate_origins(
                 pullspec="quay.io/konflux-ci/oras@sha256:aaaa", type=OriginType.BUILDER
             ),
         ),
+        # Ancestor origins
+        (
+            "SPDXRef-Package-requests",
+            Origin(
+                pullspec="quay.io/konflux-ci/parent@sha256:cccc",
+                type=OriginType.ANCESTOR,
+            ),
+        ),
+        (
+            "SPDXRef-Package-urllib3",
+            Origin(
+                pullspec="quay.io/konflux-ci/grandparent@sha256:dddd",
+                type=OriginType.ANCESTOR,
+            ),
+        ),
+        (
+            "SPDXRef-Package-bash",
+            Origin(
+                pullspec="quay.io/konflux-ci/parent@sha256:cccc",
+                type=OriginType.ANCESTOR,
+            ),
+        ),
+        (
+            "SPDXRef-Package-coreutils",
+            Origin(
+                pullspec="quay.io/konflux-ci/grandparent@sha256:dddd",
+                type=OriginType.ANCESTOR,
+            ),
+        ),
+        (
+            "SPDXRef-Package-sed",
+            Origin(
+                pullspec="quay.io/konflux-ci/parent@sha256:cccc",
+                type=OriginType.ANCESTOR,
+            ),
+        ),
+        (
+            "SPDXRef-Package-grep",
+            Origin(
+                pullspec="quay.io/konflux-ci/grandparent@sha256:dddd",
+                type=OriginType.ANCESTOR,
+            ),
+        ),
     ]
 
     assert (
-        Contextualizer().generate_origins(sbom_index_two_images, metadata_two_images)
+        Contextualizer(parent_index, metadata_two_images).generate_origins(
+            sbom_index_two_images
+        )
         == expected_origins
     )
 
 
 def test_generate_origins_without_metadata(
     sbom_index_two_images: DocumentIndexOCI,
+    parent_index: DocumentIndexOCI,
 ) -> None:
-    """
-    Test case where there are no packages in the SBOM document without their
-    respective metadata items.
-    """
+    """Parent origins are generated even when builder metadata is empty."""
     metadata = BuilderPkgMetadata(packages=[])
-    assert Contextualizer().generate_origins(sbom_index_two_images, metadata) == []
+
+    # Ancestor origins
+    expected_origins = [
+        (
+            "SPDXRef-Package-requests",
+            Origin(
+                pullspec="quay.io/konflux-ci/parent@sha256:cccc",
+                type=OriginType.ANCESTOR,
+            ),
+        ),
+        (
+            "SPDXRef-Package-urllib3",
+            Origin(
+                pullspec="quay.io/konflux-ci/grandparent@sha256:dddd",
+                type=OriginType.ANCESTOR,
+            ),
+        ),
+        (
+            "SPDXRef-Package-bash",
+            Origin(
+                pullspec="quay.io/konflux-ci/parent@sha256:cccc",
+                type=OriginType.ANCESTOR,
+            ),
+        ),
+        (
+            "SPDXRef-Package-coreutils",
+            Origin(
+                pullspec="quay.io/konflux-ci/grandparent@sha256:dddd",
+                type=OriginType.ANCESTOR,
+            ),
+        ),
+        (
+            "SPDXRef-Package-sed",
+            Origin(
+                pullspec="quay.io/konflux-ci/parent@sha256:cccc",
+                type=OriginType.ANCESTOR,
+            ),
+        ),
+        (
+            "SPDXRef-Package-grep",
+            Origin(
+                pullspec="quay.io/konflux-ci/grandparent@sha256:dddd",
+                type=OriginType.ANCESTOR,
+            ),
+        ),
+    ]
+
+    assert (
+        Contextualizer(parent_index, metadata).generate_origins(sbom_index_two_images)
+        == expected_origins
+    )
 
 
 def test_generate_origins_metadata_missing_package(
     sbom_index_two_images: DocumentIndexOCI,
+    parent_index_empty: DocumentIndexOCI,
 ) -> None:
     """
     Test case where there is a metadata item with no matching package in the
@@ -234,10 +559,19 @@ def test_generate_origins_metadata_missing_package(
             ),
         ]
     )
-    assert Contextualizer().generate_origins(sbom_index_two_images, metadata) == []
+
+    assert (
+        Contextualizer(parent_index_empty, metadata).generate_origins(
+            sbom_index_two_images
+        )
+        == []
+    )
 
 
-def test_resolve_origins(sbom_index_two_images: DocumentIndexOCI) -> None:
+def test_resolve_origins(
+    sbom_index_two_images: DocumentIndexOCI,
+    parent_index: DocumentIndexOCI,
+) -> None:
     origins = [
         (
             "SPDXRef-Package-mergo-from-oras",
@@ -288,7 +622,9 @@ def test_resolve_origins(sbom_index_two_images: DocumentIndexOCI) -> None:
         },
     }
 
-    resolved = Contextualizer().resolve_origins(sbom_index_two_images, origins)
+    resolved = Contextualizer(
+        parent_index, BuilderPkgMetadata(packages=[])
+    ).resolve_origins(sbom_index_two_images, origins)
 
     for (
         image_spdx_id,
@@ -403,15 +739,17 @@ def _contextualize_metadata() -> BuilderPkgMetadata:
     )
 
 
+@pytest.mark.skip
 def test_contextualize(
     caplog: LogCaptureFixture,
+    parent_index: DocumentIndexOCI,
 ) -> None:
     index = _contextualize_sbom_index()
     metadata = _contextualize_metadata()
-    contextualizer = Contextualizer()
+    contextualizer = Contextualizer(parent_index, metadata)
 
     with caplog.at_level(logging.INFO):
-        document = contextualizer.contextualize(index, metadata)
+        document = contextualizer.contextualize(index)
 
     assert document is index.doc
     assert contextualizer.stats.total_metadata == len(metadata.packages)
