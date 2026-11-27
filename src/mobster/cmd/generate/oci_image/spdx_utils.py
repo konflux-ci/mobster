@@ -20,6 +20,7 @@ from spdx_tools.spdx.model.spdx_no_assertion import SpdxNoAssertion
 from mobster.cmd.generate.oci_image.constants import BUILDER_IMAGE_PROPERTY
 from mobster.error import BuilderContextualizationError, ContextualWorkflowError
 from mobster.image import IMAGE_PKG_SPDX_PREFIX, Image
+from mobster.purl import PURL
 from mobster.sbom.spdx import (
     DOC_ELEMENT_ID,
     SPDXId,
@@ -37,9 +38,6 @@ HERMETO_ANNOTATION_COMMENTS = [
     '{"name": "cachi2:found_by", "value": "cachi2"}',
     '{"name": "hermeto:found_by", "value": "hermeto"}',
 ]
-
-# FIXME: consider establishing strongly-typed types such as ChecksumIdentity
-# and PURLIdentity for consistency of comparison
 
 
 class ChecksumIdentity:
@@ -602,11 +600,11 @@ class PackageContext:
         return None
 
     @property
-    def normalized_purl(self) -> str | None:
+    def purl(self) -> PURL | None:
         purl = get_package_purl(self.pkg)
         if purl is None:
             return None
-        return get_normalized_purl(purl)
+        return PURL(purl)
 
     @property
     def checksum_identity(self) -> ChecksumIdentity:
@@ -688,7 +686,7 @@ class DocumentIndexOCI:
         self._root_spdx_id: str | None = None
         self._spdx_id_to_ctx: dict[SPDXId, PackageContext] = {}
 
-        self._purl_to_ctxs: dict[str, list[PackageContext]] = defaultdict(list)
+        self._purl_to_ctxs: dict[PURL, list[PackageContext]] = defaultdict(list)
         self._checksum_id_to_ctxs: dict[ChecksumIdentity, list[PackageContext]] = (
             defaultdict(list)
         )
@@ -709,8 +707,7 @@ class DocumentIndexOCI:
             # PURL-based indexing
             purl = get_package_purl(pkg)
             if purl is not None:
-                normalized = get_normalized_purl(purl)
-                self._purl_to_ctxs[normalized].append(pkg_ctx)
+                self._purl_to_ctxs[PURL(purl)].append(pkg_ctx)
 
             # checksum-based indexing
             self._checksum_id_to_ctxs[ChecksumIdentity(pkg.checksums)].append(pkg_ctx)
@@ -787,7 +784,7 @@ class DocumentIndexOCI:
         """
         return self._spdx_id_to_ctx[spdx_id]
 
-    def packages_by_purl(self, purl: str) -> list[PackageContext]:
+    def packages_by_purl(self, purl: PURL) -> list[PackageContext]:
         """
         Return packages from the document by a Package URL string.
 
@@ -795,14 +792,13 @@ class DocumentIndexOCI:
         that matches the passed purl.
 
         Args:
-            purl: Package URL string to search for
+            purl: Package URL to search for
 
         Returns:
             List of PackageContext objects with matching PURLs, or empty list
             if none found
         """
-        normalized = get_normalized_purl(purl)
-        return self._purl_to_ctxs.get(normalized, [])
+        return self._purl_to_ctxs.get(purl, [])
 
     def packages_by_checksum_id(
         self, checksum_id: ChecksumIdentity

@@ -20,6 +20,7 @@ from mobster.cmd.generate.oci_image.contextual_sbom.match_utils import (
 )
 from mobster.cmd.generate.oci_image.spdx_utils import DocumentIndexOCI, PackageContext
 from mobster.error import BuilderContextualizationError
+from mobster.purl import PURL
 from mobster.sbom.spdx import SPDXId, get_package_purl
 
 LOGGER = getLogger(__name__)
@@ -183,12 +184,12 @@ class Contextualizer:
                 # use Hermeto-Syft matching logic
 
                 # can't do hermeto matching without a PURL
-                if component_pkg_ctx.normalized_purl is None:
+                if component_pkg_ctx.purl is None:
                     # TODO: maybe warrants a warning?
                     continue
 
                 parent_pkgs_by_purl = self.parent_index.packages_by_purl(
-                    component_pkg_ctx.normalized_purl
+                    component_pkg_ctx.purl
                 )
                 origin = self._resolve_package_matches(
                     component_pkg_ctx, parent_pkgs_by_purl
@@ -265,9 +266,9 @@ class Contextualizer:
             if origin is not None:
                 return origin
 
-        if component_pkg_ctx.normalized_purl is not None:
+        if component_pkg_ctx.purl is not None:
             parent_pkgs_by_purl = self.parent_index.packages_by_purl(
-                component_pkg_ctx.normalized_purl
+                component_pkg_ctx.purl
             )
             return self._resolve_package_matches(component_pkg_ctx, parent_pkgs_by_purl)
 
@@ -281,7 +282,7 @@ class Contextualizer:
         self.stats.total_metadata = len(self.builder_metadata.packages)
 
         for pkg_meta in self.builder_metadata.packages:
-            packages_by_purl = component_index.packages_by_purl(pkg_meta.purl)
+            packages_by_purl = component_index.packages_by_purl(PURL(pkg_meta.purl))
             # The following condition would imply that the syft scan during the
             # build and the syft scan in Capo don't generate all identical PURLs.
             # This is unlikely to happen, but it makes sense to try to contextualize

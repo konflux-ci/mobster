@@ -30,6 +30,7 @@ from mobster.cmd.generate.oci_image.spdx_utils import (
 )
 from mobster.error import BuilderContextualizationError
 from mobster.image import Image
+from mobster.purl import PURL
 from mobster.sbom.spdx import (
     SPDXId,
     get_package_purl,
@@ -1080,11 +1081,11 @@ def test_document_index_package_lookup(simple_spdx_document: Document) -> None:
     with pytest.raises(KeyError):
         index.package_by_spdx_id("SPDXRef-NonExistent")
 
-    purl_ctxs = index.packages_by_purl("pkg:npm/package-b@1.0.0")
+    purl_ctxs = index.packages_by_purl(PURL("pkg:npm/package-b@1.0.0"))
     assert len(purl_ctxs) == 1
     assert purl_ctxs[0].pkg.name == "package-b"
 
-    assert index.packages_by_purl("pkg:/golang/nonexistent@1.0.0") == []
+    assert index.packages_by_purl(PURL("pkg:/golang/nonexistent@1.0.0")) == []
 
 
 @pytest.mark.parametrize("reverse_root_relationship", [False, True])
