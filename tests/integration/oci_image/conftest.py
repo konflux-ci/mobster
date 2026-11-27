@@ -9,7 +9,7 @@ from spdx_tools.spdx.parser.parse_anything import parse_file
 from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
 from spdx_tools.spdx.writer.write_anything import write_file
 
-from mobster.cmd.generate.oci_image.contextual_sbom.builder import (
+from mobster.cmd.generate.oci_image.contextual_sbom import (
     BuilderPkgMetadataItem,
 )
 from mobster.cmd.generate.oci_image.contextual_sbom.constants import (
